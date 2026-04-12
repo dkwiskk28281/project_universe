@@ -21,16 +21,16 @@ export class DroneLayer {
 
   start() {
     // CMB fundamental: kT/h = 56.78 GHz → 56.78 Hz
-    this.createOsc(56.78, 'sine', 0.12)
+    this.createOsc(56.78, 'sine', 0.35)
 
     // CMB anisotropy detuned: creates 0.21 Hz beating (~5s cycle)
-    this.createOsc(56.99, 'sine', 0.10)
+    this.createOsc(56.99, 'sine', 0.30)
 
     // Solar p-mode: 3.05 mHz × 37200 = 113.56 Hz (octave of CMB)
-    this.createOsc(113.56, 'triangle', 0.04)
+    this.createOsc(113.56, 'triangle', 0.12)
 
     // Gravitational fifth: CMB × 3/2 = 85.17 Hz
-    const gravGain = this.createOsc(85.17, 'sine', 0.06)
+    const gravGain = this.createOsc(85.17, 'sine', 0.18)
 
     // Hydrogen 21cm line as LFO: 1420.405751 MHz × 10⁻⁹ = 1.42 Hz
     this.lfo = this.ctx.createOscillator()

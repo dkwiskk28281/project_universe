@@ -18,8 +18,8 @@ import { randomRange } from '../utils/mathHelpers'
 
 const MIN_INTERVAL = 7 * 86400  // 7 days minimum
 const MAX_INTERVAL = 14 * 86400 // 14 days maximum
-const DEMO_MIN = 120   // 2 minutes in demo
-const DEMO_MAX = 300   // 5 minutes in demo
+const DEMO_MIN = 45    // 45 seconds in demo
+const DEMO_MAX = 120   // 2 minutes in demo
 const DURATION = 40    // 40 seconds total
 
 interface SupernovaState {

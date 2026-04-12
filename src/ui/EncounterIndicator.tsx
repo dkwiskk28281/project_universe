@@ -1,8 +1,21 @@
+import { useEffect, useRef } from 'react'
 import { useCosmosStore } from '../store'
 
 export function EncounterIndicator() {
   const encounterActive = useCosmosStore((s) => s.encounterActive)
   const encounterProgress = useCosmosStore((s) => s.encounterProgress)
+  const vibratedRef = useRef(false)
+
+  // Vibrate on encounter start (mobile)
+  useEffect(() => {
+    if (encounterActive && !vibratedRef.current) {
+      vibratedRef.current = true
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200])
+      }
+    }
+    if (!encounterActive) vibratedRef.current = false
+  }, [encounterActive])
 
   if (!encounterActive) return null
 

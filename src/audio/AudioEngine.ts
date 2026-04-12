@@ -47,7 +47,7 @@ class AudioEngineClass {
     }
 
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 0.6
+    this.masterGain.gain.value = 1.0
 
     // Create reverb — simulates vastness of space
     this.convolver = this.ctx.createConvolver()

@@ -34,10 +34,13 @@ export const CAMERA = {
   fov: 60,
   near: 0.1,
   far: 10000,
-  driftAmplitude: 2,
-  driftPeriod: 120,
-  rotationAmplitude: 0.03,
-  rotationPeriod: 90,
+  // Continuous slow travel through space — not just wobble
+  driftAmplitude: 25,
+  driftPeriod: 200,
+  rotationAmplitude: 0.12,
+  rotationPeriod: 150,
+  // Forward travel speed (cosmic units per second)
+  travelSpeed: 3,
 }
 
 export const STARS = {
@@ -65,8 +68,8 @@ export const STARS = {
 }
 
 export const SHOOTING_STAR = {
-  minIntervalSeconds: 30,
-  maxIntervalSeconds: 120,
+  minIntervalSeconds: 12,
+  maxIntervalSeconds: 45,
   durationSeconds: 1.5,
   trailLength: 40,
   speed: 800,
@@ -111,5 +114,5 @@ export const AUDIO = {
   droneFrequencies: [56.78, 56.99, 113.56, 85.17],
   pulsarMinInterval: 15,
   pulsarMaxInterval: 30,
-  masterVolume: 0.6,
+  masterVolume: 1.0,
 }

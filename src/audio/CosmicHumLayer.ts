@@ -54,7 +54,7 @@ export class CosmicHumLayer {
     bandPass.Q.value = 0.5
 
     const gain = this.ctx.createGain()
-    gain.gain.value = 0.15
+    gain.gain.value = 0.4
 
     this.noiseNode.connect(lowPass)
     lowPass.connect(bandPass)

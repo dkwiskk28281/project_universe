@@ -11,6 +11,7 @@ import { PostProcessing } from './PostProcessing'
 import { EncounterEntity } from './EncounterEntity'
 import { ShootingStar } from './ShootingStar'
 import { Supernova } from './Supernova'
+import { CelestialBodies } from './CelestialBodies'
 
 export function CosmosCanvas() {
   const { qualityPreset } = useCosmosStore()
@@ -47,6 +48,7 @@ export function CosmosCanvas() {
       <StarField />
       <MilkyWay />
       <DistantGalaxies />
+      <CelestialBodies />
       <ShootingStar />
       <Supernova />
       <EncounterEntity />
