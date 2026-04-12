@@ -34,13 +34,13 @@ export const CAMERA = {
   fov: 60,
   near: 0.1,
   far: 10000,
-  // Continuous slow travel through space — not just wobble
-  driftAmplitude: 25,
-  driftPeriod: 200,
-  rotationAmplitude: 0.12,
-  rotationPeriod: 150,
-  // Forward travel speed (cosmic units per second)
-  travelSpeed: 3,
+  // Serene drift — slow enough to not trigger alertness
+  driftAmplitude: 15,
+  driftPeriod: 250,
+  rotationAmplitude: 0.06,
+  rotationPeriod: 200,
+  // Slow, meditative travel (stress research: slower = calmer)
+  travelSpeed: 1.2,
 }
 
 export const STARS = {
@@ -68,8 +68,8 @@ export const STARS = {
 }
 
 export const SHOOTING_STAR = {
-  minIntervalSeconds: 12,
-  maxIntervalSeconds: 45,
+  minIntervalSeconds: 30,
+  maxIntervalSeconds: 90,
   durationSeconds: 1.5,
   trailLength: 40,
   speed: 800,

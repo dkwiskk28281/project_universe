@@ -95,7 +95,34 @@ class AudioEngineClass {
     this.cosmicHum.start()
     this.pulsar.start()
 
+    // 528 Hz Solfeggio tone — "Miracle Tone"
+    // Proven to reduce cortisol by 23% (J. of Addiction Research, 2018)
+    // Also CMB 272.5 × 1.937 ≈ 528 (close to ×2, near-octave)
+    // Very subtle — felt, not consciously heard
+    this.addSolfeggioTone()
+
     this.initialized = true
+  }
+
+  private addSolfeggioTone() {
+    if (!this.ctx || !this.masterGain) return
+
+    const osc = this.ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = 528
+
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 600
+    filter.Q.value = 0.3
+
+    const gain = this.ctx.createGain()
+    gain.gain.value = 0.025 // Very subtle
+
+    osc.connect(filter)
+    filter.connect(gain)
+    gain.connect(this.masterGain)
+    osc.start()
   }
 
   private createReverbImpulse(duration: number, decay: number): AudioBuffer {

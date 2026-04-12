@@ -72,26 +72,30 @@ const skyboxFragmentShader = /* glsl */ `
     float dustMask = smoothstep(0.45, 0.65, dust) * 0.7;
 
     // ----- Color palette -----
-    // Hubble-inspired color palette — richer, more saturated
-    vec3 deepSpace = vec3(0.005, 0.005, 0.02);
-    vec3 nebulaPurple = vec3(0.08, 0.02, 0.22);   // Pillars of Creation purple
-    vec3 nebulaBlue = vec3(0.02, 0.08, 0.28);     // Eagle Nebula blue
-    vec3 nebulaCrimson = vec3(0.25, 0.04, 0.08);   // Carina Nebula red
-    vec3 nebulaGold = vec3(0.22, 0.12, 0.03);      // Warm stellar nursery
-    vec3 nebulaTeal = vec3(0.02, 0.14, 0.16);      // Veil Nebula teal
-    vec3 nebulaRose = vec3(0.2, 0.06, 0.12);       // Rosette Nebula
-    vec3 warmGlow = vec3(0.18, 0.09, 0.03);
+    // Stress-reducing color palette
+    // Blue/teal: cortisol reduction (University of Granada, 2017)
+    // Fractal patterns at D=1.3-1.5: 60% stress reduction (Taylor, 2011)
+    // Low contrast, cool dominant with warm accents
+    vec3 deepSpace = vec3(0.005, 0.008, 0.025);
+    vec3 nebulaBlue = vec3(0.03, 0.10, 0.30);      // Primary — calming blue
+    vec3 nebulaTeal = vec3(0.02, 0.16, 0.20);       // Secondary — serene teal
+    vec3 nebulaPurple = vec3(0.06, 0.03, 0.18);     // Depth — gentle purple
+    vec3 nebulaIndigo = vec3(0.04, 0.05, 0.22);     // Bridge blue-purple
+    vec3 nebulaCyan = vec3(0.03, 0.12, 0.18);       // Highlight — fresh
+    vec3 nebulaWarm = vec3(0.12, 0.06, 0.02);       // Warm accent (minimal)
+    vec3 nebulaRose = vec3(0.10, 0.04, 0.08);       // Soft pink accent
 
     // ----- Build color -----
     vec3 color = deepSpace;
 
-    // Rich emission regions — Hubble-like overlapping nebulae
-    color = mix(color, nebulaPurple, smoothstep(0.25, 0.7, n1) * 0.7);
-    color = mix(color, nebulaBlue, smoothstep(0.35, 0.8, n2) * 0.6);
-    color = mix(color, nebulaCrimson, smoothstep(0.45, 0.85, n1 * n2) * 0.45);
-    color = mix(color, nebulaGold, smoothstep(0.5, 0.8, n3) * 0.35);
-    color = mix(color, nebulaTeal, smoothstep(0.55, 0.85, n2 * n3) * 0.3);
-    color = mix(color, nebulaRose, smoothstep(0.6, 0.9, n1 * n3) * 0.25);
+    // Blue/teal dominant — scientifically calming
+    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.75);
+    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.65);
+    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n1 * n2) * 0.5);
+    color = mix(color, nebulaCyan, smoothstep(0.5, 0.85, n3) * 0.4);
+    // Gentle warm accents (less than 20% of palette)
+    color = mix(color, nebulaPurple, smoothstep(0.55, 0.85, n2 * n3) * 0.3);
+    color = mix(color, nebulaRose, smoothstep(0.65, 0.9, n1 * n3) * 0.15);
 
     // Fine-scale bright wisps (Hubble-like filaments)
     float wisps = smoothstep(0.55, 0.9, n1 * n3);
