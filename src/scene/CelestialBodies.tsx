@@ -15,11 +15,12 @@ import * as THREE from 'three'
  *   - Distance fade: objects smoothly materialize from deep space
  */
 
-const BODY_COUNT = 35
-const SPAWN_RADIUS = 450
-const DESPAWN_RADIUS = 500
-const FADE_START = 380 // Start fading out at this distance
-const FADE_IN_DIST = 80 // Distance over which objects fade in after spawn
+const BODY_COUNT = 20
+const SPAWN_RADIUS = 500
+const DESPAWN_RADIUS = 550
+const FADE_START = 400
+const FADE_IN_DIST = 120
+const MIN_SPAWN_DIST = 150 // Never spawn closer than this
 
 function hash(n: number): number {
   const x = Math.sin(n) * 43758.5453
@@ -261,13 +262,13 @@ interface Body {
 
 function spawnBody(cx: number, cy: number, cz: number, seed: number): Body {
   const angle = hash(seed) * Math.PI * 2
-  const elevation = (hash(seed + 1) - 0.5) * 180
-  // Always spawn near the edge so they fade in smoothly
-  const dist = SPAWN_RADIUS * 0.7 + hash(seed + 2) * SPAWN_RADIUS * 0.3
-  const offsetZ = (hash(seed + 3) - 0.5) * SPAWN_RADIUS * 1.5
+  const elevation = (hash(seed + 1) - 0.5) * 120
+  // Spawn at medium-far distance — never too close
+  const dist = MIN_SPAWN_DIST + hash(seed + 2) * (SPAWN_RADIUS - MIN_SPAWN_DIST)
+  const offsetZ = (hash(seed + 3) - 0.5) * SPAWN_RADIUS
 
   const position = new THREE.Vector3(
-    cx + Math.cos(angle) * dist * 0.5,
+    cx + Math.cos(angle) * dist,
     cy + elevation,
     cz + offsetZ
   )
@@ -289,7 +290,7 @@ function spawnBody(cx: number, cy: number, cz: number, seed: number): Body {
 
   switch (type) {
     case 'planet':
-      scale = 1.5 + hash(seed + 6) * 4
+      scale = 0.5 + hash(seed + 6) * 1.5
       if (surfaceType === 0) { // rocky
         color1 = new THREE.Color(0.35 + cs * 0.15, 0.2, 0.1)
         color2 = new THREE.Color(0.45, 0.25 + cs * 0.1, 0.15)
@@ -299,28 +300,28 @@ function spawnBody(cx: number, cy: number, cz: number, seed: number): Body {
         color2 = new THREE.Color(0.1, 0.2, 0.45)
         atmosphere = new THREE.Color(0.3, 0.5, 0.9)
       } else { // earth-like
-        scale = 1.5 + hash(seed + 6) * 2
+        scale = 0.5 + hash(seed + 6) * 1.0
         color1 = new THREE.Color(0.12, 0.35, 0.15)
         color2 = new THREE.Color(0.08, 0.15, 0.45)
         atmosphere = new THREE.Color(0.35, 0.55, 1.0)
       }
       break
     case 'gas-giant':
-      scale = 5 + hash(seed + 6) * 10
+      scale = 1.5 + hash(seed + 6) * 3
       color1 = new THREE.Color(0.55 + cs * 0.1, 0.4, 0.25)
       color2 = new THREE.Color(0.45, 0.3, 0.18)
       atmosphere = new THREE.Color(0.35, 0.45, 0.65)
       ringColor = new THREE.Color(0.65, 0.55, 0.45)
       break
     case 'binary':
-      scale = 2 + hash(seed + 6) * 2
+      scale = 0.4 + hash(seed + 6) * 0.8
       color1 = new THREE.Color(0.85, 0.88, 1.0)
       color2 = new THREE.Color(1.0, 0.85, 0.65)
       atmosphere = new THREE.Color(0.5, 0.6, 1.0)
       surfaceType = 1 // render like gas (smooth)
       break
     default: // cloud
-      scale = 20 + hash(seed + 6) * 40
+      scale = 5 + hash(seed + 6) * 10
       const h = hash(seed + 7)
       color1 = h < 0.33
         ? new THREE.Color(0.08, 0.04, 0.2)
