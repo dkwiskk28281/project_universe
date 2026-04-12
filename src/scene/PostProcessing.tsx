@@ -1,28 +1,38 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing'
-import { BlendFunction } from 'postprocessing'
+import { EffectComposer, Bloom, Vignette, ChromaticAberration, ToneMapping } from '@react-three/postprocessing'
+import { BlendFunction, ToneMappingMode } from 'postprocessing'
 import { Vector2 } from 'three'
 import { useCosmosStore } from '../store'
 
+/**
+ * Cinematic post-processing pipeline.
+ *
+ * Enhanced bloom for star glow, deeper vignette,
+ * ACES filmic tone mapping for HDR-like dynamic range,
+ * and subtle chromatic aberration for camera lens feel.
+ */
+
 function PostProcessingWithCA() {
   return (
-    <EffectComposer>
+    <EffectComposer multisampling={0}>
       <Bloom
-        luminanceThreshold={0.2}
-        luminanceSmoothing={0.9}
-        intensity={1.8}
-        radius={0.85}
+        luminanceThreshold={0.15}
+        luminanceSmoothing={0.95}
+        intensity={2.5}
+        radius={0.9}
         mipmapBlur
+        levels={7}
       />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette
-        offset={0.3}
-        darkness={0.75}
+        offset={0.25}
+        darkness={0.8}
         blendFunction={BlendFunction.NORMAL}
       />
       <ChromaticAberration
-        offset={new Vector2(0.0006, 0.0006)}
+        offset={new Vector2(0.0008, 0.0008)}
         blendFunction={BlendFunction.NORMAL}
-        radialModulation={false}
-        modulationOffset={0}
+        radialModulation
+        modulationOffset={0.5}
       />
     </EffectComposer>
   )
@@ -30,17 +40,19 @@ function PostProcessingWithCA() {
 
 function PostProcessingBasic() {
   return (
-    <EffectComposer>
+    <EffectComposer multisampling={0}>
       <Bloom
-        luminanceThreshold={0.2}
-        luminanceSmoothing={0.9}
-        intensity={1.8}
-        radius={0.85}
+        luminanceThreshold={0.15}
+        luminanceSmoothing={0.95}
+        intensity={2.5}
+        radius={0.9}
         mipmapBlur
+        levels={5}
       />
+      <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
       <Vignette
-        offset={0.3}
-        darkness={0.75}
+        offset={0.25}
+        darkness={0.8}
         blendFunction={BlendFunction.NORMAL}
       />
     </EffectComposer>

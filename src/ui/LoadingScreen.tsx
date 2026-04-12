@@ -25,7 +25,8 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
 
   return (
     <div
-      onClick={handleStart}
+      onPointerDown={handleStart}
+      onTouchEnd={(e) => { e.preventDefault(); handleStart(); }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -39,6 +40,7 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
         opacity,
         transition: 'opacity 2s ease-out',
         touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <h1

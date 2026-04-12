@@ -32,25 +32,39 @@ class AudioEngineClass {
   private encounterGain: GainNode | null = null
 
   /**
-   * Initialize audio — MUST be called synchronously from a user gesture on iOS.
-   * No async/await before AudioContext creation.
+   * Initialize audio — uses iOS silent buffer unlock trick.
    */
   init(): void {
     if (this.initialized) return
 
-    // Create AudioContext synchronously — critical for iOS Safari
-    const AC = window.AudioContext || (window as any).webkitAudioContext
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext
+    if (!AC) return
+
     this.ctx = new AC()
 
-    // Resume immediately (must be in user gesture call stack)
+    // === iOS Safari Audio Unlock ===
+    // Play a silent buffer to permanently unlock the AudioContext.
+    // This is the ONLY reliable method on all iOS versions.
+    const silentBuffer = this.ctx.createBuffer(1, 1, 22050)
+    const silentSource = this.ctx.createBufferSource()
+    silentSource.buffer = silentBuffer
+    silentSource.connect(this.ctx.destination)
+    silentSource.start(0)
+
+    // Also explicitly resume
     this.ctx.resume()
 
-    // Safety: retry resume after a tick (some iOS versions need this)
+    // Retry resume for iOS versions that need a tick
     setTimeout(() => {
       if (this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume()
       }
-    }, 100)
+    }, 50)
+    setTimeout(() => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume()
+      }
+    }, 200)
 
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 1.0
