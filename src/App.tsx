@@ -1,14 +1,16 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { SettingsOverlay } from './ui/SettingsOverlay'
 import { EncounterIndicator } from './ui/EncounterIndicator'
+import { CosmicComm } from './ui/CosmicComm'
 import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
 
 export default function App() {
-  const [started, setStarted] = useState(false)
+  const started = useCosmosStore((s) => s.started)
+  const setStarted = useCosmosStore((s) => s.setStarted)
   const setAudioReady = useCosmosStore((s) => s.setAudioReady)
 
   // Initialize encounter system
@@ -22,7 +24,7 @@ export default function App() {
       console.warn('[COSMOS] Audio init failed:', e)
     }
     setStarted(true)
-  }, [setAudioReady])
+  }, [setAudioReady, setStarted])
 
   // Handle visibility change for battery saving
   useEffect(() => {
@@ -46,6 +48,7 @@ export default function App() {
         <>
           <SettingsOverlay />
           <EncounterIndicator />
+          <CosmicComm />
         </>
       )}
     </>

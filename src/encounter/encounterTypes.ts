@@ -19,6 +19,35 @@ export interface EncounterRecord {
   duration: number
 }
 
+// --- Frequency Link & Communication ---
+
+export interface FrequencyLinkData {
+  id: string
+  userA: string
+  userB: string
+  encounteredAt: number
+  expiresAt: number
+}
+
+export interface CosmicMessageData {
+  id: string
+  linkId: string
+  from: string
+  text: string
+  sentAt: number
+  // Calculated delivery time based on light-speed delay
+  arrivesAt: number
+}
+
+export interface LocalFrequencyLink {
+  linkId: string
+  peerId: string
+  encounteredAt: number
+  expiresAt: number
+}
+
+// --- localStorage helpers ---
+
 export function getUserId(): string {
   let id = localStorage.getItem('cosmos-user-id')
   if (!id) {
@@ -34,4 +63,29 @@ export function getCooldownEnd(): number {
 
 export function setCooldownEnd(timestamp: number) {
   localStorage.setItem('cosmos-cooldown-end', String(timestamp))
+}
+
+export function getFrequencyLinks(): LocalFrequencyLink[] {
+  try {
+    const raw = localStorage.getItem('cosmos-frequency-links')
+    if (!raw) return []
+    const links: LocalFrequencyLink[] = JSON.parse(raw)
+    // Filter out expired links
+    const now = Date.now()
+    return links.filter((l) => l.expiresAt > now)
+  } catch {
+    return []
+  }
+}
+
+export function saveFrequencyLinks(links: LocalFrequencyLink[]) {
+  localStorage.setItem('cosmos-frequency-links', JSON.stringify(links))
+}
+
+export function addFrequencyLink(link: LocalFrequencyLink) {
+  const links = getFrequencyLinks()
+  // Avoid duplicates
+  if (links.some((l) => l.linkId === link.linkId)) return
+  links.push(link)
+  saveFrequencyLinks(links)
 }

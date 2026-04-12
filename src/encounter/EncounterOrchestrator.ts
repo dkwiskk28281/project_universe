@@ -1,13 +1,20 @@
 import { ref, set, onValue, get, remove, type Database } from 'firebase/database'
 import { PresenceService } from './PresenceService'
 import { EncounterScheduler } from './EncounterScheduler'
-import { getUserId, getCooldownEnd, setCooldownEnd } from './encounterTypes'
-import { ENCOUNTER } from '../utils/constants'
+import {
+  getUserId,
+  getCooldownEnd,
+  setCooldownEnd,
+  addFrequencyLink,
+  type LocalFrequencyLink,
+} from './encounterTypes'
+import { ENCOUNTER, COSMIC_COMM } from '../utils/constants'
 
 interface EncounterCallbacks {
   onEncounterStart: () => void
-  onEncounterEnd: () => void
+  onEncounterEnd: (peerId: string | null) => void
   onOnlineCount: (count: number) => void
+  onFrequencyLinked: (link: LocalFrequencyLink) => void
 }
 
 export class EncounterOrchestrator {
@@ -41,22 +48,20 @@ export class EncounterOrchestrator {
     this.presence.destroy()
   }
 
-  /** For testing: force trigger an encounter attempt */
   forceEncounter(): void {
     this.startSeeking()
   }
 
-  /** Trigger a phantom (local-only) encounter */
   triggerPhantom(): void {
     this.callbacks.onEncounterStart()
     setTimeout(() => {
-      this.callbacks.onEncounterEnd()
+      // Phantom encounters don't create frequency links (no real person)
+      this.callbacks.onEncounterEnd(null)
       this.applyCooldown()
     }, ENCOUNTER.durationSeconds * 1000)
   }
 
   private async startSeeking(): Promise<void> {
-    // Check cooldown
     if (Date.now() < getCooldownEnd()) return
 
     this.seekAttempts = 0
@@ -66,7 +71,6 @@ export class EncounterOrchestrator {
       const users = await this.presence.getOnlineUsers()
 
       if (users.length === 0) {
-        // Check if we should do phantom
         const totalOnline = await this.getTotalOnlineCount()
         if (totalOnline < ENCOUNTER.phantomThreshold) {
           this.stopSeeking()
@@ -81,7 +85,6 @@ export class EncounterOrchestrator {
         return
       }
 
-      // Pick random user
       const target = users[Math.floor(Math.random() * users.length)]
       await this.proposeEncounter(target)
       this.stopSeeking()
@@ -104,18 +107,15 @@ export class EncounterOrchestrator {
       status: 'proposed',
     })
 
-    // Wait for acceptance
     const unsubscribe = onValue(pendingRef, (snapshot) => {
       const data = snapshot.val()
       if (data?.status === 'accepted') {
         unsubscribe()
-        this.executeEncounter(data.timestamp)
-        // Clean up
+        this.executeEncounter(data.timestamp, targetId)
         setTimeout(() => remove(pendingRef), 5000)
       }
     })
 
-    // Timeout after 30 seconds
     setTimeout(() => {
       unsubscribe()
       remove(pendingRef)
@@ -130,26 +130,56 @@ export class EncounterOrchestrator {
       snapshot.forEach((child) => {
         const data = child.val()
         if (data.target === this.userId && data.status === 'proposed') {
-          // Accept
           const proposalRef = ref(this.db, `encounters-pending/${child.key}`)
           set(proposalRef, { ...data, status: 'accepted' })
-          this.executeEncounter(data.timestamp)
+          this.executeEncounter(data.timestamp, data.initiator)
         }
       })
     }) as unknown as () => void
   }
 
-  private executeEncounter(timestamp: number): void {
-    // Small delay for sync
+  private executeEncounter(timestamp: number, peerId: string): void {
     const delay = Math.max(0, timestamp + 5000 - Date.now())
 
     setTimeout(() => {
       this.callbacks.onEncounterStart()
       setTimeout(() => {
-        this.callbacks.onEncounterEnd()
+        // Create frequency link after encounter ends
+        const link = this.createFrequencyLink(peerId)
+        this.callbacks.onEncounterEnd(peerId)
+        if (link) {
+          this.callbacks.onFrequencyLinked(link)
+        }
         this.applyCooldown()
       }, ENCOUNTER.durationSeconds * 1000)
     }, delay)
+  }
+
+  private createFrequencyLink(peerId: string): LocalFrequencyLink | null {
+    const now = Date.now()
+    const linkId = [this.userId, peerId].sort().join('_')
+    const expiresAt = now + COSMIC_COMM.linkExpiryDays * 24 * 3600 * 1000
+
+    // Store link in Firebase
+    const linkRef = ref(this.db, `frequency-links/${linkId}`)
+    set(linkRef, {
+      id: linkId,
+      userA: this.userId,
+      userB: peerId,
+      encounteredAt: now,
+      expiresAt,
+    })
+
+    // Store locally
+    const localLink: LocalFrequencyLink = {
+      linkId,
+      peerId,
+      encounteredAt: now,
+      expiresAt,
+    }
+    addFrequencyLink(localLink)
+
+    return localLink
   }
 
   private applyCooldown(): void {
@@ -157,7 +187,6 @@ export class EncounterOrchestrator {
     setCooldownEnd(cooldownEnd)
     this.presence.setEncounterReady(false)
 
-    // Re-enable after cooldown
     setTimeout(() => {
       this.presence.setEncounterReady(true)
     }, ENCOUNTER.minCooldownHours * 3600 * 1000)

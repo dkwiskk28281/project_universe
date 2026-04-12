@@ -10,8 +10,13 @@ class AudioEngineClass {
   private cosmicHum: CosmicHumLayer | null = null
   private pulsar: PulsarLayer | null = null
   private initialized = false
-  private encounterOsc: OscillatorNode | null = null
+
+  // Encounter audio — multi-layered
+  private encounterNodes: AudioNode[] = []
   private encounterGain: GainNode | null = null
+
+  // Message receive audio
+  private messageGain: GainNode | null = null
 
   async init(): Promise<void> {
     if (this.initialized) return
@@ -82,21 +87,62 @@ class AudioEngineClass {
     this.encounterGain.gain.value = 0
     this.encounterGain.connect(this.masterGain)
 
-    this.encounterOsc = this.ctx.createOscillator()
-    this.encounterOsc.type = 'sine'
-    this.encounterOsc.frequency.value = 528
+    const now = this.ctx.currentTime
 
-    const filter = this.ctx.createBiquadFilter()
-    filter.type = 'lowpass'
-    filter.frequency.value = 800
-    filter.Q.value = 2
+    // Layer 1: Deep fundamental tone (528 Hz — "miracle" frequency)
+    const osc1 = this.ctx.createOscillator()
+    osc1.type = 'sine'
+    osc1.frequency.value = 528
+    const filter1 = this.ctx.createBiquadFilter()
+    filter1.type = 'lowpass'
+    filter1.frequency.value = 800
+    filter1.Q.value = 2
+    osc1.connect(filter1)
+    filter1.connect(this.encounterGain)
+    osc1.start(now)
 
-    this.encounterOsc.connect(filter)
-    filter.connect(this.encounterGain)
-    this.encounterOsc.start()
+    // Layer 2: Perfect fifth above — creates harmonic richness
+    const osc2 = this.ctx.createOscillator()
+    osc2.type = 'sine'
+    osc2.frequency.value = 528 * 1.5 // 792 Hz
+    const gain2 = this.ctx.createGain()
+    gain2.gain.value = 0
+    osc2.connect(gain2)
+    gain2.connect(this.encounterGain)
+    osc2.start(now)
+    // Fade in the fifth slowly for dramatic build
+    gain2.gain.setTargetAtTime(0.4, now + 5, 8)
 
-    // Fade in
-    this.encounterGain.gain.setTargetAtTime(0.08, this.ctx.currentTime, 3)
+    // Layer 3: Sub-octave — felt more than heard
+    const osc3 = this.ctx.createOscillator()
+    osc3.type = 'sine'
+    osc3.frequency.value = 264 // octave below
+    const gain3 = this.ctx.createGain()
+    gain3.gain.value = 0
+    const filter3 = this.ctx.createBiquadFilter()
+    filter3.type = 'lowpass'
+    filter3.frequency.value = 400
+    osc3.connect(filter3)
+    filter3.connect(gain3)
+    gain3.connect(this.encounterGain)
+    osc3.start(now)
+    gain3.gain.setTargetAtTime(0.3, now + 2, 5)
+
+    // Layer 4: Very slow shimmer — detuned high harmonic
+    const osc4 = this.ctx.createOscillator()
+    osc4.type = 'sine'
+    osc4.frequency.value = 528 * 2.01 // Slightly detuned octave creates shimmer
+    const gain4 = this.ctx.createGain()
+    gain4.gain.value = 0
+    osc4.connect(gain4)
+    gain4.connect(this.encounterGain)
+    osc4.start(now)
+    gain4.gain.setTargetAtTime(0.15, now + 15, 10)
+
+    // Master encounter fade in — very slow crescendo
+    this.encounterGain.gain.setTargetAtTime(0.1, now, 6)
+
+    this.encounterNodes = [osc1, osc2, osc3, osc4, filter1, gain2, gain3, gain4, filter3]
 
     // Increase pulsar rate
     this.pulsar?.setEncounterMode(true)
@@ -106,18 +152,59 @@ class AudioEngineClass {
     if (!this.ctx || !this.encounterGain) return
 
     const now = this.ctx.currentTime
-    this.encounterGain.gain.setTargetAtTime(0, now, 2)
 
-    // Cleanup after fade out
+    // Very slow fade out — melancholic departure
+    this.encounterGain.gain.setTargetAtTime(0, now, 4)
+
+    // Cleanup after fade
     setTimeout(() => {
-      this.encounterOsc?.stop()
-      this.encounterOsc?.disconnect()
+      for (const node of this.encounterNodes) {
+        try {
+          if (node instanceof OscillatorNode) node.stop()
+          node.disconnect()
+        } catch { /* already stopped */ }
+      }
       this.encounterGain?.disconnect()
-      this.encounterOsc = null
+      this.encounterNodes = []
       this.encounterGain = null
-    }, 8000)
+    }, 15000)
 
     this.pulsar?.setEncounterMode(false)
+  }
+
+  /** Play a subtle tone when a cosmic message materializes */
+  playMessageReceiveSound() {
+    if (!this.ctx || !this.masterGain) return
+
+    const now = this.ctx.currentTime
+
+    this.messageGain = this.ctx.createGain()
+    this.messageGain.gain.value = 0
+    this.messageGain.connect(this.masterGain)
+
+    // Gentle bell-like tone
+    const osc = this.ctx.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = 880
+
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 900
+    filter.Q.value = 5
+
+    osc.connect(filter)
+    filter.connect(this.messageGain)
+    osc.start(now)
+
+    // Quick swell and long decay
+    this.messageGain.gain.setTargetAtTime(0.04, now, 0.5)
+    this.messageGain.gain.setTargetAtTime(0, now + 2, 3)
+
+    osc.stop(now + 12)
+    setTimeout(() => {
+      this.messageGain?.disconnect()
+      this.messageGain = null
+    }, 13000)
   }
 
   suspend() {

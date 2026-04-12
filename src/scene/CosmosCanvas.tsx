@@ -7,6 +7,7 @@ import { NebulaSkybox } from './NebulaSkybox'
 import { NebulaVolume } from './NebulaVolume'
 import { PostProcessing } from './PostProcessing'
 import { EncounterEntity } from './EncounterEntity'
+import { ShootingStar } from './ShootingStar'
 
 export function CosmosCanvas() {
   const { qualityPreset } = useCosmosStore()
@@ -41,6 +42,7 @@ export function CosmosCanvas() {
       <NebulaSkybox />
       <NebulaVolume />
       <StarField />
+      <ShootingStar />
       <EncounterEntity />
       <PostProcessing />
     </Canvas>
