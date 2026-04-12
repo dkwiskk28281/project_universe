@@ -107,7 +107,13 @@ class AudioEngineClass {
     for (let channel = 0; channel < 2; channel++) {
       const data = buffer.getChannelData(channel)
       for (let i = 0; i < length; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay)
+        const t = i / length
+        // Exponential decay with early reflections
+        const earlyReflections = i < sampleRate * 0.1
+          ? Math.random() * 0.5 * (1 - i / (sampleRate * 0.1))
+          : 0
+        const tail = Math.pow(1 - t, decay) * (Math.random() * 2 - 1)
+        data[i] = (tail + earlyReflections) * 0.8
       }
     }
 

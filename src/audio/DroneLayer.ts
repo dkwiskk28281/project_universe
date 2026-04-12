@@ -1,23 +1,20 @@
 /**
- * Drone Layer — Ambient Cosmic Pad
+ * Drone Layer — Healing Cosmic Pad with Binaural Relaxation
  *
- * Designed for 24-hour listening: warm, enveloping, endlessly beautiful.
+ * Designed to induce deep relaxation via:
  *
- * Physics mapping: CMB temperature T=2.725K → 272.5 Hz (×100 scaling)
- * This lands in the warm middle register — the most pleasant range
- * for human hearing. All other tones built from the natural overtone
- * series (just intonation) — this IS physics, not human convention.
+ * 1. Binaural beats: L/R ears get slightly different frequencies,
+ *    creating a perceived "third tone" that entrains brainwaves.
+ *    Δf = 6 Hz → theta waves (4-8 Hz) = deep meditation state.
  *
- * Chord: CMB root 272.5 Hz with natural harmonics
- *   Root:    272.5 Hz  (CMB × 100)
- *   Octave:  136.25 Hz (warm sub-bass, ×1/2)
- *   Fifth:   408.75 Hz (×3/2 — gravitational binding)
- *   Third:   340.63 Hz (×5/4 — adds lushness)
- *   Seventh: 476.88 Hz (×7/4 — cosmic depth)
+ * 2. Natural overtone series: only consonant intervals from physics.
+ *    Root: 272.5 Hz (CMB temperature × 100)
  *
- * Each voice is gently filtered and slowly evolving via LFOs.
- * Hydrogen 21cm (1.42 Hz) and Earth Schumann (7.83 Hz) modulate
- * amplitude and filter cutoff respectively.
+ * 3. Very slow evolution: LFOs with 60-120 second periods.
+ *    Nothing sudden — every change takes seconds to unfold.
+ *
+ * 4. Warm filtering: every voice passes through lowpass filters
+ *    that remove all harshness. Like sound heard through water.
  */
 export class DroneLayer {
   private nodes: AudioNode[] = []
@@ -28,71 +25,91 @@ export class DroneLayer {
   ) {}
 
   start() {
-    const now = this.ctx.currentTime
-    const CMB = 272.5 // T_CMB × 100
+    const CMB = 272.5
 
-    // Each voice: oscillator → filter → gain → destination
-    // Filters soften the sound into a warm pad texture
+    // === Binaural Pad (stereo separation for theta entrainment) ===
 
-    // 1. Root: CMB 272.5 Hz — the heart of the cosmos
-    this.createVoice(CMB, 0.18, 400, 60)
+    // Left channel: root
+    this.createBinauralPair(CMB, CMB + 6, 0.15, 450)
 
-    // 2. Detuned root: 272.7 Hz — slow 0.2 Hz beating (CMB anisotropy)
-    this.createVoice(CMB + 0.2, 0.14, 380, 50)
+    // Fifth pair (gravitational harmony)
+    this.createBinauralPair(CMB * 3 / 2, CMB * 3 / 2 + 4, 0.09, 550)
 
-    // 3. Sub-octave: 136.25 Hz — warm bass foundation
-    this.createVoice(CMB / 2, 0.12, 250, 90)
+    // === Warm center voices (mono, both ears) ===
 
-    // 4. Perfect fifth: 408.75 Hz — gravitational harmony (×3/2)
-    const fifthGain = this.createVoice(CMB * 3 / 2, 0.10, 500, 45)
+    // Sub-octave: 136.25 Hz — felt warmth
+    this.createFilteredVoice(CMB / 2, 0.10, 280)
 
-    // 5. Major third: 340.63 Hz — adds warmth (×5/4)
-    this.createVoice(CMB * 5 / 4, 0.07, 450, 55)
+    // Major third: 340.6 Hz — lush sweetness
+    this.createFilteredVoice(CMB * 5 / 4, 0.06, 500)
 
-    // 6. Natural seventh: 476.88 Hz — cosmic depth (×7/4)
-    this.createVoice(CMB * 7 / 4, 0.05, 550, 40)
+    // Natural seventh: 476.9 Hz — dreamy depth
+    this.createFilteredVoice(CMB * 7 / 4, 0.04, 550)
 
-    // 7. High octave shimmer: 545 Hz — ethereal (×2)
-    this.createVoice(CMB * 2, 0.03, 600, 35)
-    // Detuned shimmer: creates slow celestial beating
-    this.createVoice(CMB * 2 + 0.5, 0.025, 600, 35)
+    // High octave shimmer pair — celestial sparkle
+    this.createFilteredVoice(CMB * 2, 0.025, 650)
+    this.createFilteredVoice(CMB * 2 + 0.3, 0.020, 650)
 
-    // === LFO: Hydrogen 21cm line (1.42 Hz) ===
-    // Modulates the fifth — hydrogen modulates gravity
-    const h21LFO = this.ctx.createOscillator()
-    h21LFO.type = 'sine'
-    h21LFO.frequency.value = 1.420405751
-    const lfoDepth = this.ctx.createGain()
-    lfoDepth.gain.value = 0.03
-    h21LFO.connect(lfoDepth)
-    lfoDepth.connect(fifthGain.gain)
-    h21LFO.start(now)
-    this.nodes.push(h21LFO, lfoDepth)
+    // === Ultra-slow breathing LFOs ===
 
-    // === Ultra-slow evolution LFO (period ~90 seconds) ===
-    // Represents cosmic expansion — very gentle volume swell
-    const cosmicLFO = this.ctx.createOscillator()
-    cosmicLFO.type = 'sine'
-    cosmicLFO.frequency.value = 1 / 90 // 90-second cycle
-    const cosmicDepth = this.ctx.createGain()
-    cosmicDepth.gain.value = 0.02
-    cosmicLFO.connect(cosmicDepth)
-    // Modulate the root voice very subtly
-    cosmicDepth.connect(fifthGain.gain)
-    cosmicLFO.start(now)
-    this.nodes.push(cosmicLFO, cosmicDepth)
+    // Hydrogen 21cm modulates fifth (1.42 Hz)
+    this.createLFO(1.420405751, 0.02)
+
+    // Cosmic expansion breath (~80 second cycle)
+    this.createLFO(1 / 80, 0.015)
   }
 
-  private createVoice(freq: number, vol: number, filterFreq: number, filterQ: number): GainNode {
+  private createBinauralPair(freqL: number, freqR: number, vol: number, filterFreq: number) {
+    // Left ear
+    const oscL = this.ctx.createOscillator()
+    oscL.type = 'sine'
+    oscL.frequency.value = freqL
+    const filterL = this.ctx.createBiquadFilter()
+    filterL.type = 'lowpass'
+    filterL.frequency.value = filterFreq
+    filterL.Q.value = 0.5
+    const gainL = this.ctx.createGain()
+    gainL.gain.value = vol
+    const panL = this.ctx.createStereoPanner()
+    panL.pan.value = -1
+
+    oscL.connect(filterL)
+    filterL.connect(gainL)
+    gainL.connect(panL)
+    panL.connect(this.destination)
+    oscL.start()
+
+    // Right ear
+    const oscR = this.ctx.createOscillator()
+    oscR.type = 'sine'
+    oscR.frequency.value = freqR
+    const filterR = this.ctx.createBiquadFilter()
+    filterR.type = 'lowpass'
+    filterR.frequency.value = filterFreq
+    filterR.Q.value = 0.5
+    const gainR = this.ctx.createGain()
+    gainR.gain.value = vol
+    const panR = this.ctx.createStereoPanner()
+    panR.pan.value = 1
+
+    oscR.connect(filterR)
+    filterR.connect(gainR)
+    gainR.connect(panR)
+    panR.connect(this.destination)
+    oscR.start()
+
+    this.nodes.push(oscL, filterL, gainL, panL, oscR, filterR, gainR, panR)
+  }
+
+  private createFilteredVoice(freq: number, vol: number, filterFreq: number): GainNode {
     const osc = this.ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = freq
 
-    // Gentle low-pass filter softens each voice
     const filter = this.ctx.createBiquadFilter()
     filter.type = 'lowpass'
     filter.frequency.value = filterFreq
-    filter.Q.value = 0.7
+    filter.Q.value = 0.5
 
     const gain = this.ctx.createGain()
     gain.gain.value = vol
@@ -104,5 +121,22 @@ export class DroneLayer {
 
     this.nodes.push(osc, filter, gain)
     return gain
+  }
+
+  private createLFO(freq: number, depth: number) {
+    const lfo = this.ctx.createOscillator()
+    lfo.type = 'sine'
+    lfo.frequency.value = freq
+    const lfoGain = this.ctx.createGain()
+    lfoGain.gain.value = depth
+
+    // Modulate the master destination gain
+    lfo.connect(lfoGain)
+    lfoGain.connect(this.destination instanceof GainNode
+      ? (this.destination as GainNode).gain
+      : this.destination)
+    lfo.start()
+
+    this.nodes.push(lfo, lfoGain)
   }
 }
