@@ -403,9 +403,19 @@ export function CelestialBodies() {
         }
       })
 
-      // Slow rotation
+      // Slow rotation for planets
       if (body.type !== 'cloud') {
-        group.rotation.y += 0.0015
+        group.rotation.y += 0.001
+      }
+
+      // Binary star orbital motion — companion orbits primary
+      if (body.type === 'binary' && group.children.length > 1) {
+        const companion = group.children[1]
+        const orbitRadius = 2.5
+        const orbitSpeed = 0.3 // radians per second
+        companion.position.x = Math.cos(t * orbitSpeed) * orbitRadius
+        companion.position.z = Math.sin(t * orbitSpeed) * orbitRadius
+        companion.position.y = Math.sin(t * orbitSpeed * 0.5) * 0.5
       }
 
       // Respawn if too far

@@ -27,9 +27,14 @@ export function useEncounter() {
       // No Firebase: demo mode with phantom encounters
       let phantomTimeout: ReturnType<typeof setTimeout>
 
+      let firstPhantom = true
+
       const schedulePhantom = () => {
-        // Random 3-8 minute intervals in demo mode
-        const delay = (180 + Math.random() * 300) * 1000
+        // First encounter sooner so user can experience it
+        const delay = firstPhantom
+          ? (60 + Math.random() * 60) * 1000  // 1-2 min first time
+          : (180 + Math.random() * 300) * 1000 // 3-8 min after
+        firstPhantom = false
         phantomTimeout = setTimeout(() => {
           setEncounterActive(true)
           if (AudioEngine.isInitialized()) {
