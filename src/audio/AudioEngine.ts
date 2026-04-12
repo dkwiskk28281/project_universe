@@ -39,12 +39,18 @@ class AudioEngineClass {
     if (this.initialized) return
 
     // Create AudioContext synchronously — critical for iOS Safari
-    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const AC = window.AudioContext || (window as any).webkitAudioContext
+    this.ctx = new AC()
 
-    // iOS: resume must happen in the same gesture call stack
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume()
-    }
+    // Resume immediately (must be in user gesture call stack)
+    this.ctx.resume()
+
+    // Safety: retry resume after a tick (some iOS versions need this)
+    setTimeout(() => {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume()
+      }
+    }, 100)
 
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 1.0

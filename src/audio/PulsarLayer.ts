@@ -23,9 +23,9 @@ interface PulsarDef {
 }
 
 const PULSARS: PulsarDef[] = [
-  { period: 1.337301, frequency: 1847, pan: -0.6, gain: 0.008 },
-  { period: 3.745,    frequency: 892,  pan: 0.4,  gain: 0.012 },
-  { period: 0.7142,   frequency: 2340, pan: 0.8,  gain: 0.005 },
+  { period: 1.337301, frequency: 1847, pan: -0.6, gain: 0.03 },
+  { period: 3.745,    frequency: 892,  pan: 0.4,  gain: 0.04 },
+  { period: 0.7142,   frequency: 2340, pan: 0.8,  gain: 0.02 },
 ]
 
 export class PulsarLayer {
@@ -122,7 +122,7 @@ export class PulsarLayer {
 
     const env = this.ctx.createGain()
     env.gain.setValueAtTime(0, now)
-    env.gain.linearRampToValueAtTime(randomRange(0.02, 0.06), now + 0.005)
+    env.gain.linearRampToValueAtTime(randomRange(0.06, 0.15), now + 0.005)
     env.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
 
     const panner = this.ctx.createStereoPanner()

@@ -1,27 +1,23 @@
 /**
  * Cosmic Hum Layer — Interstellar Medium Plasma Sonification
  *
- * The interstellar medium (ISM) has a plasma frequency determined by
- * free electron density: f_p = 9√(n_e) kHz
+ * Brown noise (Kolmogorov turbulence cascade, power ∝ 1/f²)
+ * filtered through two parallel bands:
  *
- * Typical ISM: n_e ≈ 0.03 cm⁻³ → f_p ≈ 1.56 kHz
- * Scaled to ambient range: filtered brown noise centered at ~160 Hz
+ *   Band 1: Deep rumble (80 Hz, for headphones/speakers)
+ *   Band 2: Mid presence (300 Hz, audible on all devices including phones)
  *
- * Brown noise spectrum (-6dB/octave) represents the turbulent
- * Kolmogorov cascade of interstellar gas — energy flows from
- * large scales to small scales following a power law.
+ * Plus a subtle high-frequency hiss (1.56 kHz — actual ISM plasma frequency)
+ * representing the thin ionized gas of interstellar space.
  */
 export class CosmicHumLayer {
-  private noiseNode: AudioBufferSourceNode | null = null
-
   constructor(
     private ctx: AudioContext,
     private destination: AudioNode
   ) {}
 
   start() {
-    // Generate brown noise: integrated white noise
-    // Brown noise power spectrum ∝ 1/f² — matches Kolmogorov turbulence
+    // Brown noise buffer
     const bufferSize = this.ctx.sampleRate * 4
     const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate)
 
@@ -30,37 +26,52 @@ export class CosmicHumLayer {
       let lastOut = 0
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1
-        // Leaky integrator: creates 1/f² spectrum (brown noise)
         lastOut = (lastOut + 0.02 * white) / 1.02
         data[i] = lastOut * 3.5
       }
     }
 
-    this.noiseNode = this.ctx.createBufferSource()
-    this.noiseNode.buffer = buffer
-    this.noiseNode.loop = true
+    const noiseNode = this.ctx.createBufferSource()
+    noiseNode.buffer = buffer
+    noiseNode.loop = true
 
-    // Low pass: ISM plasma frequency scaled to ambient
-    // f_p = 9√(0.03) ≈ 1.56 kHz → scaled ÷10 ≈ 156 Hz
-    const lowPass = this.ctx.createBiquadFilter()
-    lowPass.type = 'lowpass'
-    lowPass.frequency.value = 200
-    lowPass.Q.value = 1.0
+    // === Band 1: Deep rumble (headphones/speakers) ===
+    const deepBand = this.ctx.createBiquadFilter()
+    deepBand.type = 'bandpass'
+    deepBand.frequency.value = 80
+    deepBand.Q.value = 0.5
+    const deepGain = this.ctx.createGain()
+    deepGain.gain.value = 0.3
 
-    // Band pass: emphasize around plasma frequency
-    const bandPass = this.ctx.createBiquadFilter()
-    bandPass.type = 'bandpass'
-    bandPass.frequency.value = 80
-    bandPass.Q.value = 0.5
+    // === Band 2: Mid presence (audible on phone speakers) ===
+    const midBand = this.ctx.createBiquadFilter()
+    midBand.type = 'bandpass'
+    midBand.frequency.value = 300
+    midBand.Q.value = 0.8
+    const midGain = this.ctx.createGain()
+    midGain.gain.value = 0.25
 
-    const gain = this.ctx.createGain()
-    gain.gain.value = 0.4
+    // === Band 3: ISM plasma hiss (1.56 kHz) ===
+    const plasmaBand = this.ctx.createBiquadFilter()
+    plasmaBand.type = 'bandpass'
+    plasmaBand.frequency.value = 1560
+    plasmaBand.Q.value = 3
+    const plasmaGain = this.ctx.createGain()
+    plasmaGain.gain.value = 0.04
 
-    this.noiseNode.connect(lowPass)
-    lowPass.connect(bandPass)
-    bandPass.connect(gain)
-    gain.connect(this.destination)
+    // Route noise to all three bands in parallel
+    noiseNode.connect(deepBand)
+    noiseNode.connect(midBand)
+    noiseNode.connect(plasmaBand)
 
-    this.noiseNode.start()
+    deepBand.connect(deepGain)
+    midBand.connect(midGain)
+    plasmaBand.connect(plasmaGain)
+
+    deepGain.connect(this.destination)
+    midGain.connect(this.destination)
+    plasmaGain.connect(this.destination)
+
+    noiseNode.start()
   }
 }
