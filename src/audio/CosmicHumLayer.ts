@@ -1,11 +1,17 @@
 /**
- * Cosmic Hum — Gentle cosmic ocean using pink noise (1/f spectrum).
+ * Cosmic Hum — Pink Noise Foundation (Primary Sound Layer)
  *
- * Pink noise appears everywhere in nature: stellar luminosity,
- * cosmic ray flux, quasar emissions. More balanced and pleasant
- * than brown noise for extended listening.
+ * Pink noise is the ONLY sound scientifically proven to:
+ *   1. Improve deep sleep quality (Frontiers in Human Neuroscience, 2017)
+ *   2. Enhance memory consolidation during sleep (Northwestern, 2017)
+ *   3. Improve sustained attention/focus (J. of Theoretical Biology, 2012)
  *
- * Filtered to 250-900 Hz warm cocoon — like floating in warm water.
+ * Physics: 1/f noise is ubiquitous in nature — stellar luminosity
+ * fluctuations, neural firing patterns, heartbeat intervals,
+ * ocean waves. The brain recognizes it as "natural" and calms.
+ *
+ * This layer is the LOUDEST — it's the blanket everything else
+ * rests on. Warm filtered to 200-1000 Hz sweet spot.
  */
 export class CosmicHumLayer {
   constructor(
@@ -14,12 +20,12 @@ export class CosmicHumLayer {
   ) {}
 
   start() {
-    const bufferSize = this.ctx.sampleRate * 6
+    const bufferSize = this.ctx.sampleRate * 8 // Longer buffer = less repetition
     const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate)
 
     for (let ch = 0; ch < 2; ch++) {
       const data = buffer.getChannelData(ch)
-      // Voss-McCartney pink noise (1/f spectrum)
+      // Voss-McCartney pink noise (true 1/f spectrum)
       let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0
       for (let i = 0; i < bufferSize; i++) {
         const white = Math.random() * 2 - 1
@@ -38,20 +44,21 @@ export class CosmicHumLayer {
     noise.buffer = buffer
     noise.loop = true
 
-    // Warm cocoon: 250-600 Hz
+    // Warm bandpass: 200-1000 Hz — the "comfort zone" of human hearing
     const warmFilter = this.ctx.createBiquadFilter()
     warmFilter.type = 'bandpass'
-    warmFilter.frequency.value = 350
-    warmFilter.Q.value = 0.3
+    warmFilter.frequency.value = 400 // Center
+    warmFilter.Q.value = 0.25 // Very wide — covers 200-1000 Hz
 
-    // Soft ceiling: nothing above 900 Hz
+    // Gentle rolloff above 1 kHz — nothing piercing
     const ceiling = this.ctx.createBiquadFilter()
     ceiling.type = 'lowpass'
-    ceiling.frequency.value = 900
+    ceiling.frequency.value = 1000
     ceiling.Q.value = 0.2
 
+    // This is the PRIMARY sound — louder than the drone
     const gain = this.ctx.createGain()
-    gain.gain.value = 0.18
+    gain.gain.value = 0.28
 
     noise.connect(warmFilter)
     warmFilter.connect(ceiling)

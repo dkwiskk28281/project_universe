@@ -1,33 +1,32 @@
-import { AUDIO } from '../utils/constants'
 import { randomRange } from '../utils/mathHelpers'
 
 /**
- * Pulsar Layer — Celestial wind chimes.
+ * Pulsar Layer — Rare, gentle celestial wind chimes.
  *
- * Pentatonic scale: mathematically impossible to create dissonance.
- * Every random combination of these notes sounds beautiful.
- * Built from CMB root 272.5 Hz using just intonation ratios.
+ * Scientific principle: sudden sounds disrupt sleep stage N3.
+ * Therefore chimes must be:
+ *   - RARE (45-90 seconds apart)
+ *   - SOFT (barely above the noise floor)
+ *   - SLOW ATTACK (no sharp onset — 200ms fade in)
+ *   - LONG DECAY (4-7 seconds — melts into the reverb)
  *
- * Pentatonic: 1, 9/8, 5/4, 3/2, 15/8 (major pentatonic)
- * = 272.5, 306.6, 340.6, 408.8, 510.9 Hz and their octaves
+ * Pentatonic scale: mathematically cannot produce dissonance.
+ * Built from CMB 272.5 Hz in just intonation.
  *
- * Each chime has a long, singing decay (3-5 seconds) with
- * gentle attack, creating an endless wind-chime garden.
+ * Background pulsars have very long periods (8-15 seconds)
+ * so their repetition feels natural, not mechanical.
  */
 
 const CMB = 272.5
 
-// Major pentatonic in just intonation — always consonant
 const PENTATONIC = [
-  CMB * 1,         // 272.5 — root
-  CMB * 9 / 8,     // 306.6 — major second
-  CMB * 5 / 4,     // 340.6 — major third
-  CMB * 3 / 2,     // 408.8 — perfect fifth
-  CMB * 15 / 8,    // 510.9 — major seventh
+  CMB,             // 272.5 — root
+  CMB * 9 / 8,     // 306.6 — second
+  CMB * 5 / 4,     // 340.6 — third
+  CMB * 3 / 2,     // 408.8 — fifth
+  CMB * 15 / 8,    // 510.9 — seventh
   CMB * 2,         // 545.0 — octave
-  CMB * 9 / 4,     // 613.1 — ninth
   CMB * 5 / 2,     // 681.3 — tenth
-  CMB * 3,         // 817.5 — twelfth
 ]
 
 interface PulsarDef {
@@ -38,14 +37,15 @@ interface PulsarDef {
   decay: number
 }
 
+// Very slow, meditative pulsars
 const PULSARS: PulsarDef[] = [
-  { period: 3.745,    noteIndex: 0, pan: -0.4, gain: 0.035, decay: 2.5 },
-  { period: 5.891,    noteIndex: 4, pan: 0.3,  gain: 0.025, decay: 3.0 },
-  { period: 8.234,    noteIndex: 2, pan: 0.6,  gain: 0.030, decay: 3.5 },
+  { period: 8.7,   noteIndex: 0, pan: -0.3, gain: 0.018, decay: 4.0 },
+  { period: 12.3,  noteIndex: 3, pan: 0.4,  gain: 0.015, decay: 5.0 },
+  { period: 15.1,  noteIndex: 5, pan: -0.6, gain: 0.012, decay: 4.5 },
 ]
 
 export class PulsarLayer {
-  private randomTimeoutId: ReturnType<typeof setTimeout> | null = null
+  private chimeTimeoutId: ReturnType<typeof setTimeout> | null = null
   private pulsarIntervals: ReturnType<typeof setInterval>[] = []
   private encounterMode = false
 
@@ -78,31 +78,30 @@ export class PulsarLayer {
   private playBell(freq: number, vol: number, decay: number, pan: number) {
     const now = this.ctx.currentTime
 
-    // Fundamental
     const osc = this.ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = freq
 
-    // Soft harmonic overtone for richness
+    // Shimmer overtone — barely audible, adds life
     const osc2 = this.ctx.createOscillator()
     osc2.type = 'sine'
-    osc2.frequency.value = freq * 2.003 // Slightly detuned octave = shimmer
+    osc2.frequency.value = freq * 2.002
 
-    // Gentle envelope — slow attack, long singing decay
+    // SLOW attack (200ms) — never startles
     const env = this.ctx.createGain()
     env.gain.setValueAtTime(0, now)
-    env.gain.linearRampToValueAtTime(vol, now + 0.08)
-    env.gain.exponentialRampToValueAtTime(0.0001, now + decay)
+    env.gain.linearRampToValueAtTime(vol, now + 0.2)
+    env.gain.exponentialRampToValueAtTime(0.00001, now + decay)
 
     const env2 = this.ctx.createGain()
     env2.gain.setValueAtTime(0, now)
-    env2.gain.linearRampToValueAtTime(vol * 0.2, now + 0.1)
-    env2.gain.exponentialRampToValueAtTime(0.0001, now + decay * 0.7)
+    env2.gain.linearRampToValueAtTime(vol * 0.12, now + 0.25)
+    env2.gain.exponentialRampToValueAtTime(0.00001, now + decay * 0.6)
 
     // Warm filter
     const filter = this.ctx.createBiquadFilter()
     filter.type = 'lowpass'
-    filter.frequency.value = freq * 2.5
+    filter.frequency.value = freq * 2
     filter.Q.value = 0.3
 
     const panner = this.ctx.createStereoPanner()
@@ -118,17 +117,18 @@ export class PulsarLayer {
 
     osc.start(now)
     osc2.start(now)
-    osc.stop(now + decay + 0.2)
-    osc2.stop(now + decay + 0.2)
+    osc.stop(now + decay + 0.3)
+    osc2.stop(now + decay + 0.3)
   }
 
+  // Rare random chimes — 45-90 second intervals
   private scheduleChime() {
-    const min = this.encounterMode ? 6 : AUDIO.pulsarMinInterval
-    const max = this.encounterMode ? 12 : AUDIO.pulsarMaxInterval
+    const min = this.encounterMode ? 20 : 45
+    const max = this.encounterMode ? 40 : 90
 
     const delay = randomRange(min, max) * 1000
 
-    this.randomTimeoutId = setTimeout(() => {
+    this.chimeTimeoutId = setTimeout(() => {
       this.playRandomChime()
       this.scheduleChime()
     }, delay)
@@ -136,9 +136,9 @@ export class PulsarLayer {
 
   private playRandomChime() {
     const note = PENTATONIC[Math.floor(Math.random() * PENTATONIC.length)]
-    const vol = randomRange(0.015, 0.04)
-    const decay = randomRange(2.5, 5.0)
-    const pan = randomRange(-0.8, 0.8)
+    const vol = randomRange(0.008, 0.022) // Very soft
+    const decay = randomRange(4, 7)
+    const pan = randomRange(-0.7, 0.7)
 
     this.playBell(note, vol, decay, pan)
   }
