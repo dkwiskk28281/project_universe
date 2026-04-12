@@ -13,12 +13,13 @@ export default function App() {
   const setStarted = useCosmosStore((s) => s.setStarted)
   const setAudioReady = useCosmosStore((s) => s.setAudioReady)
 
-  // Initialize encounter system
   useEncounter()
 
-  const handleStart = useCallback(async () => {
+  const handleStart = useCallback(() => {
+    // SYNCHRONOUS — iOS Safari requires AudioContext creation
+    // in the same call stack as the user gesture. No async/await.
     try {
-      await AudioEngine.init()
+      AudioEngine.init()
       setAudioReady(true)
     } catch (e) {
       console.warn('[COSMOS] Audio init failed:', e)
@@ -26,7 +27,7 @@ export default function App() {
     setStarted(true)
   }, [setAudioReady, setStarted])
 
-  // Handle visibility change for battery saving
+  // Battery saving: suspend/resume audio on visibility change
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden) {

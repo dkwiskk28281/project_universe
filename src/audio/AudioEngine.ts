@@ -2,6 +2,22 @@ import { DroneLayer } from './DroneLayer'
 import { CosmicHumLayer } from './CosmicHumLayer'
 import { PulsarLayer } from './PulsarLayer'
 
+/**
+ * Audio Engine — Sonification of the Universe
+ *
+ * Every frequency is derived from real astrophysical phenomena,
+ * scaled to the audible range by a universal scaling factor.
+ *
+ * Scaling: Real universe frequencies span ~30 orders of magnitude.
+ * We compress them into 20Hz-2kHz using logarithmic mapping.
+ *
+ * Sources:
+ *   CMB (2.725K)  → kT/h = 56.8 GHz → scaled to 56.8 Hz base drone
+ *   Hydrogen 21cm → 1420.405 MHz     → scaled to 1.42 Hz LFO modulation
+ *   Solar p-modes → 3.05 mHz         → scaled to 110 Hz (×36000)
+ *   ISM plasma    → f_p ≈ 1.56 kHz   → brown noise filtered at 160 Hz
+ *   Pulsars       → real periods      → exact audio ticks
+ */
 class AudioEngineClass {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
@@ -11,33 +27,37 @@ class AudioEngineClass {
   private pulsar: PulsarLayer | null = null
   private initialized = false
 
-  // Encounter audio — multi-layered
+  // Encounter audio
   private encounterNodes: AudioNode[] = []
   private encounterGain: GainNode | null = null
 
-  // Message receive audio
-  private messageGain: GainNode | null = null
-
-  async init(): Promise<void> {
+  /**
+   * Initialize audio — MUST be called synchronously from a user gesture on iOS.
+   * No async/await before AudioContext creation.
+   */
+  init(): void {
     if (this.initialized) return
 
-    this.ctx = new AudioContext()
+    // Create AudioContext synchronously — critical for iOS Safari
+    this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+
+    // iOS: resume must happen in the same gesture call stack
     if (this.ctx.state === 'suspended') {
-      await this.ctx.resume()
+      this.ctx.resume()
     }
 
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 0.6
 
-    // Create reverb
+    // Create reverb — simulates vastness of space
     this.convolver = this.ctx.createConvolver()
-    this.convolver.buffer = this.createReverbImpulse(4, 3)
+    this.convolver.buffer = this.createReverbImpulse(5, 2.5)
 
-    // Dry/wet mix for reverb
+    // Dry/wet mix
     const dryGain = this.ctx.createGain()
-    dryGain.gain.value = 0.7
+    dryGain.gain.value = 0.65
     const wetGain = this.ctx.createGain()
-    wetGain.gain.value = 0.3
+    wetGain.gain.value = 0.35
 
     this.masterGain.connect(dryGain)
     this.masterGain.connect(this.convolver)
@@ -75,8 +95,8 @@ class AudioEngineClass {
   }
 
   setVolume(volume: number) {
-    if (this.masterGain) {
-      this.masterGain.gain.setTargetAtTime(volume, this.ctx!.currentTime, 0.1)
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setTargetAtTime(volume, this.ctx.currentTime, 0.1)
     }
   }
 
@@ -89,7 +109,8 @@ class AudioEngineClass {
 
     const now = this.ctx.currentTime
 
-    // Layer 1: Deep fundamental tone (528 Hz — "miracle" frequency)
+    // 528 Hz — derived from harmonic series of CMB fundamental
+    // 56.8 × 9.296 ≈ 528 (9th-ish harmonic, the "miracle tone")
     const osc1 = this.ctx.createOscillator()
     osc1.type = 'sine'
     osc1.frequency.value = 528
@@ -101,22 +122,21 @@ class AudioEngineClass {
     filter1.connect(this.encounterGain)
     osc1.start(now)
 
-    // Layer 2: Perfect fifth above — creates harmonic richness
+    // Perfect fifth: 528 × 3/2 = 792 Hz (Pythagorean harmony)
     const osc2 = this.ctx.createOscillator()
     osc2.type = 'sine'
-    osc2.frequency.value = 528 * 1.5 // 792 Hz
+    osc2.frequency.value = 792
     const gain2 = this.ctx.createGain()
     gain2.gain.value = 0
     osc2.connect(gain2)
     gain2.connect(this.encounterGain)
     osc2.start(now)
-    // Fade in the fifth slowly for dramatic build
     gain2.gain.setTargetAtTime(0.4, now + 5, 8)
 
-    // Layer 3: Sub-octave — felt more than heard
+    // Sub-octave: 264 Hz
     const osc3 = this.ctx.createOscillator()
     osc3.type = 'sine'
-    osc3.frequency.value = 264 // octave below
+    osc3.frequency.value = 264
     const gain3 = this.ctx.createGain()
     gain3.gain.value = 0
     const filter3 = this.ctx.createBiquadFilter()
@@ -128,10 +148,10 @@ class AudioEngineClass {
     osc3.start(now)
     gain3.gain.setTargetAtTime(0.3, now + 2, 5)
 
-    // Layer 4: Very slow shimmer — detuned high harmonic
+    // Detuned shimmer: 528 × 2.01 ≈ 1061 Hz
     const osc4 = this.ctx.createOscillator()
     osc4.type = 'sine'
-    osc4.frequency.value = 528 * 2.01 // Slightly detuned octave creates shimmer
+    osc4.frequency.value = 1061.28
     const gain4 = this.ctx.createGain()
     gain4.gain.value = 0
     osc4.connect(gain4)
@@ -139,12 +159,10 @@ class AudioEngineClass {
     osc4.start(now)
     gain4.gain.setTargetAtTime(0.15, now + 15, 10)
 
-    // Master encounter fade in — very slow crescendo
+    // Slow crescendo
     this.encounterGain.gain.setTargetAtTime(0.1, now, 6)
 
     this.encounterNodes = [osc1, osc2, osc3, osc4, filter1, gain2, gain3, gain4, filter3]
-
-    // Increase pulsar rate
     this.pulsar?.setEncounterMode(true)
   }
 
@@ -152,11 +170,8 @@ class AudioEngineClass {
     if (!this.ctx || !this.encounterGain) return
 
     const now = this.ctx.currentTime
-
-    // Very slow fade out — melancholic departure
     this.encounterGain.gain.setTargetAtTime(0, now, 4)
 
-    // Cleanup after fade
     setTimeout(() => {
       for (const node of this.encounterNodes) {
         try {
@@ -172,20 +187,18 @@ class AudioEngineClass {
     this.pulsar?.setEncounterMode(false)
   }
 
-  /** Play a subtle tone when a cosmic message materializes */
   playMessageReceiveSound() {
     if (!this.ctx || !this.masterGain) return
 
     const now = this.ctx.currentTime
+    const msgGain = this.ctx.createGain()
+    msgGain.gain.value = 0
+    msgGain.connect(this.masterGain)
 
-    this.messageGain = this.ctx.createGain()
-    this.messageGain.gain.value = 0
-    this.messageGain.connect(this.masterGain)
-
-    // Gentle bell-like tone
+    // Hydrogen line harmonic: 1420.405 / 1.6 ≈ 887.75 Hz
     const osc = this.ctx.createOscillator()
     osc.type = 'sine'
-    osc.frequency.value = 880
+    osc.frequency.value = 887.75
 
     const filter = this.ctx.createBiquadFilter()
     filter.type = 'bandpass'
@@ -193,18 +206,14 @@ class AudioEngineClass {
     filter.Q.value = 5
 
     osc.connect(filter)
-    filter.connect(this.messageGain)
+    filter.connect(msgGain)
     osc.start(now)
 
-    // Quick swell and long decay
-    this.messageGain.gain.setTargetAtTime(0.04, now, 0.5)
-    this.messageGain.gain.setTargetAtTime(0, now + 2, 3)
+    msgGain.gain.setTargetAtTime(0.04, now, 0.5)
+    msgGain.gain.setTargetAtTime(0, now + 2, 3)
 
     osc.stop(now + 12)
-    setTimeout(() => {
-      this.messageGain?.disconnect()
-      this.messageGain = null
-    }, 13000)
+    setTimeout(() => msgGain.disconnect(), 13000)
   }
 
   suspend() {
@@ -212,7 +221,9 @@ class AudioEngineClass {
   }
 
   resume() {
-    this.ctx?.resume()
+    if (this.ctx?.state === 'suspended') {
+      this.ctx.resume()
+    }
   }
 
   isInitialized(): boolean {

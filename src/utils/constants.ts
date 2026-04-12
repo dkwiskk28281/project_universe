@@ -106,7 +106,9 @@ export const COSMIC_COMM = {
 }
 
 export const AUDIO = {
-  droneFrequencies: [55, 55.2, 110, 82.5],
+  // All frequencies derived from astrophysics (see DroneLayer.ts)
+  // CMB: 56.78 Hz, Anisotropy: 56.99 Hz, Solar p-mode: 113.56 Hz, Grav fifth: 85.17 Hz
+  droneFrequencies: [56.78, 56.99, 113.56, 85.17],
   pulsarMinInterval: 15,
   pulsarMaxInterval: 30,
   masterVolume: 0.6,

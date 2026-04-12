@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export function LoadingScreen({ onStart }: { onStart: () => void }) {
   const [opacity, setOpacity] = useState(1)
   const [visible, setVisible] = useState(true)
   const [showPrompt, setShowPrompt] = useState(false)
+  const startedRef = useRef(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setShowPrompt(true), 1500)
@@ -11,6 +12,10 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
   }, [])
 
   const handleStart = () => {
+    // Prevent double-fire from both touch and click on mobile
+    if (startedRef.current) return
+    startedRef.current = true
+
     onStart()
     setOpacity(0)
     setTimeout(() => setVisible(false), 2000)
@@ -21,7 +26,6 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
   return (
     <div
       onClick={handleStart}
-      onTouchStart={handleStart}
       style={{
         position: 'fixed',
         inset: 0,
@@ -34,6 +38,7 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
         cursor: 'pointer',
         opacity,
         transition: 'opacity 2s ease-out',
+        touchAction: 'manipulation',
       }}
     >
       <h1
