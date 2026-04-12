@@ -1,7 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
-import { SettingsOverlay } from './ui/SettingsOverlay'
 import { EncounterIndicator } from './ui/EncounterIndicator'
 import { CosmicComm } from './ui/CosmicComm'
 import { AudioEngine } from './audio/AudioEngine'
@@ -16,18 +15,12 @@ export default function App() {
   useEncounter()
 
   const handleStart = useCallback(() => {
-    // SYNCHRONOUS — iOS Safari requires AudioContext creation
-    // in the same call stack as the user gesture. No async/await.
-    try {
-      AudioEngine.init()
-      setAudioReady(true)
-    } catch (e) {
-      console.warn('[COSMOS] Audio init failed:', e)
-    }
+    // Synchronous — iOS requires AudioContext in gesture call stack
+    AudioEngine.init()
+    setAudioReady(true)
     setStarted(true)
   }, [setAudioReady, setStarted])
 
-  // Battery saving: suspend/resume audio on visibility change
   useEffect(() => {
     const handleVisibility = () => {
       if (document.hidden) {
@@ -36,7 +29,6 @@ export default function App() {
         AudioEngine.resume()
       }
     }
-
     document.addEventListener('visibilitychange', handleVisibility)
     return () => document.removeEventListener('visibilitychange', handleVisibility)
   }, [])
@@ -47,7 +39,6 @@ export default function App() {
       <LoadingScreen onStart={handleStart} />
       {started && (
         <>
-          <SettingsOverlay />
           <EncounterIndicator />
           <CosmicComm />
         </>
