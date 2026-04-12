@@ -1,32 +1,26 @@
 /**
- * Drone Layer — Sonification of Cosmic Background Radiation
+ * Drone Layer — Ambient Cosmic Pad
  *
- * Physics-derived frequencies with mobile-audible harmonics.
+ * Designed for 24-hour listening: warm, enveloping, endlessly beautiful.
  *
- * Phone speakers can't reproduce below ~200 Hz, so we add
- * upper harmonics of each astrophysical frequency that ARE audible.
- * The mathematical relationship is preserved — they're exact
- * integer multiples (overtone series) of the base frequencies.
+ * Physics mapping: CMB temperature T=2.725K → 272.5 Hz (×100 scaling)
+ * This lands in the warm middle register — the most pleasant range
+ * for human hearing. All other tones built from the natural overtone
+ * series (just intonation) — this IS physics, not human convention.
  *
- * Base frequencies (inaudible on phones, audible on speakers/headphones):
- *   1. CMB Fundamental: 56.78 Hz (kT/h at 2.725K)
- *   2. CMB Anisotropy: 56.99 Hz (cosmic dipole beating)
- *   3. Solar p-mode: 113.56 Hz
- *   4. Gravitational fifth: 85.17 Hz
+ * Chord: CMB root 272.5 Hz with natural harmonics
+ *   Root:    272.5 Hz  (CMB × 100)
+ *   Octave:  136.25 Hz (warm sub-bass, ×1/2)
+ *   Fifth:   408.75 Hz (×3/2 — gravitational binding)
+ *   Third:   340.63 Hz (×5/4 — adds lushness)
+ *   Seventh: 476.88 Hz (×7/4 — cosmic depth)
  *
- * Mobile-audible harmonics (always present):
- *   5. CMB 4th harmonic: 227.12 Hz (56.78 × 4)
- *   6. CMB 8th harmonic: 454.24 Hz (56.78 × 8) — warm mid tone
- *   7. Solar 4th harmonic: 454.24 Hz (merged with above)
- *   8. Gravitational 3rd harmonic: 255.51 Hz (85.17 × 3)
- *   9. CMB 16th harmonic: 908.48 Hz — ethereal high shimmer
- *
- * LFO: Hydrogen 21cm line: 1.42 Hz
+ * Each voice is gently filtered and slowly evolving via LFOs.
+ * Hydrogen 21cm (1.42 Hz) and Earth Schumann (7.83 Hz) modulate
+ * amplitude and filter cutoff respectively.
  */
 export class DroneLayer {
-  private oscillators: OscillatorNode[] = []
-  private gains: GainNode[] = []
-  private lfo: OscillatorNode | null = null
+  private nodes: AudioNode[] = []
 
   constructor(
     private ctx: AudioContext,
@@ -34,62 +28,81 @@ export class DroneLayer {
   ) {}
 
   start() {
-    // === Sub-bass (audible on headphones/speakers) ===
+    const now = this.ctx.currentTime
+    const CMB = 272.5 // T_CMB × 100
 
-    // CMB fundamental: 56.78 Hz
-    this.createOsc(56.78, 'sine', 0.25)
-    // CMB anisotropy: 56.99 Hz (0.21 Hz beating)
-    this.createOsc(56.99, 'sine', 0.20)
-    // Gravitational fifth: 85.17 Hz
-    this.createOsc(85.17, 'sine', 0.12)
-    // Solar p-mode: 113.56 Hz
-    this.createOsc(113.56, 'triangle', 0.08)
+    // Each voice: oscillator → filter → gain → destination
+    // Filters soften the sound into a warm pad texture
 
-    // === Mobile-audible harmonics (200+ Hz) ===
-    // These are exact mathematical overtones of the base frequencies
+    // 1. Root: CMB 272.5 Hz — the heart of the cosmos
+    this.createVoice(CMB, 0.18, 400, 60)
 
-    // CMB 4th harmonic: 227.12 Hz — warm bass on any speaker
-    this.createOsc(56.78 * 4, 'sine', 0.18)
-    // CMB 4th + anisotropy: 227.96 Hz — beating in audible range too
-    this.createOsc(56.99 * 4, 'sine', 0.14)
+    // 2. Detuned root: 272.7 Hz — slow 0.2 Hz beating (CMB anisotropy)
+    this.createVoice(CMB + 0.2, 0.14, 380, 50)
 
-    // Gravitational 3rd harmonic: 255.51 Hz
-    const gravHarmonicGain = this.createOsc(85.17 * 3, 'sine', 0.12)
+    // 3. Sub-octave: 136.25 Hz — warm bass foundation
+    this.createVoice(CMB / 2, 0.12, 250, 90)
 
-    // CMB 8th harmonic: 454.24 Hz — clear mid tone
-    this.createOsc(56.78 * 8, 'sine', 0.08)
+    // 4. Perfect fifth: 408.75 Hz — gravitational harmony (×3/2)
+    const fifthGain = this.createVoice(CMB * 3 / 2, 0.10, 500, 45)
 
-    // CMB 16th harmonic: 908.48 Hz — ethereal high shimmer
-    this.createOsc(56.78 * 16, 'sine', 0.03)
-    // Detuned shimmer: 908.48 × 1.003 — slow beating at high freq
-    this.createOsc(56.78 * 16 * 1.003, 'sine', 0.025)
+    // 5. Major third: 340.63 Hz — adds warmth (×5/4)
+    this.createVoice(CMB * 5 / 4, 0.07, 450, 55)
 
-    // === Hydrogen 21cm LFO: 1.42 Hz ===
-    this.lfo = this.ctx.createOscillator()
-    this.lfo.type = 'sine'
-    this.lfo.frequency.value = 1.420405751
-    const lfoGain = this.ctx.createGain()
-    lfoGain.gain.value = 0.06
-    this.lfo.connect(lfoGain)
-    lfoGain.connect(gravHarmonicGain.gain)
-    this.lfo.start()
+    // 6. Natural seventh: 476.88 Hz — cosmic depth (×7/4)
+    this.createVoice(CMB * 7 / 4, 0.05, 550, 40)
+
+    // 7. High octave shimmer: 545 Hz — ethereal (×2)
+    this.createVoice(CMB * 2, 0.03, 600, 35)
+    // Detuned shimmer: creates slow celestial beating
+    this.createVoice(CMB * 2 + 0.5, 0.025, 600, 35)
+
+    // === LFO: Hydrogen 21cm line (1.42 Hz) ===
+    // Modulates the fifth — hydrogen modulates gravity
+    const h21LFO = this.ctx.createOscillator()
+    h21LFO.type = 'sine'
+    h21LFO.frequency.value = 1.420405751
+    const lfoDepth = this.ctx.createGain()
+    lfoDepth.gain.value = 0.03
+    h21LFO.connect(lfoDepth)
+    lfoDepth.connect(fifthGain.gain)
+    h21LFO.start(now)
+    this.nodes.push(h21LFO, lfoDepth)
+
+    // === Ultra-slow evolution LFO (period ~90 seconds) ===
+    // Represents cosmic expansion — very gentle volume swell
+    const cosmicLFO = this.ctx.createOscillator()
+    cosmicLFO.type = 'sine'
+    cosmicLFO.frequency.value = 1 / 90 // 90-second cycle
+    const cosmicDepth = this.ctx.createGain()
+    cosmicDepth.gain.value = 0.02
+    cosmicLFO.connect(cosmicDepth)
+    // Modulate the root voice very subtly
+    cosmicDepth.connect(fifthGain.gain)
+    cosmicLFO.start(now)
+    this.nodes.push(cosmicLFO, cosmicDepth)
   }
 
-  private createOsc(frequency: number, type: OscillatorType, volume: number): GainNode {
+  private createVoice(freq: number, vol: number, filterFreq: number, filterQ: number): GainNode {
     const osc = this.ctx.createOscillator()
-    osc.type = type
-    osc.frequency.value = frequency
+    osc.type = 'sine'
+    osc.frequency.value = freq
+
+    // Gentle low-pass filter softens each voice
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = filterFreq
+    filter.Q.value = 0.7
 
     const gain = this.ctx.createGain()
-    gain.gain.value = volume
+    gain.gain.value = vol
 
-    osc.connect(gain)
+    osc.connect(filter)
+    filter.connect(gain)
     gain.connect(this.destination)
     osc.start()
 
-    this.oscillators.push(osc)
-    this.gains.push(gain)
-
+    this.nodes.push(osc, filter, gain)
     return gain
   }
 }

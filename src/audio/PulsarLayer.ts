@@ -2,30 +2,34 @@ import { AUDIO } from '../utils/constants'
 import { randomRange } from '../utils/mathHelpers'
 
 /**
- * Pulsar Layer — two types of signals:
+ * Pulsar Layer — Gentle cosmic bells and chimes.
  *
- * 1. Random cosmic pings (original) — metallic sweeps at irregular intervals
- * 2. Mathematically precise pulsars — rotating neutron stars with exact periods
+ * Pulsars have mathematically precise periods, but we render them
+ * as soft bell tones rather than harsh ticks — pleasant for hours.
  *
- * Real pulsars have extraordinarily stable periods (some rival atomic clocks).
- * We simulate 3 background pulsars with fixed periods and distinct tones.
+ * Frequencies are overtones of the CMB root (272.5 Hz):
+ *   PSR-A: 545 Hz (×2, octave) — gentle chime
+ *   PSR-B: 408.75 Hz (×3/2, fifth) — deep bell
+ *   PSR-C: 681.25 Hz (×5/2, major tenth) — high sparkle
  *
- * PSR-A: period 1.337301s, freq 1847 Hz (millisecond-class, very fast)
- * PSR-B: period 3.745s, freq 892 Hz (slow pulsar, deep)
- * PSR-C: period 0.7142s, freq 2340 Hz (fast, high-pitched)
+ * Random cosmic pings: soft, filtered, musical tones in the
+ * 300-700 Hz range — warm and pleasant, never harsh.
  */
 
 interface PulsarDef {
-  period: number    // Exact period in seconds
-  frequency: number // Tone frequency in Hz
-  pan: number       // Stereo position
-  gain: number      // Volume
+  period: number
+  frequency: number
+  pan: number
+  gain: number
+  decay: number // Longer decay = more bell-like
 }
 
+const CMB = 272.5
+
 const PULSARS: PulsarDef[] = [
-  { period: 1.337301, frequency: 1847, pan: -0.6, gain: 0.03 },
-  { period: 3.745,    frequency: 892,  pan: 0.4,  gain: 0.04 },
-  { period: 0.7142,   frequency: 2340, pan: 0.8,  gain: 0.02 },
+  { period: 1.337301, frequency: CMB * 2,     pan: -0.5, gain: 0.025, decay: 0.3 },
+  { period: 3.745,    frequency: CMB * 3 / 2, pan: 0.3,  gain: 0.03,  decay: 0.5 },
+  { period: 0.7142,   frequency: CMB * 5 / 2, pan: 0.7,  gain: 0.015, decay: 0.2 },
 ]
 
 export class PulsarLayer {
@@ -49,39 +53,37 @@ export class PulsarLayer {
 
   private startPulsars() {
     for (const pulsar of PULSARS) {
-      // Use setInterval for mathematically precise timing
-      // Small random offset so they don't all start aligned
       const offset = Math.random() * pulsar.period * 1000
       setTimeout(() => {
         const id = setInterval(() => {
-          this.playPulsarTick(pulsar)
+          this.playPulsarBell(pulsar)
         }, pulsar.period * 1000)
         this.pulsarIntervals.push(id)
       }, offset)
     }
   }
 
-  private playPulsarTick(pulsar: PulsarDef) {
+  private playPulsarBell(pulsar: PulsarDef) {
     const now = this.ctx.currentTime
 
     const osc = this.ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = pulsar.frequency
 
-    // Very short, sharp tick
+    // Soft attack, gentle bell-like decay
     const env = this.ctx.createGain()
     env.gain.setValueAtTime(0, now)
-    env.gain.linearRampToValueAtTime(pulsar.gain, now + 0.001) // 1ms attack
-    env.gain.exponentialRampToValueAtTime(0.0001, now + 0.04)  // 40ms decay
+    env.gain.linearRampToValueAtTime(pulsar.gain, now + 0.01)
+    env.gain.exponentialRampToValueAtTime(0.0001, now + pulsar.decay)
+
+    // Warm filter — remove harshness
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = pulsar.frequency * 1.5
+    filter.Q.value = 0.5
 
     const panner = this.ctx.createStereoPanner()
     panner.pan.value = pulsar.pan
-
-    // Bandpass to give each pulsar a distinct character
-    const filter = this.ctx.createBiquadFilter()
-    filter.type = 'bandpass'
-    filter.frequency.value = pulsar.frequency
-    filter.Q.value = 10
 
     osc.connect(filter)
     filter.connect(env)
@@ -89,48 +91,55 @@ export class PulsarLayer {
     panner.connect(this.destination)
 
     osc.start(now)
-    osc.stop(now + 0.1)
+    osc.stop(now + pulsar.decay + 0.1)
   }
 
-  // --- Original random cosmic pings ---
-
+  // Gentle cosmic chimes at random intervals
   private scheduleRandomPing() {
     const minInterval = this.encounterMode
-      ? AUDIO.pulsarMinInterval / 3
+      ? AUDIO.pulsarMinInterval / 2
       : AUDIO.pulsarMinInterval
     const maxInterval = this.encounterMode
-      ? AUDIO.pulsarMaxInterval / 3
+      ? AUDIO.pulsarMaxInterval / 2
       : AUDIO.pulsarMaxInterval
 
     const delay = randomRange(minInterval, maxInterval) * 1000
 
     this.randomTimeoutId = setTimeout(() => {
-      this.playRandomPing()
+      this.playCosmicChime()
       this.scheduleRandomPing()
     }, delay)
   }
 
-  private playRandomPing() {
+  private playCosmicChime() {
     const now = this.ctx.currentTime
+
+    // Musical frequencies: CMB overtones in the warm range
+    const notes = [
+      CMB, CMB * 5 / 4, CMB * 3 / 2, CMB * 2,
+      CMB * 5 / 2, CMB * 3, CMB * 7 / 4,
+    ]
+    const freq = notes[Math.floor(Math.random() * notes.length)]
 
     const osc = this.ctx.createOscillator()
     osc.type = 'sine'
-    osc.frequency.value = randomRange(1200, 3000)
+    osc.frequency.value = freq
 
-    osc.frequency.setValueAtTime(osc.frequency.value, now)
-    osc.frequency.exponentialRampToValueAtTime(osc.frequency.value * 0.5, now + 0.15)
-
+    // Gentle envelope — like a distant wind chime
     const env = this.ctx.createGain()
+    const vol = randomRange(0.02, 0.06)
     env.gain.setValueAtTime(0, now)
-    env.gain.linearRampToValueAtTime(randomRange(0.06, 0.15), now + 0.005)
-    env.gain.exponentialRampToValueAtTime(0.001, now + 0.8)
+    env.gain.linearRampToValueAtTime(vol, now + 0.05)
+    env.gain.exponentialRampToValueAtTime(0.0001, now + 2.0)
+
+    // Warm filter
+    const filter = this.ctx.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = freq * 2
+    filter.Q.value = 0.3
 
     const panner = this.ctx.createStereoPanner()
-    panner.pan.value = randomRange(-1, 1)
-
-    const filter = this.ctx.createBiquadFilter()
-    filter.type = 'highpass'
-    filter.frequency.value = 600
+    panner.pan.value = randomRange(-0.8, 0.8)
 
     osc.connect(filter)
     filter.connect(env)
@@ -138,6 +147,6 @@ export class PulsarLayer {
     panner.connect(this.destination)
 
     osc.start(now)
-    osc.stop(now + 1)
+    osc.stop(now + 2.5)
   }
 }

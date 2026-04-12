@@ -69,15 +69,15 @@ class AudioEngineClass {
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 1.0
 
-    // Create reverb — simulates vastness of space
+    // Long reverb — simulates vastness of space
     this.convolver = this.ctx.createConvolver()
-    this.convolver.buffer = this.createReverbImpulse(5, 2.5)
+    this.convolver.buffer = this.createReverbImpulse(7, 2.0)
 
-    // Dry/wet mix
+    // More wet for spacious, cathedral-like ambience
     const dryGain = this.ctx.createGain()
-    dryGain.gain.value = 0.65
+    dryGain.gain.value = 0.5
     const wetGain = this.ctx.createGain()
-    wetGain.gain.value = 0.35
+    wetGain.gain.value = 0.5
 
     this.masterGain.connect(dryGain)
     this.masterGain.connect(this.convolver)
