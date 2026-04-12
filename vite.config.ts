@@ -4,6 +4,7 @@ import glsl from 'vite-plugin-glsl'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/project_universe/',
   plugins: [
     react(),
     glsl(),
