@@ -141,15 +141,20 @@ const skyboxFragmentShader = /* glsl */ `
 
 export function NebulaSkybox() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
+  const meshRef = useRef<THREE.Mesh>(null)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
+    }
+    // Skybox always follows camera — infinitely far background
+    if (meshRef.current) {
+      meshRef.current.position.copy(camera.position)
     }
   })
 
   return (
-    <mesh scale={[5000, 5000, 5000]}>
+    <mesh ref={meshRef} scale={[5000, 5000, 5000]}>
       <sphereGeometry args={[1, 64, 32]} />
       <shaderMaterial
         ref={materialRef}

@@ -20,16 +20,21 @@ export function NebulaVolume() {
     [qualityPreset.nebulaSteps]
   )
 
-  useFrame(({ clock }) => {
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  useFrame(({ clock, camera }) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
+    }
+    if (meshRef.current) {
+      meshRef.current.position.copy(camera.position)
     }
   })
 
   if (!qualityPreset.enableNebulaVolume) return null
 
   return (
-    <mesh scale={[80, 80, 80]}>
+    <mesh ref={meshRef} scale={[80, 80, 80]}>
       <boxGeometry args={[1, 1, 1]} />
       <shaderMaterial
         ref={materialRef}
