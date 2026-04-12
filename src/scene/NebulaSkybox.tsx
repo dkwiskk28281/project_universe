@@ -105,6 +105,26 @@ const skyboxFragmentShader = /* glsl */ `
     float coolDir = dot(dir, normalize(vec3(-0.7, -0.2, 0.5)));
     color += vec3(0.02, 0.04, 0.08) * smoothstep(0.5, 1.0, coolDir) * 0.25;
 
+    // ----- Milky Way diffuse glow along galactic plane -----
+    // Galactic plane normal (must match cosmology.ts GALACTIC_NORMAL)
+    vec3 galNormal = normalize(vec3(0.22, 0.87, 0.44));
+    float galB = asin(dot(dir, galNormal)); // galactic latitude
+    // Thin disk: σ ≈ 0.12 rad, thick disk: σ ≈ 0.4 rad
+    float milkyThin = exp(-galB * galB / (2.0 * 0.012));
+    float milkyThick = 0.3 * exp(-galB * galB / (2.0 * 0.08));
+    float milkyWay = milkyThin + milkyThick;
+    // Warm unresolved starlight color
+    color += vec3(0.035, 0.028, 0.02) * milkyWay;
+    // Galactic core (brighter in one direction along the plane)
+    vec3 galCenter = normalize(cross(galNormal, vec3(0.0, 0.0, 1.0)));
+    float coreDir = dot(dir, galCenter);
+    color += vec3(0.04, 0.025, 0.01) * milkyWay * smoothstep(0.3, 1.0, coreDir);
+
+    // ----- Cosmic Microwave Background -----
+    // The faintest "warmth" everywhere — 2.725K thermal radiation
+    // Visible as an extremely subtle uniform warm tint
+    color += vec3(0.003, 0.002, 0.001);
+
     // Very faint stars embedded in skybox
     float starNoise = noise(dir * 500.0);
     float stars = smoothstep(0.97, 1.0, starNoise) * 0.3;

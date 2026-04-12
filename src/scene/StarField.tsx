@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCosmosStore } from '../store'
 import { STARS } from '../utils/constants'
+import { applyRedshift } from '../utils/cosmology'
 
 // Pick a spectral class index based on weighted distribution
 function pickSpectralClass(): number {
@@ -95,9 +96,18 @@ export function StarField() {
         const spectralIdx = pickSpectralClass()
         const c = STARS.spectralColors[spectralIdx]
         // Add slight random variation to make each star unique
-        colors[idx * 3] = c[0] + (Math.random() - 0.5) * 0.05
-        colors[idx * 3 + 1] = c[1] + (Math.random() - 0.5) * 0.05
-        colors[idx * 3 + 2] = c[2] + (Math.random() - 0.5) * 0.05
+        let cr = c[0] + (Math.random() - 0.5) * 0.05
+        let cg = c[1] + (Math.random() - 0.5) * 0.05
+        let cb = c[2] + (Math.random() - 0.5) * 0.05
+
+        // Cosmological redshift: distant stars shift toward red
+        const normalizedDist = (r - STARS.minRadius) / (STARS.maxRadius - STARS.minRadius)
+        const z = normalizedDist * 0.4 // Mild redshift for nearby stars
+        ;[cr, cg, cb] = applyRedshift(cr, cg, cb, z)
+
+        colors[idx * 3] = cr
+        colors[idx * 3 + 1] = cg
+        colors[idx * 3 + 2] = cb
 
         // Hotter (bluer) stars tend to be brighter and larger
         if (spectralIdx <= 2) {

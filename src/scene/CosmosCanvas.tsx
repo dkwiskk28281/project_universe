@@ -3,11 +3,14 @@ import { useCosmosStore } from '../store'
 import { CAMERA } from '../utils/constants'
 import { CameraRig } from './CameraRig'
 import { StarField } from './StarField'
+import { MilkyWay } from './MilkyWay'
+import { DistantGalaxies } from './DistantGalaxies'
 import { NebulaSkybox } from './NebulaSkybox'
 import { NebulaVolume } from './NebulaVolume'
 import { PostProcessing } from './PostProcessing'
 import { EncounterEntity } from './EncounterEntity'
 import { ShootingStar } from './ShootingStar'
+import { Supernova } from './Supernova'
 
 export function CosmosCanvas() {
   const { qualityPreset } = useCosmosStore()
@@ -42,7 +45,10 @@ export function CosmosCanvas() {
       <NebulaSkybox />
       <NebulaVolume />
       <StarField />
+      <MilkyWay />
+      <DistantGalaxies />
       <ShootingStar />
+      <Supernova />
       <EncounterEntity />
       <PostProcessing />
     </Canvas>

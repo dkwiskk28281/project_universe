@@ -3,6 +3,12 @@ import { useCosmosStore } from '../store'
 import { initFirebase } from '../firebase/config'
 import { CosmicMessageService } from '../encounter/CosmicMessageService'
 import { COSMIC_COMM } from '../utils/constants'
+import {
+  signalStrength,
+  degradeMessage,
+  isHorizonCrossed,
+  HORIZON_TIME_SECONDS,
+} from '../utils/cosmology'
 
 const baseFont: React.CSSProperties = {
   fontFamily: "'Helvetica Neue', Arial, sans-serif",
@@ -10,13 +16,6 @@ const baseFont: React.CSSProperties = {
   letterSpacing: '0.2em',
 }
 
-/**
- * Frequency link indicator & message compose/display.
- *
- * Shows a subtle "frequency linked" indicator after encounters.
- * Tap it to open a minimal message compose field.
- * Received messages materialize as ghostly text at the bottom of the screen.
- */
 export function CosmicComm() {
   const frequencyLinks = useCosmosStore((s) => s.frequencyLinks)
   const materializingMessage = useCosmosStore((s) => s.materializingMessage)
@@ -27,60 +26,77 @@ export function CosmicComm() {
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
-  const [messageServiceInstance, setMessageServiceInstance] = useState<CosmicMessageService | null>(null)
+  const [msgService, setMsgService] = useState<CosmicMessageService | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Materializing message animation
+  // Materializing message
   const [msgVisible, setMsgVisible] = useState(false)
-  const [msgText, setMsgText] = useState('')
+  const [msgDisplay, setMsgDisplay] = useState('')
   const msgTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   useEffect(() => {
     const firebase = initFirebase()
     if (firebase) {
-      setMessageServiceInstance(new CosmicMessageService(firebase.db))
+      setMsgService(new CosmicMessageService(firebase.db))
     }
   }, [])
 
-  // Handle materializing messages
+  // Handle materializing messages — apply signal degradation
   useEffect(() => {
     if (!materializingMessage) return
 
-    setMsgText(materializingMessage.text)
+    // Find the link this message came from
+    const link = frequencyLinks.find((l) => l.linkId === materializingMessage.linkId)
+    const secondsSince = link
+      ? (Date.now() - link.encounteredAt) / 1000
+      : 0
+    const strength = signalStrength(secondsSince)
+
+    // Degrade message based on signal strength
+    const degraded = degradeMessage(materializingMessage.text, strength)
+    setMsgDisplay(degraded)
     setMsgVisible(true)
 
     if (msgTimeoutRef.current) clearTimeout(msgTimeoutRef.current)
     msgTimeoutRef.current = setTimeout(() => {
       setMsgVisible(false)
       setTimeout(() => {
-        setMsgText('')
+        setMsgDisplay('')
         setMaterializingMessage(null)
-      }, 3000) // Extra time for fade-out
+      }, 3000)
     }, COSMIC_COMM.visibleDurationMs)
 
     return () => {
       if (msgTimeoutRef.current) clearTimeout(msgTimeoutRef.current)
     }
-  }, [materializingMessage, setMaterializingMessage])
+  }, [materializingMessage, setMaterializingMessage, frequencyLinks])
 
-  // Focus input when compose opens
   useEffect(() => {
     if (composeOpen && inputRef.current) {
       inputRef.current.focus()
     }
   }, [composeOpen])
 
-  const activeLinks = frequencyLinks.filter((l) => Date.now() < l.expiresAt)
+  // Filter to active links (within observable horizon)
+  const activeLinks = frequencyLinks.filter((l) => {
+    const secondsSince = (Date.now() - l.encounteredAt) / 1000
+    return !isHorizonCrossed(secondsSince)
+  })
   const hasLinks = activeLinks.length > 0
 
+  // Get most recent link for display info
+  const latestLink = activeLinks[activeLinks.length - 1]
+  const latestStrength = latestLink
+    ? signalStrength((Date.now() - latestLink.encounteredAt) / 1000)
+    : 0
+
   const handleSend = useCallback(async () => {
-    if (!messageServiceInstance || !text.trim() || activeLinks.length === 0) return
+    if (!msgService || !text.trim() || activeLinks.length === 0) return
 
     setSending(true)
     try {
-      // Send to all active frequency links
       for (const link of activeLinks) {
-        await messageServiceInstance.sendMessage(link, text.trim())
+        await msgService.sendMessage(link, text.trim())
       }
       setText('')
       setSent(true)
@@ -91,7 +107,7 @@ export function CosmicComm() {
     } finally {
       setSending(false)
     }
-  }, [messageServiceInstance, text, activeLinks])
+  }, [msgService, text, activeLinks])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -103,17 +119,26 @@ export function CosmicComm() {
     }
   }
 
-  // Get signal delay for the most recent link
-  const delayText = hasLinks && messageServiceInstance
-    ? messageServiceInstance.formatDelay(activeLinks[activeLinks.length - 1].encounteredAt)
+  // Signal info
+  const delayText = latestLink && msgService
+    ? msgService.getDelayText(latestLink.encounteredAt)
     : ''
+  const distanceText = latestLink && msgService
+    ? msgService.getDistanceText(latestLink.encounteredAt)
+    : ''
+  const strengthPct = Math.round(latestStrength * 100)
 
-  // Don't show during encounters
+  // Horizon warning
+  const horizonDaysLeft = latestLink
+    ? Math.max(0, (HORIZON_TIME_SECONDS - (Date.now() - latestLink.encounteredAt) / 1000) / 86400)
+    : 0
+  const horizonWarning = horizonDaysLeft < 7 && horizonDaysLeft > 0
+
   if (encounterActive) return null
 
   return (
     <>
-      {/* Frequency link indicator — bottom left */}
+      {/* Frequency link indicator */}
       {hasLinks && (
         <button
           onClick={() => setComposeOpen(!composeOpen)}
@@ -123,7 +148,7 @@ export function CosmicComm() {
             left: '2rem',
             zIndex: 40,
             background: 'none',
-            border: '1px solid rgba(140, 170, 255, 0.12)',
+            border: `1px solid rgba(140, 170, 255, ${0.08 + latestStrength * 0.12})`,
             borderRadius: '20px',
             padding: '0.5rem 1rem',
             cursor: 'pointer',
@@ -131,30 +156,24 @@ export function CosmicComm() {
             alignItems: 'center',
             gap: '0.6rem',
             ...baseFont,
-            color: 'rgba(140, 170, 255, 0.35)',
-            fontSize: '0.65rem',
+            color: `rgba(140, 170, 255, ${0.2 + latestStrength * 0.3})`,
+            fontSize: '0.6rem',
             transition: 'all 0.5s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(140, 170, 255, 0.3)'
-            e.currentTarget.style.color = 'rgba(140, 170, 255, 0.6)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = 'rgba(140, 170, 255, 0.12)'
-            e.currentTarget.style.color = 'rgba(140, 170, 255, 0.35)'
           }}
         >
           <span style={{
             width: '5px',
             height: '5px',
             borderRadius: '50%',
-            background: 'rgba(140, 170, 255, 0.5)',
+            background: `rgba(140, 170, 255, ${0.3 + latestStrength * 0.5})`,
             animation: 'freqPulse 3s ease-in-out infinite',
           }} />
-          <span>{activeLinks.length} FREQUENCY{activeLinks.length > 1 ? 'S' : ''} LINKED</span>
-          {delayText && (
-            <span style={{ opacity: 0.5 }}>SIGNAL {delayText}</span>
-          )}
+          <span style={{ textTransform: 'uppercase' }}>
+            {distanceText} away
+          </span>
+          <span style={{ opacity: 0.5 }}>
+            {strengthPct}%
+          </span>
         </button>
       )}
 
@@ -174,6 +193,19 @@ export function CosmicComm() {
           padding: '1.2rem',
           animation: 'composeIn 0.4s ease-out',
         }}>
+          {/* Horizon warning */}
+          {horizonWarning && (
+            <p style={{
+              ...baseFont,
+              fontSize: '0.55rem',
+              color: 'rgba(255, 160, 100, 0.5)',
+              marginBottom: '0.8rem',
+              textTransform: 'uppercase',
+            }}>
+              horizon in {horizonDaysLeft.toFixed(1)} days — signal fading
+            </p>
+          )}
+
           <input
             ref={inputRef}
             type="text"
@@ -200,13 +232,11 @@ export function CosmicComm() {
             alignItems: 'center',
             marginTop: '0.8rem',
             ...baseFont,
-            fontSize: '0.6rem',
+            fontSize: '0.55rem',
             color: 'rgba(140, 170, 255, 0.3)',
           }}>
             <span>{text.length}/{COSMIC_COMM.maxMessageLength}</span>
-            <span>
-              {delayText && `arrives in ~${delayText}`}
-            </span>
+            <span>{delayText && `delay ${delayText} · strength ${strengthPct}%`}</span>
             <button
               onClick={handleSend}
               disabled={sending || !text.trim()}
@@ -246,8 +276,8 @@ export function CosmicComm() {
         </div>
       )}
 
-      {/* Received message materializing */}
-      {msgText && (
+      {/* Received message — degraded by signal strength */}
+      {msgDisplay && (
         <div style={{
           position: 'fixed',
           bottom: '15%',
@@ -261,14 +291,14 @@ export function CosmicComm() {
           <p style={{
             ...baseFont,
             fontSize: 'clamp(0.8rem, 2vw, 1.1rem)',
-            color: 'rgba(160, 180, 255, 0.5)',
+            color: `rgba(160, 180, 255, ${0.15 + latestStrength * 0.45})`,
             letterSpacing: '0.15em',
             lineHeight: 1.8,
             opacity: msgVisible ? 1 : 0,
             transition: `opacity ${msgVisible ? COSMIC_COMM.materializeDurationMs : 3000}ms ease`,
-            textShadow: '0 0 20px rgba(100, 140, 255, 0.2)',
+            textShadow: `0 0 20px rgba(100, 140, 255, ${latestStrength * 0.2})`,
           }}>
-            {msgText}
+            {msgDisplay}
           </p>
           <p style={{
             ...baseFont,

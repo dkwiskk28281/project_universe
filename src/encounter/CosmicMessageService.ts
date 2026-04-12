@@ -9,20 +9,34 @@ import {
 } from 'firebase/database'
 import { getUserId, type CosmicMessageData, type LocalFrequencyLink } from './encounterTypes'
 import { COSMIC_COMM } from '../utils/constants'
+import {
+  signalDelay,
+  signalStrength,
+  isHorizonCrossed,
+  comovingDistance,
+  formatDelay,
+  formatDistance,
+} from '../utils/cosmology'
 
 /**
  * Cosmic Message Service
  *
- * After an encounter, two users are connected via a "frequency link."
- * Messages travel with a delay that grows over time — like light crossing
- * an expanding universe. Eventually the link fades and they drift apart forever.
+ * Physics-based communication through expanding space.
  *
- * Delay formula: delay = baseDelay * (1 + (hoursSince / 24) ^ exponent)
- *   - Right after encounter: ~60 seconds
- *   - After 1 day:  ~120 seconds (2 min)
- *   - After 1 week: ~20 minutes
- *   - After 1 month: ~2.75 hours
- *   - After 60 days: link expires
+ * After encountering another soul, users are frequency-linked.
+ * Messages travel at the speed of light through expanding space:
+ *
+ *   - Space expands exponentially (Hubble's law): d(t) = d₀ × e^(Ht)
+ *   - Signal delay grows with expansion: delay = d(t) / c
+ *   - Signal weakens with distance: strength = 1/d (inverse distance)
+ *   - Beyond the observable horizon (recession > c), signals can never arrive
+ *
+ * Timeline:
+ *   t=0:       delay ~60s, strength 100%
+ *   t=1 day:   delay ~73s, strength 82%
+ *   t=1 week:  delay ~4min, strength 25%
+ *   t=1 month: delay ~6.7h, strength 0.25%
+ *   t=~45 days: horizon crossed — communication impossible forever
  */
 export class CosmicMessageService {
   private userId: string
@@ -32,36 +46,41 @@ export class CosmicMessageService {
     this.userId = getUserId()
   }
 
-  /**
-   * Calculate signal delay in seconds based on time elapsed since encounter.
-   */
+  /** Calculate signal delay in seconds using Hubble expansion */
   calculateDelay(encounteredAt: number): number {
-    const hoursSince = (Date.now() - encounteredAt) / (3600 * 1000)
-    const daysSince = hoursSince / 24
-    return COSMIC_COMM.baseDelaySeconds * (1 + Math.pow(daysSince, COSMIC_COMM.delayExponent))
+    const secondsSince = (Date.now() - encounteredAt) / 1000
+    return signalDelay(secondsSince)
   }
 
-  /**
-   * Calculate signal delay as a human-readable string
-   */
-  formatDelay(encounteredAt: number): string {
-    const seconds = this.calculateDelay(encounteredAt)
-    if (seconds < 60) return `${Math.round(seconds)}s`
-    if (seconds < 3600) return `${Math.round(seconds / 60)}m`
-    return `${(seconds / 3600).toFixed(1)}h`
+  /** Calculate signal strength (0 to 1) using inverse distance law */
+  calculateStrength(encounteredAt: number): number {
+    const secondsSince = (Date.now() - encounteredAt) / 1000
+    return signalStrength(secondsSince)
   }
 
-  /**
-   * Check if a frequency link is still active
-   */
+  /** Current co-moving distance */
+  calculateDistance(encounteredAt: number): number {
+    const secondsSince = (Date.now() - encounteredAt) / 1000
+    return comovingDistance(secondsSince)
+  }
+
+  /** Human-readable signal delay */
+  getDelayText(encounteredAt: number): string {
+    return formatDelay(this.calculateDelay(encounteredAt))
+  }
+
+  /** Human-readable distance */
+  getDistanceText(encounteredAt: number): string {
+    return formatDistance(this.calculateDistance(encounteredAt))
+  }
+
+  /** Check if link is still within the observable horizon */
   isLinkActive(link: LocalFrequencyLink): boolean {
-    return Date.now() < link.expiresAt
+    const secondsSince = (Date.now() - link.encounteredAt) / 1000
+    return !isHorizonCrossed(secondsSince)
   }
 
-  /**
-   * Send a message through a frequency link.
-   * The message will arrive at the peer after the calculated delay.
-   */
+  /** Send a message through a frequency link */
   async sendMessage(link: LocalFrequencyLink, text: string): Promise<void> {
     if (!this.isLinkActive(link)) return
     if (text.length === 0 || text.length > COSMIC_COMM.maxMessageLength) return
@@ -80,10 +99,7 @@ export class CosmicMessageService {
     })
   }
 
-  /**
-   * Listen for incoming messages on a frequency link.
-   * Only delivers messages that have "arrived" (past their delay).
-   */
+  /** Listen for incoming messages on a frequency link */
   listenForMessages(
     link: LocalFrequencyLink,
     onMessage: (msg: CosmicMessageData) => void
@@ -91,26 +107,22 @@ export class CosmicMessageService {
     const messagesRef = ref(this.db, `cosmic-messages/${link.linkId}`)
     const q = query(messagesRef, orderByChild('sentAt'))
 
-    // Track delivered message IDs to avoid duplicates
     const deliveredIds = new Set<string>()
 
     const unsubscribe = onChildAdded(q, (snapshot) => {
       const data = snapshot.val()
       const id = snapshot.key
       if (!data || !id) return
-      if (data.from === this.userId) return // Don't receive your own messages
+      if (data.from === this.userId) return
       if (deliveredIds.has(id)) return
 
       const msg: CosmicMessageData = { ...data, id }
 
-      // Check if message has arrived
       const now = Date.now()
       if (now >= msg.arrivesAt) {
-        // Already arrived
         deliveredIds.add(id)
         onMessage(msg)
       } else {
-        // Schedule delivery for when it "arrives"
         const waitMs = msg.arrivesAt - now
         setTimeout(() => {
           if (!deliveredIds.has(id)) {
@@ -125,9 +137,7 @@ export class CosmicMessageService {
     return unsubscribe
   }
 
-  /**
-   * Load message history for a link (messages already arrived).
-   */
+  /** Load message history for a link */
   async getMessageHistory(link: LocalFrequencyLink): Promise<CosmicMessageData[]> {
     const messagesRef = ref(this.db, `cosmic-messages/${link.linkId}`)
     const snapshot = await get(messagesRef)
