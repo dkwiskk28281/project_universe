@@ -13,6 +13,7 @@ const skyboxVertexShader = /* glsl */ `
 
 const skyboxFragmentShader = /* glsl */ `
   uniform float uTime;
+  uniform vec3 uCameraPos;
   varying vec3 vWorldPosition;
 
   vec3 hash33(vec3 p) {
@@ -55,19 +56,25 @@ const skyboxFragmentShader = /* glsl */ `
     vec3 dir = normalize(vWorldPosition);
     float t = uTime * 0.002;
 
+    // Camera position creates REGIONAL VARIATION as you travel.
+    // Different positions in space = different nebula patterns.
+    // Scale is 0.003 so regions change every ~300 units of travel.
+    vec3 region = uCameraPos * 0.003;
+
     // ----- Large-scale nebula structure (emission nebulae) -----
-    vec3 p1 = dir * 2.0 + vec3(t, t * 0.3, t * 0.7);
+    // region offset makes nebula patterns CHANGE as you move through space
+    vec3 p1 = dir * 2.0 + region + vec3(t, t * 0.3, t * 0.7);
     float n1 = fbm(p1, 6) * 0.5 + 0.5;
 
-    vec3 p2 = dir * 3.0 + vec3(t * 0.5, -t * 0.2, t * 0.4);
+    vec3 p2 = dir * 3.0 + region * 1.3 + vec3(t * 0.5, -t * 0.2, t * 0.4);
     float n2 = fbm(p2, 5) * 0.5 + 0.5;
 
     // Secondary turbulence for fine detail
-    vec3 p3 = dir * 5.0 + vec3(-t * 0.3, t * 0.6, -t * 0.15);
+    vec3 p3 = dir * 5.0 + region * 0.7 + vec3(-t * 0.3, t * 0.6, -t * 0.15);
     float n3 = fbm(p3, 5) * 0.5 + 0.5;
 
     // ----- Dust lanes (dark absorption) -----
-    vec3 dustP = dir * 4.0 + vec3(t * 0.1, -t * 0.05, t * 0.15);
+    vec3 dustP = dir * 4.0 + region * 0.9 + vec3(t * 0.1, -t * 0.05, t * 0.15);
     float dust = fbm(dustP, 5) * 0.5 + 0.5;
     float dustMask = smoothstep(0.45, 0.65, dust) * 0.7;
 
@@ -90,38 +97,50 @@ const skyboxFragmentShader = /* glsl */ `
     // Hubble Palette maps: SII→Red, Hα→Green, OIII→Blue
     // We use a softer version for ambient beauty.
 
+    // ----- Regional color variation -----
+    // Different regions of space have different dominant chemistries.
+    // This creates endless visual variety as you travel.
+    // regionColor cycles through the full spectrum over ~2000 units of travel.
+    float regionPhase = length(region) * 0.8;
+    float r1 = sin(regionPhase) * 0.5 + 0.5;
+    float r2 = sin(regionPhase * 1.3 + 2.1) * 0.5 + 0.5;
+    float r3 = sin(regionPhase * 0.7 + 4.2) * 0.5 + 0.5;
+
+    // Regional nebula density — some areas are richer, some are voids
+    float regionDensity = 0.5 + 0.5 * sin(regionPhase * 0.4 + 1.0);
+
     vec3 deepSpace = vec3(0.005, 0.006, 0.022);
 
-    // Cool tones (60% of palette — calming foundation)
-    vec3 nebulaBlue    = vec3(0.03, 0.08, 0.25);    // OIII reflection
-    vec3 nebulaTeal    = vec3(0.02, 0.14, 0.18);    // OIII emission
-    vec3 nebulaIndigo  = vec3(0.05, 0.04, 0.20);    // Deep space blue-purple
+    // Colors shift with region — you travel through different nebulae
+    vec3 nebulaBlue    = vec3(0.03, 0.08, 0.25) * (0.7 + r1 * 0.6);
+    vec3 nebulaTeal    = vec3(0.02, 0.14, 0.18) * (0.6 + r2 * 0.8);
+    vec3 nebulaIndigo  = vec3(0.05, 0.04, 0.20) * (0.5 + r3 * 0.7);
 
-    // Warm tones (40% — gives richness and Hubble realism)
-    vec3 nebulaPurple  = vec3(0.10, 0.03, 0.20);    // Pillars of Creation
-    vec3 nebulaRose    = vec3(0.18, 0.04, 0.10);    // Hα hydrogen emission
-    vec3 nebulaGold    = vec3(0.16, 0.10, 0.03);    // SII sulfur / stellar nursery
-    vec3 nebulaCrimson = vec3(0.14, 0.03, 0.06);    // Carina deep red
-    vec3 nebulaViolet  = vec3(0.08, 0.03, 0.16);    // Veil Nebula
+    vec3 nebulaPurple  = vec3(0.10, 0.03, 0.20) * (0.6 + r2 * 0.6);
+    vec3 nebulaRose    = vec3(0.18, 0.04, 0.10) * (0.5 + r1 * 0.8);
+    vec3 nebulaGold    = vec3(0.16, 0.10, 0.03) * (0.4 + r3 * 0.9);
+    vec3 nebulaCrimson = vec3(0.14, 0.03, 0.06) * (0.5 + r2 * 0.7);
+    vec3 nebulaViolet  = vec3(0.08, 0.03, 0.16) * (0.6 + r1 * 0.5);
 
-    // ----- Build color — layered like real Hubble images -----
+    // ----- Build color — layered, density-modulated by region -----
     vec3 color = deepSpace;
+    float rd = regionDensity; // 0=void, 1=dense nebula region
 
-    // Layer 1: Large-scale blue/teal foundation (calming)
-    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.65);
-    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.55);
+    // Layer 1: Blue/teal foundation
+    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.65 * rd);
+    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.55 * rd);
 
-    // Layer 2: Purple/indigo depth regions
-    color = mix(color, nebulaPurple, smoothstep(0.35, 0.75, n1 * n2) * 0.5);
-    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n3) * 0.45);
+    // Layer 2: Purple/indigo depth
+    color = mix(color, nebulaPurple, smoothstep(0.35, 0.75, n1 * n2) * 0.5 * rd);
+    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n3) * 0.45 * rd);
 
-    // Layer 3: Warm emission — rose, gold, crimson (Hubble richness)
-    color = mix(color, nebulaRose, smoothstep(0.5, 0.85, n2 * n3) * 0.35);
-    color = mix(color, nebulaGold, smoothstep(0.55, 0.85, n1 * n3) * 0.28);
-    color = mix(color, nebulaCrimson, smoothstep(0.6, 0.9, n1 * n2 * n3) * 0.2);
+    // Layer 3: Warm emission — rose, gold, crimson
+    color = mix(color, nebulaRose, smoothstep(0.5, 0.85, n2 * n3) * 0.4 * rd);
+    color = mix(color, nebulaGold, smoothstep(0.55, 0.85, n1 * n3) * 0.32 * rd);
+    color = mix(color, nebulaCrimson, smoothstep(0.6, 0.9, n1 * n2 * n3) * 0.25 * rd);
 
-    // Layer 4: Violet accents in deep regions
-    color = mix(color, nebulaViolet, smoothstep(0.65, 0.9, n3 * n3) * 0.25);
+    // Layer 4: Violet deep accents
+    color = mix(color, nebulaViolet, smoothstep(0.6, 0.88, n3 * n3) * 0.3 * rd);
 
     // Fine-scale bright wisps (Hubble-like filaments)
     float wisps = smoothstep(0.5, 0.9, n1 * n3);
@@ -183,8 +202,8 @@ export function NebulaSkybox() {
   useFrame(({ clock, camera }) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
+      materialRef.current.uniforms.uCameraPos.value.copy(camera.position)
     }
-    // Skybox always follows camera — infinitely far background
     if (meshRef.current) {
       meshRef.current.position.copy(camera.position)
     }
@@ -199,6 +218,7 @@ export function NebulaSkybox() {
         fragmentShader={skyboxFragmentShader}
         uniforms={{
           uTime: { value: 0 },
+          uCameraPos: { value: new THREE.Vector3() },
         }}
         side={THREE.BackSide}
         depthWrite={false}
