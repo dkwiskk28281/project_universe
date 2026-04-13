@@ -1,498 +1,329 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 /**
- * Infinite Celestial Bodies — physically accurate planets, gas giants,
- * nebula clouds, and binary stars with smooth distance-based fade.
+ * Celestial Bodies — distant glowing objects in deep space.
  *
- * Physics modeled:
- *   - Rayleigh atmospheric scattering (limb brightening)
- *   - Procedural surface features (FBM noise terrain/bands)
- *   - Day/night terminator from directional starlight
- *   - Gas giant zonal bands (differential rotation)
- *   - Ring particle density (Cassini-like gaps)
- *   - Distance fade: objects smoothly materialize from deep space
+ * NOT opaque spheres. Everything is rendered as soft, luminous
+ * points with gentle glow halos — the way celestial objects
+ * actually appear from vast distances in space.
+ *
+ * Types:
+ *   - Distant planets: tiny bright dots with colored atmosphere halo
+ *   - Nebula wisps: soft, transparent volumetric patches
+ *   - Star clusters: tight groups of warm points
+ *
+ * All objects are SMALL and DISTANT — nothing fills the screen.
+ * They drift past like distant scenery, creating depth and wonder.
  */
 
-const BODY_COUNT = 20
-const SPAWN_RADIUS = 500
-const DESPAWN_RADIUS = 550
-const FADE_START = 400
-const FADE_IN_DIST = 120
-const MIN_SPAWN_DIST = 150 // Never spawn closer than this
+const OBJECT_COUNT = 30
+const RADIUS = 600
+const DESPAWN = 700
 
 function hash(n: number): number {
   const x = Math.sin(n) * 43758.5453
   return x - Math.floor(x)
 }
 
-// ─── Planet shader: surface + atmosphere ───────────────────
+// Soft glowing point sprite shader
+const glowVert = /* glsl */ `
+  attribute float aSize;
+  attribute vec3 aColor;
+  attribute float aGlow;
 
-const planetVert = /* glsl */ `
-  varying vec3 vNormal;
-  varying vec3 vViewDir;
-  varying vec2 vUv;
-  varying vec3 vWorldNormal;
+  uniform float uPixelRatio;
+
+  varying vec3 vColor;
+  varying float vGlow;
 
   void main() {
-    vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
-    vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+    vColor = aColor;
+    vGlow = aGlow;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vViewDir = normalize(-mv.xyz);
     gl_Position = projectionMatrix * mv;
+    gl_PointSize = aSize * uPixelRatio * (300.0 / -mv.z);
+    gl_PointSize = clamp(gl_PointSize, 1.0, 30.0);
   }
 `
 
-const planetFrag = /* glsl */ `
-  uniform vec3 uColor1;
-  uniform vec3 uColor2;
-  uniform vec3 uAtmo;
-  uniform float uTime;
-  uniform float uAlpha;
-  uniform float uSurfaceType; // 0=rocky, 1=gas, 2=ice, 3=earth
-
-  varying vec3 vNormal;
-  varying vec3 vViewDir;
-  varying vec2 vUv;
-  varying vec3 vWorldNormal;
-
-  // Simplex-like noise for surface detail
-  vec3 hash33(vec3 p) {
-    p = vec3(dot(p,vec3(127.1,311.7,74.7)),
-             dot(p,vec3(269.5,183.3,246.1)),
-             dot(p,vec3(113.5,271.9,124.6)));
-    return -1.0+2.0*fract(sin(p)*43758.5453);
-  }
-  float noise(vec3 p) {
-    vec3 i=floor(p); vec3 f=fract(p); vec3 u=f*f*(3.0-2.0*f);
-    return mix(mix(mix(dot(hash33(i),f),
-      dot(hash33(i+vec3(1,0,0)),f-vec3(1,0,0)),u.x),
-      mix(dot(hash33(i+vec3(0,1,0)),f-vec3(0,1,0)),
-      dot(hash33(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),
-      mix(mix(dot(hash33(i+vec3(0,0,1)),f-vec3(0,0,1)),
-      dot(hash33(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),
-      mix(dot(hash33(i+vec3(0,1,1)),f-vec3(0,1,1)),
-      dot(hash33(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z);
-  }
-  float fbm(vec3 p) {
-    float v=0.0, a=0.5;
-    for(int i=0;i<4;i++){v+=a*noise(p);p*=2.0;a*=0.5;}
-    return v;
-  }
+const glowFrag = /* glsl */ `
+  varying vec3 vColor;
+  varying float vGlow;
 
   void main() {
-    // Starlight direction
-    vec3 lightDir = normalize(vec3(0.6, 0.4, 0.8));
-    float NdotL = dot(vWorldNormal, lightDir);
-    float diffuse = max(NdotL, 0.0);
-    float ambient = 0.06;
+    vec2 c = gl_PointCoord - 0.5;
+    float d = length(c);
 
-    // Night side subtle glow (city lights / volcanic for rocky, storms for gas)
-    float nightGlow = max(-NdotL - 0.2, 0.0) * 0.15;
+    // Soft core
+    float core = smoothstep(0.5, 0.0, d);
+    core = pow(core, 2.0); // Extra soft
 
-    // Surface detail based on type
-    vec3 surfaceColor;
-    vec3 p = vec3(vUv * 8.0, uTime * 0.005);
+    // Diffuse halo
+    float halo = smoothstep(0.5, 0.05, d) * 0.3;
 
-    if (uSurfaceType < 0.5) {
-      // Rocky: craters and terrain
-      float terrain = fbm(p * 3.0) * 0.5 + 0.5;
-      float craters = smoothstep(0.55, 0.5, noise(p * 6.0)) * 0.3;
-      surfaceColor = mix(uColor1, uColor2, terrain) - vec3(craters);
-    } else if (uSurfaceType < 1.5) {
-      // Gas giant: zonal bands with turbulence
-      float lat = vUv.y;
-      float bands = sin(lat * 30.0 + fbm(vec3(lat * 5.0, uTime * 0.01, 0.0)) * 2.0) * 0.5 + 0.5;
-      float storms = fbm(vec3(vUv * 12.0, uTime * 0.008)) * 0.3;
-      surfaceColor = mix(uColor1, uColor2, bands + storms);
-      // Great spot
-      float spotDist = length(vUv - vec2(0.3, 0.45));
-      float spot = smoothstep(0.08, 0.04, spotDist);
-      surfaceColor = mix(surfaceColor, uColor1 * 1.3, spot * 0.5);
-    } else if (uSurfaceType < 2.5) {
-      // Ice giant: smooth with subtle bands
-      float bands = sin(vUv.y * 15.0) * 0.15 + 0.5;
-      float swirl = fbm(vec3(vUv * 6.0, uTime * 0.003)) * 0.2;
-      surfaceColor = mix(uColor1, uColor2, bands + swirl);
-    } else {
-      // Earth-like: continents and oceans
-      float continents = fbm(p * 2.0);
-      float land = smoothstep(-0.05, 0.05, continents);
-      vec3 ocean = uColor2;
-      vec3 landColor = uColor1;
-      surfaceColor = mix(ocean, landColor, land);
-      // Polar caps
-      float polar = smoothstep(0.85, 0.95, abs(vUv.y - 0.5) * 2.0);
-      surfaceColor = mix(surfaceColor, vec3(0.9, 0.92, 0.95), polar);
-    }
+    float alpha = (core + halo * vGlow) * 0.8;
+    vec3 color = mix(vColor, vec3(1.0), core * 0.5);
 
-    // Rayleigh atmospheric scattering approximation
-    // Limb brightening: atmosphere is thicker at edges
-    float fresnel = 1.0 - max(dot(vNormal, vViewDir), 0.0);
-    float atmosphere = pow(fresnel, 2.5);
-
-    // Atmospheric color (Rayleigh: shorter wavelengths scatter more)
-    vec3 atmoColor = uAtmo * atmosphere * 2.0;
-
-    // Terminator softening (atmosphere scatters light around the edge)
-    float terminator = smoothstep(-0.15, 0.3, NdotL);
-
-    vec3 color = surfaceColor * (ambient + diffuse * terminator * 0.9) + atmoColor;
-    color += surfaceColor * nightGlow * (1.0 - terminator);
-
-    gl_FragColor = vec4(color, uAlpha);
-  }
-`
-
-// ─── Ring shader with gaps ─────────────────────────────────
-
-const ringVert = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const ringFrag = /* glsl */ `
-  uniform vec3 uRingColor;
-  uniform float uAlpha;
-
-  varying vec2 vUv;
-
-  void main() {
-    float r = length(vUv - 0.5) * 2.0;
-
-    // Main ring structure
-    float ring = smoothstep(0.5, 0.55, r) * smoothstep(1.0, 0.95, r);
-
-    // Ring density bands (like Saturn's A, B, C rings)
-    float bands = 1.0;
-    bands *= smoothstep(0.0, 0.02, abs(r - 0.72)); // Cassini division
-    bands *= smoothstep(0.0, 0.01, abs(r - 0.63)); // Encke gap
-    bands *= 0.5 + 0.5 * sin(r * 80.0); // Fine structure
-    bands = mix(0.3, 1.0, bands);
-
-    float alpha = ring * bands * 0.45 * uAlpha;
-    gl_FragColor = vec4(uRingColor * (0.7 + bands * 0.3), alpha);
-  }
-`
-
-// ─── Nebula cloud shader ───────────────────────────────────
-
-const cloudVert = /* glsl */ `
-  varying vec3 vNormal;
-  varying vec3 vWorldPos;
-  void main() {
-    vNormal = normalize(normalMatrix * normal);
-    vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`
-
-const cloudFrag = /* glsl */ `
-  uniform vec3 uColor1;
-  uniform vec3 uColor2;
-  uniform float uAlpha;
-  uniform float uTime;
-
-  varying vec3 vNormal;
-  varying vec3 vWorldPos;
-
-  vec3 hash33(vec3 p) {
-    p = vec3(dot(p,vec3(127.1,311.7,74.7)),
-             dot(p,vec3(269.5,183.3,246.1)),
-             dot(p,vec3(113.5,271.9,124.6)));
-    return -1.0+2.0*fract(sin(p)*43758.5453);
-  }
-  float noise(vec3 p) {
-    vec3 i=floor(p);vec3 f=fract(p);vec3 u=f*f*(3.0-2.0*f);
-    return mix(mix(mix(dot(hash33(i),f),
-      dot(hash33(i+vec3(1,0,0)),f-vec3(1,0,0)),u.x),
-      mix(dot(hash33(i+vec3(0,1,0)),f-vec3(0,1,0)),
-      dot(hash33(i+vec3(1,1,0)),f-vec3(1,1,0)),u.x),u.y),
-      mix(mix(dot(hash33(i+vec3(0,0,1)),f-vec3(0,0,1)),
-      dot(hash33(i+vec3(1,0,1)),f-vec3(1,0,1)),u.x),
-      mix(dot(hash33(i+vec3(0,1,1)),f-vec3(0,1,1)),
-      dot(hash33(i+vec3(1,1,1)),f-vec3(1,1,1)),u.x),u.y),u.z);
-  }
-  float fbm(vec3 p) {
-    float v=0.0,a=0.5;
-    for(int i=0;i<5;i++){v+=a*noise(p);p*=2.0;a*=0.5;}
-    return v;
-  }
-
-  void main() {
-    vec3 p = vWorldPos * 0.015 + uTime * 0.003;
-    float n1 = fbm(p) * 0.5 + 0.5;
-    float n2 = fbm(p * 1.5 + 10.0) * 0.5 + 0.5;
-
-    // Volumetric-looking density
-    float density = n1 * n2;
-    density = smoothstep(0.15, 0.6, density);
-
-    // Edge glow (Fresnel)
-    float fresnel = pow(1.0 - abs(dot(vNormal, vec3(0,0,1))), 1.5);
-
-    vec3 color = mix(uColor1, uColor2, n1);
-    // Internal emission glow
-    color += uColor2 * density * 0.3;
-
-    float alpha = (density * 0.5 + fresnel * 0.3) * uAlpha;
     gl_FragColor = vec4(color, alpha);
   }
 `
 
-// ─── Body types and spawning ───────────────────────────────
+// Nebula wisp shader — transparent volumetric patch
+const wispVert = /* glsl */ `
+  varying vec3 vNormal;
+  varying vec3 vPos;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vPos = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
 
-interface Body {
-  type: 'planet' | 'gas-giant' | 'binary' | 'cloud'
-  surfaceType: number // 0=rocky, 1=gas, 2=ice, 3=earth
-  position: THREE.Vector3
-  scale: number
-  color1: THREE.Color
-  color2: THREE.Color
-  atmosphere: THREE.Color
-  ringColor?: THREE.Color
-  spawnDist: number // distance from camera at spawn time (for fade-in)
-  active: boolean
-}
+const wispFrag = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  uniform float uTime;
 
-function spawnBody(cx: number, cy: number, cz: number, seed: number): Body {
-  const angle = hash(seed) * Math.PI * 2
-  const elevation = (hash(seed + 1) - 0.5) * 120
-  // Spawn at medium-far distance — never too close
-  const dist = MIN_SPAWN_DIST + hash(seed + 2) * (SPAWN_RADIUS - MIN_SPAWN_DIST)
-  const offsetZ = (hash(seed + 3) - 0.5) * SPAWN_RADIUS
+  varying vec3 vNormal;
+  varying vec3 vPos;
 
-  const position = new THREE.Vector3(
-    cx + Math.cos(angle) * dist,
-    cy + elevation,
-    cz + offsetZ
-  )
-
-  const typeRoll = hash(seed + 4)
-  let type: Body['type']
-  let surfaceType = 0
-  if (typeRoll < 0.15) { type = 'planet'; surfaceType = 0 } // rocky
-  else if (typeRoll < 0.25) { type = 'planet'; surfaceType = 2 } // ice
-  else if (typeRoll < 0.32) { type = 'planet'; surfaceType = 3 } // earth-like (rare!)
-  else if (typeRoll < 0.50) { type = 'gas-giant'; surfaceType = 1 }
-  else if (typeRoll < 0.58) { type = 'binary'; surfaceType = 0 }
-  else { type = 'cloud'; surfaceType = 0 }
-
-  const cs = hash(seed + 5)
-  let color1: THREE.Color, color2: THREE.Color, atmosphere: THREE.Color
-  let ringColor: THREE.Color | undefined
-  let scale: number
-
-  switch (type) {
-    case 'planet':
-      scale = 0.5 + hash(seed + 6) * 1.5
-      if (surfaceType === 0) { // rocky
-        color1 = new THREE.Color(0.35 + cs * 0.15, 0.2, 0.1)
-        color2 = new THREE.Color(0.45, 0.25 + cs * 0.1, 0.15)
-        atmosphere = new THREE.Color(0.5, 0.3, 0.2)
-      } else if (surfaceType === 2) { // ice
-        color1 = new THREE.Color(0.15, 0.25 + cs * 0.1, 0.5 + cs * 0.1)
-        color2 = new THREE.Color(0.1, 0.2, 0.45)
-        atmosphere = new THREE.Color(0.3, 0.5, 0.9)
-      } else { // earth-like
-        scale = 0.5 + hash(seed + 6) * 1.0
-        color1 = new THREE.Color(0.12, 0.35, 0.15)
-        color2 = new THREE.Color(0.08, 0.15, 0.45)
-        atmosphere = new THREE.Color(0.35, 0.55, 1.0)
-      }
-      break
-    case 'gas-giant':
-      scale = 1.5 + hash(seed + 6) * 3
-      color1 = new THREE.Color(0.55 + cs * 0.1, 0.4, 0.25)
-      color2 = new THREE.Color(0.45, 0.3, 0.18)
-      atmosphere = new THREE.Color(0.35, 0.45, 0.65)
-      ringColor = new THREE.Color(0.65, 0.55, 0.45)
-      break
-    case 'binary':
-      scale = 0.4 + hash(seed + 6) * 0.8
-      color1 = new THREE.Color(0.85, 0.88, 1.0)
-      color2 = new THREE.Color(1.0, 0.85, 0.65)
-      atmosphere = new THREE.Color(0.5, 0.6, 1.0)
-      surfaceType = 1 // render like gas (smooth)
-      break
-    default: // cloud
-      scale = 5 + hash(seed + 6) * 10
-      const h = hash(seed + 7)
-      color1 = h < 0.33
-        ? new THREE.Color(0.08, 0.04, 0.2)
-        : h < 0.66
-        ? new THREE.Color(0.04, 0.08, 0.25)
-        : new THREE.Color(0.2, 0.04, 0.06)
-      color2 = new THREE.Color(color1.r * 2, color1.g * 2, color1.b * 2)
-      atmosphere = color1
-      break
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
   }
 
-  return {
-    type, surfaceType, position, scale,
-    color1, color2, atmosphere, ringColor,
-    spawnDist: position.distanceTo(new THREE.Vector3(cx, cy, cz)),
-    active: true,
+  float noise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
   }
+
+  void main() {
+    float n = noise(vPos * 2.0 + uTime * 0.01);
+    float n2 = noise(vPos * 4.0 - uTime * 0.005);
+
+    float density = n * n2;
+    density = smoothstep(0.1, 0.5, density);
+
+    float edge = 1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0)));
+    edge = pow(edge, 1.5);
+
+    float alpha = density * 0.15 * uOpacity + edge * 0.05 * uOpacity;
+    gl_FragColor = vec4(uColor, alpha);
+  }
+`
+
+interface CelestialObj {
+  type: 'glow' | 'wisp'
+  px: number; py: number; pz: number
+  size: number
+  cr: number; cg: number; cb: number
+  glow: number
 }
 
-// ─── Component ─────────────────────────────────────────────
+function spawnObject(cx: number, cy: number, cz: number, seed: number): CelestialObj {
+  const theta = hash(seed) * Math.PI * 2
+  const phi = Math.acos(2 * hash(seed + 1) - 1)
+  const dist = 200 + hash(seed + 2) * 400
+  const type = hash(seed + 3) > 0.35 ? 'glow' as const : 'wisp' as const
+
+  const px = cx + Math.sin(phi) * Math.cos(theta) * dist
+  const py = cy + Math.sin(phi) * Math.sin(theta) * dist * 0.5
+  const pz = cz + Math.cos(phi) * dist
+
+  let cr: number, cg: number, cb: number, size: number, glow: number
+
+  if (type === 'glow') {
+    const colorType = hash(seed + 4)
+    if (colorType < 0.3) {
+      // Warm planet glow
+      cr = 0.9; cg = 0.6; cb = 0.3; size = 1 + hash(seed + 5) * 2
+    } else if (colorType < 0.5) {
+      // Blue ice world
+      cr = 0.3; cg = 0.5; cb = 0.9; size = 0.8 + hash(seed + 5) * 1.5
+    } else if (colorType < 0.7) {
+      // Star cluster - warm white
+      cr = 1.0; cg = 0.95; cb = 0.85; size = 1.5 + hash(seed + 5) * 3
+    } else {
+      // Distant galaxy glow
+      cr = 0.7; cg = 0.7; cb = 1.0; size = 2 + hash(seed + 5) * 4
+    }
+    glow = 0.5 + hash(seed + 6) * 0.5
+  } else {
+    // Nebula wisp colors — cool blue/teal/purple
+    const h = hash(seed + 4)
+    if (h < 0.4) {
+      cr = 0.1; cg = 0.2; cb = 0.5
+    } else if (h < 0.7) {
+      cr = 0.05; cg = 0.3; cb = 0.35
+    } else {
+      cr = 0.15; cg = 0.1; cb = 0.35
+    }
+    size = 8 + hash(seed + 5) * 20
+    glow = 0
+  }
+
+  return { type, px, py, pz, size, cr, cg, cb, glow }
+}
 
 export function CelestialBodies() {
-  const bodiesRef = useRef<Body[]>([])
-  const seedRef = useRef(0)
+  const materialRef = useRef<THREE.ShaderMaterial>(null)
+  const geoRef = useRef<THREE.BufferGeometry>(null)
+  const wispGroupRef = useRef<THREE.Group>(null)
   const initRef = useRef(false)
-  const groupRef = useRef<THREE.Group>(null)
-  const sphereGeoRef = useRef<THREE.SphereGeometry | null>(null)
-  const ringGeoRef = useRef<THREE.RingGeometry | null>(null)
+  const seedRef = useRef(0)
+
+  // Pre-allocate glow buffers
+  const glowCount = Math.floor(OBJECT_COUNT * 0.65)
+  const glowBuf = useMemo(() => ({
+    positions: new Float32Array(glowCount * 3),
+    sizes: new Float32Array(glowCount),
+    colors: new Float32Array(glowCount * 3),
+    glows: new Float32Array(glowCount),
+    objects: [] as CelestialObj[],
+  }), [glowCount])
+
+  const wispObjects = useRef<CelestialObj[]>([])
+  const wispGeo = useRef<THREE.SphereGeometry | null>(null)
+
+  function initGlow(idx: number, obj: CelestialObj) {
+    glowBuf.positions[idx * 3] = obj.px
+    glowBuf.positions[idx * 3 + 1] = obj.py
+    glowBuf.positions[idx * 3 + 2] = obj.pz
+    glowBuf.sizes[idx] = obj.size
+    glowBuf.colors[idx * 3] = obj.cr
+    glowBuf.colors[idx * 3 + 1] = obj.cg
+    glowBuf.colors[idx * 3 + 2] = obj.cb
+    glowBuf.glows[idx] = obj.glow
+  }
 
   useFrame(({ camera, clock }) => {
-    if (!groupRef.current) return
     const cx = camera.position.x, cy = camera.position.y, cz = camera.position.z
     const t = clock.getElapsedTime()
 
     if (!initRef.current) {
-      sphereGeoRef.current = new THREE.SphereGeometry(1, 32, 32)
-      ringGeoRef.current = new THREE.RingGeometry(1.4, 2.6, 48)
+      if (!wispGeo.current) wispGeo.current = new THREE.SphereGeometry(1, 12, 12)
 
-      for (let i = 0; i < BODY_COUNT; i++) {
-        const body = spawnBody(cx, cy, cz, seedRef.current++)
-        bodiesRef.current.push(body)
-        buildMesh(body, groupRef.current, sphereGeoRef.current, ringGeoRef.current, t)
+      let gi = 0
+      for (let i = 0; i < OBJECT_COUNT; i++) {
+        const obj = spawnObject(cx, cy, cz, seedRef.current++)
+        if (obj.type === 'glow' && gi < glowCount) {
+          glowBuf.objects.push(obj)
+          initGlow(gi++, obj)
+        } else if (obj.type === 'wisp') {
+          wispObjects.current.push(obj)
+          addWisp(obj, wispGroupRef.current!, wispGeo.current!, t)
+        }
       }
       initRef.current = true
     }
 
-    const children = groupRef.current.children
-    for (let i = 0; i < bodiesRef.current.length && i < children.length; i++) {
-      const body = bodiesRef.current[i]
-      const group = children[i] as THREE.Group
-      if (!group) continue
-
-      const dx = body.position.x - cx
-      const dy = body.position.y - cy
-      const dz = body.position.z - cz
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz)
-
-      // Distance-based fade: smooth fade in/out, no popping
-      let alpha = 1
-      if (dist > FADE_START) {
-        alpha = 1 - (dist - FADE_START) / (DESPAWN_RADIUS - FADE_START)
+    // Update glow points — respawn if too far
+    let needsUpdate = false
+    for (let i = 0; i < glowBuf.objects.length; i++) {
+      const obj = glowBuf.objects[i]
+      const dx = obj.px - cx, dy = obj.py - cy, dz = obj.pz - cz
+      if (dx * dx + dy * dy + dz * dz > DESPAWN * DESPAWN) {
+        const newObj = spawnObject(cx, cy, cz, seedRef.current++)
+        if (newObj.type === 'glow') {
+          glowBuf.objects[i] = newObj
+          initGlow(i, newObj)
+          needsUpdate = true
+        }
       }
-      // Fade in over FADE_IN_DIST from spawn distance
-      const traveled = body.spawnDist - dist
-      if (traveled < FADE_IN_DIST && traveled >= 0) {
-        alpha = Math.min(alpha, traveled / FADE_IN_DIST)
-      }
-      alpha = Math.max(0, Math.min(1, alpha))
+    }
+    if (needsUpdate && geoRef.current) {
+      geoRef.current.attributes.position.needsUpdate = true
+      geoRef.current.attributes.aColor.needsUpdate = true
+    }
 
-      // Update alpha uniform on all materials in this group
-      group.traverse((child) => {
-        if (child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial) {
-          if (child.material.uniforms.uAlpha) {
-            child.material.uniforms.uAlpha.value = alpha
-          }
-          if (child.material.uniforms.uTime) {
-            child.material.uniforms.uTime.value = t
+    // Update wisps
+    if (wispGroupRef.current) {
+      const children = wispGroupRef.current.children
+      for (let i = 0; i < wispObjects.current.length && i < children.length; i++) {
+        const obj = wispObjects.current[i]
+        const dx = obj.px - cx, dy = obj.py - cy, dz = obj.pz - cz
+        const distSq = dx * dx + dy * dy + dz * dz
+
+        // Fade based on distance
+        const mesh = children[i] as THREE.Mesh
+        if (mesh.material instanceof THREE.ShaderMaterial) {
+          const fade = distSq > (DESPAWN * 0.8) * (DESPAWN * 0.8)
+            ? Math.max(0, 1 - (Math.sqrt(distSq) - DESPAWN * 0.8) / (DESPAWN * 0.2))
+            : 1
+          mesh.material.uniforms.uOpacity.value = fade
+          mesh.material.uniforms.uTime.value = t
+        }
+
+        if (distSq > DESPAWN * DESPAWN) {
+          const newObj = spawnObject(cx, cy, cz, seedRef.current++)
+          if (newObj.type === 'wisp') {
+            wispObjects.current[i] = newObj
+            mesh.position.set(newObj.px, newObj.py, newObj.pz)
+            mesh.scale.setScalar(newObj.size)
           }
         }
-      })
-
-      // Slow rotation for planets
-      if (body.type !== 'cloud') {
-        group.rotation.y += 0.001
       }
+    }
 
-      // Binary star orbital motion — companion orbits primary
-      if (body.type === 'binary' && group.children.length > 1) {
-        const companion = group.children[1]
-        const orbitRadius = 2.5
-        const orbitSpeed = 0.3 // radians per second
-        companion.position.x = Math.cos(t * orbitSpeed) * orbitRadius
-        companion.position.z = Math.sin(t * orbitSpeed) * orbitRadius
-        companion.position.y = Math.sin(t * orbitSpeed * 0.5) * 0.5
-      }
-
-      // Respawn if too far
-      if (dist > DESPAWN_RADIUS) {
-        const newBody = spawnBody(cx, cy, cz, seedRef.current++)
-        bodiesRef.current[i] = newBody
-        // Remove old, build new
-        while (group.children.length) group.remove(group.children[0])
-        rebuildMeshInto(newBody, group, sphereGeoRef.current!, ringGeoRef.current!, t)
-        group.position.copy(newBody.position)
-        group.scale.setScalar(newBody.scale)
-        group.rotation.set(0, 0, 0)
-      }
+    if (materialRef.current) {
+      materialRef.current.uniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2)
     }
   })
 
-  return <group ref={groupRef} />
+  return (
+    <group>
+      {/* Glowing points — planets, clusters, distant galaxies */}
+      <points frustumCulled={false}>
+        <bufferGeometry ref={geoRef}>
+          <bufferAttribute attach="attributes-position" args={[glowBuf.positions, 3]} />
+          <bufferAttribute attach="attributes-aSize" args={[glowBuf.sizes, 1]} />
+          <bufferAttribute attach="attributes-aColor" args={[glowBuf.colors, 3]} />
+          <bufferAttribute attach="attributes-aGlow" args={[glowBuf.glows, 1]} />
+        </bufferGeometry>
+        <shaderMaterial
+          ref={materialRef}
+          vertexShader={glowVert}
+          fragmentShader={glowFrag}
+          uniforms={{
+            uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+          }}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </points>
+
+      {/* Nebula wisps — soft transparent volumes */}
+      <group ref={wispGroupRef} />
+    </group>
+  )
 }
 
-function buildMesh(body: Body, parent: THREE.Group, sg: THREE.SphereGeometry, rg: THREE.RingGeometry, time: number) {
-  const group = new THREE.Group()
-  group.position.copy(body.position)
-  group.scale.setScalar(body.scale)
-  rebuildMeshInto(body, group, sg, rg, time)
-  parent.add(group)
-}
-
-function rebuildMeshInto(body: Body, group: THREE.Group, sg: THREE.SphereGeometry, rg: THREE.RingGeometry, time: number) {
-  if (body.type === 'cloud') {
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: cloudVert, fragmentShader: cloudFrag,
-      uniforms: {
-        uColor1: { value: body.color1 }, uColor2: { value: body.color2 },
-        uAlpha: { value: 0 }, uTime: { value: time },
-      },
-      transparent: true, depthWrite: false,
-      side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-    })
-    group.add(new THREE.Mesh(sg, mat))
-  } else {
-    const mat = new THREE.ShaderMaterial({
-      vertexShader: planetVert, fragmentShader: planetFrag,
-      uniforms: {
-        uColor1: { value: body.color1 }, uColor2: { value: body.color2 },
-        uAtmo: { value: body.atmosphere }, uTime: { value: time },
-        uAlpha: { value: 0 }, uSurfaceType: { value: body.surfaceType },
-      },
-      transparent: true,
-    })
-    group.add(new THREE.Mesh(sg, mat))
-
-    if (body.type === 'gas-giant' && body.ringColor) {
-      const ringMat = new THREE.ShaderMaterial({
-        vertexShader: ringVert, fragmentShader: ringFrag,
-        uniforms: { uRingColor: { value: body.ringColor }, uAlpha: { value: 0 } },
-        transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      })
-      const ring = new THREE.Mesh(rg, ringMat)
-      ring.rotation.x = Math.PI * 0.3 + (Math.random() - 0.5) * 0.4
-      group.add(ring)
-    }
-
-    if (body.type === 'binary') {
-      const cMat = new THREE.ShaderMaterial({
-        vertexShader: planetVert, fragmentShader: planetFrag,
-        uniforms: {
-          uColor1: { value: body.color2 }, uColor2: { value: body.color1 },
-          uAtmo: { value: new THREE.Color(1.0, 0.8, 0.5) },
-          uTime: { value: time }, uAlpha: { value: 0 },
-          uSurfaceType: { value: 1 },
-        },
-        transparent: true,
-      })
-      const companion = new THREE.Mesh(sg, cMat)
-      companion.position.set(2.5, 0.3, 0)
-      companion.scale.setScalar(0.5 + Math.random() * 0.3)
-      group.add(companion)
-    }
-  }
+function addWisp(obj: CelestialObj, parent: THREE.Group, geo: THREE.SphereGeometry, time: number) {
+  const mat = new THREE.ShaderMaterial({
+    vertexShader: wispVert,
+    fragmentShader: wispFrag,
+    uniforms: {
+      uColor: { value: new THREE.Color(obj.cr, obj.cg, obj.cb) },
+      uOpacity: { value: 1.0 },
+      uTime: { value: time },
+    },
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  })
+  const mesh = new THREE.Mesh(geo, mat)
+  mesh.position.set(obj.px, obj.py, obj.pz)
+  mesh.scale.setScalar(obj.size)
+  parent.add(mesh)
 }

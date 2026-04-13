@@ -108,13 +108,13 @@ const skyboxFragmentShader = /* glsl */ `
     // Apply dust lanes — darken regions
     color *= (1.0 - dustMask);
 
-    // Subtle warm glow from one direction (distant galactic core)
+    // Subtle cool glow from galactic core direction
     float warmDir = dot(dir, normalize(vec3(0.5, 0.3, -0.8)));
-    color += warmGlow * smoothstep(0.4, 1.0, warmDir) * 0.35;
+    color += nebulaWarm * smoothstep(0.5, 1.0, warmDir) * 0.2;
 
-    // Secondary cool glow from opposite side
+    // Stronger cool glow from opposite (stress-reducing blue)
     float coolDir = dot(dir, normalize(vec3(-0.7, -0.2, 0.5)));
-    color += vec3(0.02, 0.04, 0.08) * smoothstep(0.5, 1.0, coolDir) * 0.25;
+    color += vec3(0.03, 0.06, 0.12) * smoothstep(0.4, 1.0, coolDir) * 0.35;
 
     // ----- Milky Way diffuse glow along galactic plane -----
     // Galactic plane normal (must match cosmology.ts GALACTIC_NORMAL)
