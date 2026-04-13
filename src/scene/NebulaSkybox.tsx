@@ -72,49 +72,75 @@ const skyboxFragmentShader = /* glsl */ `
     float dustMask = smoothstep(0.45, 0.65, dust) * 0.7;
 
     // ----- Color palette -----
-    // Stress-reducing color palette
-    // Blue/teal: cortisol reduction (University of Granada, 2017)
-    // Fractal patterns at D=1.3-1.5: 60% stress reduction (Taylor, 2011)
-    // Low contrast, cool dominant with warm accents
-    vec3 deepSpace = vec3(0.005, 0.008, 0.025);
-    vec3 nebulaBlue = vec3(0.03, 0.10, 0.30);      // Primary — calming blue
-    vec3 nebulaTeal = vec3(0.02, 0.16, 0.20);       // Secondary — serene teal
-    vec3 nebulaPurple = vec3(0.06, 0.03, 0.18);     // Depth — gentle purple
-    vec3 nebulaIndigo = vec3(0.04, 0.05, 0.22);     // Bridge blue-purple
-    vec3 nebulaCyan = vec3(0.03, 0.12, 0.18);       // Highlight — fresh
-    vec3 nebulaWarm = vec3(0.12, 0.06, 0.02);       // Warm accent (minimal)
-    vec3 nebulaRose = vec3(0.10, 0.04, 0.08);       // Soft pink accent
+    // Hubble Space Telescope-inspired: rich and diverse but soft.
+    // Mix of cool (calming) and warm (inspiring) — like real nebulae.
+    //
+    // Science: fractal patterns (D=1.3-1.5) reduce stress 60% (Taylor 2011)
+    // Cool-dominant palette reduces cortisol (Granada 2017)
+    // But warm accents are essential — real nebulae have ALL colors.
+    // The key is LOW CONTRAST + SOFT SATURATION, not absence of color.
+    //
+    // Real emission nebulae colors come from:
+    //   Hα (hydrogen): deep red/rose (656.3 nm)
+    //   [OIII] (oxygen): teal/cyan (500.7 nm)
+    //   [SII] (sulfur): warm red (671.6 nm)
+    //   [NII] (nitrogen): red-orange (658.4 nm)
+    //   Continuum: blue reflection nebulae
+    //
+    // Hubble Palette maps: SII→Red, Hα→Green, OIII→Blue
+    // We use a softer version for ambient beauty.
 
-    // ----- Build color -----
+    vec3 deepSpace = vec3(0.005, 0.006, 0.022);
+
+    // Cool tones (60% of palette — calming foundation)
+    vec3 nebulaBlue    = vec3(0.03, 0.08, 0.25);    // OIII reflection
+    vec3 nebulaTeal    = vec3(0.02, 0.14, 0.18);    // OIII emission
+    vec3 nebulaIndigo  = vec3(0.05, 0.04, 0.20);    // Deep space blue-purple
+
+    // Warm tones (40% — gives richness and Hubble realism)
+    vec3 nebulaPurple  = vec3(0.10, 0.03, 0.20);    // Pillars of Creation
+    vec3 nebulaRose    = vec3(0.18, 0.04, 0.10);    // Hα hydrogen emission
+    vec3 nebulaGold    = vec3(0.16, 0.10, 0.03);    // SII sulfur / stellar nursery
+    vec3 nebulaCrimson = vec3(0.14, 0.03, 0.06);    // Carina deep red
+    vec3 nebulaViolet  = vec3(0.08, 0.03, 0.16);    // Veil Nebula
+
+    // ----- Build color — layered like real Hubble images -----
     vec3 color = deepSpace;
 
-    // Blue/teal dominant — scientifically calming
-    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.75);
-    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.65);
-    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n1 * n2) * 0.5);
-    color = mix(color, nebulaCyan, smoothstep(0.5, 0.85, n3) * 0.4);
-    // Gentle warm accents (less than 20% of palette)
-    color = mix(color, nebulaPurple, smoothstep(0.55, 0.85, n2 * n3) * 0.3);
-    color = mix(color, nebulaRose, smoothstep(0.65, 0.9, n1 * n3) * 0.15);
+    // Layer 1: Large-scale blue/teal foundation (calming)
+    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.65);
+    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.55);
+
+    // Layer 2: Purple/indigo depth regions
+    color = mix(color, nebulaPurple, smoothstep(0.35, 0.75, n1 * n2) * 0.5);
+    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n3) * 0.45);
+
+    // Layer 3: Warm emission — rose, gold, crimson (Hubble richness)
+    color = mix(color, nebulaRose, smoothstep(0.5, 0.85, n2 * n3) * 0.35);
+    color = mix(color, nebulaGold, smoothstep(0.55, 0.85, n1 * n3) * 0.28);
+    color = mix(color, nebulaCrimson, smoothstep(0.6, 0.9, n1 * n2 * n3) * 0.2);
+
+    // Layer 4: Violet accents in deep regions
+    color = mix(color, nebulaViolet, smoothstep(0.65, 0.9, n3 * n3) * 0.25);
 
     // Fine-scale bright wisps (Hubble-like filaments)
-    float wisps = smoothstep(0.55, 0.9, n1 * n3);
-    color += vec3(0.06, 0.04, 0.08) * wisps;
+    float wisps = smoothstep(0.5, 0.9, n1 * n3);
+    color += vec3(0.05, 0.03, 0.07) * wisps;
 
-    // Bright emission knots
-    float knots = smoothstep(0.85, 0.95, n1) * smoothstep(0.85, 0.95, n2);
-    color += vec3(0.1, 0.06, 0.02) * knots;
+    // Bright emission knots — where new stars are born
+    float knots = smoothstep(0.82, 0.95, n1) * smoothstep(0.82, 0.95, n2);
+    color += vec3(0.08, 0.05, 0.02) * knots;
 
-    // Apply dust lanes — darken regions
+    // Apply dust lanes — dark absorption (real physics)
     color *= (1.0 - dustMask);
 
-    // Subtle cool glow from galactic core direction
+    // Galactic core warm glow (one direction)
     float warmDir = dot(dir, normalize(vec3(0.5, 0.3, -0.8)));
-    color += nebulaWarm * smoothstep(0.5, 1.0, warmDir) * 0.2;
+    color += vec3(0.08, 0.04, 0.01) * smoothstep(0.5, 1.0, warmDir) * 0.3;
 
-    // Stronger cool glow from opposite (stress-reducing blue)
+    // Cool counter-glow (opposite direction)
     float coolDir = dot(dir, normalize(vec3(-0.7, -0.2, 0.5)));
-    color += vec3(0.03, 0.06, 0.12) * smoothstep(0.4, 1.0, coolDir) * 0.35;
+    color += vec3(0.02, 0.05, 0.10) * smoothstep(0.4, 1.0, coolDir) * 0.3;
 
     // ----- Milky Way diffuse glow along galactic plane -----
     // Galactic plane normal (must match cosmology.ts GALACTIC_NORMAL)

@@ -158,14 +158,18 @@ function spawnObject(cx: number, cy: number, cz: number, seed: number): Celestia
     }
     glow = 0.5 + hash(seed + 6) * 0.5
   } else {
-    // Nebula wisp colors — cool blue/teal/purple
+    // Nebula wisp colors — Hubble palette diversity
     const h = hash(seed + 4)
-    if (h < 0.4) {
-      cr = 0.1; cg = 0.2; cb = 0.5
-    } else if (h < 0.7) {
-      cr = 0.05; cg = 0.3; cb = 0.35
+    if (h < 0.25) {
+      cr = 0.08; cg = 0.15; cb = 0.4   // OIII blue
+    } else if (h < 0.45) {
+      cr = 0.04; cg = 0.25; cb = 0.3   // Teal
+    } else if (h < 0.65) {
+      cr = 0.18; cg = 0.06; cb = 0.3   // Purple
+    } else if (h < 0.8) {
+      cr = 0.2; cg = 0.06; cb = 0.1    // Hα rose
     } else {
-      cr = 0.15; cg = 0.1; cb = 0.35
+      cr = 0.15; cg = 0.1; cb = 0.03   // Gold nebula
     }
     size = 8 + hash(seed + 5) * 20
     glow = 0
