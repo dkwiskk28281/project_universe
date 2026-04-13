@@ -52,13 +52,15 @@ export class DroneLayer {
     this.createFilteredVoice(CMB * 2, 0.015, 600)
     this.createFilteredVoice(CMB * 2 + 0.3, 0.012, 600)
 
-    // === Ultra-slow breathing LFO (~80 seconds) ===
-    // Matches slow respiratory cycle for sleep induction
+    // === Resonance frequency breathing LFO (0.1 Hz) ===
+    // Synchronized with visual BreathingOverlay component
+    // 0.1 Hz = 10s cycle = 6 breaths/min = cardiovascular resonance
+    // Lehrer & Gevirtz 2014: maximizes HRV, activates baroreflex
     const breathLFO = this.ctx.createOscillator()
     breathLFO.type = 'sine'
-    breathLFO.frequency.value = 1 / 80
+    breathLFO.frequency.value = 0.1
     const breathDepth = this.ctx.createGain()
-    breathDepth.gain.value = 0.008
+    breathDepth.gain.value = 0.012 // Very subtle
     breathLFO.connect(breathDepth)
     if (this.destination instanceof GainNode) {
       breathDepth.connect((this.destination as GainNode).gain)

@@ -3,6 +3,7 @@ import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { EncounterIndicator } from './ui/EncounterIndicator'
 import { CosmicComm } from './ui/CosmicComm'
+import { BreathingOverlay } from './ui/BreathingOverlay'
 import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
@@ -15,26 +16,19 @@ export default function App() {
 
   useEncounter()
 
-  // iOS Safari audio unlock: use a raw DOM listener on the document.
-  // This is the approach used by Howler.js, Tone.js, and PixiJS.
-  // React synthetic events sometimes don't count as "user gestures" on iOS.
   useEffect(() => {
     const unlockAudio = () => {
       if (audioInitRef.current) return
       audioInitRef.current = true
       AudioEngine.init()
       setAudioReady(true)
-      // Remove listeners after first successful init
       document.removeEventListener('touchstart', unlockAudio, true)
       document.removeEventListener('touchend', unlockAudio, true)
       document.removeEventListener('click', unlockAudio, true)
     }
-
-    // Capture phase listeners — fire before any React handlers
     document.addEventListener('touchstart', unlockAudio, true)
     document.addEventListener('touchend', unlockAudio, true)
     document.addEventListener('click', unlockAudio, true)
-
     return () => {
       document.removeEventListener('touchstart', unlockAudio, true)
       document.removeEventListener('touchend', unlockAudio, true)
@@ -43,7 +37,6 @@ export default function App() {
   }, [setAudioReady])
 
   const handleStart = useCallback(() => {
-    // Audio already initialized by document-level listener above
     if (!audioInitRef.current) {
       audioInitRef.current = true
       AudioEngine.init()
@@ -67,6 +60,7 @@ export default function App() {
       <LoadingScreen onStart={handleStart} />
       {started && (
         <>
+          <BreathingOverlay />
           <EncounterIndicator />
           <CosmicComm />
         </>
