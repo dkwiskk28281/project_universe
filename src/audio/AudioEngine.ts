@@ -3,20 +3,17 @@ import { CosmicHumLayer } from './CosmicHumLayer'
 import { PulsarLayer } from './PulsarLayer'
 
 /**
- * Audio Engine — iOS-proof cosmic soundscape.
+ * Audio Engine — simplified for reliability.
  *
- * Uses THREE unlock methods simultaneously:
- *   1. HTML5 <audio> element with silent data URI (forces iOS playback mode)
- *   2. Web Audio silent buffer trick
- *   3. AudioContext.resume()
+ * MUST be called from LoadingScreen's onClick handler DIRECTLY.
+ * No indirection. onClick → init() → new AudioContext().
  *
- * The HTML5 <audio> trick is what makes iOS work even in silent mode
- * on some versions — it switches the audio session to "playback" category.
+ * iOS Safari rules:
+ *   1. AudioContext must be created in user gesture call stack
+ *   2. resume() must be called in same call stack
+ *   3. No async/await before these calls
+ *   4. The physical mute switch overrides everything (hardware)
  */
-
-// Tiny silent MP3 as base64 data URI — plays via HTML5 <audio> to unlock iOS
-const SILENT_MP3 = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwMHAAAAAAD/+1DEAAAHAAGf9AAAIiSAM/8xIRBAEAwD4Pg+BAMBgfB9/ygIAgGD7/lAQBAEAQfB8HwfB8HwfB9/ygfB8H3/KAgCAIPg+D4Pg+D7/8oCAIBg+/5QEAQBAEHwfB8HwfB8H3/5QPg+D4Pv+UBAEAwfB8HwfB8H3/KAgCAYP/+1DEMoAQAAGf+AAAAAANIN/8AAAB8HwfB8HwfB8H3/KB8HwfB9/ygIAgGD4Pg+D4Pg+D7/8oHwfB8H3/KAgCAYPg+D4Pg+D4Pv/ygIAgGD7/lAQBAEAQfB8HwfB8HwfB9/+UBAMAwff8oCAIAgCD4Pg+D4Pg+D7/lA+D4Pg+/5QEAQDB8HwfB8Hwff/lA'
-
 class AudioEngineClass {
   private ctx: AudioContext | null = null
   private masterGain: GainNode | null = null
@@ -30,64 +27,36 @@ class AudioEngineClass {
   init(): void {
     if (this.initialized) return
 
-    try {
-      // === Method 1: HTML5 <audio> element unlock ===
-      // This forces iOS into "playback" audio session mode
-      const audio = document.createElement('audio')
-      audio.src = SILENT_MP3
-      audio.preload = 'auto'
-      audio.setAttribute('playsinline', '')
-      audio.play().catch(() => {})
+    // Create AudioContext — MUST be synchronous, no try/catch wrapping the constructor
+    const AC = (window as any).AudioContext || (window as any).webkitAudioContext
+    if (!AC) return
 
-      // === Method 2: Web Audio API ===
-      const AC = (window as any).AudioContext || (window as any).webkitAudioContext
-      if (!AC) return
+    this.ctx = new AC()
+    this.ctx.resume() // Must be in same call stack as user gesture
 
-      this.ctx = new AC()
+    // Master output
+    this.masterGain = this.ctx.createGain()
+    this.masterGain.gain.value = 1.0
+    this.masterGain.connect(this.ctx.destination)
 
-      // Method 3: silent buffer
-      const buf = this.ctx.createBuffer(1, 1, this.ctx.sampleRate)
-      const src = this.ctx.createBufferSource()
-      src.buffer = buf
-      src.connect(this.ctx.destination)
-      src.start(0)
+    // Start layers immediately
+    this.drone = new DroneLayer(this.ctx, this.masterGain)
+    this.cosmicHum = new CosmicHumLayer(this.ctx, this.masterGain)
+    this.pulsar = new PulsarLayer(this.ctx, this.masterGain)
 
-      // Method 4: explicit resume
-      this.ctx.resume()
+    this.drone.start()
+    this.cosmicHum.start()
+    this.pulsar.start()
+    this.addSolfeggioTone()
 
-      // Master output
-      this.masterGain = this.ctx.createGain()
-      this.masterGain.gain.value = 1.0
-      this.masterGain.connect(this.ctx.destination)
+    this.initialized = true
 
-      // Start audio layers
-      this.drone = new DroneLayer(this.ctx, this.masterGain)
-      this.cosmicHum = new CosmicHumLayer(this.ctx, this.masterGain)
-      this.pulsar = new PulsarLayer(this.ctx, this.masterGain)
+    // Reverb added after a delay (heavy computation)
+    setTimeout(() => this.addReverb(), 500)
 
-      this.drone.start()
-      this.cosmicHum.start()
-      this.pulsar.start()
-      this.addSolfeggioTone()
-
-      this.initialized = true
-
-      // Deferred reverb (heavy computation off gesture thread)
-      setTimeout(() => this.addReverb(), 500)
-
-      // Aggressive resume retries
-      const retryResume = () => {
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume()
-        }
-      }
-      setTimeout(retryResume, 100)
-      setTimeout(retryResume, 300)
-      setTimeout(retryResume, 800)
-      setTimeout(retryResume, 2000)
-    } catch (e) {
-      console.warn('[COSMOS] Audio error:', e)
-    }
+    // Resume retries for edge cases
+    setTimeout(() => this.ctx?.state === 'suspended' && this.ctx.resume(), 200)
+    setTimeout(() => this.ctx?.state === 'suspended' && this.ctx.resume(), 1000)
   }
 
   private addReverb() {
@@ -112,7 +81,7 @@ class AudioEngineClass {
       conv.connect(wet)
       dry.connect(this.ctx.destination)
       wet.connect(this.ctx.destination)
-    } catch {}
+    } catch { /* reverb optional */ }
   }
 
   private addSolfeggioTone() {
@@ -146,13 +115,8 @@ class AudioEngineClass {
     o2.connect(g2); g2.connect(this.encounterGain); o2.start(now)
     g2.gain.setTargetAtTime(0.3, now + 3, 6)
 
-    const o3 = this.ctx.createOscillator(); o3.type = 'sine'; o3.frequency.value = 639
-    const g3 = this.ctx.createGain(); g3.gain.value = 0
-    o3.connect(g3); g3.connect(this.encounterGain); o3.start(now)
-    g3.gain.setTargetAtTime(0.2, now + 8, 8)
-
     this.encounterGain.gain.setTargetAtTime(0.08, now, 5)
-    this.encounterNodes = [o1, o2, o3, f1, g2, g3]
+    this.encounterNodes = [o1, o2, f1, g2]
     this.pulsar?.setEncounterMode(true)
   }
 

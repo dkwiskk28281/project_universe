@@ -1,5 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
+import { AudioEngine } from '../audio/AudioEngine'
 
+/**
+ * Loading Screen — COSMOS entry point.
+ *
+ * Audio initialization happens DIRECTLY in this component's
+ * click handler — not in App.tsx, not in a useEffect, not in
+ * a document listener. This is the ONLY reliable way on iOS Safari.
+ *
+ * iOS requires AudioContext to be created in the DIRECT synchronous
+ * call stack of a user gesture handler. Any indirection (callbacks,
+ * React state updates, useEffect) can break the gesture chain.
+ */
 export function LoadingScreen({ onStart }: { onStart: () => void }) {
   const [opacity, setOpacity] = useState(1)
   const [visible, setVisible] = useState(true)
@@ -11,22 +23,28 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
     return () => clearTimeout(timer)
   }, [])
 
-  const handleStart = () => {
-    // Prevent double-fire from both touch and click on mobile
+  if (!visible) return null
+
+  // DIRECT click handler — AudioContext created RIGHT HERE
+  // No indirection, no callbacks, no React state in between
+  const handleClick = () => {
     if (startedRef.current) return
     startedRef.current = true
 
+    // Step 1: Init audio DIRECTLY in gesture handler
+    AudioEngine.init()
+
+    // Step 2: Notify app
     onStart()
+
+    // Step 3: Fade out
     setOpacity(0)
     setTimeout(() => setVisible(false), 2000)
   }
 
-  if (!visible) return null
-
   return (
     <div
-      onPointerDown={handleStart}
-      onTouchEnd={(e) => { e.preventDefault(); handleStart(); }}
+      onClick={handleClick}
       style={{
         position: 'fixed',
         inset: 0,
@@ -39,8 +57,6 @@ export function LoadingScreen({ onStart }: { onStart: () => void }) {
         cursor: 'pointer',
         opacity,
         transition: 'opacity 2s ease-out',
-        touchAction: 'manipulation',
-        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <h1

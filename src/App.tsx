@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback } from 'react'
 import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
 import { EncounterIndicator } from './ui/EncounterIndicator'
@@ -8,43 +8,26 @@ import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
 
+/**
+ * App — minimal orchestration.
+ *
+ * Audio init is handled ENTIRELY by LoadingScreen's onClick.
+ * No document listeners, no refs, no complexity.
+ */
 export default function App() {
   const started = useCosmosStore((s) => s.started)
   const setStarted = useCosmosStore((s) => s.setStarted)
   const setAudioReady = useCosmosStore((s) => s.setAudioReady)
-  const audioInitRef = useRef(false)
 
   useEncounter()
 
-  useEffect(() => {
-    const unlockAudio = () => {
-      if (audioInitRef.current) return
-      audioInitRef.current = true
-      AudioEngine.init()
-      setAudioReady(true)
-      document.removeEventListener('touchstart', unlockAudio, true)
-      document.removeEventListener('touchend', unlockAudio, true)
-      document.removeEventListener('click', unlockAudio, true)
-    }
-    document.addEventListener('touchstart', unlockAudio, true)
-    document.addEventListener('touchend', unlockAudio, true)
-    document.addEventListener('click', unlockAudio, true)
-    return () => {
-      document.removeEventListener('touchstart', unlockAudio, true)
-      document.removeEventListener('touchend', unlockAudio, true)
-      document.removeEventListener('click', unlockAudio, true)
-    }
-  }, [setAudioReady])
-
+  // Called by LoadingScreen AFTER AudioEngine.init() has already run
   const handleStart = useCallback(() => {
-    if (!audioInitRef.current) {
-      audioInitRef.current = true
-      AudioEngine.init()
-      setAudioReady(true)
-    }
+    setAudioReady(true)
     setStarted(true)
   }, [setAudioReady, setStarted])
 
+  // Battery saving
   useEffect(() => {
     const h = () => {
       if (document.hidden) AudioEngine.suspend()
