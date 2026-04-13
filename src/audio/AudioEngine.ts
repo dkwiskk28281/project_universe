@@ -39,6 +39,19 @@ class AudioEngineClass {
     this.masterGain.gain.value = 1.0
     this.masterGain.connect(this.ctx.destination)
 
+    // Ultra-slow master volume drift (20 min cycle)
+    // Prevents listener fatigue from constant volume.
+    // Research: continuous same-level sound causes auditory adaptation.
+    // Gentle ±8% variation keeps the brain engaged without alerting.
+    const fatigueLFO = this.ctx.createOscillator()
+    fatigueLFO.type = 'sine'
+    fatigueLFO.frequency.value = 1 / (20 * 60) // 20 minute cycle
+    const fatigueMod = this.ctx.createGain()
+    fatigueMod.gain.value = 0.08
+    fatigueLFO.connect(fatigueMod)
+    fatigueMod.connect(this.masterGain.gain)
+    fatigueLFO.start()
+
     // Start layers immediately
     this.drone = new DroneLayer(this.ctx, this.masterGain)
     this.cosmicHum = new CosmicHumLayer(this.ctx, this.masterGain)
