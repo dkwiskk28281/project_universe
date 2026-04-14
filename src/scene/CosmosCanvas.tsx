@@ -12,6 +12,7 @@ import { EncounterEntity } from './EncounterEntity'
 import { ShootingStar } from './ShootingStar'
 import { Supernova } from './Supernova'
 import { CelestialBodies } from './CelestialBodies'
+import { NearWisps } from './NearWisps'
 
 export function CosmosCanvas() {
   const { qualityPreset } = useCosmosStore()
@@ -49,6 +50,7 @@ export function CosmosCanvas() {
       <MilkyWay />
       <DistantGalaxies />
       <CelestialBodies />
+      <NearWisps />
       <ShootingStar />
       <Supernova />
       <EncounterEntity />
