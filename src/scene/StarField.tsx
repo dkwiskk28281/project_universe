@@ -69,12 +69,27 @@ const starFragmentShader = /* glsl */ `
   varying vec3 vColor;
 
   void main() {
-    vec2 center = gl_PointCoord - 0.5;
-    float dist = length(center);
-    float alpha = smoothstep(0.5, 0.1, dist) * vBrightness;
+    vec2 c = gl_PointCoord - 0.5;
+    float dist = length(c);
 
-    vec3 color = mix(vColor, vec3(1.0), vBrightness * 0.3);
-    gl_FragColor = vec4(color, alpha);
+    // Core glow
+    float core = smoothstep(0.5, 0.05, dist);
+    core = pow(core, 1.5);
+
+    // Diffraction spikes for bright stars (telescope cross pattern)
+    float spikes = 0.0;
+    if (vBrightness > 0.6) {
+      float spikeStrength = (vBrightness - 0.6) * 2.5;
+      // 4-pointed cross
+      float sx = smoothstep(0.03, 0.0, abs(c.y)) * smoothstep(0.5, 0.1, abs(c.x));
+      float sy = smoothstep(0.03, 0.0, abs(c.x)) * smoothstep(0.5, 0.1, abs(c.y));
+      spikes = (sx + sy) * spikeStrength * 0.4;
+    }
+
+    float alpha = (core + spikes) * vBrightness;
+    vec3 color = mix(vColor, vec3(1.0), core * 0.4);
+
+    gl_FragColor = vec4(color, clamp(alpha, 0.0, 1.0));
   }
 `
 
