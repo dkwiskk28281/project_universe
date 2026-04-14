@@ -107,8 +107,22 @@ export class DroneLayer {
     filter.type = 'lowpass'; filter.frequency.value = filterFreq; filter.Q.value = 0.4
     const gain = this.ctx.createGain()
     gain.gain.value = vol
-    osc.connect(filter); filter.connect(gain); gain.connect(this.destination)
+
+    // Spatial autopanning — voice slowly orbits the listener
+    // Each voice has a different orbit speed for rich spatial movement
+    const panner = this.ctx.createStereoPanner()
+    const panLFO = this.ctx.createOscillator()
+    panLFO.type = 'sine'
+    // Orbit period: 30-90 seconds (unique per voice based on frequency)
+    panLFO.frequency.value = 1 / (30 + (freq % 60))
+    const panDepth = this.ctx.createGain()
+    panDepth.gain.value = 0.4 // Pan range ±0.4 (not extreme)
+    panLFO.connect(panDepth)
+    panDepth.connect(panner.pan)
+    panLFO.start()
+
+    osc.connect(filter); filter.connect(gain); gain.connect(panner); panner.connect(this.destination)
     osc.start()
-    this.nodes.push(osc, filter, gain)
+    this.nodes.push(osc, filter, gain, panner, panLFO, panDepth)
   }
 }

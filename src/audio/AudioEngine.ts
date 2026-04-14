@@ -3,16 +3,13 @@ import { CosmicHumLayer } from './CosmicHumLayer'
 import { PulsarLayer } from './PulsarLayer'
 
 /**
- * Audio Engine — simplified for reliability.
+ * Audio Engine — Cinematic cosmic soundscape.
  *
- * MUST be called from LoadingScreen's onClick handler DIRECTLY.
- * No indirection. onClick → init() → new AudioContext().
- *
- * iOS Safari rules:
- *   1. AudioContext must be created in user gesture call stack
- *   2. resume() must be called in same call stack
- *   3. No async/await before these calls
- *   4. The physical mute switch overrides everything (hardware)
+ * UX design:
+ *   1. Entry: dramatic warp sweep sound
+ *   2. Build-up: all layers fade in over 15 seconds (not instant)
+ *   3. Steady state: ambient pad with spatial autopanning
+ *   4. Anti-fatigue: 20-minute volume drift
  */
 class AudioEngineClass {
   private ctx: AudioContext | null = null
@@ -27,57 +24,154 @@ class AudioEngineClass {
   init(): void {
     if (this.initialized) return
 
-    // Create AudioContext — MUST be synchronous, no try/catch wrapping the constructor
     const AC = (window as any).AudioContext || (window as any).webkitAudioContext
     if (!AC) return
 
     this.ctx = new AC()
-    this.ctx.resume() // Must be in same call stack as user gesture
+    this.ctx.resume()
 
-    // Master output
+    // Master output — starts at ZERO, builds up over 15 seconds
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 1.0
+    this.masterGain.gain.value = 0 // Start silent
     this.masterGain.connect(this.ctx.destination)
 
-    // Ultra-slow master volume drift (20 min cycle)
-    // Prevents listener fatigue from constant volume.
-    // Research: continuous same-level sound causes auditory adaptation.
-    // Gentle ±8% variation keeps the brain engaged without alerting.
+    const now = this.ctx.currentTime
+
+    // === CINEMATIC ENTRY: Warp sweep sound ===
+    this.playWarpEntry(now)
+
+    // === GRADUAL BUILD-UP: 15 seconds from silence to full ===
+    this.masterGain.gain.setValueAtTime(0, now)
+    this.masterGain.gain.linearRampToValueAtTime(0.3, now + 3)   // First hint of sound
+    this.masterGain.gain.linearRampToValueAtTime(0.7, now + 8)   // Building
+    this.masterGain.gain.linearRampToValueAtTime(1.0, now + 15)  // Full volume
+
+    // Anti-fatigue: 20-min volume drift ±8%
     const fatigueLFO = this.ctx.createOscillator()
     fatigueLFO.type = 'sine'
-    fatigueLFO.frequency.value = 1 / (20 * 60) // 20 minute cycle
+    fatigueLFO.frequency.value = 1 / (20 * 60)
     const fatigueMod = this.ctx.createGain()
     fatigueMod.gain.value = 0.08
     fatigueLFO.connect(fatigueMod)
     fatigueMod.connect(this.masterGain.gain)
-    fatigueLFO.start()
+    fatigueLFO.start(now + 15) // Start after build-up completes
 
-    // Start layers immediately
+    // Start ambient layers
     this.drone = new DroneLayer(this.ctx, this.masterGain)
     this.cosmicHum = new CosmicHumLayer(this.ctx, this.masterGain)
     this.pulsar = new PulsarLayer(this.ctx, this.masterGain)
 
     this.drone.start()
     this.cosmicHum.start()
-    this.pulsar.start()
-    this.addSolfeggioTone()
+    // Delay pulsars — let pad establish first
+    setTimeout(() => this.pulsar?.start(), 8000)
 
+    this.addSolfeggioTone()
     this.initialized = true
 
-    // Reverb added after a delay (heavy computation)
+    // Deferred reverb
     setTimeout(() => this.addReverb(), 500)
-
-    // Resume retries for edge cases
     setTimeout(() => this.ctx?.state === 'suspended' && this.ctx.resume(), 200)
     setTimeout(() => this.ctx?.state === 'suspended' && this.ctx.resume(), 1000)
+  }
+
+  /**
+   * Cinematic warp entry — a rising sweep that feels like
+   * being pulled into the cosmos. Plays during the visual warp effect.
+   */
+  private playWarpEntry(now: number) {
+    if (!this.ctx) return
+
+    // Layer 1: Deep rising sweep (80 Hz → 400 Hz over 2 seconds)
+    const sweep = this.ctx.createOscillator()
+    sweep.type = 'sine'
+    sweep.frequency.setValueAtTime(80, now)
+    sweep.frequency.exponentialRampToValueAtTime(400, now + 2)
+    sweep.frequency.exponentialRampToValueAtTime(272.5, now + 3) // Settle on CMB root
+
+    const sweepGain = this.ctx.createGain()
+    sweepGain.gain.setValueAtTime(0, now)
+    sweepGain.gain.linearRampToValueAtTime(0.25, now + 0.5)
+    sweepGain.gain.linearRampToValueAtTime(0.15, now + 2)
+    sweepGain.gain.exponentialRampToValueAtTime(0.001, now + 5)
+
+    const sweepFilter = this.ctx.createBiquadFilter()
+    sweepFilter.type = 'lowpass'
+    sweepFilter.frequency.setValueAtTime(200, now)
+    sweepFilter.frequency.exponentialRampToValueAtTime(2000, now + 2)
+    sweepFilter.frequency.exponentialRampToValueAtTime(500, now + 4)
+
+    sweep.connect(sweepFilter)
+    sweepFilter.connect(sweepGain)
+    sweepGain.connect(this.ctx.destination) // Bypass masterGain (which is at 0)
+    sweep.start(now)
+    sweep.stop(now + 5)
+
+    // Layer 2: Sub-bass impact (felt more than heard)
+    const sub = this.ctx.createOscillator()
+    sub.type = 'sine'
+    sub.frequency.value = 40
+    const subGain = this.ctx.createGain()
+    subGain.gain.setValueAtTime(0, now)
+    subGain.gain.linearRampToValueAtTime(0.3, now + 0.3)
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 3)
+    sub.connect(subGain)
+    subGain.connect(this.ctx.destination)
+    sub.start(now)
+    sub.stop(now + 3)
+
+    // Layer 3: Harmonic shimmer (high ethereal wash)
+    const shimmer = this.ctx.createOscillator()
+    shimmer.type = 'sine'
+    shimmer.frequency.setValueAtTime(800, now + 1)
+    shimmer.frequency.exponentialRampToValueAtTime(545, now + 3) // CMB octave
+    const shimmerGain = this.ctx.createGain()
+    shimmerGain.gain.setValueAtTime(0, now)
+    shimmerGain.gain.linearRampToValueAtTime(0.06, now + 1.5)
+    shimmerGain.gain.exponentialRampToValueAtTime(0.001, now + 6)
+    const shimmerFilter = this.ctx.createBiquadFilter()
+    shimmerFilter.type = 'lowpass'
+    shimmerFilter.frequency.value = 1200
+    shimmer.connect(shimmerFilter)
+    shimmerFilter.connect(shimmerGain)
+    shimmerGain.connect(this.ctx.destination)
+    shimmer.start(now + 0.5)
+    shimmer.stop(now + 6)
+
+    // Layer 4: Noise whoosh (wind-like warp rush)
+    const noiseLen = this.ctx.sampleRate * 3
+    const noiseBuf = this.ctx.createBuffer(2, noiseLen, this.ctx.sampleRate)
+    for (let ch = 0; ch < 2; ch++) {
+      const d = noiseBuf.getChannelData(ch)
+      let last = 0
+      for (let i = 0; i < noiseLen; i++) {
+        last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02
+        d[i] = last * 3
+      }
+    }
+    const noise = this.ctx.createBufferSource()
+    noise.buffer = noiseBuf
+    const noiseGain = this.ctx.createGain()
+    noiseGain.gain.setValueAtTime(0, now)
+    noiseGain.gain.linearRampToValueAtTime(0.12, now + 0.8)
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 3)
+    const noiseBand = this.ctx.createBiquadFilter()
+    noiseBand.type = 'bandpass'
+    noiseBand.frequency.setValueAtTime(200, now)
+    noiseBand.frequency.exponentialRampToValueAtTime(800, now + 1.5)
+    noiseBand.frequency.exponentialRampToValueAtTime(300, now + 3)
+    noiseBand.Q.value = 0.5
+    noise.connect(noiseBand)
+    noiseBand.connect(noiseGain)
+    noiseGain.connect(this.ctx.destination)
+    noise.start(now)
   }
 
   private addReverb() {
     if (!this.ctx || !this.masterGain) return
     try {
       const conv = this.ctx.createConvolver()
-      const sr = this.ctx.sampleRate
-      const len = sr * 6
+      const sr = this.ctx.sampleRate, len = sr * 6
       const buf = this.ctx.createBuffer(2, len, sr)
       for (let ch = 0; ch < 2; ch++) {
         const d = buf.getChannelData(ch)
@@ -119,17 +213,18 @@ class AudioEngineClass {
     this.encounterGain.connect(this.masterGain)
     const now = this.ctx.currentTime
 
-    const o1 = this.ctx.createOscillator(); o1.type = 'sine'; o1.frequency.value = 528
-    const f1 = this.ctx.createBiquadFilter(); f1.type = 'lowpass'; f1.frequency.value = 700; f1.Q.value = 0.5
-    o1.connect(f1); f1.connect(this.encounterGain); o1.start(now)
-
-    const o2 = this.ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 396
-    const g2 = this.ctx.createGain(); g2.gain.value = 0
-    o2.connect(g2); g2.connect(this.encounterGain); o2.start(now)
-    g2.gain.setTargetAtTime(0.3, now + 3, 6)
+    // Solfeggio chord: 528 + 396 + 639 Hz (love + liberation + connection)
+    const freqs = [528, 396, 639]
+    freqs.forEach((freq, i) => {
+      const o = this.ctx!.createOscillator(); o.type = 'sine'; o.frequency.value = freq
+      const f = this.ctx!.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = freq * 1.3; f.Q.value = 0.3
+      const g = this.ctx!.createGain(); g.gain.value = 0
+      o.connect(f); f.connect(g); g.connect(this.encounterGain!); o.start(now)
+      g.gain.setTargetAtTime(0.3 - i * 0.08, now + 2 + i * 3, 5)
+      this.encounterNodes.push(o, f, g)
+    })
 
     this.encounterGain.gain.setTargetAtTime(0.08, now, 5)
-    this.encounterNodes = [o1, o2, f1, g2]
     this.pulsar?.setEncounterMode(true)
   }
 
