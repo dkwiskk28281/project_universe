@@ -1,20 +1,16 @@
 import { useEffect, useCallback } from 'react'
 import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
-import { EncounterIndicator } from './ui/EncounterIndicator'
-import { CosmicComm } from './ui/CosmicComm'
 import { BreathingOverlay } from './ui/BreathingOverlay'
 import { CircadianFilter } from './ui/CircadianFilter'
-import { CosmicNarration } from './ui/CosmicNarration'
 import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
 
 /**
- * App — minimal orchestration.
- *
- * Audio init is handled ENTIRELY by LoadingScreen's onClick.
- * No document listeners, no refs, no complexity.
+ * App — pure visual cosmos experience.
+ * No text, no UI, no interruptions after entry.
+ * Just infinite space, sound, and breathing.
  */
 export default function App() {
   const started = useCosmosStore((s) => s.started)
@@ -23,13 +19,11 @@ export default function App() {
 
   useEncounter()
 
-  // Called by LoadingScreen AFTER AudioEngine.init() has already run
   const handleStart = useCallback(() => {
     setAudioReady(true)
     setStarted(true)
   }, [setAudioReady, setStarted])
 
-  // Battery saving
   useEffect(() => {
     const h = () => {
       if (document.hidden) AudioEngine.suspend()
@@ -44,14 +38,7 @@ export default function App() {
       <CosmosCanvas />
       <CircadianFilter />
       <LoadingScreen onStart={handleStart} />
-      {started && (
-        <>
-          <BreathingOverlay />
-          <CosmicNarration />
-          <EncounterIndicator />
-          <CosmicComm />
-        </>
-      )}
+      {started && <BreathingOverlay />}
     </>
   )
 }

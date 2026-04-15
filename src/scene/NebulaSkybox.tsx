@@ -101,13 +101,14 @@ const skyboxFragmentShader = /* glsl */ `
     // Different regions of space have different dominant chemistries.
     // This creates endless visual variety as you travel.
     // regionColor cycles through the full spectrum over ~2000 units of travel.
-    float regionPhase = length(region) * 0.8;
+    // Faster regional transitions — more visual drama
+    float regionPhase = length(region) * 1.5;
     float r1 = sin(regionPhase) * 0.5 + 0.5;
-    float r2 = sin(regionPhase * 1.3 + 2.1) * 0.5 + 0.5;
-    float r3 = sin(regionPhase * 0.7 + 4.2) * 0.5 + 0.5;
+    float r2 = sin(regionPhase * 1.7 + 2.1) * 0.5 + 0.5;
+    float r3 = sin(regionPhase * 0.9 + 4.2) * 0.5 + 0.5;
 
-    // Regional nebula density — some areas are richer, some are voids
-    float regionDensity = 0.5 + 0.5 * sin(regionPhase * 0.4 + 1.0);
+    // Regional nebula density — dramatic contrast between rich nebulae and voids
+    float regionDensity = 0.3 + 0.7 * pow(sin(regionPhase * 0.5 + 1.0) * 0.5 + 0.5, 0.7);
 
     vec3 deepSpace = vec3(0.005, 0.006, 0.022);
 

@@ -17,9 +17,9 @@ import * as THREE from 'three'
  * They spawn ahead of the camera and drift past.
  */
 
-const WISP_COUNT = 12
-const SPAWN_AHEAD = 80  // Spawn this far ahead
-const DESPAWN_BEHIND = 40 // Remove when this far behind
+const WISP_COUNT = 18
+const SPAWN_AHEAD = 100
+const DESPAWN_BEHIND = 50
 
 const wispVert = /* glsl */ `
   varying vec2 vUv;
@@ -76,12 +76,13 @@ export function NearWisps() {
     // Color — Hubble palette, soft and diverse
     const colorIdx = hash(s)
     let color: THREE.Color
-    if (colorIdx < 0.25) color = new THREE.Color(0.15, 0.25, 0.6)      // Blue
-    else if (colorIdx < 0.45) color = new THREE.Color(0.1, 0.35, 0.4)  // Teal
-    else if (colorIdx < 0.6) color = new THREE.Color(0.3, 0.1, 0.45)   // Purple
-    else if (colorIdx < 0.75) color = new THREE.Color(0.4, 0.12, 0.2)  // Rose
-    else if (colorIdx < 0.88) color = new THREE.Color(0.35, 0.2, 0.08) // Gold
-    else color = new THREE.Color(0.15, 0.1, 0.35)                       // Violet
+    if (colorIdx < 0.2) color = new THREE.Color(0.2, 0.35, 0.8)        // Vivid blue
+    else if (colorIdx < 0.35) color = new THREE.Color(0.1, 0.5, 0.5)  // Bright teal
+    else if (colorIdx < 0.5) color = new THREE.Color(0.45, 0.12, 0.55) // Rich purple
+    else if (colorIdx < 0.65) color = new THREE.Color(0.55, 0.15, 0.25) // Deep rose
+    else if (colorIdx < 0.78) color = new THREE.Color(0.5, 0.3, 0.1)  // Warm gold
+    else if (colorIdx < 0.9) color = new THREE.Color(0.2, 0.12, 0.5)  // Indigo
+    else color = new THREE.Color(0.6, 0.25, 0.15)                      // Ember
 
     const mat = new THREE.ShaderMaterial({
       vertexShader: wispVert,
