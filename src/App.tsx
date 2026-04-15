@@ -5,6 +5,7 @@ import { EncounterIndicator } from './ui/EncounterIndicator'
 import { CosmicComm } from './ui/CosmicComm'
 import { BreathingOverlay } from './ui/BreathingOverlay'
 import { CircadianFilter } from './ui/CircadianFilter'
+import { CosmicNarration } from './ui/CosmicNarration'
 import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
@@ -46,6 +47,7 @@ export default function App() {
       {started && (
         <>
           <BreathingOverlay />
+          <CosmicNarration />
           <EncounterIndicator />
           <CosmicComm />
         </>
