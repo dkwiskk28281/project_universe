@@ -13,6 +13,7 @@ import { ShootingStar } from './ShootingStar'
 import { Supernova } from './Supernova'
 import { CelestialBodies } from './CelestialBodies'
 import { NearWisps } from './NearWisps'
+import { PaleBlueDot } from './PaleBlueDot'
 
 export function CosmosCanvas() {
   const { qualityPreset } = useCosmosStore()
@@ -53,6 +54,7 @@ export function CosmosCanvas() {
       <NearWisps />
       <ShootingStar />
       <Supernova />
+      <PaleBlueDot />
       <EncounterEntity />
       <PostProcessing />
     </Canvas>
