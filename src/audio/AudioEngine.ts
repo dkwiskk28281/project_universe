@@ -33,7 +33,28 @@ class AudioEngineClass {
     // Master output — starts at ZERO, builds up over 15 seconds
     this.masterGain = this.ctx.createGain()
     this.masterGain.gain.value = 0 // Start silent
-    this.masterGain.connect(this.ctx.destination)
+
+    // === SAFETY: Volume limiter + ear fatigue prevention ===
+    // WHO: 85dB+ for 8 hours = hearing damage risk
+    // DynamicsCompressor acts as a limiter — prevents clipping
+    // and ensures output never exceeds safe levels
+    const limiter = this.ctx.createDynamicsCompressor()
+    limiter.threshold.value = -6  // Start compressing at -6dB
+    limiter.knee.value = 6        // Soft knee for natural sound
+    limiter.ratio.value = 12      // Heavy limiting above threshold
+    limiter.attack.value = 0.003  // Fast attack to catch peaks
+    limiter.release.value = 0.1   // Smooth release
+
+    // High-frequency rolloff — 2-4kHz causes ear fatigue
+    // Cut everything above 2kHz gently
+    const safetyFilter = this.ctx.createBiquadFilter()
+    safetyFilter.type = 'lowpass'
+    safetyFilter.frequency.value = 2000
+    safetyFilter.Q.value = 0.2 // Very gentle slope
+
+    this.masterGain.connect(safetyFilter)
+    safetyFilter.connect(limiter)
+    limiter.connect(this.ctx.destination)
 
     const now = this.ctx.currentTime
 
