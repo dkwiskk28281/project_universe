@@ -31,7 +31,23 @@ export class DroneLayer {
     this.createOrganicVoice(CMB * 2, 0.018, 580, 'sine')
     this.createOrganicVoice(CMB * 2 + 0.3, 0.015, 580, 'sine')
 
-    // Breathing LFO
+    // === Schumann Resonance: 7.83 Hz ===
+    // Earth's electromagnetic cavity resonance (real physics).
+    // Sub-audible — modulates the pad as a deep LFO.
+    // At the alpha-theta brainwave border.
+    const schumannLFO = this.ctx.createOscillator()
+    schumannLFO.type = 'sine'
+    schumannLFO.frequency.value = 7.83
+    const schumannDepth = this.ctx.createGain()
+    schumannDepth.gain.value = 0.008
+    schumannLFO.connect(schumannDepth)
+    if (this.destination instanceof GainNode) {
+      schumannDepth.connect((this.destination as GainNode).gain)
+    }
+    schumannLFO.start()
+    this.nodes.push(schumannLFO, schumannDepth)
+
+    // 0.1Hz Breathing LFO (cardiovascular resonance)
     const breathLFO = this.ctx.createOscillator()
     breathLFO.type = 'sine'
     breathLFO.frequency.value = 0.1
