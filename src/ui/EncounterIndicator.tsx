@@ -1,66 +1,84 @@
+import { useEffect, useRef } from 'react'
 import { useCosmosStore } from '../store'
 
 export function EncounterIndicator() {
   const encounterActive = useCosmosStore((s) => s.encounterActive)
   const encounterProgress = useCosmosStore((s) => s.encounterProgress)
+  const vibratedRef = useRef(false)
+
+  // Vibrate on encounter start (mobile)
+  useEffect(() => {
+    if (encounterActive && !vibratedRef.current) {
+      vibratedRef.current = true
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100, 50, 200])
+      }
+    }
+    if (!encounterActive) vibratedRef.current = false
+  }, [encounterActive])
 
   if (!encounterActive) return null
 
+  // Phase-based text
+  let text = ''
+  let textOpacity = 0
+  if (encounterProgress > 0.05 && encounterProgress < 0.2) {
+    text = '\u00b7 \u00b7 \u00b7'
+    textOpacity = (encounterProgress - 0.05) / 0.15
+  } else if (encounterProgress >= 0.2 && encounterProgress < 0.45) {
+    text = 'life detected'
+    textOpacity = Math.min(1, (encounterProgress - 0.2) / 0.1)
+  } else if (encounterProgress >= 0.45 && encounterProgress < 0.65) {
+    text = 'you are not alone'
+    textOpacity = 1
+  } else if (encounterProgress >= 0.65 && encounterProgress < 0.85) {
+    text = '\u00b7 \u00b7 \u00b7'
+    textOpacity = Math.max(0, (0.85 - encounterProgress) / 0.2)
+  }
+
+  // Glow intensity based on encounter phase
+  const glowIntensity = encounterProgress < 0.5
+    ? encounterProgress * 0.16
+    : (1 - encounterProgress) * 0.16
+
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10,
-        pointerEvents: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '1rem',
-      }}
-    >
-      {/* Subtle pulsing ring at screen edges */}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10, pointerEvents: 'none' }}>
+      {/* Screen-edge glow that breathes */}
       <div
         style={{
-          position: 'fixed',
+          position: 'absolute',
           inset: 0,
-          border: '1px solid rgba(100, 150, 255, 0.1)',
-          borderRadius: '0',
-          animation: 'encounterPulse 3s ease-in-out infinite',
-          pointerEvents: 'none',
+          boxShadow: `inset 0 0 120px rgba(100, 150, 255, ${glowIntensity})`,
+          animation: 'encounterPulse 4s ease-in-out infinite',
         }}
       />
-      {/* Small indicator text - appears faintly */}
-      {encounterProgress > 0.15 && encounterProgress < 0.85 && (
+
+      {/* Phase text */}
+      {text && (
         <p
           style={{
-            position: 'fixed',
-            bottom: '10%',
+            position: 'absolute',
+            bottom: '12%',
             left: '50%',
             transform: 'translateX(-50%)',
-            color: 'rgba(180, 200, 255, 0.3)',
+            color: `rgba(180, 200, 255, ${textOpacity * 0.5})`,
             fontFamily: "'Helvetica Neue', Arial, sans-serif",
             fontWeight: 200,
             fontSize: '0.75rem',
-            letterSpacing: '0.4em',
+            letterSpacing: '0.5em',
             textTransform: 'uppercase',
-            animation: 'encounterTextFade 2s ease-in-out',
+            whiteSpace: 'nowrap',
+            transition: 'opacity 2s ease',
           }}
         >
-          life detected
+          {text}
         </p>
       )}
+
       <style>{`
         @keyframes encounterPulse {
-          0%, 100% { box-shadow: inset 0 0 60px rgba(100, 150, 255, 0.03); }
-          50% { box-shadow: inset 0 0 80px rgba(100, 150, 255, 0.08); }
-        }
-        @keyframes encounterTextFade {
-          0% { opacity: 0; }
+          0%, 100% { opacity: 0.7; }
           50% { opacity: 1; }
-          100% { opacity: 1; }
         }
       `}</style>
     </div>

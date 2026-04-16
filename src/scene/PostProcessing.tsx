@@ -3,26 +3,34 @@ import { BlendFunction } from 'postprocessing'
 import { Vector2 } from 'three'
 import { useCosmosStore } from '../store'
 
+/**
+ * Post-processing — soft, warm, cocoon-like.
+ *
+ * Deeper vignette creates "safe space" feeling.
+ * Softer bloom wraps everything in gentle glow.
+ * No harsh effects.
+ */
+
 function PostProcessingWithCA() {
   return (
-    <EffectComposer>
+    <EffectComposer multisampling={0}>
       <Bloom
-        luminanceThreshold={0.2}
-        luminanceSmoothing={0.9}
-        intensity={1.8}
-        radius={0.85}
+        luminanceThreshold={0.1}
+        luminanceSmoothing={0.95}
+        intensity={2.0}
+        radius={0.92}
         mipmapBlur
       />
       <Vignette
-        offset={0.3}
-        darkness={0.75}
+        offset={0.15}
+        darkness={0.88}
         blendFunction={BlendFunction.NORMAL}
       />
       <ChromaticAberration
-        offset={new Vector2(0.0006, 0.0006)}
+        offset={new Vector2(0.0004, 0.0004)}
         blendFunction={BlendFunction.NORMAL}
-        radialModulation={false}
-        modulationOffset={0}
+        radialModulation
+        modulationOffset={0.5}
       />
     </EffectComposer>
   )
@@ -30,17 +38,17 @@ function PostProcessingWithCA() {
 
 function PostProcessingBasic() {
   return (
-    <EffectComposer>
+    <EffectComposer multisampling={0}>
       <Bloom
-        luminanceThreshold={0.2}
-        luminanceSmoothing={0.9}
-        intensity={1.8}
-        radius={0.85}
+        luminanceThreshold={0.1}
+        luminanceSmoothing={0.95}
+        intensity={2.0}
+        radius={0.92}
         mipmapBlur
       />
       <Vignette
-        offset={0.3}
-        darkness={0.75}
+        offset={0.15}
+        darkness={0.88}
         blendFunction={BlendFunction.NORMAL}
       />
     </EffectComposer>

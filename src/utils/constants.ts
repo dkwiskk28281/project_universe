@@ -6,6 +6,7 @@ export const QUALITY_PRESETS = {
     bloomResolution: 256,
     enableChromaticAberration: false,
     enableNebulaVolume: false,
+    shootingStarTrailLength: 20,
   },
   medium: {
     starCount: 15000,
@@ -14,6 +15,7 @@ export const QUALITY_PRESETS = {
     bloomResolution: 512,
     enableChromaticAberration: false,
     enableNebulaVolume: true,
+    shootingStarTrailLength: 40,
   },
   high: {
     starCount: 30000,
@@ -22,6 +24,7 @@ export const QUALITY_PRESETS = {
     bloomResolution: 1024,
     enableChromaticAberration: true,
     enableNebulaVolume: true,
+    shootingStarTrailLength: 64,
   },
 } as const
 
@@ -31,10 +34,13 @@ export const CAMERA = {
   fov: 60,
   near: 0.1,
   far: 10000,
-  driftAmplitude: 2,
-  driftPeriod: 120,
-  rotationAmplitude: 0.03,
-  rotationPeriod: 90,
+  // Serene drift — slow enough to not trigger alertness
+  driftAmplitude: 15,
+  driftPeriod: 250,
+  rotationAmplitude: 0.06,
+  rotationPeriod: 200,
+  // Slow, meditative travel (stress research: slower = calmer)
+  travelSpeed: 1.2,
 }
 
 export const STARS = {
@@ -47,22 +53,64 @@ export const STARS = {
     { depthFactor: 0.6, fraction: 0.3 },
     { depthFactor: 1.0, fraction: 0.6 },
   ],
+  // Spectral classes: O(blue) B(blue-white) A(white) F(yellow-white) G(yellow) K(orange) M(red)
+  // Weights roughly follow real stellar population (M stars are most common)
+  spectralWeights: [0.01, 0.02, 0.05, 0.08, 0.12, 0.22, 0.50],
+  spectralColors: [
+    [0.6, 0.7, 1.0],   // O - hot blue
+    [0.7, 0.8, 1.0],   // B - blue-white
+    [0.9, 0.92, 1.0],  // A - white
+    [1.0, 0.96, 0.9],  // F - yellow-white
+    [1.0, 0.9, 0.7],   // G - yellow (Sun-like)
+    [1.0, 0.75, 0.45], // K - orange
+    [1.0, 0.55, 0.35], // M - red dwarf
+  ],
+}
+
+export const SHOOTING_STAR = {
+  minIntervalSeconds: 30,
+  maxIntervalSeconds: 90,
+  durationSeconds: 1.5,
+  trailLength: 40,
+  speed: 800,
 }
 
 export const ENCOUNTER = {
-  averageIntervalSeconds: 259200, // 3 days
-  minCooldownHours: 12,
-  durationSeconds: 45,
-  seekTimeoutMinutes: 10,
-  seekCheckIntervalSeconds: 30,
+  // ~30 day average — makes encounters feel like miracles
+  // Exponential distribution means: P(<1hr) ≈ 0.14%, P(<1day) ≈ 3.3%, P(<1week) ≈ 21%
+  averageIntervalSeconds: 2592000, // 30 days
+  minCooldownHours: 48,
+  // Encounter is longer and more dramatic now
+  durationSeconds: 90,
+  seekTimeoutMinutes: 30,
+  seekCheckIntervalSeconds: 60,
   phantomThreshold: 10,
-  fadeInFraction: 0.2,
-  fadeOutFraction: 0.2,
+  // Slower, more dramatic fade
+  fadeInFraction: 0.25,
+  fadeOutFraction: 0.25,
+  // No cap — let the math be real. Could be 5 minutes, could be 60 days.
+  maxWaitSeconds: Infinity,
+}
+
+export const COSMIC_COMM = {
+  // Maximum characters per message (cosmic postcard)
+  maxMessageLength: 140,
+  // Delay formula: delaySeconds = baseDelay * (1 + (hoursSinceEncounter / 24) ^ exponent)
+  baseDelaySeconds: 60,
+  delayExponent: 1.5,
+  // Frequency link expires after this many days
+  linkExpiryDays: 60,
+  // Max messages stored per link
+  maxMessagesPerLink: 50,
+  // How messages appear — materialization time in ms
+  materializeDurationMs: 8000,
+  // How long messages stay visible before fading
+  visibleDurationMs: 30000,
 }
 
 export const AUDIO = {
-  droneFrequencies: [55, 55.2, 110, 82.5],
+  // Pulsar chime intervals (seconds)
   pulsarMinInterval: 15,
   pulsarMaxInterval: 30,
-  masterVolume: 0.6,
+  masterVolume: 1.0,
 }

@@ -1,53 +1,44 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useCallback } from 'react'
 import { CosmosCanvas } from './scene/CosmosCanvas'
 import { LoadingScreen } from './ui/LoadingScreen'
-import { SettingsOverlay } from './ui/SettingsOverlay'
-import { EncounterIndicator } from './ui/EncounterIndicator'
+import { BreathingOverlay } from './ui/BreathingOverlay'
+import { CircadianFilter } from './ui/CircadianFilter'
 import { AudioEngine } from './audio/AudioEngine'
 import { useEncounter } from './encounter/useEncounter'
 import { useCosmosStore } from './store'
 
+/**
+ * App — pure visual cosmos experience.
+ * No text, no UI, no interruptions after entry.
+ * Just infinite space, sound, and breathing.
+ */
 export default function App() {
-  const [started, setStarted] = useState(false)
+  const started = useCosmosStore((s) => s.started)
+  const setStarted = useCosmosStore((s) => s.setStarted)
   const setAudioReady = useCosmosStore((s) => s.setAudioReady)
 
-  // Initialize encounter system
   useEncounter()
 
-  const handleStart = useCallback(async () => {
-    try {
-      await AudioEngine.init()
-      setAudioReady(true)
-    } catch (e) {
-      console.warn('[COSMOS] Audio init failed:', e)
-    }
+  const handleStart = useCallback(() => {
+    setAudioReady(true)
     setStarted(true)
-  }, [setAudioReady])
+  }, [setAudioReady, setStarted])
 
-  // Handle visibility change for battery saving
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.hidden) {
-        AudioEngine.suspend()
-      } else {
-        AudioEngine.resume()
-      }
+    const h = () => {
+      if (document.hidden) AudioEngine.suspend()
+      else AudioEngine.resume()
     }
-
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => document.removeEventListener('visibilitychange', handleVisibility)
+    document.addEventListener('visibilitychange', h)
+    return () => document.removeEventListener('visibilitychange', h)
   }, [])
 
   return (
     <>
       <CosmosCanvas />
+      <CircadianFilter />
       <LoadingScreen onStart={handleStart} />
-      {started && (
-        <>
-          <SettingsOverlay />
-          <EncounterIndicator />
-        </>
-      )}
+      {started && <BreathingOverlay />}
     </>
   )
 }

@@ -13,23 +13,28 @@ export function NebulaVolume() {
     () => ({
       uTime: { value: 0 },
       uSteps: { value: qualityPreset.nebulaSteps },
-      uColor1: { value: new THREE.Color(0x0a0a3e) }, // deep indigo
-      uColor2: { value: new THREE.Color(0x1a0533) }, // dark purple
-      uColor3: { value: new THREE.Color(0x2a0a1a) }, // dark crimson
+      uColor1: { value: new THREE.Color(0x0a1040) }, // deep blue-indigo
+      uColor2: { value: new THREE.Color(0x1a0838) }, // rich purple
+      uColor3: { value: new THREE.Color(0x081828) }, // deep teal-blue
     }),
     [qualityPreset.nebulaSteps]
   )
 
-  useFrame(({ clock }) => {
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  useFrame(({ clock, camera }) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
+    }
+    if (meshRef.current) {
+      meshRef.current.position.copy(camera.position)
     }
   })
 
   if (!qualityPreset.enableNebulaVolume) return null
 
   return (
-    <mesh scale={[80, 80, 80]}>
+    <mesh ref={meshRef} scale={[80, 80, 80]}>
       <boxGeometry args={[1, 1, 1]} />
       <shaderMaterial
         ref={materialRef}

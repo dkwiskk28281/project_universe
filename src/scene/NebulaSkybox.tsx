@@ -13,6 +13,7 @@ const skyboxVertexShader = /* glsl */ `
 
 const skyboxFragmentShader = /* glsl */ `
   uniform float uTime;
+  uniform vec3 uCameraPos;
   varying vec3 vWorldPosition;
 
   vec3 hash33(vec3 p) {
@@ -39,10 +40,11 @@ const skyboxFragmentShader = /* glsl */ `
               dot(hash33(i + vec3(1,1,1)), f - vec3(1,1,1)), u.x), u.y), u.z);
   }
 
-  float fbm(vec3 p) {
+  float fbm(vec3 p, int octaves) {
     float v = 0.0;
     float a = 0.5;
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 7; i++) {
+      if (i >= octaves) break;
       v += a * noise(p);
       p *= 2.0;
       a *= 0.5;
@@ -52,35 +54,143 @@ const skyboxFragmentShader = /* glsl */ `
 
   void main() {
     vec3 dir = normalize(vWorldPosition);
-    float t = uTime * 0.003;
+    float t = uTime * 0.002;
 
-    // Large-scale nebula structure
-    vec3 p1 = dir * 2.0 + vec3(t, t * 0.3, t * 0.7);
-    float n1 = fbm(p1) * 0.5 + 0.5;
+    // Camera position creates REGIONAL VARIATION as you travel.
+    // Different positions in space = different nebula patterns.
+    // Scale is 0.003 so regions change every ~300 units of travel.
+    vec3 region = uCameraPos * 0.003;
 
-    vec3 p2 = dir * 3.0 + vec3(t * 0.5, -t * 0.2, t * 0.4);
-    float n2 = fbm(p2) * 0.5 + 0.5;
+    // ----- Large-scale nebula structure (emission nebulae) -----
+    // region offset makes nebula patterns CHANGE as you move through space
+    vec3 p1 = dir * 2.0 + region + vec3(t, t * 0.3, t * 0.7);
+    float n1 = fbm(p1, 6) * 0.5 + 0.5;
 
-    // Color palette - deep space
-    vec3 deepSpace = vec3(0.01, 0.01, 0.03);
-    vec3 nebula1 = vec3(0.05, 0.02, 0.15);  // deep purple
-    vec3 nebula2 = vec3(0.02, 0.05, 0.2);   // deep blue
-    vec3 nebula3 = vec3(0.15, 0.03, 0.08);  // dark crimson
-    vec3 warmGlow = vec3(0.12, 0.06, 0.02); // warm distant glow
+    vec3 p2 = dir * 3.0 + region * 1.3 + vec3(t * 0.5, -t * 0.2, t * 0.4);
+    float n2 = fbm(p2, 5) * 0.5 + 0.5;
 
+    // Secondary turbulence for fine detail
+    vec3 p3 = dir * 5.0 + region * 0.7 + vec3(-t * 0.3, t * 0.6, -t * 0.15);
+    float n3 = fbm(p3, 5) * 0.5 + 0.5;
+
+    // ----- Dust lanes (dark absorption) -----
+    vec3 dustP = dir * 4.0 + region * 0.9 + vec3(t * 0.1, -t * 0.05, t * 0.15);
+    float dust = fbm(dustP, 5) * 0.5 + 0.5;
+    float dustMask = smoothstep(0.45, 0.65, dust) * 0.7;
+
+    // ----- Color palette -----
+    // Hubble Space Telescope-inspired: rich and diverse but soft.
+    // Mix of cool (calming) and warm (inspiring) — like real nebulae.
+    //
+    // Science: fractal patterns (D=1.3-1.5) reduce stress 60% (Taylor 2011)
+    // Cool-dominant palette reduces cortisol (Granada 2017)
+    // But warm accents are essential — real nebulae have ALL colors.
+    // The key is LOW CONTRAST + SOFT SATURATION, not absence of color.
+    //
+    // Real emission nebulae colors come from:
+    //   Hα (hydrogen): deep red/rose (656.3 nm)
+    //   [OIII] (oxygen): teal/cyan (500.7 nm)
+    //   [SII] (sulfur): warm red (671.6 nm)
+    //   [NII] (nitrogen): red-orange (658.4 nm)
+    //   Continuum: blue reflection nebulae
+    //
+    // Hubble Palette maps: SII→Red, Hα→Green, OIII→Blue
+    // We use a softer version for ambient beauty.
+
+    // ----- Regional color variation -----
+    // Different regions of space have different dominant chemistries.
+    // This creates endless visual variety as you travel.
+    // regionColor cycles through the full spectrum over ~2000 units of travel.
+    // Faster regional transitions — more visual drama
+    float regionPhase = length(region) * 1.5;
+    float r1 = sin(regionPhase) * 0.5 + 0.5;
+    float r2 = sin(regionPhase * 1.7 + 2.1) * 0.5 + 0.5;
+    float r3 = sin(regionPhase * 0.9 + 4.2) * 0.5 + 0.5;
+
+    // Regional nebula density — dramatic contrast between rich nebulae and voids
+    float regionDensity = 0.3 + 0.7 * pow(sin(regionPhase * 0.5 + 1.0) * 0.5 + 0.5, 0.7);
+
+    vec3 deepSpace = vec3(0.005, 0.006, 0.022);
+
+    // Colors shift with region — you travel through different nebulae
+    vec3 nebulaBlue    = vec3(0.03, 0.08, 0.25) * (0.7 + r1 * 0.6);
+    vec3 nebulaTeal    = vec3(0.02, 0.14, 0.18) * (0.6 + r2 * 0.8);
+    vec3 nebulaIndigo  = vec3(0.05, 0.04, 0.20) * (0.5 + r3 * 0.7);
+
+    vec3 nebulaPurple  = vec3(0.10, 0.03, 0.20) * (0.6 + r2 * 0.6);
+    vec3 nebulaRose    = vec3(0.18, 0.04, 0.10) * (0.5 + r1 * 0.8);
+    vec3 nebulaGold    = vec3(0.16, 0.10, 0.03) * (0.4 + r3 * 0.9);
+    vec3 nebulaCrimson = vec3(0.14, 0.03, 0.06) * (0.5 + r2 * 0.7);
+    vec3 nebulaViolet  = vec3(0.08, 0.03, 0.16) * (0.6 + r1 * 0.5);
+
+    // ----- Build color — layered, density-modulated by region -----
     vec3 color = deepSpace;
-    color = mix(color, nebula1, smoothstep(0.3, 0.7, n1) * 0.6);
-    color = mix(color, nebula2, smoothstep(0.4, 0.8, n2) * 0.4);
-    color = mix(color, nebula3, smoothstep(0.5, 0.9, n1 * n2) * 0.3);
+    float rd = regionDensity; // 0=void, 1=dense nebula region
 
-    // Subtle warm glow in one direction
+    // Layer 1: Blue/teal foundation
+    color = mix(color, nebulaBlue, smoothstep(0.25, 0.7, n1) * 0.65 * rd);
+    color = mix(color, nebulaTeal, smoothstep(0.3, 0.75, n2) * 0.55 * rd);
+
+    // Layer 2: Purple/indigo depth
+    color = mix(color, nebulaPurple, smoothstep(0.35, 0.75, n1 * n2) * 0.5 * rd);
+    color = mix(color, nebulaIndigo, smoothstep(0.4, 0.8, n3) * 0.45 * rd);
+
+    // Layer 3: Warm emission — rose, gold, crimson
+    color = mix(color, nebulaRose, smoothstep(0.5, 0.85, n2 * n3) * 0.4 * rd);
+    color = mix(color, nebulaGold, smoothstep(0.55, 0.85, n1 * n3) * 0.32 * rd);
+    color = mix(color, nebulaCrimson, smoothstep(0.6, 0.9, n1 * n2 * n3) * 0.25 * rd);
+
+    // Layer 4: Violet deep accents
+    color = mix(color, nebulaViolet, smoothstep(0.6, 0.88, n3 * n3) * 0.3 * rd);
+
+    // Fine-scale bright wisps (Hubble-like filaments)
+    float wisps = smoothstep(0.5, 0.9, n1 * n3);
+    color += vec3(0.05, 0.03, 0.07) * wisps;
+
+    // Bright emission knots — where new stars are born
+    float knots = smoothstep(0.82, 0.95, n1) * smoothstep(0.82, 0.95, n2);
+    color += vec3(0.08, 0.05, 0.02) * knots;
+
+    // Apply dust lanes — dark absorption (real physics)
+    color *= (1.0 - dustMask);
+
+    // Galactic core warm glow (one direction)
     float warmDir = dot(dir, normalize(vec3(0.5, 0.3, -0.8)));
-    color += warmGlow * smoothstep(0.5, 1.0, warmDir) * 0.3;
+    color += vec3(0.08, 0.04, 0.01) * smoothstep(0.5, 1.0, warmDir) * 0.3;
 
-    // Very faint stars in skybox
+    // Cool counter-glow (opposite direction)
+    float coolDir = dot(dir, normalize(vec3(-0.7, -0.2, 0.5)));
+    color += vec3(0.02, 0.05, 0.10) * smoothstep(0.4, 1.0, coolDir) * 0.3;
+
+    // ----- Milky Way diffuse glow along galactic plane -----
+    // Galactic plane normal (must match cosmology.ts GALACTIC_NORMAL)
+    vec3 galNormal = normalize(vec3(0.22, 0.87, 0.44));
+    float galB = asin(dot(dir, galNormal)); // galactic latitude
+    // Thin disk: σ ≈ 0.12 rad, thick disk: σ ≈ 0.4 rad
+    float milkyThin = exp(-galB * galB / (2.0 * 0.012));
+    float milkyThick = 0.3 * exp(-galB * galB / (2.0 * 0.08));
+    float milkyWay = milkyThin + milkyThick;
+    // Warm unresolved starlight color
+    color += vec3(0.035, 0.028, 0.02) * milkyWay;
+    // Galactic core (brighter in one direction along the plane)
+    vec3 galCenter = normalize(cross(galNormal, vec3(0.0, 0.0, 1.0)));
+    float coreDir = dot(dir, galCenter);
+    color += vec3(0.04, 0.025, 0.01) * milkyWay * smoothstep(0.3, 1.0, coreDir);
+
+    // ----- Cosmic Microwave Background -----
+    // The faintest "warmth" everywhere — 2.725K thermal radiation
+    // Visible as an extremely subtle uniform warm tint
+    color += vec3(0.003, 0.002, 0.001);
+
+    // Very faint stars embedded in skybox
     float starNoise = noise(dir * 500.0);
     float stars = smoothstep(0.97, 1.0, starNoise) * 0.3;
     color += vec3(stars);
+
+    // Dimmer star layer
+    float starNoise2 = noise(dir * 800.0 + vec3(42.0));
+    float stars2 = smoothstep(0.96, 1.0, starNoise2) * 0.15;
+    color += vec3(stars2 * 0.9, stars2 * 0.85, stars2);
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -88,15 +198,20 @@ const skyboxFragmentShader = /* glsl */ `
 
 export function NebulaSkybox() {
   const materialRef = useRef<THREE.ShaderMaterial>(null)
+  const meshRef = useRef<THREE.Mesh>(null)
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = clock.getElapsedTime()
+      materialRef.current.uniforms.uCameraPos.value.copy(camera.position)
+    }
+    if (meshRef.current) {
+      meshRef.current.position.copy(camera.position)
     }
   })
 
   return (
-    <mesh scale={[5000, 5000, 5000]}>
+    <mesh ref={meshRef} scale={[5000, 5000, 5000]}>
       <sphereGeometry args={[1, 64, 32]} />
       <shaderMaterial
         ref={materialRef}
@@ -104,6 +219,7 @@ export function NebulaSkybox() {
         fragmentShader={skyboxFragmentShader}
         uniforms={{
           uTime: { value: 0 },
+          uCameraPos: { value: new THREE.Vector3() },
         }}
         side={THREE.BackSide}
         depthWrite={false}
