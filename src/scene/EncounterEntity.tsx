@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useCosmosStore } from '../store'
@@ -41,20 +41,26 @@ function generateBezierPath(seed: number): [THREE.Vector3, THREE.Vector3, THREE.
 
 export function EncounterEntity() {
   const encounterActive = useCosmosStore((s) => s.encounterActive)
-  const setEncounterActive = useCosmosStore((s) => s.setEncounterActive)
-  const setEncounterProgress = useCosmosStore((s) => s.setEncounterProgress)
+  const setEncounterActiveRef = useRef(useCosmosStore.getState().setEncounterActive)
+  const setEncounterProgressRef = useRef(useCosmosStore.getState().setEncounterProgress)
 
   const meshRef = useRef<THREE.Mesh>(null)
   const haloRef = useRef<THREE.Mesh>(null)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
   const haloMaterialRef = useRef<THREE.ShaderMaterial>(null)
+  const coreGeomRef = useRef<THREE.SphereGeometry>(null)
+  const haloGeomRef = useRef<THREE.SphereGeometry>(null)
   const startTimeRef = useRef(0)
   const pathSeedRef = useRef(Math.random())
 
+  // Generate new seed BEFORE creating the curve so this encounter uses the new path
   const curve = useMemo(() => {
+    if (encounterActive) {
+      pathSeedRef.current = Math.random()
+    }
     const [start, cp1, cp2, end] = generateBezierPath(pathSeedRef.current)
     return new THREE.CubicBezierCurve3(start, cp1, cp2, end)
-  }, [encounterActive]) // eslint-disable-line
+  }, [encounterActive])
 
   const uniforms = useMemo(
     () => ({
@@ -66,19 +72,29 @@ export function EncounterEntity() {
     []
   )
 
+  // Dispose Three.js resources on unmount
+  useEffect(() => {
+    return () => {
+      coreGeomRef.current?.dispose()
+      haloGeomRef.current?.dispose()
+      materialRef.current?.dispose()
+      haloMaterialRef.current?.dispose()
+    }
+  }, [])
+
   useFrame(({ clock }) => {
     if (!encounterActive || !meshRef.current) return
 
     if (startTimeRef.current === 0) {
       startTimeRef.current = clock.getElapsedTime()
-      pathSeedRef.current = Math.random()
     }
 
     const elapsed = clock.getElapsedTime() - startTimeRef.current
     const duration = ENCOUNTER.durationSeconds
     const progress = Math.min(elapsed / duration, 1)
 
-    setEncounterProgress(progress)
+    // Use ref to avoid triggering re-renders from store subscription
+    setEncounterProgressRef.current(progress)
 
     // Position along bezier
     const point = curve.getPoint(progress)
@@ -111,8 +127,8 @@ export function EncounterEntity() {
     // End encounter
     if (progress >= 1) {
       startTimeRef.current = 0
-      setEncounterActive(false)
-      setEncounterProgress(0)
+      setEncounterActiveRef.current(false)
+      setEncounterProgressRef.current(0)
     }
   })
 
@@ -122,7 +138,7 @@ export function EncounterEntity() {
     <group>
       {/* Core */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[1, 32, 32]} />
+        <sphereGeometry ref={coreGeomRef} args={[1, 32, 32]} />
         <shaderMaterial
           ref={materialRef}
           vertexShader={encounterVertexShader}
@@ -135,7 +151,7 @@ export function EncounterEntity() {
       </mesh>
       {/* Outer halo */}
       <mesh ref={haloRef}>
-        <sphereGeometry args={[1, 16, 16]} />
+        <sphereGeometry ref={haloGeomRef} args={[1, 16, 16]} />
         <shaderMaterial
           ref={haloMaterialRef}
           vertexShader={encounterVertexShader}

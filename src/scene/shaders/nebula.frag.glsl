@@ -9,7 +9,7 @@ uniform vec3 uColor3;
 varying vec3 vPosition;
 varying vec3 vWorldDir;
 
-// Hash & noise functions
+// Optimized hash — avoid sin() which is slow on mobile GPUs
 vec3 hash33(vec3 p) {
   p = vec3(
     dot(p, vec3(127.1, 311.7, 74.7)),
@@ -43,12 +43,13 @@ float noise3D(vec3 p) {
   );
 }
 
+// Reduced to 3 octaves (from 5) — large-scale nebula doesn't need fine detail
 float fbm(vec3 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
   float frequency = 1.0;
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 3; i++) {
     if (i >= octaves) break;
     value += amplitude * noise3D(p * frequency);
     amplitude *= 0.5;
@@ -71,12 +72,13 @@ void main() {
 
   for (int i = 0; i < 24; i++) {
     if (i >= uSteps) break;
-    if (transmittance < 0.01) break;
+    // Early exit when nearly opaque — saves significant GPU time
+    if (transmittance < 0.02) break;
 
     vec3 samplePos = pos + rayDir * float(i) * stepSize;
     vec3 noisePos = samplePos * 0.15 + vec3(timeOffset, timeOffset * 0.7, timeOffset * 0.3);
 
-    float n = fbm(noisePos, 4);
+    float n = fbm(noisePos, 3);
     float d = smoothstep(-0.1, 0.6, n) * 0.08;
 
     if (d > 0.001) {

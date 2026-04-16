@@ -36,6 +36,33 @@ export class DroneLayer {
     this.lfo.start()
   }
 
+  stop() {
+    for (const osc of this.oscillators) {
+      try {
+        osc.stop()
+      } catch {
+        // Already stopped
+      }
+      osc.disconnect()
+    }
+    this.oscillators = []
+
+    for (const gain of this.gains) {
+      gain.disconnect()
+    }
+    this.gains = []
+
+    if (this.lfo) {
+      try {
+        this.lfo.stop()
+      } catch {
+        // Already stopped
+      }
+      this.lfo.disconnect()
+      this.lfo = null
+    }
+  }
+
   private createOsc(frequency: number, type: OscillatorType, volume: number): GainNode {
     const osc = this.ctx.createOscillator()
     osc.type = type

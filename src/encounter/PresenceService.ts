@@ -3,7 +3,6 @@ import {
   set,
   onDisconnect,
   onValue,
-  serverTimestamp,
   get,
   remove,
   type Database,
@@ -13,6 +12,7 @@ import { getUserId, getCooldownEnd, type PresenceData } from './encounterTypes'
 export class PresenceService {
   private userId: string
   private unsubscribe: (() => void) | null = null
+  private destroyed = false
 
   constructor(private db: Database) {
     this.userId = getUserId()
@@ -32,11 +32,6 @@ export class PresenceService {
 
     // Clean up on disconnect
     onDisconnect(presenceRef).remove()
-  }
-
-  async goOffline(): Promise<void> {
-    const presenceRef = ref(this.db, `presence/${this.userId}`)
-    await remove(presenceRef)
   }
 
   async getOnlineUsers(): Promise<string[]> {
@@ -67,6 +62,7 @@ export class PresenceService {
   }
 
   setEncounterReady(ready: boolean): void {
+    if (this.destroyed) return
     const presenceRef = ref(this.db, `presence/${this.userId}/encounterReady`)
     set(presenceRef, ready)
   }
@@ -76,7 +72,15 @@ export class PresenceService {
   }
 
   destroy(): void {
-    if (this.unsubscribe) this.unsubscribe()
-    this.goOffline()
+    this.destroyed = true
+    if (this.unsubscribe) {
+      this.unsubscribe()
+      this.unsubscribe = null
+    }
+    // Fire and forget — onDisconnect handler will clean up if this fails
+    const presenceRef = ref(this.db, `presence/${this.userId}`)
+    remove(presenceRef).catch(() => {
+      // onDisconnect().remove() in goOnline() serves as fallback
+    })
   }
 }

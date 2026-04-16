@@ -1,6 +1,7 @@
 import { DroneLayer } from './DroneLayer'
 import { CosmicHumLayer } from './CosmicHumLayer'
 import { PulsarLayer } from './PulsarLayer'
+import { AUDIO } from '../utils/constants'
 
 class AudioEngineClass {
   private ctx: AudioContext | null = null
@@ -12,17 +13,31 @@ class AudioEngineClass {
   private initialized = false
   private encounterOsc: OscillatorNode | null = null
   private encounterGain: GainNode | null = null
+  private encounterCleanupTimeout: ReturnType<typeof setTimeout> | null = null
 
   async init(): Promise<void> {
     if (this.initialized) return
 
-    this.ctx = new AudioContext()
+    try {
+      this.ctx = new AudioContext()
+    } catch {
+      // iOS Safari < 14.5: AudioContext may throw before user gesture
+      // Fall back to webkitAudioContext
+      const WebkitAudioContext = (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (WebkitAudioContext) {
+        this.ctx = new WebkitAudioContext()
+      } else {
+        console.warn('[COSMOS] AudioContext not available')
+        return
+      }
+    }
+
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume()
     }
 
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = 0.6
+    this.masterGain.gain.value = AUDIO.masterVolume
 
     // Create reverb
     this.convolver = this.ctx.createConvolver()
@@ -78,6 +93,15 @@ class AudioEngineClass {
   startEncounterAudio() {
     if (!this.ctx || !this.masterGain) return
 
+    // Cancel any pending cleanup from a previous encounter
+    if (this.encounterCleanupTimeout) {
+      clearTimeout(this.encounterCleanupTimeout)
+      this.encounterCleanupTimeout = null
+    }
+
+    // Stop previous encounter audio if still playing
+    this.cleanupEncounterNodes()
+
     this.encounterGain = this.ctx.createGain()
     this.encounterGain.gain.value = 0
     this.encounterGain.connect(this.masterGain)
@@ -109,15 +133,41 @@ class AudioEngineClass {
     this.encounterGain.gain.setTargetAtTime(0, now, 2)
 
     // Cleanup after fade out
-    setTimeout(() => {
-      this.encounterOsc?.stop()
-      this.encounterOsc?.disconnect()
-      this.encounterGain?.disconnect()
-      this.encounterOsc = null
-      this.encounterGain = null
+    this.encounterCleanupTimeout = setTimeout(() => {
+      this.encounterCleanupTimeout = null
+      this.cleanupEncounterNodes()
     }, 8000)
 
     this.pulsar?.setEncounterMode(false)
+  }
+
+  private cleanupEncounterNodes() {
+    if (this.encounterOsc) {
+      try {
+        this.encounterOsc.stop()
+      } catch {
+        // Already stopped
+      }
+      this.encounterOsc.disconnect()
+      this.encounterOsc = null
+    }
+    if (this.encounterGain) {
+      this.encounterGain.disconnect()
+      this.encounterGain = null
+    }
+  }
+
+  destroy() {
+    if (this.encounterCleanupTimeout) {
+      clearTimeout(this.encounterCleanupTimeout)
+      this.encounterCleanupTimeout = null
+    }
+    this.cleanupEncounterNodes()
+    this.drone?.stop()
+    this.cosmicHum?.stop()
+    this.pulsar?.stop()
+    this.ctx?.close()
+    this.initialized = false
   }
 
   suspend() {

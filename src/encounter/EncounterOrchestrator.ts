@@ -17,6 +17,8 @@ export class EncounterOrchestrator {
   private pendingListener: (() => void) | null = null
   private seekAttempts = 0
   private seekIntervalId: ReturnType<typeof setInterval> | null = null
+  private activeTimeouts: Set<ReturnType<typeof setTimeout>> = new Set()
+  private destroyed = false
 
   constructor(
     private db: Database,
@@ -35,9 +37,15 @@ export class EncounterOrchestrator {
   }
 
   stop(): void {
+    this.destroyed = true
     this.scheduler.stop()
     this.stopSeeking()
     if (this.pendingListener) this.pendingListener()
+    // Clear all tracked timeouts
+    for (const id of this.activeTimeouts) {
+      clearTimeout(id)
+    }
+    this.activeTimeouts.clear()
     this.presence.destroy()
   }
 
@@ -48,19 +56,32 @@ export class EncounterOrchestrator {
 
   /** Trigger a phantom (local-only) encounter */
   triggerPhantom(): void {
+    if (this.destroyed) return
     this.callbacks.onEncounterStart()
-    setTimeout(() => {
+    const id = setTimeout(() => {
+      this.activeTimeouts.delete(id)
+      if (this.destroyed) return
       this.callbacks.onEncounterEnd()
       this.applyCooldown()
     }, ENCOUNTER.durationSeconds * 1000)
+    this.activeTimeouts.add(id)
   }
 
   private async startSeeking(): Promise<void> {
+    // Guard: prevent duplicate seek intervals
+    if (this.seekIntervalId) return
+    if (this.destroyed) return
+
     // Check cooldown
     if (Date.now() < getCooldownEnd()) return
 
     this.seekAttempts = 0
     this.seekIntervalId = setInterval(async () => {
+      if (this.destroyed) {
+        this.stopSeeking()
+        return
+      }
+
       this.seekAttempts++
 
       const users = await this.presence.getOnlineUsers()
@@ -104,22 +125,37 @@ export class EncounterOrchestrator {
       status: 'proposed',
     })
 
+    let resolved = false
+    let unsubscribe: (() => void) | null = null
+
+    const cleanup = () => {
+      if (resolved) return
+      resolved = true
+      unsubscribe?.()
+    }
+
     // Wait for acceptance
-    const unsubscribe = onValue(pendingRef, (snapshot) => {
+    unsubscribe = onValue(pendingRef, (snapshot) => {
       const data = snapshot.val()
       if (data?.status === 'accepted') {
-        unsubscribe()
+        cleanup()
         this.executeEncounter(data.timestamp)
-        // Clean up
-        setTimeout(() => remove(pendingRef), 5000)
+        // Clean up after delay
+        const id = setTimeout(() => {
+          this.activeTimeouts.delete(id)
+          remove(pendingRef)
+        }, 5000)
+        this.activeTimeouts.add(id)
       }
-    })
+    }) as unknown as () => void
 
     // Timeout after 30 seconds
-    setTimeout(() => {
-      unsubscribe()
+    const timeoutId = setTimeout(() => {
+      this.activeTimeouts.delete(timeoutId)
+      cleanup()
       remove(pendingRef)
     }, 30000)
+    this.activeTimeouts.add(timeoutId)
   }
 
   private listenForIncomingEncounters(): void {
@@ -140,16 +176,25 @@ export class EncounterOrchestrator {
   }
 
   private executeEncounter(timestamp: number): void {
+    if (this.destroyed) return
+
     // Small delay for sync
     const delay = Math.max(0, timestamp + 5000 - Date.now())
 
-    setTimeout(() => {
+    const delayId = setTimeout(() => {
+      this.activeTimeouts.delete(delayId)
+      if (this.destroyed) return
+
       this.callbacks.onEncounterStart()
-      setTimeout(() => {
+      const durationId = setTimeout(() => {
+        this.activeTimeouts.delete(durationId)
+        if (this.destroyed) return
         this.callbacks.onEncounterEnd()
         this.applyCooldown()
       }, ENCOUNTER.durationSeconds * 1000)
+      this.activeTimeouts.add(durationId)
     }, delay)
+    this.activeTimeouts.add(delayId)
   }
 
   private applyCooldown(): void {
@@ -158,9 +203,12 @@ export class EncounterOrchestrator {
     this.presence.setEncounterReady(false)
 
     // Re-enable after cooldown
-    setTimeout(() => {
+    const id = setTimeout(() => {
+      this.activeTimeouts.delete(id)
+      if (this.destroyed) return
       this.presence.setEncounterReady(true)
     }, ENCOUNTER.minCooldownHours * 3600 * 1000)
+    this.activeTimeouts.add(id)
   }
 
   private async getTotalOnlineCount(): Promise<number> {

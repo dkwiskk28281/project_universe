@@ -32,12 +32,12 @@ export function EncounterIndicator() {
           pointerEvents: 'none',
         }}
       />
-      {/* Small indicator text - appears faintly */}
+      {/* Small indicator text - appears faintly, safe-area aware */}
       {encounterProgress > 0.15 && encounterProgress < 0.85 && (
         <p
           style={{
             position: 'fixed',
-            bottom: '10%',
+            bottom: 'max(10%, env(safe-area-inset-bottom, 0px))',
             left: '50%',
             transform: 'translateX(-50%)',
             color: 'rgba(180, 200, 255, 0.3)',

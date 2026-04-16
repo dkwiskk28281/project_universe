@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useCosmosStore } from '../store'
 import { AudioEngine } from '../audio/AudioEngine'
-import { setQualityLevel } from '../utils/deviceProfile'
 import { type QualityLevel } from '../utils/constants'
 
 export function SettingsOverlay() {
@@ -16,7 +15,6 @@ export function SettingsOverlay() {
 
   const handleQuality = (level: QualityLevel) => {
     setQuality(level)
-    setQualityLevel(level)
   }
 
   const baseStyle: React.CSSProperties = {

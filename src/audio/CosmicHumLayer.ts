@@ -1,5 +1,6 @@
 export class CosmicHumLayer {
   private noiseNode: AudioBufferSourceNode | null = null
+  private nodes: AudioNode[] = []
 
   constructor(
     private ctx: AudioContext,
@@ -47,6 +48,24 @@ export class CosmicHumLayer {
     bandPass.connect(gain)
     gain.connect(this.destination)
 
+    this.nodes = [lowPass, bandPass, gain]
+
     this.noiseNode.start()
+  }
+
+  stop() {
+    if (this.noiseNode) {
+      try {
+        this.noiseNode.stop()
+      } catch {
+        // Already stopped
+      }
+      this.noiseNode.disconnect()
+      this.noiseNode = null
+    }
+    for (const node of this.nodes) {
+      node.disconnect()
+    }
+    this.nodes = []
   }
 }

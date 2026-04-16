@@ -10,6 +10,9 @@ export function useEncounter() {
   const setOnlineCount = useCosmosStore((s) => s.setOnlineCount)
 
   useEffect(() => {
+    // StrictMode guard: don't create a second orchestrator
+    if (orchestratorRef.current) return
+
     const firebase = initFirebase()
     if (!firebase) {
       // No Firebase: schedule phantom encounters every 2-5 minutes for demo
