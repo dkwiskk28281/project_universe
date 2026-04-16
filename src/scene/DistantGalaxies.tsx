@@ -34,7 +34,7 @@ const galaxyVertexShader = /* glsl */ `
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mvPosition;
     gl_PointSize = aSize * uPixelRatio * (600.0 / -mvPosition.z);
-    gl_PointSize = clamp(gl_PointSize, 1.0, 24.0);
+    gl_PointSize = clamp(gl_PointSize, 2.0, 40.0);
   }
 `
 
@@ -63,7 +63,7 @@ const galaxyFragmentShader = /* glsl */ `
       alpha *= smoothstep(0.5, 0.1, dist);
     }
     alpha *= vDim;
-    gl_FragColor = vec4(vColor, alpha * 0.6);
+    gl_FragColor = vec4(vColor, alpha * 0.85);
   }
 `
 
@@ -87,13 +87,13 @@ export function DistantGalaxies() {
     const theta = Math.random() * Math.PI * 2
     const phi = Math.acos(2 * Math.random() - 1)
     const distFactor = Math.random()
-    const r = 1500 + distFactor * 1500
+    const r = 600 + distFactor * 1400
 
     b.positions[i * 3] = cx + r * Math.sin(phi) * Math.cos(theta)
     b.positions[i * 3 + 1] = cy + r * Math.sin(phi) * Math.sin(theta)
     b.positions[i * 3 + 2] = cz + r * Math.cos(phi)
 
-    b.sizes[i] = 2 + Math.pow(Math.random(), 2) * 12
+    b.sizes[i] = 4 + Math.pow(Math.random(), 1.5) * 18
     b.rotations[i] = Math.random() * Math.PI * 2
     b.types[i] = Math.random() < 0.4 ? 0 : 1
 

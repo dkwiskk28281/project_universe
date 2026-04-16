@@ -79,13 +79,14 @@ export class PulsarLayer {
     const now = this.ctx.currentTime
 
     const osc = this.ctx.createOscillator()
-    osc.type = 'sine'
+    // Triangle wave = warmer, more like singing bowl than test tone
+    osc.type = 'triangle'
     osc.frequency.value = freq
 
-    // Shimmer overtone — barely audible, adds life
+    // Shimmer overtone with slight random detune (organic feel)
     const osc2 = this.ctx.createOscillator()
     osc2.type = 'sine'
-    osc2.frequency.value = freq * 2.002
+    osc2.frequency.value = freq * (2 + Math.random() * 0.005)
 
     // SLOW attack (200ms) — never startles
     const env = this.ctx.createGain()

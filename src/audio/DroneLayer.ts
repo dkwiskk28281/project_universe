@@ -1,24 +1,12 @@
 /**
- * Drone Layer — Scientifically Optimized Ambient Pad
+ * Drone Layer — Organic Cosmic Pad (no mechanical sound)
  *
- * Evidence-based design for simultaneous focus + sleep support:
+ * KEY FIX: Every oscillator has micro-pitch drift (±0.3% over 15-40s).
+ * Pure sine waves at exact frequencies = test tone = "mechanical."
+ * Adding slow random wobble makes it sound like a living instrument.
  *
- * 1. BINAURAL BEATS: 10 Hz (alpha waves)
- *    - Alpha (8-13 Hz) is the bridge between alert focus and relaxation
- *    - 10 Hz specifically: "relaxed alertness" — focused but calm
- *    - L: 272.5 Hz, R: 282.5 Hz → perceived 277.5 Hz + 10 Hz beating
- *    - Source: Neuroscience Letters, 2015; Frontiers in Human Neuroscience
- *
- * 2. ROOT: 272.5 Hz (CMB temperature × 100)
- *    - Mid-register: warm, non-fatiguing for extended listening
- *    - Just intonation overtones: only perfect consonances
- *
- * 3. VOLUME: Subtle — pad sits BELOW the noise floor, felt not heard.
- *    The brain entrains to binaural beats even at low volume.
- *
- * 4. EVOLUTION: Ultra-slow LFOs (60-120s periods)
- *    - No change fast enough to alert the sleeping brain
- *    - Matches respiratory rate modulation for sleep induction
+ * Also: using triangle waves for some voices (richer harmonics than sine,
+ * softer than sawtooth) and heavier filtering for warmth.
  */
 export class DroneLayer {
   private nodes: AudioNode[] = []
@@ -30,37 +18,25 @@ export class DroneLayer {
 
   start() {
     const CMB = 272.5
-    const ALPHA_FREQ = 10 // Hz — alpha brainwave target
 
-    // === Primary binaural pair: 10 Hz alpha entrainment ===
-    // Left: CMB root, Right: CMB + 10 Hz
-    this.createBinauralPair(CMB, CMB + ALPHA_FREQ, 0.10, 400)
+    // Binaural pairs with organic pitch drift
+    this.createOrganicBinaural(CMB, CMB + 10, 0.10, 380)
+    this.createOrganicBinaural(CMB * 3 / 2, CMB * 3 / 2 + 10, 0.05, 480)
 
-    // === Secondary binaural: fifth, gentler ===
-    // Creates harmonic richness while maintaining entrainment
-    this.createBinauralPair(CMB * 3 / 2, CMB * 3 / 2 + ALPHA_FREQ, 0.05, 520)
+    // Warm voices — triangle waves for richer, more natural timbre
+    this.createOrganicVoice(CMB / 2, 0.07, 240, 'triangle')
+    this.createOrganicVoice(CMB * 5 / 4, 0.04, 420, 'triangle')
 
-    // === Warm center voices (mono, felt more than heard) ===
+    // High shimmer — sine but with drift makes it ethereal, not electronic
+    this.createOrganicVoice(CMB * 2, 0.018, 580, 'sine')
+    this.createOrganicVoice(CMB * 2 + 0.3, 0.015, 580, 'sine')
 
-    // Sub-octave: 136.25 Hz — warmth foundation
-    this.createFilteredVoice(CMB / 2, 0.06, 250)
-
-    // Major third: 340.6 Hz — sweetness
-    this.createFilteredVoice(CMB * 5 / 4, 0.035, 450)
-
-    // High shimmer pair — barely audible celestial texture
-    this.createFilteredVoice(CMB * 2, 0.015, 600)
-    this.createFilteredVoice(CMB * 2 + 0.3, 0.012, 600)
-
-    // === Resonance frequency breathing LFO (0.1 Hz) ===
-    // Synchronized with visual BreathingOverlay component
-    // 0.1 Hz = 10s cycle = 6 breaths/min = cardiovascular resonance
-    // Lehrer & Gevirtz 2014: maximizes HRV, activates baroreflex
+    // Breathing LFO
     const breathLFO = this.ctx.createOscillator()
     breathLFO.type = 'sine'
     breathLFO.frequency.value = 0.1
     const breathDepth = this.ctx.createGain()
-    breathDepth.gain.value = 0.012 // Very subtle
+    breathDepth.gain.value = 0.012
     breathLFO.connect(breathDepth)
     if (this.destination instanceof GainNode) {
       breathDepth.connect((this.destination as GainNode).gain)
@@ -69,60 +45,79 @@ export class DroneLayer {
     this.nodes.push(breathLFO, breathDepth)
   }
 
-  private createBinauralPair(freqL: number, freqR: number, vol: number, filterFreq: number) {
-    // Left ear
+  private createOrganicBinaural(freqL: number, freqR: number, vol: number, cutoff: number) {
+    // Left
     const oscL = this.ctx.createOscillator()
-    oscL.type = 'sine'
-    oscL.frequency.value = freqL
+    oscL.type = 'sine'; oscL.frequency.value = freqL
+    this.addPitchDrift(oscL, freqL)
     const fL = this.ctx.createBiquadFilter()
-    fL.type = 'lowpass'; fL.frequency.value = filterFreq; fL.Q.value = 0.4
-    const gL = this.ctx.createGain()
-    gL.gain.value = vol
-    const pL = this.ctx.createStereoPanner()
-    pL.pan.value = -1
+    fL.type = 'lowpass'; fL.frequency.value = cutoff; fL.Q.value = 0.3
+    const gL = this.ctx.createGain(); gL.gain.value = vol
+    const pL = this.ctx.createStereoPanner(); pL.pan.value = -1
     oscL.connect(fL); fL.connect(gL); gL.connect(pL); pL.connect(this.destination)
     oscL.start()
 
-    // Right ear
+    // Right
     const oscR = this.ctx.createOscillator()
-    oscR.type = 'sine'
-    oscR.frequency.value = freqR
+    oscR.type = 'sine'; oscR.frequency.value = freqR
+    this.addPitchDrift(oscR, freqR)
     const fR = this.ctx.createBiquadFilter()
-    fR.type = 'lowpass'; fR.frequency.value = filterFreq; fR.Q.value = 0.4
-    const gR = this.ctx.createGain()
-    gR.gain.value = vol
-    const pR = this.ctx.createStereoPanner()
-    pR.pan.value = 1
+    fR.type = 'lowpass'; fR.frequency.value = cutoff; fR.Q.value = 0.3
+    const gR = this.ctx.createGain(); gR.gain.value = vol
+    const pR = this.ctx.createStereoPanner(); pR.pan.value = 1
     oscR.connect(fR); fR.connect(gR); gR.connect(pR); pR.connect(this.destination)
     oscR.start()
 
     this.nodes.push(oscL, fL, gL, pL, oscR, fR, gR, pR)
   }
 
-  private createFilteredVoice(freq: number, vol: number, filterFreq: number) {
+  private createOrganicVoice(freq: number, vol: number, cutoff: number, type: OscillatorType) {
     const osc = this.ctx.createOscillator()
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    const filter = this.ctx.createBiquadFilter()
-    filter.type = 'lowpass'; filter.frequency.value = filterFreq; filter.Q.value = 0.4
-    const gain = this.ctx.createGain()
-    gain.gain.value = vol
+    osc.type = type; osc.frequency.value = freq
+    this.addPitchDrift(osc, freq)
 
-    // Spatial autopanning — voice slowly orbits the listener
-    // Each voice has a different orbit speed for rich spatial movement
+    // Double filter for extra warmth (24dB/oct rolloff)
+    const f1 = this.ctx.createBiquadFilter()
+    f1.type = 'lowpass'; f1.frequency.value = cutoff; f1.Q.value = 0.2
+    const f2 = this.ctx.createBiquadFilter()
+    f2.type = 'lowpass'; f2.frequency.value = cutoff * 0.8; f2.Q.value = 0.2
+
+    const gain = this.ctx.createGain(); gain.gain.value = vol
+
+    // Spatial autopanning
     const panner = this.ctx.createStereoPanner()
     const panLFO = this.ctx.createOscillator()
     panLFO.type = 'sine'
-    // Orbit period: 30-90 seconds (unique per voice based on frequency)
-    panLFO.frequency.value = 1 / (30 + (freq % 60))
+    panLFO.frequency.value = 1 / (25 + (freq % 40))
     const panDepth = this.ctx.createGain()
-    panDepth.gain.value = 0.4 // Pan range ±0.4 (not extreme)
+    panDepth.gain.value = 0.35
     panLFO.connect(panDepth)
     panDepth.connect(panner.pan)
     panLFO.start()
 
-    osc.connect(filter); filter.connect(gain); gain.connect(panner); panner.connect(this.destination)
+    osc.connect(f1); f1.connect(f2); f2.connect(gain)
+    gain.connect(panner); panner.connect(this.destination)
     osc.start()
-    this.nodes.push(osc, filter, gain, panner, panLFO, panDepth)
+
+    this.nodes.push(osc, f1, f2, gain, panner, panLFO, panDepth)
+  }
+
+  /**
+   * Micro-pitch drift — the secret to organic sound.
+   * ±0.3% frequency wobble over 15-40 second cycles.
+   * Makes sine waves sound like singing bowls instead of test tones.
+   */
+  private addPitchDrift(osc: OscillatorNode, baseFreq: number) {
+    const driftLFO = this.ctx.createOscillator()
+    driftLFO.type = 'sine'
+    // Each voice drifts at a unique rate (15-40s period)
+    driftLFO.frequency.value = 1 / (15 + (baseFreq % 25))
+    const driftAmount = this.ctx.createGain()
+    // ±0.3% of base frequency
+    driftAmount.gain.value = baseFreq * 0.003
+    driftLFO.connect(driftAmount)
+    driftAmount.connect(osc.frequency)
+    driftLFO.start()
+    this.nodes.push(driftLFO, driftAmount)
   }
 }
