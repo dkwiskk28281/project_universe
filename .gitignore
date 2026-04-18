@@ -3,3 +3,10 @@ dist/
 build/
 .env
 *.log
+
+# iOS
+ios/App/App/public/
+ios/App/Pods/
+ios/App/DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/

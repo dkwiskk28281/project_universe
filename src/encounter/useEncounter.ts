@@ -1,8 +1,16 @@
 import { useEffect, useRef } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { Haptics, ImpactStyle } from '@capacitor/haptics'
 import { useCosmosStore } from '../store'
 import { initFirebase } from '../firebase/config'
 import { EncounterOrchestrator } from './EncounterOrchestrator'
 import { AudioEngine } from '../audio/AudioEngine'
+
+function triggerEncounterHaptic() {
+  if (Capacitor.isNativePlatform()) {
+    Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {})
+  }
+}
 
 export function useEncounter() {
   const orchestratorRef = useRef<EncounterOrchestrator | null>(null)
@@ -17,8 +25,9 @@ export function useEncounter() {
     if (!firebase) {
       // No Firebase: schedule phantom encounters every 2-5 minutes for demo
       const phantomInterval = setInterval(() => {
-        if (Math.random() < 0.1) { // 10% chance each check
+        if (Math.random() < 0.1) {
           setEncounterActive(true)
+          triggerEncounterHaptic()
           if (AudioEngine.isInitialized()) {
             AudioEngine.startEncounterAudio()
           }
@@ -31,6 +40,7 @@ export function useEncounter() {
     const orchestrator = new EncounterOrchestrator(firebase.db, {
       onEncounterStart: () => {
         setEncounterActive(true)
+        triggerEncounterHaptic()
         if (AudioEngine.isInitialized()) {
           AudioEngine.startEncounterAudio()
         }
