@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "ios:build": "npm run build && npx cap sync ios",
     "ios:open": "npx cap open ios",
-    "ios:run": "npm run build && npx cap sync ios && npx cap run ios"
+    "ios:run": "npm run build && npx cap sync ios && npx cap run ios",
+    "generate:icons": "node scripts/generate-icons.cjs",
+    "generate:screenshots": "node scripts/generate-screenshots.cjs"
   },
   "dependencies": {
     "@capacitor/cli": "^8.3.1",
@@ -34,6 +36,7 @@
     "@types/react-dom": "^19.0.0",
     "@types/three": "^0.172.0",
     "@vitejs/plugin-react": "^4.4.0",
+    "canvas": "^3.2.3",
     "typescript": "~5.7.0",
     "vite": "^6.0.0",
     "vite-plugin-glsl": "^1.3.0"

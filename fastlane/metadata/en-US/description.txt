@@ -1,0 +1,18 @@
+Gaze into your own universe.
+
+COSMOS is a meditation app that renders an infinite universe in real-time 3D. Tens of thousands of stars, procedurally generated nebulae, and deep-space drone sounds come together to create your personal cosmos.
+
+▸ Real-time 3D Universe
+Stars, nebulae, and volumetric clouds built with custom shaders that constantly evolve. The camera drifts gently — all you need to do is watch.
+
+▸ Encounters
+Somewhere on Earth, someone else is gazing at the same universe. A luminous being crosses your screen, and the words "life detected" appear. No words are exchanged. You simply feel their presence.
+
+▸ Immersive Sound
+Layered soundscape powered by Web Audio API — deep drones, brown noise hum, and metallic pulsar pings create a sense of space. Headphones recommended.
+
+▸ Adaptive Quality
+Automatically detects your GPU and adjusts between Low / Medium / High quality. Runs smoothly on any iPhone.
+
+---
+Open your universe for 5 minutes before sleep each night.

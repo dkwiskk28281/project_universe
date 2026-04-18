@@ -1,0 +1,1 @@
+This app is a meditation experience that renders a 3D universe in real-time. The "encounter" feature connects anonymous users who are viewing the universe simultaneously — no personal data is exchanged, only a visual indicator appears on screen. The app requires no account or login. Firebase is used only for anonymous presence tracking.

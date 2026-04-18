@@ -1,0 +1,6 @@
+v1.0.0 — The first universe has opened.
+
+• Real-time 3D universe rendering
+• Layered ambient soundscape
+• Real-time encounter system
+• Adaptive quality for all devices
