@@ -604,6 +604,148 @@ main {
   line-height: 1.7;
 }
 
+.mastery-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.mastery-score,
+.mastery-panel,
+.mastery-card,
+.template-block,
+.case-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(26, 44, 57, 0.06);
+}
+
+.mastery-score {
+  display: grid;
+  gap: 4px;
+  padding: 18px;
+}
+
+.mastery-score span,
+.mastery-score small {
+  color: var(--muted);
+}
+
+.mastery-score strong {
+  font-size: 28px;
+}
+
+.mastery-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.mastery-tab {
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.mastery-tab.active {
+  background: var(--ink);
+  color: white;
+}
+
+.mastery-panel {
+  padding: 20px;
+}
+
+.mastery-grid,
+.template-grid,
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.mastery-card,
+.template-block,
+.case-card {
+  padding: 16px;
+}
+
+.mastery-card h2,
+.template-block h2,
+.case-card h2 {
+  margin: 0 0 10px;
+}
+
+.mastery-card p,
+.template-block p,
+.case-card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.mastery-card ul,
+.template-block ul,
+.case-card ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.mastery-check {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+}
+
+.mastery-check input {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.level-pill {
+  display: inline-flex;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: white;
+  background: var(--accent);
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+
+.case-choice {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  text-align: left;
+}
+
+.case-choice.good {
+  background: #e9f6ef;
+  border-color: #88c7a4;
+}
+
+.case-feedback {
+  min-height: 42px;
+  margin-top: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .gas-card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -788,7 +930,11 @@ main {
   .glossary-tools,
   .glossary-grid,
   .gas-grid,
-  .equipment-grid {
+  .equipment-grid,
+  .mastery-scoreboard,
+  .mastery-grid,
+  .template-grid,
+  .case-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -24,6 +24,7 @@
       <button class="nav-btn" data-view="facility">Facility</button>
       <button class="nav-btn" data-view="gases">가스안전</button>
       <button class="nav-btn" data-view="safety">라인준수</button>
+      <button class="nav-btn" data-view="mastery">마스터리</button>
       <button class="nav-btn" data-view="deep">심화</button>
       <button class="nav-btn" data-view="fab101">Fab기초</button>
       <button class="nav-btn" data-view="papers">논문노트</button>
@@ -189,6 +190,36 @@
       </div>
     </section>
 
+    <section id="mastery" class="view">
+      <div class="page-title">
+        <p>Mastery Operating System</p>
+        <h1>장비를 현장에서 다룰 수 있는 수준까지 가는 훈련판</h1>
+      </div>
+      <article class="source-note">
+        <h2>목표</h2>
+        <p>이 섹션은 “자료를 많이 아는 사람”이 아니라 “현장에서 안전하게 질문하고, 원인을 좁히고, 설치/정비 산출물을 남길 수 있는 CE”를 만드는 구조입니다. 실제 가스 조작, interlock, 전기 작업, 고객 라인 절차는 반드시 Applied 공식 교육과 고객 site rule을 따라야 합니다.</p>
+      </article>
+      <div class="mastery-scoreboard">
+        <article class="mastery-score">
+          <span>마스터리 완료</span>
+          <strong id="mastery-done">0</strong>
+          <small id="mastery-total">0개 훈련 중</small>
+        </article>
+        <article class="mastery-score">
+          <span>현재 권장 레벨</span>
+          <strong id="mastery-level">L0</strong>
+          <small id="mastery-level-desc">기초 세팅</small>
+        </article>
+        <article class="mastery-score">
+          <span>오늘의 핵심</span>
+          <strong>증거</strong>
+          <small>추정 전에 로그·계측·변경점</small>
+        </article>
+      </div>
+      <div class="mastery-tabs" id="mastery-tabs"></div>
+      <div class="mastery-panel" id="mastery-panel"></div>
+    </section>
+
     <section id="deep" class="view">
       <div class="page-title">
         <p>Senior-Level Deep Dive</p>
@@ -256,5 +287,6 @@
   </main>
 
   <script src="app.js"></script>
+  <script src="mastery.js"></script>
 </body>
 </html>
