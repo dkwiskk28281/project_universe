@@ -746,6 +746,75 @@ main {
   line-height: 1.55;
 }
 
+.term-explain {
+  display: inline;
+  color: #123842;
+  font-weight: 750;
+}
+
+.term-explain::after {
+  content: " (" attr(data-short) ")";
+  color: var(--accent);
+  font-size: 0.88em;
+  font-weight: 700;
+}
+
+.term-explain:hover,
+.term-explain:focus {
+  outline: 2px solid rgba(0, 127, 134, 0.25);
+  border-radius: 4px;
+}
+
+.english-tools {
+  margin: 14px 0;
+}
+
+.english-tools input {
+  min-height: 44px;
+  width: min(420px, 100%);
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+}
+
+.english-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.english-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(26, 44, 57, 0.06);
+}
+
+.english-card h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.english-card .tag {
+  display: inline-flex;
+  margin: 9px 0;
+  padding: 5px 7px;
+  border-radius: 8px;
+  background: #e7f3f3;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.english-card p {
+  margin: 0 0 8px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .gas-card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -934,7 +1003,8 @@ main {
   .mastery-scoreboard,
   .mastery-grid,
   .template-grid,
-  .case-grid {
+  .case-grid,
+  .english-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -675,6 +675,19 @@ sources.push(
   ["Applied Vantage RadOx RTP", "https://www.appliedmaterials.com/cn/zh_cn/semiconductor/products/modify/rapid-thermal-processing-treatments/vantage-radox-rtp.html"]
 );
 
+sources.push(
+  ["SIA Semiconductor Glossary", "https://www.semiconductors.org/wp-content/uploads/2023/05/SIA-PFAS-Consortium-Glossary.pdf"],
+  ["Lam Research Technical Glossary", "https://www.lamresearch.com/technical-glossary/"],
+  ["Hitachi High-Tech Semiconductor Glossary", "https://www.hitachi-hightech.com/global/en/knowledge/semiconductor/room/words.html"],
+  ["TI Manufacturing Terminology", "https://www.ti.com/about-ti/company/ti-at-a-glance/manufacturing/manufacturing-terminology.html"],
+  ["RTP emissivity pattern paper", "https://web.njit.edu/~sirenko/PapersNJIT/Ravi_JEM_2006.pdf"],
+  ["Chris Mack RTP Lecture", "https://www.lithoguru.com/scientist/CHE323/Lecture19.pdf"],
+  ["Model-based RTP Control Paper", "https://scsolutions.com/wp-content/uploads/RTP.pdf"],
+  ["Selective Epitaxy of Group IV Materials", "https://www.intechopen.com/chapters/60757"],
+  ["ASM Epitaxy Technology Overview", "https://www.asm.com/our-technology-products/epitaxy"],
+  ["FM Semiconductor Fabrication Facilities Data Sheet", "https://www.fm.com/FMAApi/data/ApprovalStandardsDownload?itemId=%7B417F20B6-EFCA-463A-935C-3C52DEBEA28B%7D"]
+);
+
 const publicFacts = [
   ["RTP 공정 목적", "Applied 공개 자료는 RTP/anneal을 wafer를 짧은 시간 특정 온도로 가열해 conductivity, permittivity, densification, contamination reduction 등 물성 변화를 만드는 영역으로 설명합니다."],
   ["RTP 방식", "공개 자료에서 soak, spike, millisecond anneal과 thermal-radical oxidation이 응용별로 언급됩니다. CE는 방식 이름보다 시간-온도 budget, repeatability, uniformity가 왜 중요한지 이해해야 합니다."],

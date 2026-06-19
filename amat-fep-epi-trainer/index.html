@@ -28,6 +28,7 @@
       <button class="nav-btn" data-view="deep">심화</button>
       <button class="nav-btn" data-view="fab101">Fab기초</button>
       <button class="nav-btn" data-view="papers">논문노트</button>
+      <button class="nav-btn" data-view="english">영어풀이</button>
       <button class="nav-btn" data-view="glossary">용어집</button>
       <button class="nav-btn" data-view="diagnostics">진단훈련</button>
       <button class="nav-btn" data-view="quiz">퀴즈</button>
@@ -261,6 +262,21 @@
       <div class="deep-layout" id="paper-notes"></div>
     </section>
 
+    <section id="english" class="view">
+      <div class="page-title">
+        <p>English Term Helper</p>
+        <h1>생소한 영어 용어를 바로 이해하는 풀이집</h1>
+      </div>
+      <article class="source-note">
+        <h2>사용법</h2>
+        <p>본문에 나오는 영어 용어 옆에는 짧은 한국어 풀이가 자동으로 붙습니다. 이 메뉴에서는 같은 용어를 카테고리별로 다시 볼 수 있습니다. 영어를 외우는 목적이 아니라, 선임·고객·장비 화면에서 들리는 말을 바로 장비 동작과 연결하는 것이 목표입니다.</p>
+      </article>
+      <div class="english-tools">
+        <input id="english-search" type="search" placeholder="영어 용어 검색: pumpdown, MFC, pyrometry..." aria-label="영어 용어 검색" />
+      </div>
+      <div class="english-grid" id="english-terms-grid"></div>
+    </section>
+
     <section id="quiz" class="view">
       <div class="page-title">
         <p>Quiz & Flashcards</p>
@@ -286,7 +302,8 @@
     </section>
   </main>
 
-  <script src="app.js"></script>
-  <script src="mastery.js"></script>
+  <script src="app.js?v=20260620-english"></script>
+  <script src="mastery.js?v=20260620-english"></script>
+  <script src="term-helper.js?v=20260620-english"></script>
 </body>
 </html>
