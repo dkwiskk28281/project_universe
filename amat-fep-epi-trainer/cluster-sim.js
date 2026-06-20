@@ -88,6 +88,28 @@ const moduleDefs = {
 let clusterState = {};
 let selectedClusterPlatform = "centuraPrime";
 let clusterFlowOn = false;
+let clusterFlowStep = 0;
+let clusterFlowTimer = null;
+
+const clusterFlowSteps = [
+  ["FOUP", "웨이퍼 보관통에서 시작합니다. 아직 대기압 영역입니다."],
+  ["FI/EFEM", "전면 이송부가 FOUP에서 wafer를 꺼내 load lock 쪽으로 넘깁니다."],
+  ["LL pumpdown", "Load Lock이 대기압 wafer를 진공 cluster로 넘기기 위해 압력을 낮춥니다."],
+  ["TM robot", "Transfer Module 안의 robot이 vacuum 상태에서 wafer를 잡아 이동합니다."],
+  ["PM/CM", "Process Module이나 Clean/Cool Module에서 공정 또는 보조 처리가 일어납니다."],
+  ["Return", "처리 후 TM robot이 wafer를 다시 Load Lock 쪽으로 돌려보냅니다."],
+  ["LL vent", "Load Lock이 다시 대기압으로 돌아와 wafer를 EFEM/FOUP으로 보냅니다."]
+];
+
+const clusterFlowPositions = [
+  { left: 16, top: 31 },
+  { left: 26, top: 38 },
+  { left: 36, top: 78 },
+  { left: 50, top: 58 },
+  { left: 76, top: 64 },
+  { left: 50, top: 72 },
+  { left: 62, top: 85 }
+];
 
 function clusterTarget() {
   const platform = clusterPlatforms[selectedClusterPlatform];
@@ -117,6 +139,7 @@ function initClusterControls() {
   document.querySelector("#cluster-show-answer").addEventListener("click", showClusterAnswer);
   document.querySelector("#cluster-flow").addEventListener("click", () => {
     clusterFlowOn = !clusterFlowOn;
+    manageClusterFlowTimer();
     renderClusterBoard();
     renderClusterLegend();
     renderClusterFeedback();
@@ -124,8 +147,23 @@ function initClusterControls() {
   document.querySelector("#cluster-reset").addEventListener("click", () => {
     clusterState = {};
     clusterFlowOn = false;
+    manageClusterFlowTimer();
     renderCluster();
   });
+}
+
+function manageClusterFlowTimer() {
+  if (clusterFlowTimer) {
+    clearInterval(clusterFlowTimer);
+    clusterFlowTimer = null;
+  }
+  if (clusterFlowOn) {
+    clusterFlowStep = 0;
+    clusterFlowTimer = setInterval(() => {
+      clusterFlowStep = (clusterFlowStep + 1) % clusterFlowSteps.length;
+      updateClusterFlowStep();
+    }, 1500);
+  }
 }
 
 function applyClusterPreset() {
@@ -214,11 +252,21 @@ function renderClusterBoard() {
       </div>
     </div>
     <div class="robot-arm"></div>
-    <div class="wafer-dot" aria-hidden="true"></div>
+    <svg class="wafer-flow-svg" viewBox="0 0 1000 760" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <marker id="flowArrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L0,6 L8,3 z" fill="#f2b33d"></path>
+        </marker>
+      </defs>
+      <path class="flow-route" d="M150 205 C255 235 300 565 405 625 C470 665 480 500 500 440 C535 335 640 340 770 455 C680 545 585 560 500 545 C430 535 395 605 352 665 C450 710 600 705 675 660" />
+    </svg>
+    <div class="wafer-step-dot" aria-hidden="true">W</div>
     <div class="flow-caption">
-      <strong>Wafer path</strong><br>
-      FOUP → FI/EFEM → LL pumpdown → TM robot → PM/CM process → cooldown/return → LL vent.
-      실제 route는 고객 recipe와 chamber option에 따라 달라집니다.
+      <strong>Wafer path</strong>
+      <ol class="flow-steps">
+        ${clusterFlowSteps.map(([title], index) => `<li data-flow-step="${index}">${index + 1}. ${title}</li>`).join("")}
+      </ol>
+      <p id="flow-step-detail"></p>
     </div>
   `;
   clusterSlots.forEach(slot => drawFlowLine(board, slot));
@@ -246,6 +294,23 @@ function renderClusterBoard() {
       if (selected) placeClusterModule(slot.id, selected.dataset.type);
     });
     board.appendChild(slotEl);
+  });
+  updateClusterFlowStep();
+}
+
+function updateClusterFlowStep() {
+  const detail = document.querySelector("#flow-step-detail");
+  if (!detail) return;
+  const [title, text] = clusterFlowSteps[clusterFlowStep];
+  const dot = document.querySelector(".wafer-step-dot");
+  const position = clusterFlowPositions[clusterFlowStep];
+  if (dot && position) {
+    dot.style.left = `${position.left}%`;
+    dot.style.top = `${position.top}%`;
+  }
+  detail.innerHTML = `<strong>${title}</strong>: ${text}`;
+  document.querySelectorAll("[data-flow-step]").forEach(item => {
+    item.classList.toggle("active", Number(item.dataset.flowStep) === clusterFlowStep);
   });
 }
 
@@ -358,20 +423,22 @@ function renderClusterLegend() {
 
 function renderClusterConcepts() {
   document.querySelector("#cluster-concepts").innerHTML = `
-    <h2>구조 이해 핵심</h2>
-    <div class="deep-item"><strong>TM</strong><span>Transfer Module. 중앙 robot/transfer chamber가 wafer를 LL과 PM/CM 사이에서 옮깁니다.</span></div>
-    <div class="deep-item"><strong>LL</strong><span>Load Lock. 대기압의 FOUP/FI와 vacuum cluster 사이 boundary입니다.</span></div>
-    <div class="deep-item"><strong>PM</strong><span>Process Module. EPI, selective EPI, RTP처럼 실제 공정이 일어나는 chamber입니다.</span></div>
-    <div class="deep-item"><strong>CM</strong><span>여기서는 Clean/Cool/Support Chamber Module의 교육용 표기입니다. 회사/문서마다 CM 의미가 다를 수 있으니 현장 용어를 확인하세요.</span></div>
-    <div class="deep-item"><strong>Facet</strong><span>중앙 TM 주변에 chamber가 붙는 면입니다. 공개 자료상 Centura 계열은 multiple process chambers/up to four process chambers 개념으로 설명됩니다.</span></div>
+    <h2>아무것도 모르는 사람용 구조 설명</h2>
+    <div class="deep-item"><strong>왜 Load Lock이 필요한가?</strong><span>Fab 앞쪽 FOUP/EFEM은 대기압이고, EPI/RTP 같은 process chamber는 진공 또는 제어된 분위기가 필요합니다. Load Lock은 웨이퍼를 바로 공정 챔버에 넣지 않고, 작은 중간방에서 압력을 맞춰 오염과 공정 불안정을 줄이는 문입니다.</span></div>
+    <div class="deep-item"><strong>TM은 무엇인가?</strong><span>Transfer Module은 진공 안의 중앙 복도이자 robot 방입니다. 사람 대신 robot blade가 wafer를 LL에서 꺼내 PM/CM으로 옮깁니다. 이곳이 흔들리면 모든 chamber 이동이 흔들립니다.</span></div>
+    <div class="deep-item"><strong>PM은 무엇인가?</strong><span>여기서 PM은 Preventive Maintenance가 아니라 Process Module입니다. EPI PM이면 epitaxy 성장, RTP PM이면 열처리처럼 실제 공정이 일어나는 방입니다.</span></div>
+    <div class="deep-item"><strong>CM은 무엇인가?</strong><span>이 게임에서 CM은 Clean/Cool/Support Module을 뜻하는 교육용 표기입니다. 예를 들어 EPI 전에 표면을 준비하는 pre-clean, 공정 후 wafer를 식히는 cooldown 같은 보조 chamber입니다. 실제 회사 문서에서는 CM 의미가 다를 수 있어 반드시 확인해야 합니다.</span></div>
+    <div class="deep-item"><strong>왜 여러 PM이 붙는가?</strong><span>고객이 PM 2개, 3개, 4개를 요구하는 이유는 throughput, chamber matching, 공정 routing, redundancy 때문입니다. chamber가 많을수록 생산성은 좋아질 수 있지만 gas, exhaust, PM 일정, qualification이 복잡해집니다.</span></div>
+    <div class="deep-item"><strong>왜 모듈이 TM 둘레에 붙는가?</strong><span>중앙 TM robot이 모든 chamber에 닿아야 하기 때문입니다. 그래서 chamber는 TM의 facet, 즉 둘레 면에 붙습니다. 이 배치 감각이 install, service clearance, robot teaching, pumpdown, chamber matching 이해의 시작입니다.</span></div>
   `;
   document.querySelector("#cluster-learning").innerHTML = `
-    <h2>현장 적응 질문</h2>
-    <div class="deep-item"><span>이 tool의 exact platform은 Centura Prime, Xtera, 200mm, RP, Vantage 중 무엇인가?</span></div>
-    <div class="deep-item"><span>고객이 지정한 PM 수는 process chamber 수인가, recipe route에서 쓰는 chamber 수인가?</span></div>
-    <div class="deep-item"><span>pre-clean/etch/cooldown chamber가 process module로 counting되는지 site 문서에서 확인했는가?</span></div>
-    <div class="deep-item"><span>LL pump/vent time, robot blade, WOB/centering, chamber matching이 qualification에 어떤 영향을 주는가?</span></div>
-    <div class="deep-item"><span>모듈 추가/제거가 gas panel, abatement load, exhaust flow, utility POC, software recipe routing에 미치는 영향은 무엇인가?</span></div>
+    <h2>구성할 때 생각 순서</h2>
+    <div class="deep-item"><strong>1. 고객이 말한 PM 수 확인</strong><span>PM이 process chamber 수인지, clean/cool chamber까지 포함한 module 수인지 문서로 확인합니다.</span></div>
+    <div class="deep-item"><strong>2. wafer route 그리기</strong><span>FOUP → FI/EFEM → LL → TM → PM/CM → TM → LL → FOUP 순서를 그립니다.</span></div>
+    <div class="deep-item"><strong>3. 필요한 보조 module 확인</strong><span>EPI라면 pre-clean이 필요한지, RTP라면 cooldown/support가 필요한지 확인합니다.</span></div>
+    <div class="deep-item"><strong>4. facility 영향 보기</strong><span>PM이 늘면 gas panel, exhaust, abatement, PCW, power, service clearance, PM schedule이 같이 늘어납니다.</span></div>
+    <div class="deep-item"><strong>5. qualification 기준 묻기</strong><span>chamber matching, pump/vent time, robot transfer reliability, temperature/thickness/defect 기준을 고객과 선임에게 확인합니다.</span></div>
+    <div class="deep-item"><strong>6. 실제 정답은 site config</strong><span>이 게임은 공개 자료 기반 대표 구조입니다. 실제 정답은 Applied configuration drawing, customer spec, install manual에 있습니다.</span></div>
   `;
 }
 
