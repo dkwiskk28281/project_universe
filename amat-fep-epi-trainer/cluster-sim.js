@@ -92,13 +92,48 @@ let clusterFlowStep = 0;
 let clusterFlowTimer = null;
 
 const clusterFlowSteps = [
-  ["FOUP", "웨이퍼 보관통에서 시작합니다. 아직 대기압 영역입니다."],
-  ["FI/EFEM", "전면 이송부가 FOUP에서 wafer를 꺼내 load lock 쪽으로 넘깁니다."],
-  ["LL pumpdown", "Load Lock이 대기압 wafer를 진공 cluster로 넘기기 위해 압력을 낮춥니다."],
-  ["TM robot", "Transfer Module 안의 robot이 vacuum 상태에서 wafer를 잡아 이동합니다."],
-  ["PM/CM", "Process Module이나 Clean/Cool Module에서 공정 또는 보조 처리가 일어납니다."],
-  ["Return", "처리 후 TM robot이 wafer를 다시 Load Lock 쪽으로 돌려보냅니다."],
-  ["LL vent", "Load Lock이 다시 대기압으로 돌아와 wafer를 EFEM/FOUP으로 보냅니다."]
+  {
+    title: "FOUP",
+    subtitle: "웨이퍼 보관통",
+    text: "FOUP(Front Opening Unified Pod)은 웨이퍼가 담겨 장비 앞 load port에 도킹되는 보관통입니다. 이 영역은 사람이 숨 쉬는 대기압 쪽입니다.",
+    install: "Install 관점: FOUP/load port 위치, 도킹 높이, 문 열림 방향, EFEM 접근 공간을 먼저 이해합니다."
+  },
+  {
+    title: "FI / EFEM",
+    subtitle: "장비 앞쪽 대기압 이송부",
+    text: "FI(Factory Interface)는 장비 전면 인터페이스이고, EFEM(Equipment Front End Module)은 FOUP에서 wafer를 꺼내 Load Lock으로 넘기는 대기압 robot 구역입니다.",
+    install: "Install 관점: EFEM은 아직 진공이 아닙니다. FOUP door, aligner, atmospheric robot, load lock 문 인터락이 서로 맞아야 합니다."
+  },
+  {
+    title: "LL pumpdown",
+    subtitle: "대기압에서 진공으로 바꾸는 중간방",
+    text: "LL(Load Lock)은 대기압 EFEM과 진공 TM 사이의 작은 문입니다. wafer를 넣고 문을 닫은 뒤 pumpdown으로 압력을 낮춰 진공 쪽으로 넘길 준비를 합니다.",
+    install: "Install 관점: pump/vent 라인, door seal, pressure gauge, leak check, pumpdown time이 qualification 포인트가 됩니다."
+  },
+  {
+    title: "TM robot",
+    subtitle: "진공 안 중앙 이송 로봇",
+    text: "TM(Transfer Module)은 진공 상태의 중앙 통로이자 robot 방입니다. robot blade가 Load Lock에서 wafer를 받아 PM/CM으로 이동시킵니다.",
+    install: "Install 관점: robot teaching, blade height, slot center, chamber door interlock이 틀어지면 모든 wafer transfer가 흔들립니다."
+  },
+  {
+    title: "PM / CM",
+    subtitle: "공정 챔버 또는 보조 챔버",
+    text: "PM(Process Module)은 실제 공정이 일어나는 방입니다. EPI PM은 epitaxy 성장, RTP PM은 열처리입니다. CM은 여기서 clean/cool/support chamber를 이해하기 위한 교육용 표현입니다.",
+    install: "Install 관점: PM 수가 늘면 gas, exhaust, PCW, power, abatement, service clearance, chamber matching 확인도 같이 늘어납니다."
+  },
+  {
+    title: "Return via TM",
+    subtitle: "공정 후 다시 중앙 로봇으로 복귀",
+    text: "공정 또는 보조 처리가 끝난 wafer는 다시 TM robot을 통해 Load Lock 쪽으로 돌아갑니다. 이동 경로는 들어갈 때와 반대 방향으로 이해하면 됩니다.",
+    install: "Install 관점: return path에서는 wafer handoff, cooldown 여부, wafer map/slot tracking, particle risk를 같이 봅니다."
+  },
+  {
+    title: "LL vent",
+    subtitle: "진공에서 대기압으로 되돌림",
+    text: "Load Lock이 vent로 다시 대기압에 가까워지면 EFEM robot이 wafer를 받아 FOUP의 원래 slot 또는 지정 slot로 돌려보냅니다.",
+    install: "Install 관점: vent gas, vent speed, pressure equalization, door open 조건, FOUP slot tracking을 확인합니다."
+  }
 ];
 
 const clusterFlowPositions = [
@@ -138,32 +173,47 @@ function initClusterControls() {
   });
   document.querySelector("#cluster-show-answer").addEventListener("click", showClusterAnswer);
   document.querySelector("#cluster-flow").addEventListener("click", () => {
-    clusterFlowOn = !clusterFlowOn;
-    manageClusterFlowTimer();
+    clusterFlowOn = !clusterFlowTimer;
+    manageClusterFlowTimer(false);
     renderClusterBoard();
+    renderClusterFlowPanel();
     renderClusterLegend();
     renderClusterFeedback();
   });
   document.querySelector("#cluster-reset").addEventListener("click", () => {
     clusterState = {};
     clusterFlowOn = false;
-    manageClusterFlowTimer();
+    clusterFlowStep = 0;
+    manageClusterFlowTimer(false);
     renderCluster();
   });
 }
 
-function manageClusterFlowTimer() {
+function manageClusterFlowTimer(resetStep = true) {
   if (clusterFlowTimer) {
     clearInterval(clusterFlowTimer);
     clusterFlowTimer = null;
   }
   if (clusterFlowOn) {
-    clusterFlowStep = 0;
+    if (resetStep) clusterFlowStep = 0;
     clusterFlowTimer = setInterval(() => {
       clusterFlowStep = (clusterFlowStep + 1) % clusterFlowSteps.length;
       updateClusterFlowStep();
-    }, 1500);
+    }, 3500);
   }
+}
+
+function selectClusterFlowStep(index) {
+  clusterFlowStep = Math.max(0, Math.min(index, clusterFlowSteps.length - 1));
+  clusterFlowOn = true;
+  if (clusterFlowTimer) {
+    clearInterval(clusterFlowTimer);
+    clusterFlowTimer = null;
+  }
+  renderClusterBoard();
+  renderClusterFlowPanel();
+  renderClusterLegend();
+  renderClusterFeedback();
 }
 
 function applyClusterPreset() {
@@ -261,13 +311,6 @@ function renderClusterBoard() {
       <path class="flow-route" d="M150 205 C255 235 300 565 405 625 C470 665 480 500 500 440 C535 335 640 340 770 455 C680 545 585 560 500 545 C430 535 395 605 352 665 C450 710 600 705 675 660" />
     </svg>
     <div class="wafer-step-dot" aria-hidden="true">W</div>
-    <div class="flow-caption">
-      <strong>Wafer path</strong>
-      <ol class="flow-steps">
-        ${clusterFlowSteps.map(([title], index) => `<li data-flow-step="${index}">${index + 1}. ${title}</li>`).join("")}
-      </ol>
-      <p id="flow-step-detail"></p>
-    </div>
   `;
   clusterSlots.forEach(slot => drawFlowLine(board, slot));
   clusterSlots.forEach(slot => {
@@ -299,19 +342,70 @@ function renderClusterBoard() {
 }
 
 function updateClusterFlowStep() {
-  const detail = document.querySelector("#flow-step-detail");
-  if (!detail) return;
-  const [title, text] = clusterFlowSteps[clusterFlowStep];
+  const step = clusterFlowSteps[clusterFlowStep];
   const dot = document.querySelector(".wafer-step-dot");
   const position = clusterFlowPositions[clusterFlowStep];
   if (dot && position) {
     dot.style.left = `${position.left}%`;
     dot.style.top = `${position.top}%`;
   }
-  detail.innerHTML = `<strong>${title}</strong>: ${text}`;
+  const detail = document.querySelector("#flow-step-detail");
+  if (detail && step) {
+    detail.innerHTML = `
+      <strong>${clusterFlowStep + 1}. ${step.title}</strong>
+      <span>${step.subtitle}</span>
+      <p>${step.text}</p>
+      <small>${step.install}</small>
+    `;
+  }
   document.querySelectorAll("[data-flow-step]").forEach(item => {
     item.classList.toggle("active", Number(item.dataset.flowStep) === clusterFlowStep);
+    if (item.tagName === "BUTTON") {
+      item.setAttribute("aria-pressed", Number(item.dataset.flowStep) === clusterFlowStep ? "true" : "false");
+    }
   });
+}
+
+function renderClusterFlowPanel() {
+  const panel = document.querySelector("#cluster-flow-panel");
+  if (!panel) return;
+  const modeText = clusterFlowTimer ? "자동 재생 중: 3.5초마다 다음 단계" : clusterFlowOn ? "수동 단계 보기" : "버튼을 누르면 보드에 경로가 표시됩니다";
+  panel.innerHTML = `
+    <div class="flow-panel-head">
+      <div>
+        <p class="eyebrow">Wafer Path</p>
+        <h2>웨이퍼가 장비 안에서 지나가는 순서</h2>
+      </div>
+      <span class="flow-mode">${modeText}</span>
+    </div>
+    <p class="flow-primer">
+      초보자는 이 한 줄만 먼저 외우면 됩니다:
+      <strong>FOUP 보관통 → FI/EFEM 대기압 로봇 → LL 압력 전환방 → TM 진공 로봇 → PM/CM 공정·보조 챔버 → TM → LL → FOUP</strong>.
+      자동 흐름이 빠르게 느껴지면 아래 버튼을 하나씩 눌러 멈춘 상태로 보세요.
+    </p>
+    <div class="flow-term-grid" aria-label="핵심 약어 뜻">
+      <span><strong>FI</strong> Factory Interface, 장비와 fab 물류가 만나는 전면 인터페이스</span>
+      <span><strong>EFEM</strong> Equipment Front End Module, FOUP에서 wafer를 꺼내는 대기압 로봇 구역</span>
+      <span><strong>LL</strong> Load Lock, 대기압과 진공을 이어 주는 압력 전환방</span>
+      <span><strong>TM</strong> Transfer Module, 진공 안 중앙 로봇과 이송 통로</span>
+      <span><strong>PM</strong> Process Module, 실제 EPI/RTP 공정이 일어나는 챔버</span>
+      <span><strong>CM</strong> Clean/Cool/Support Module, 전처리·냉각 같은 보조 챔버를 이해하기 위한 표기</span>
+    </div>
+    <div class="flow-step-list">
+      ${clusterFlowSteps.map((step, index) => `
+        <button class="flow-step-button" type="button" data-flow-step="${index}" aria-pressed="false">
+          <span>${index + 1}</span>
+          <strong>${step.title}</strong>
+          <small>${step.subtitle}</small>
+        </button>
+      `).join("")}
+    </div>
+    <article class="flow-step-detail" id="flow-step-detail"></article>
+  `;
+  panel.querySelectorAll("[data-flow-step]").forEach(button => {
+    button.addEventListener("click", () => selectClusterFlowStep(Number(button.dataset.flowStep)));
+  });
+  updateClusterFlowStep();
 }
 
 function moduleFace(type, role) {
@@ -409,7 +503,7 @@ function renderClusterLegend() {
   const target = clusterTarget();
   const platform = clusterPlatforms[selectedClusterPlatform];
   const flowButton = document.querySelector("#cluster-flow");
-  if (flowButton) flowButton.textContent = clusterFlowOn ? "웨이퍼 흐름 정지" : "웨이퍼 흐름 보기";
+  if (flowButton) flowButton.textContent = clusterFlowTimer ? "웨이퍼 흐름 정지" : "웨이퍼 흐름 자동재생";
   document.querySelector("#cluster-legend").innerHTML = `
     <strong>요구조건</strong><br>
     PM(Process Module): ${target.pm}/${platform.maxPm}<br>
@@ -417,13 +511,14 @@ function renderClusterLegend() {
     Cool/CM: ${target.cool}/${platform.maxCool}<br>
     TM(Transfer Module): 1 fixed<br>
     LL(Load Lock): 2 fixed<br>
-    View: ${clusterFlowOn ? "wafer flow animation on" : "static layout"}
+    View: ${clusterFlowTimer ? "auto wafer flow" : clusterFlowOn ? "manual wafer step" : "static layout"}
   `;
 }
 
 function renderClusterConcepts() {
   document.querySelector("#cluster-concepts").innerHTML = `
     <h2>아무것도 모르는 사람용 구조 설명</h2>
+    <div class="deep-item"><strong>FI/EFEM은 무엇인가?</strong><span>FI는 Factory Interface, EFEM은 Equipment Front End Module입니다. 쉽게 말하면 장비 앞쪽에서 FOUP을 열고 wafer를 꺼내 Load Lock으로 넘기는 대기압 로봇 구역입니다. 아직 진공 공정 챔버 안이 아니므로, FOUP 도킹·door open·wafer align·load lock handoff를 이해하는 입구라고 보면 됩니다.</span></div>
     <div class="deep-item"><strong>왜 Load Lock이 필요한가?</strong><span>Fab 앞쪽 FOUP/EFEM은 대기압이고, EPI/RTP 같은 process chamber는 진공 또는 제어된 분위기가 필요합니다. Load Lock은 웨이퍼를 바로 공정 챔버에 넣지 않고, 작은 중간방에서 압력을 맞춰 오염과 공정 불안정을 줄이는 문입니다.</span></div>
     <div class="deep-item"><strong>TM은 무엇인가?</strong><span>Transfer Module은 진공 안의 중앙 복도이자 robot 방입니다. 사람 대신 robot blade가 wafer를 LL에서 꺼내 PM/CM으로 옮깁니다. 이곳이 흔들리면 모든 chamber 이동이 흔들립니다.</span></div>
     <div class="deep-item"><strong>PM은 무엇인가?</strong><span>여기서 PM은 Preventive Maintenance가 아니라 Process Module입니다. EPI PM이면 epitaxy 성장, RTP PM이면 열처리처럼 실제 공정이 일어나는 방입니다.</span></div>
@@ -456,6 +551,7 @@ function renderCluster() {
   clampClusterRequest();
   renderClusterPalette();
   renderClusterBoard();
+  renderClusterFlowPanel();
   renderClusterLegend();
   renderClusterFeedback();
   renderClusterConcepts();
