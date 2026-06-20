@@ -128,7 +128,7 @@ function shouldSkipTextNode(node) {
     return true;
   }
   termRegex.lastIndex = 0;
-  return !!parent.closest("script, style, input, textarea, select, option, .term-explain, .english-card, .glossary-grid, #source-list");
+  return !!parent.closest("script, style, input, textarea, select, option, .term-explain, .english-card, .glossary-grid, #source-list, .cluster-board, .cluster-palette, .cluster-controls, .cluster-feedback");
 }
 
 function enhanceEnglishTerms(root = document.querySelector("main")) {

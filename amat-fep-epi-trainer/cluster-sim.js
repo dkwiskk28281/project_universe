@@ -67,12 +67,12 @@ const clusterPlatforms = {
 };
 
 const clusterSlots = [
-  { id: "ll-a", role: "LL-A", family: "loadlock", x: 34, y: 72 },
-  { id: "ll-b", role: "LL-B", family: "loadlock", x: 60, y: 72 },
-  { id: "facet-1", role: "Facet 1", family: "module", x: 40, y: 8 },
-  { id: "facet-2", role: "Facet 2", family: "module", x: 68, y: 28 },
-  { id: "facet-3", role: "Facet 3", family: "module", x: 40, y: 52 },
-  { id: "facet-4", role: "Facet 4", family: "module", x: 12, y: 28 }
+  { id: "ll-a", role: "LL-A", family: "loadlock", x: 29, y: 82 },
+  { id: "ll-b", role: "LL-B", family: "loadlock", x: 55, y: 82 },
+  { id: "facet-1", role: "Facet 1", family: "module", x: 40, y: 41 },
+  { id: "facet-2", role: "Facet 2", family: "module", x: 72, y: 56 },
+  { id: "facet-3", role: "Facet 3", family: "module", x: 40, y: 68 },
+  { id: "facet-4", role: "Facet 4", family: "module", x: 8, y: 56 }
 ];
 
 const moduleDefs = {
@@ -87,6 +87,7 @@ const moduleDefs = {
 
 let clusterState = {};
 let selectedClusterPlatform = "centuraPrime";
+let clusterFlowOn = false;
 
 function clusterTarget() {
   const platform = clusterPlatforms[selectedClusterPlatform];
@@ -114,8 +115,15 @@ function initClusterControls() {
     renderCluster();
   });
   document.querySelector("#cluster-show-answer").addEventListener("click", showClusterAnswer);
+  document.querySelector("#cluster-flow").addEventListener("click", () => {
+    clusterFlowOn = !clusterFlowOn;
+    renderClusterBoard();
+    renderClusterLegend();
+    renderClusterFeedback();
+  });
   document.querySelector("#cluster-reset").addEventListener("click", () => {
     clusterState = {};
+    clusterFlowOn = false;
     renderCluster();
   });
 }
@@ -185,12 +193,32 @@ function drawFlowLine(board, slot) {
 function renderClusterBoard() {
   const platform = clusterPlatforms[selectedClusterPlatform];
   const board = document.querySelector("#cluster-board");
+  board.classList.toggle("flowing", clusterFlowOn);
   board.innerHTML = `
+    <div class="fab-scene">
+      <div class="utility-rack">
+        <span>GAS</span><span>VAC</span><span>EXH</span><span>PCW</span>
+      </div>
+      <div class="tool-cabinet efem-cabinet"><span class="status-light"></span><span class="cab-label">FI / EFEM<br>Load ports</span></div>
+      <div class="tool-cabinet mainframe-cabinet"><span class="status-light"></span><span class="cab-label">${platform.core}<br>mainframe</span></div>
+      <div class="tool-cabinet pm-bank-cabinet"><span class="status-light"></span><span class="cab-label">Process / Clean<br>chamber bank</span></div>
+      <div class="foup foup-a"></div>
+      <div class="foup foup-b"></div>
+    </div>
+    <div class="cutaway-label">Vacuum-side cutaway, representative layout</div>
+    <div class="cutaway-deck"></div>
     <div class="cluster-core">
       <div>
         <strong>TM</strong>
         <span>${platform.core}<br>${platform.coreDesc}</span>
       </div>
+    </div>
+    <div class="robot-arm"></div>
+    <div class="wafer-dot" aria-hidden="true"></div>
+    <div class="flow-caption">
+      <strong>Wafer path</strong><br>
+      FOUP → FI/EFEM → LL pumpdown → TM robot → PM/CM process → cooldown/return → LL vent.
+      실제 route는 고객 recipe와 chamber option에 따라 달라집니다.
     </div>
   `;
   clusterSlots.forEach(slot => drawFlowLine(board, slot));
@@ -202,7 +230,7 @@ function renderClusterBoard() {
     slotEl.dataset.slot = slot.id;
     slotEl.style.left = `${slot.x}%`;
     slotEl.style.top = `${slot.y}%`;
-    slotEl.innerHTML = `<span class="slot-role">${slot.role}</span><span class="slot-name">${type ? moduleDefs[type][0] : "Drop module"}</span>`;
+    slotEl.innerHTML = type ? moduleFace(type, slot.role) : `<span class="slot-role">${slot.role}</span><span class="slot-name">Drop module</span>`;
     slotEl.addEventListener("dragover", event => {
       event.preventDefault();
       slotEl.classList.add("drop-hover");
@@ -219,6 +247,19 @@ function renderClusterBoard() {
     });
     board.appendChild(slotEl);
   });
+}
+
+function moduleFace(type, role) {
+  const [name, desc] = moduleDefs[type];
+  const portLabels = type === "loadlock" ? ["door", "pump", "vent"] : type === "cool" ? ["flow", "temp", "N2"] : ["gas", "vac", "exh"];
+  return `
+    <span class="slot-role">${role}</span>
+    <span class="slot-name">${name}</span>
+    <span class="module-face">
+      <span class="ports">${portLabels.map(() => "<i></i>").join("")}</span>
+      <span class="module-sub">${desc}</span>
+    </span>
+  `;
 }
 
 function placeClusterModule(slotId, type) {
@@ -302,13 +343,16 @@ function renderClusterFeedback() {
 function renderClusterLegend() {
   const target = clusterTarget();
   const platform = clusterPlatforms[selectedClusterPlatform];
+  const flowButton = document.querySelector("#cluster-flow");
+  if (flowButton) flowButton.textContent = clusterFlowOn ? "웨이퍼 흐름 정지" : "웨이퍼 흐름 보기";
   document.querySelector("#cluster-legend").innerHTML = `
     <strong>요구조건</strong><br>
     PM(Process Module): ${target.pm}/${platform.maxPm}<br>
     Clean/CM: ${target.clean}/${platform.maxClean}<br>
     Cool/CM: ${target.cool}/${platform.maxCool}<br>
     TM(Transfer Module): 1 fixed<br>
-    LL(Load Lock): 2 fixed
+    LL(Load Lock): 2 fixed<br>
+    View: ${clusterFlowOn ? "wafer flow animation on" : "static layout"}
   `;
 }
 
