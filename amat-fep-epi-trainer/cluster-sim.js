@@ -67,8 +67,8 @@ const clusterPlatforms = {
 };
 
 const clusterSlots = [
-  { id: "ll-a", role: "LL-A", family: "loadlock", x: 29, y: 82 },
-  { id: "ll-b", role: "LL-B", family: "loadlock", x: 55, y: 82 },
+  { id: "ll-a", role: "LL-A", family: "loadlock", x: 29, y: 76 },
+  { id: "ll-b", role: "LL-B", family: "loadlock", x: 55, y: 76 },
   { id: "facet-1", role: "Facet 1", family: "module", x: 40, y: 41 },
   { id: "facet-2", role: "Facet 2", family: "module", x: 72, y: 56 },
   { id: "facet-3", role: "Facet 3", family: "module", x: 40, y: 68 },
@@ -83,6 +83,57 @@ const moduleDefs = {
   cool: ["COOL CM", "Cooldown / Support Module"],
   loadlock: ["LOAD LOCK", "Atmosphere ↔ Vacuum Boundary"],
   empty: ["EMPTY", "Unused / blocked facet"]
+};
+
+const moduleVisuals = {
+  epi: {
+    short: "EPI",
+    caption: "heated epi reactor",
+    services: ["H2", "Si", "Dop"],
+    hardware: "Quartz dome / susceptor",
+    ports: ["gas", "vac", "exh"],
+    className: "process"
+  },
+  selective: {
+    short: "SEL",
+    caption: "selective epi reactor",
+    services: ["H2", "Cl", "Si"],
+    hardware: "Selective epi chamber",
+    ports: ["gas", "temp", "exh"],
+    className: "selective"
+  },
+  rtp: {
+    short: "RTP",
+    caption: "lamp anneal module",
+    services: ["N2", "O2", "Lamp"],
+    hardware: "Lamp bank / pyrometry",
+    ports: ["lamp", "temp", "N2"],
+    className: "thermal"
+  },
+  clean: {
+    short: "CLN",
+    caption: "pre-clean module",
+    services: ["RF", "Gas", "Vac"],
+    hardware: "Surface prep chamber",
+    ports: ["rf", "gas", "vac"],
+    className: "clean"
+  },
+  cool: {
+    short: "COOL",
+    caption: "cooldown station",
+    services: ["N2", "PCW", "Temp"],
+    hardware: "Wafer cooldown shelf",
+    ports: ["flow", "temp", "N2"],
+    className: "cool"
+  },
+  loadlock: {
+    short: "LL",
+    caption: "pressure bridge",
+    services: ["Pump", "Vent", "Door"],
+    hardware: "Atmosphere to vacuum lock",
+    ports: ["door", "pump", "vent"],
+    className: "loadlock"
+  }
 };
 
 let clusterState = {};
@@ -139,11 +190,11 @@ const clusterFlowSteps = [
 const clusterFlowPositions = [
   { left: 16, top: 31 },
   { left: 26, top: 38 },
-  { left: 36, top: 78 },
+  { left: 36, top: 73 },
   { left: 50, top: 58 },
   { left: 76, top: 64 },
   { left: 50, top: 72 },
-  { left: 62, top: 85 }
+  { left: 62, top: 79 }
 ];
 
 function clusterTarget() {
@@ -249,7 +300,15 @@ function renderClusterPalette() {
   });
   palette.innerHTML = tokens.map(type => {
     const [name, desc] = moduleDefs[type];
-    return `<div class="module-token" draggable="true" data-type="${type}">${name}<small>${desc}</small></div>`;
+    return `
+      <div class="module-token" draggable="true" data-type="${type}">
+        ${paletteModule(type)}
+        <span class="token-copy">
+          <strong>${name}</strong>
+          <small>${desc}</small>
+        </span>
+      </div>
+    `;
   }).join("");
   palette.querySelectorAll(".module-token").forEach(token => {
     token.addEventListener("dragstart", event => {
@@ -260,6 +319,24 @@ function renderClusterPalette() {
       token.classList.add("selected");
     });
   });
+}
+
+function paletteModule(type) {
+  if (type === "empty") {
+    return `
+      <span class="token-machine token-empty">
+        <span class="token-blank"></span>
+      </span>
+    `;
+  }
+  const visual = moduleVisuals[type];
+  return `
+    <span class="token-machine token-${type}">
+      <span class="token-lid"></span>
+      <span class="token-window">${visual.short}</span>
+      <span class="token-ports">${visual.ports.map(() => "<i></i>").join("")}</span>
+    </span>
+  `;
 }
 
 function drawFlowLine(board, slot) {
@@ -283,19 +360,43 @@ function renderClusterBoard() {
   const board = document.querySelector("#cluster-board");
   board.classList.toggle("flowing", clusterFlowOn);
   board.innerHTML = `
+    <div class="cleanroom-depth">
+      <span></span><span></span><span></span>
+    </div>
     <div class="fab-scene">
       <div class="utility-rack">
         <span>GAS</span><span>VAC</span><span>EXH</span><span>PCW</span>
       </div>
-      <div class="tool-cabinet efem-cabinet"><span class="status-light"></span><span class="cab-label">FI / EFEM<br>Load ports</span></div>
-      <div class="tool-cabinet mainframe-cabinet"><span class="status-light"></span><span class="cab-label">${platform.core}<br>mainframe</span></div>
-      <div class="tool-cabinet pm-bank-cabinet"><span class="status-light"></span><span class="cab-label">Process / Clean<br>chamber bank</span></div>
-      <div class="foup foup-a"></div>
-      <div class="foup foup-b"></div>
+      <div class="efem-assembly">
+        <div class="load-port port-a"><span class="port-door"></span><span>LP-A</span></div>
+        <div class="load-port port-b"><span class="port-door"></span><span>LP-B</span></div>
+        <div class="efem-body">
+          <span class="status-light"></span>
+          <span class="cab-label">FI / EFEM<br>atmospheric handler</span>
+          <span class="efem-window"></span>
+          <span class="efem-robot"></span>
+        </div>
+        <div class="foup foup-a"><span></span></div>
+        <div class="foup foup-b"><span></span></div>
+      </div>
+      <div class="atmos-vacuum-bridge">
+        <span>LL handoff</span>
+      </div>
+      <div class="mainframe-cabinet">
+        <span class="status-light"></span>
+        <span class="cab-label">${platform.core}<br>vacuum mainframe</span>
+      </div>
+      <div class="service-spine">
+        <span>gas panel</span><span>vacuum pump</span><span>abatement</span>
+      </div>
     </div>
-    <div class="cutaway-label">Vacuum-side cutaway, representative layout</div>
+    <div class="cutaway-label">Vacuum docking deck, public-source representative layout</div>
     <div class="cutaway-deck"></div>
     <div class="cluster-core">
+      <span class="core-bolt b1"></span>
+      <span class="core-bolt b2"></span>
+      <span class="core-bolt b3"></span>
+      <span class="core-bolt b4"></span>
       <div>
         <strong>TM</strong>
         <span>${platform.core}<br>${platform.coreDesc}</span>
@@ -318,10 +419,11 @@ function renderClusterBoard() {
     const slotEl = document.createElement("button");
     slotEl.className = `slot ${type ? "filled" : ""}`;
     if (type) slotEl.dataset.type = type;
+    slotEl.dataset.family = slot.family;
     slotEl.dataset.slot = slot.id;
     slotEl.style.left = `${slot.x}%`;
     slotEl.style.top = `${slot.y}%`;
-    slotEl.innerHTML = type ? moduleFace(type, slot.role) : `<span class="slot-role">${slot.role}</span><span class="slot-name">Drop module</span>`;
+    slotEl.innerHTML = type ? moduleFace(type, slot.role) : emptyDock(slot);
     slotEl.addEventListener("dragover", event => {
       event.preventDefault();
       slotEl.classList.add("drop-hover");
@@ -339,6 +441,20 @@ function renderClusterBoard() {
     board.appendChild(slotEl);
   });
   updateClusterFlowStep();
+}
+
+function emptyDock(slot) {
+  const helper = slot.family === "loadlock" ? "Load Lock module docking bay" : "Process / Clean / Cool chamber docking bay";
+  return `
+    <span class="dock-socket">
+      <span class="dock-ring"></span>
+      <span class="gate-valve"></span>
+      <span class="guide-rails"><i></i><i></i></span>
+      <span class="slot-role">${slot.role}</span>
+      <span class="slot-name">${helper}</span>
+      <span class="dock-hint">drag module here</span>
+    </span>
+  `;
 }
 
 function updateClusterFlowStep() {
@@ -410,13 +526,24 @@ function renderClusterFlowPanel() {
 
 function moduleFace(type, role) {
   const [name, desc] = moduleDefs[type];
-  const portLabels = type === "loadlock" ? ["door", "pump", "vent"] : type === "cool" ? ["flow", "temp", "N2"] : ["gas", "vac", "exh"];
+  const visual = moduleVisuals[type];
   return `
-    <span class="slot-role">${role}</span>
-    <span class="slot-name">${name}</span>
-    <span class="module-face">
-      <span class="ports">${portLabels.map(() => "<i></i>").join("")}</span>
-      <span class="module-sub">${desc}</span>
+    <span class="module-docked module-${type}">
+      <span class="docking-flange">
+        <i></i><i></i><i></i><i></i>
+      </span>
+      <span class="module-housing">
+        <span class="module-lid"></span>
+        <span class="slot-role">${role}</span>
+        <span class="slot-name">${name}</span>
+        <span class="module-chamber-window">${visual.short}</span>
+        <span class="module-sub">${visual.hardware}</span>
+        <span class="service-strip">${visual.services.map(service => `<i>${service}</i>`).join("")}</span>
+      </span>
+      <span class="module-face">
+        <span class="ports">${visual.ports.map(port => `<i title="${port}"></i>`).join("")}</span>
+        <span class="module-sub">${desc}</span>
+      </span>
     </span>
   `;
 }
