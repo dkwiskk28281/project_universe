@@ -688,6 +688,16 @@ sources.push(
   ["FM Semiconductor Fabrication Facilities Data Sheet", "https://www.fm.com/FMAApi/data/ApprovalStandardsDownload?itemId=%7B417F20B6-EFCA-463A-935C-3C52DEBEA28B%7D"]
 );
 
+sources.push(
+  ["Applied Blog: Centura Platform overview", "https://www.appliedmaterials.com/us/en/blog/blog-posts/a-new-equipment-platform-for-a-new-era-of-chipmaking.html"],
+  ["Applied Centura Etch architecture note", "https://www.appliedmaterials.com/us/en/product-library/centura-etch.html"],
+  ["Generic cluster tool components", "https://www.globalspec.com/learnmore/manufacturing_process_equipment/vacuum_equipment/thin_film_equipment/semiconductor_process_systems_cluster_tools"],
+  ["Centura cluster tool patent schematic context", "https://patents.google.com/patent/EP1056123A2/en"],
+  ["ResearchGate Centura cluster tool figure context", "https://www.researchgate.net/figure/llustration-of-the-Applied-Materials-Centura-cluster-tool-and-the-OLT-integrated-film_fig1_253747030"],
+  ["Used Centura Epi 300 public configuration example", "https://www.macquarie.com/au/en/about/company/commodities-and-global-markets/specialised-and-asset-finance/electronics/inventory/semiconductor-fabrication/epitaxial-silicon--epi-/227832.html"],
+  ["Hybrid cluster tool architecture", "https://www.semiconductoronline.com/doc/hybrid-cluster-tool-architectures-for-300mm-a-0001"]
+);
+
 const publicFacts = [
   ["RTP 공정 목적", "Applied 공개 자료는 RTP/anneal을 wafer를 짧은 시간 특정 온도로 가열해 conductivity, permittivity, densification, contamination reduction 등 물성 변화를 만드는 영역으로 설명합니다."],
   ["RTP 방식", "공개 자료에서 soak, spike, millisecond anneal과 thermal-radical oxidation이 응용별로 언급됩니다. CE는 방식 이름보다 시간-온도 budget, repeatability, uniformity가 왜 중요한지 이해해야 합니다."],
@@ -1031,6 +1041,21 @@ glossaryTerms.push(
   ["Chamber Option", "Install", "같은 platform에 어떤 process chamber가 붙는지에 따른 구성 차이입니다.", "install scope, utility, qualification, PM procedure가 달라집니다."],
   ["Hybrid Configuration", "Install", "서로 다른 chamber type을 한 platform에 조합하는 구성입니다.", "recipe routing, chamber matching, PM planning, qualification data가 복잡해집니다."],
   ["Retrofit / Upgrade", "업무", "기존 installed base 장비에 새 hardware/software/process capability를 추가하는 작업입니다.", "변경점 관리, baseline 비교, customer sign-off가 중요합니다."]
+);
+
+glossaryTerms.push(
+  ["Cluster Tool", "장비구조", "중앙 transfer module과 여러 process/load/cool/clean chamber가 붙은 다중 chamber 장비 구조입니다.", "Centura 같은 platform을 이해할 때 가장 중요한 큰 그림입니다."],
+  ["Transfer Module / TM", "장비구조", "wafer를 load lock과 process chamber 사이에서 옮기는 중앙 진공 이송 공간입니다.", "robot, blade, sensor, pressure boundary, contamination을 함께 봅니다."],
+  ["Process Module / PM", "장비구조", "EPI, RTP, etch, clean 등 실제 공정이 일어나는 chamber module입니다.", "Preventive Maintenance의 PM과 혼동하지 않도록 문맥을 확인해야 합니다."],
+  ["Load Lock / LL", "장비구조", "대기압 영역과 진공 cluster 사이에서 wafer를 넣고 빼는 chamber입니다.", "pump/vent time, door seal, pressure matching, contamination control이 중요합니다."],
+  ["Factory Interface / FI", "장비구조", "FOUP/loadport와 장비 내부 이송계를 연결하는 전면 interface입니다.", "loadport, mapping, FOUP seating, host/automation이 연결됩니다."],
+  ["EFEM", "장비구조", "Equipment Front End Module. 대기압 쪽 wafer handling interface입니다.", "vacuum cluster 앞에서 FOUP와 load lock 사이 wafer 흐름을 담당합니다."],
+  ["Facet", "장비구조", "transfer module 주변에 chamber가 붙는 면 또는 위치입니다.", "PM 수, clean/cool module 옵션, service clearance 이해에 필요합니다."],
+  ["Chamber Matching", "장비구조", "여러 chamber가 비슷한 결과를 내도록 맞추는 것입니다.", "multi-chamber EPI/RTP qualification에서 매우 중요합니다."],
+  ["Robot Blade", "장비구조", "robot이 wafer를 실제로 들고 옮기는 얇은 팔/받침입니다.", "wafer-on-blade detection, centering, scrape risk와 연결됩니다."],
+  ["WOB", "장비구조", "Wafer-on-Blade. wafer가 robot blade 위에 있는지 감지하는 개념입니다.", "transfer alarm과 wafer drop/scrape 방지에 중요합니다."],
+  ["Pump/Vent Time", "장비구조", "load lock이나 chamber를 진공으로 빼고 다시 대기압으로 돌리는 시간입니다.", "throughput과 scheduling, pressure matching에 영향을 줍니다."],
+  ["Recipe Routing", "장비구조", "wafer가 어떤 chamber 순서로 이동해 공정을 받는지 정한 경로입니다.", "chamber count가 같아도 route가 다르면 throughput과 qualification이 달라집니다."]
 );
 
 const state = JSON.parse(localStorage.getItem("ceTrainerState") || "{}");

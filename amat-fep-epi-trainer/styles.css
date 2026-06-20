@@ -815,6 +815,204 @@ main {
   line-height: 1.55;
 }
 
+.cluster-shell {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.cluster-controls,
+.cluster-workbench,
+.cluster-feedback {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(26, 44, 57, 0.06);
+}
+
+.cluster-controls {
+  padding: 18px;
+  align-self: start;
+}
+
+.cluster-controls label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-weight: 750;
+}
+
+.cluster-controls select,
+.cluster-controls input {
+  min-height: 40px;
+  width: 100%;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: white;
+}
+
+.cluster-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.cluster-legend {
+  margin-top: 14px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.cluster-workbench {
+  padding: 16px;
+}
+
+.cluster-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.module-token {
+  min-width: 118px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: white;
+  font-weight: 850;
+  text-align: center;
+  user-select: none;
+  cursor: grab;
+}
+
+.module-token small {
+  display: block;
+  margin-top: 3px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.module-token[data-type="epi"],
+.slot.filled[data-type="epi"] { background: #007f86; }
+.module-token[data-type="selective"],
+.slot.filled[data-type="selective"] { background: #145da0; }
+.module-token[data-type="rtp"],
+.slot.filled[data-type="rtp"] { background: #8a4b15; }
+.module-token[data-type="clean"],
+.slot.filled[data-type="clean"] { background: #5c6f22; }
+.module-token[data-type="cool"],
+.slot.filled[data-type="cool"] { background: #536878; }
+.module-token[data-type="loadlock"],
+.slot.filled[data-type="loadlock"] { background: #5b4a8b; }
+.module-token[data-type="empty"] { background: #6d7780; }
+
+.cluster-board {
+  position: relative;
+  min-height: 620px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(90deg, rgba(216,225,232,0.45) 1px, transparent 1px),
+    linear-gradient(rgba(216,225,232,0.45) 1px, transparent 1px),
+    #f8fbfc;
+  background-size: 32px 32px;
+  overflow: hidden;
+}
+
+.cluster-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 190px;
+  height: 190px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 3px solid #263643;
+  background: #ffffff;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 16px;
+  box-shadow: inset 0 0 0 12px #edf3f5;
+}
+
+.cluster-core strong {
+  display: block;
+  font-size: 22px;
+}
+
+.cluster-core span {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.slot {
+  position: absolute;
+  width: 162px;
+  min-height: 92px;
+  border: 2px dashed #9badb9;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 10px;
+  display: grid;
+  align-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.slot.filled {
+  border-style: solid;
+  color: white;
+}
+
+.slot .slot-role {
+  display: block;
+  font-size: 12px;
+  opacity: 0.85;
+  margin-bottom: 4px;
+}
+
+.slot .slot-name {
+  display: block;
+  font-size: 16px;
+}
+
+.slot.drop-hover {
+  outline: 4px solid rgba(0, 127, 134, 0.2);
+}
+
+.slot.bad {
+  border-color: #b35a16;
+}
+
+.slot.good {
+  border-color: #28784f;
+}
+
+.flow-line {
+  position: absolute;
+  height: 2px;
+  background: rgba(38, 54, 67, 0.25);
+  transform-origin: left center;
+  pointer-events: none;
+}
+
+.cluster-feedback {
+  margin-top: 14px;
+  padding: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.cluster-feedback strong {
+  color: var(--ink);
+}
+
 .gas-card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -1004,7 +1202,12 @@ main {
   .mastery-grid,
   .template-grid,
   .case-grid,
-  .english-grid {
+  .english-grid,
+  .cluster-shell {
     grid-template-columns: 1fr;
+  }
+
+  .cluster-board {
+    min-height: 720px;
   }
 }

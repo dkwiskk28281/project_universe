@@ -71,6 +71,23 @@ const englishTermGuide = [
   ["ETA", "예상 시간", "Work", "Estimated Time of Arrival/Action. 도착 또는 완료 예상 시간입니다.", "고객 업데이트에서 꼭 필요합니다."]
 ];
 
+englishTermGuide.push(
+  ["Cluster Tool", "다중 챔버 장비", "Structure", "중앙 이송부와 여러 공정/로딩 chamber가 붙은 장비 구조입니다.", "Centura 같은 platform을 이해하는 가장 중요한 그림입니다."],
+  ["Transfer Module", "중앙 이송 챔버", "Structure", "wafer를 load lock과 process module 사이에서 옮기는 중앙 공간입니다.", "robot, blade, pressure boundary, particle risk를 함께 봅니다."],
+  ["TM", "중앙 이송부", "Structure", "Transfer Module의 약어입니다.", "Centura 구성에서 중심에 있고 PM/LL/CM을 연결합니다."],
+  ["Process Module", "공정 챔버", "Structure", "실제 deposition, anneal, clean 같은 공정이 일어나는 chamber입니다.", "문맥에 따라 PM은 Preventive Maintenance가 아니라 Process Module일 수 있습니다."],
+  ["PM", "공정모듈/예방정비", "Structure", "Process Module 또는 Preventive Maintenance를 뜻할 수 있습니다.", "설치 구성 이야기에서는 Process Module, 정비 이야기에서는 Preventive Maintenance로 읽어야 합니다."],
+  ["Load Lock", "대기-진공 경계 챔버", "Structure", "대기압 FOUP/FI와 vacuum transfer module 사이에서 wafer를 넣고 빼는 chamber입니다.", "pump/vent time과 door seal, pressure matching이 중요합니다."],
+  ["LL", "로드락", "Structure", "Load Lock의 약어입니다.", "일반적으로 FI/EFEM과 TM 사이의 boundary로 이해합니다."],
+  ["Factory Interface", "전면 인터페이스", "Structure", "FOUP/loadport와 장비 내부 이송계를 연결하는 앞단입니다.", "loadport, mapping, host, wafer handoff가 연결됩니다."],
+  ["FI", "전면 인터페이스", "Structure", "Factory Interface의 약어입니다.", "FOUP에서 load lock으로 들어가기 전 대기압 쪽 영역입니다."],
+  ["EFEM", "전면 웨이퍼 이송부", "Structure", "Equipment Front End Module. 대기압 쪽 wafer handling interface입니다.", "FOUP와 load lock 사이 wafer 흐름을 담당합니다."],
+  ["Facet", "챔버가 붙는 면", "Structure", "central transfer module 주변에 chamber가 붙는 위치 또는 면입니다.", "PM 수와 chamber option을 이해할 때 씁니다."],
+  ["CM", "보조 챔버/문맥확인", "Structure", "문서마다 chamber module, clean module, cooldown module 등 의미가 달라질 수 있습니다.", "현장에서는 CM이 무엇을 뜻하는지 반드시 해당 tool 문서로 확인해야 합니다."],
+  ["Chamber Matching", "챔버 간 결과 맞춤", "Structure", "여러 chamber가 유사한 결과를 내도록 맞추는 작업입니다.", "multi-chamber tool qualification에서 핵심입니다."],
+  ["Recipe Routing", "웨이퍼 이동 경로", "Structure", "wafer가 어떤 chamber 순서로 이동해 공정을 받는지입니다.", "PM 개수만 맞아도 route가 다르면 throughput과 결과가 달라집니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }

@@ -20,6 +20,7 @@
       <button class="nav-btn" data-view="roadmap">로드맵</button>
       <button class="nav-btn" data-view="systems">장비/공정</button>
       <button class="nav-btn" data-view="equipment">장비군</button>
+      <button class="nav-btn" data-view="cluster">구성게임</button>
       <button class="nav-btn" data-view="install">설치</button>
       <button class="nav-btn" data-view="facility">Facility</button>
       <button class="nav-btn" data-view="gases">가스안전</button>
@@ -131,6 +132,52 @@
       <div class="deep-layout">
         <article class="deep-panel" id="option-split"></article>
         <article class="deep-panel" id="equipment-study-path"></article>
+      </div>
+    </section>
+
+    <section id="cluster" class="view">
+      <div class="page-title">
+        <p>Cluster Tool Builder</p>
+        <h1>Centura/EPI/RTP 모듈 구성 드래그 게임</h1>
+      </div>
+      <article class="source-note">
+        <h2>중요한 전제</h2>
+        <p>이 게임은 공개 자료 기반의 교육용 cluster tool 개념 시뮬레이터입니다. 실제 고객 장비의 정확한 chamber 위치, slot naming, gas panel, robot type, safety interlock, qualification limit는 Applied 공식 configuration 문서와 고객 site spec을 따라야 합니다. 여기서는 PM을 Preventive Maintenance가 아니라 <strong>Process Module</strong>, TM을 <strong>Transfer Module</strong>, LL을 <strong>Load Lock</strong>으로 사용합니다.</p>
+      </article>
+      <div class="cluster-shell">
+        <aside class="cluster-controls">
+          <label>
+            Platform
+            <select id="cluster-platform"></select>
+          </label>
+          <label>
+            고객 지정 Process Module 수
+            <input id="cluster-pm-count" type="number" min="1" max="4" value="2" />
+          </label>
+          <label>
+            Pre-clean/Clean Module 수
+            <input id="cluster-clean-count" type="number" min="0" max="2" value="1" />
+          </label>
+          <label>
+            Cooldown/Support Module 수
+            <input id="cluster-cool-count" type="number" min="0" max="2" value="1" />
+          </label>
+          <div class="cluster-actions">
+            <button class="primary" id="cluster-build-target">요구조건 적용</button>
+            <button class="secondary" id="cluster-show-answer">정답 예시 보기</button>
+            <button class="secondary" id="cluster-reset">초기화</button>
+          </div>
+          <div class="cluster-legend" id="cluster-legend"></div>
+        </aside>
+        <div class="cluster-workbench">
+          <div class="cluster-palette" id="cluster-palette"></div>
+          <div class="cluster-board" id="cluster-board"></div>
+          <div class="cluster-feedback" id="cluster-feedback"></div>
+        </div>
+      </div>
+      <div class="deep-layout">
+        <article class="deep-panel" id="cluster-concepts"></article>
+        <article class="deep-panel" id="cluster-learning"></article>
       </div>
     </section>
 
@@ -333,9 +380,10 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260620-english"></script>
+  <script src="app.js?v=20260620-cluster"></script>
   <script src="mastery.js?v=20260620-english"></script>
   <script src="readiness.js?v=20260620-gates"></script>
-  <script src="term-helper.js?v=20260620-english"></script>
+  <script src="cluster-sim.js?v=20260620-cluster"></script>
+  <script src="term-helper.js?v=20260620-cluster"></script>
 </body>
 </html>
