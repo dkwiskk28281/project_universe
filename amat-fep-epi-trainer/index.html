@@ -25,6 +25,7 @@
       <button class="nav-btn" data-view="gases">가스안전</button>
       <button class="nav-btn" data-view="safety">라인준수</button>
       <button class="nav-btn" data-view="mastery">마스터리</button>
+      <button class="nav-btn" data-view="readiness">현장투입</button>
       <button class="nav-btn" data-view="deep">심화</button>
       <button class="nav-btn" data-view="fab101">Fab기초</button>
       <button class="nav-btn" data-view="papers">논문노트</button>
@@ -221,6 +222,36 @@
       <div class="mastery-panel" id="mastery-panel"></div>
     </section>
 
+    <section id="readiness" class="view">
+      <div class="page-title">
+        <p>Fab Readiness Gate</p>
+        <h1>바로 투입 가능한지 냉정하게 판정하는 현장 준비도</h1>
+      </div>
+      <article class="source-note">
+        <h2>현실 기준</h2>
+        <p>이 앱을 다 봐도 혼자 gas, electrical, interlock, chamber open, recipe qualification을 수행할 권한이 생기는 것은 아닙니다. 현장 투입 가능성은 공식 교육, 고객 site orientation, 선임 입회, 작업 허가, 장비별 매뉴얼, 실제 hands-on 평가로 결정됩니다. 이 섹션은 그 전에 빈틈을 드러내고 빠르게 메우기 위한 준비도 판정판입니다.</p>
+      </article>
+      <div class="mastery-scoreboard">
+        <article class="mastery-score">
+          <span>Readiness 완료</span>
+          <strong id="readiness-done">0</strong>
+          <small id="readiness-total">0개 gate 중</small>
+        </article>
+        <article class="mastery-score">
+          <span>판정</span>
+          <strong id="readiness-level">관찰자</strong>
+          <small id="readiness-desc">혼자 작업 금지</small>
+        </article>
+        <article class="mastery-score">
+          <span>절대 원칙</span>
+          <strong>승인</strong>
+          <small>권한 없는 조작 금지</small>
+        </article>
+      </div>
+      <div class="mastery-tabs" id="readiness-tabs"></div>
+      <div class="mastery-panel" id="readiness-panel"></div>
+    </section>
+
     <section id="deep" class="view">
       <div class="page-title">
         <p>Senior-Level Deep Dive</p>
@@ -304,6 +335,7 @@
 
   <script src="app.js?v=20260620-english"></script>
   <script src="mastery.js?v=20260620-english"></script>
+  <script src="readiness.js?v=20260620-gates"></script>
   <script src="term-helper.js?v=20260620-english"></script>
 </body>
 </html>
