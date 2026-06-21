@@ -12,7 +12,7 @@ const PUBLIC_SUBDOMAIN = process.env.EPI_PUBLIC_SUBDOMAIN || "fep-epi-vault-9175
 const PUBLIC_URL = `https://${PUBLIC_SUBDOMAIN}.loca.lt`;
 const PUBLIC_URL_POINTER_ROOT = process.env.EPI_PUBLIC_URL_POINTER_ROOT || "";
 const PUBLIC_POINTER_PAGE = process.env.EPI_PUBLIC_POINTER_PAGE || "";
-const PUBLIC_PROXY_URL = process.env.EPI_PUBLIC_PROXY_URL || "https://projectuniverse.chang2058.workers.dev/personal-server/";
+const PUBLIC_PROXY_URL = process.env.EPI_PUBLIC_PROXY_URL || "https://projectuniverse.chang2058.workers.dev/";
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -106,9 +106,9 @@ function pointerHtml(url) {
 <body>
   <main>
     <h1>FEP/EPI Personal Server</h1>
-    <p>현재 살아있는 개인서버로 이동합니다. Cloudflare 프록시가 localtunnel 안내 화면을 우회해 줍니다.</p>
+    <p>Cloudflare 영구 웹으로 이동합니다. 화면은 Cloudflare에서 열고, 저장 API만 개인서버로 연결됩니다.</p>
     <p><a href="${destination}">${destination}</a></p>
-    <p>현재 터널 원본: <a href="${url}">${url}</a></p>
+    <p>현재 저장 서버 터널 원본: <a href="${url}">${url}</a></p>
   </main>
 </body>
 </html>

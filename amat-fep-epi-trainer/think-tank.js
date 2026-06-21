@@ -5,9 +5,11 @@ const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
 const isGithubPagesHost = location.hostname.endsWith("github.io");
 const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
+const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
 const sameOriginApi = location.port === "4180" || (!isLocalBrowserHost && !isGithubPagesHost && location.protocol.startsWith("http"));
 const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
+  (isCloudflareWorkerHost ? `${location.origin}/personal-server` : "") ||
   (sameOriginApi ? location.origin : "http://127.0.0.1:4180");
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 

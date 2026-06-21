@@ -2,7 +2,7 @@
 setlocal
 
 set "URL_FILE=D:\FEP_EPI_ThinkTank_Vault\public-url.txt"
-set "POINTER_URL=https://projectuniverse.chang2058.workers.dev/personal-server/"
+set "POINTER_URL=https://projectuniverse.chang2058.workers.dev/"
 
 if exist "%URL_FILE%" (
   set /p CURRENT_URL=<"%URL_FILE%"
