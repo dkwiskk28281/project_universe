@@ -22,4 +22,5 @@ fs.rmSync(out, { recursive: true, force: true });
 for (const name of fs.readdirSync(root)) {
   if (!skip.has(name)) copy(path.join(root, name), path.join(out, name));
 }
-console.log(`Trainer dist passthrough completed: ${out}`);
+fs.writeFileSync(path.join(out, ".assetsignore"), "_worker.js\npackage.json\nbuild-static.js\n", "utf8");
+console.log("Trainer fallback build completed.");
