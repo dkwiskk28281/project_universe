@@ -203,6 +203,9 @@ async function handlePersonalServerProxy(request, env, url) {
   headers.set("User-Agent", "FEP-EPI-Vault-Cloudflare-Proxy");
   headers.set("X-Forwarded-Host", url.host);
   headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
+  if (!target.pathname.startsWith("/api/")) {
+    headers.set("X-ThinkTank-Password", String(env.EPI_PASSWORD || "9175"));
+  }
 
   const upstreamRequest = new Request(target.toString(), {
     method: request.method,
