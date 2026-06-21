@@ -1,5 +1,4 @@
 (() => {
-const THINK_TANK_PASSWORD = "9175";
 const THINK_TANK_KEY = "epiThinkTankEntries";
 const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
@@ -11,7 +10,9 @@ const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
   (isCloudflareWorkerHost ? location.origin : "") ||
   (sameOriginApi ? location.origin : "http://127.0.0.1:4180");
+const THINK_TANK_CLIENT_PASS = "ceTrainerPass";
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
+const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
 
 const masteryDomains = [
   ["EPI Process Physics", ["surface preparation", "nucleation", "growth rate", "mass transport", "reaction kinetics", "selectivity"]],
@@ -53,11 +54,48 @@ const subsystemOptions = [
 ];
 
 function vaultPassword() {
-  return sessionStorage.getItem("ceTrainerPass") || "";
+  return sessionStorage.getItem(THINK_TANK_CLIENT_PASS) || "";
 }
 
 function vaultToken() {
   return sessionStorage.getItem(THINK_TANK_REMOTE_TOKEN) || "";
+}
+
+function clearClientAuthState() {
+  sessionStorage.removeItem(THINK_TANK_CLIENT_PASS);
+  sessionStorage.removeItem(THINK_TANK_REMOTE_TOKEN);
+}
+
+async function purgeBrowserPrivacyCaches() {
+  let changed = false;
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(registration => {
+        changed = true;
+        return registration.unregister();
+      }));
+    }
+  } catch {
+    // Service worker cleanup is best-effort.
+  }
+  try {
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map(name => {
+        changed = true;
+        return caches.delete(name);
+      }));
+    }
+  } catch {
+    // Cache cleanup is best-effort.
+  }
+  if (changed && !sessionStorage.getItem(PRIVATE_CACHE_PURGED)) {
+    sessionStorage.setItem(PRIVATE_CACHE_PURGED, "1");
+    location.reload();
+    return true;
+  }
+  return false;
 }
 
 function escapeHtml(value = "") {
@@ -130,7 +168,7 @@ function getLocalStorageSnapshot() {
   const snapshot = {};
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key || key === "ceTrainerPass") continue;
+    if (!key || key === THINK_TANK_CLIENT_PASS) continue;
     snapshot[key] = localStorage.getItem(key);
   }
   return snapshot;
@@ -362,37 +400,43 @@ async function initPasswordGate() {
   const form = document.querySelector("#password-form");
   const input = document.querySelector("#password-input");
   const error = document.querySelector("#password-error");
+  document.querySelector("#logout-btn")?.addEventListener("click", async () => {
+    clearClientAuthState();
+    try {
+      await fetch(`${THINK_TANK_API}/api/logout`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" }
+      });
+    } catch {
+      // Navigating to /logout below clears the server cookie when online.
+    }
+    location.href = "/logout";
+  });
   if (vaultToken()) {
     try {
       await apiFetch("/api/health");
-      sessionStorage.setItem("ceTrainerPass", "remote");
+      sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       unlockApp();
       return;
     } catch {
-      sessionStorage.removeItem(THINK_TANK_REMOTE_TOKEN);
+      clearClientAuthState();
     }
   }
   try {
     await apiFetch("/api/health");
-    sessionStorage.setItem("ceTrainerPass", "server-cookie");
+    sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "server-cookie");
     unlockApp();
     return;
   } catch {
     // No server session yet. Fall through to password form.
-  }
-  if (sessionStorage.getItem("ceTrainerPass") === THINK_TANK_PASSWORD) {
-    unlockApp();
-    return;
   }
   input?.focus();
   form?.addEventListener("submit", async event => {
     event.preventDefault();
     const remoteOk = await remoteLogin(input.value);
     if (remoteOk) {
-      sessionStorage.setItem("ceTrainerPass", "remote");
-      unlockApp();
-    } else if (input.value === THINK_TANK_PASSWORD) {
-      sessionStorage.setItem("ceTrainerPass", THINK_TANK_PASSWORD);
+      sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       unlockApp();
     } else {
       error.textContent = "비밀번호가 맞지 않습니다.";
@@ -402,5 +446,8 @@ async function initPasswordGate() {
   });
 }
 
-initPasswordGate();
+(async () => {
+  if (await purgeBrowserPrivacyCaches()) return;
+  initPasswordGate();
+})();
 })();

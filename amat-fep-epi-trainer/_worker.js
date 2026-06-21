@@ -1,5 +1,7 @@
-const COOKIE_NAME = "epi_vault_session";
-const SESSION_DAYS = 30;
+const COOKIE_NAME = "epi_vault_session_strict_v2";
+const LEGACY_COOKIE_NAMES = ["epi_vault_session"];
+const SESSION_SECONDS = 2 * 60 * 60;
+const SESSION_VERSION = "strict-v2";
 const PERSONAL_SERVER_PREFIX = "/personal-server";
 const PUBLIC_VAULT_INDEX = "https://dkwiskk28281.github.io/project_universe/amat-fep-epi-trainer/current-vault-url.json";
 const DEFAULT_PERSONAL_SERVER_URL = "https://fep-epi-vault-9175.loca.lt";
@@ -10,6 +12,7 @@ function jsonResponse(request, data, status = 200, headers = {}) {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Credentials": "true",
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password",
@@ -38,6 +41,18 @@ function plainResponse(message, status = 500) {
       "Cache-Control": "no-store"
     }
   });
+}
+
+function expiredCookie(name) {
+  return `${name}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+}
+
+function sessionCookie(token) {
+  return `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_SECONDS}`;
+}
+
+function appendClearLegacyCookies(headers) {
+  LEGACY_COOKIE_NAMES.forEach(name => headers.append("Set-Cookie", expiredCookie(name)));
 }
 
 function base64Url(bytes) {
@@ -72,8 +87,9 @@ async function hmac(secret, value) {
 async function createToken(env) {
   const now = Math.floor(Date.now() / 1000);
   const payload = base64UrlText(JSON.stringify({
+    v: SESSION_VERSION,
     iat: now,
-    exp: now + SESSION_DAYS * 24 * 60 * 60,
+    exp: now + SESSION_SECONDS,
     nonce: crypto.randomUUID()
   }));
   const signature = await hmac(sessionSecret(env), payload);
@@ -91,7 +107,7 @@ async function verifyToken(env, token) {
   if (signature !== expected) return false;
   try {
     const data = JSON.parse(decodeBase64Url(payload));
-    return Number(data.exp) > Math.floor(Date.now() / 1000);
+    return data.v === SESSION_VERSION && Number(data.exp) > Math.floor(Date.now() / 1000);
   } catch {
     return false;
   }
@@ -292,7 +308,7 @@ async function handleLogin(request, env, formMode = false) {
     return jsonResponse(request, { ok: false, error: "invalid password" }, 401);
   }
   const token = await createToken(env);
-  const cookie = `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 24 * 60 * 60}`;
+  const cookie = sessionCookie(token);
   if (formMode) {
     return new Response(null, {
       status: 302,
@@ -306,10 +322,24 @@ async function handleLogin(request, env, formMode = false) {
   return jsonResponse(request, { ok: true, token }, 200, { "Set-Cookie": cookie });
 }
 
+function handleLogout() {
+  const headers = new Headers({
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Set-Cookie": expiredCookie(COOKIE_NAME)
+  });
+  appendClearLegacyCookies(headers);
+  return new Response(loginPage("다시 열려면 비밀번호를 입력하세요."), {
+    status: 200,
+    headers
+  });
+}
+
 async function handleApi(request, env, url) {
   if (request.method === "OPTIONS") return jsonResponse(request, { ok: true });
   if (url.pathname === "/api/login" && request.method === "POST") return handleLogin(request, env);
   if (url.pathname === "/api/login-form" && request.method === "POST") return handleLogin(request, env, true);
+  if (url.pathname === "/api/logout") return handleLogout();
   if (!(await isAuthenticated(request, env))) return jsonResponse(request, { ok: false, error: "unauthorized" }, 401);
 
   await ensureSchema(env);
@@ -378,9 +408,18 @@ export default {
       if (url.pathname.startsWith(`${PERSONAL_SERVER_PREFIX}/`)) {
         return handlePersonalServerProxy(request, env, url);
       }
+      if (url.pathname === "/logout") return handleLogout();
       if (url.pathname.startsWith("/api/")) return handleApi(request, env, url);
       if (!(await isAuthenticated(request, env))) return htmlResponse(loginPage());
-      return env.ASSETS.fetch(request);
+      const assetResponse = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetResponse.headers);
+      headers.set("Cache-Control", "private, no-store, max-age=0");
+      headers.set("X-Robots-Tag", "noindex, nofollow");
+      return new Response(assetResponse.body, {
+        status: assetResponse.status,
+        statusText: assetResponse.statusText,
+        headers
+      });
     } catch (error) {
       if (url.pathname.startsWith("/api/")) {
         return jsonResponse(request, { ok: false, error: error.message }, 500);
