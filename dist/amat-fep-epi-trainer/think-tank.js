@@ -9,7 +9,7 @@ const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
 const sameOriginApi = location.port === "4180" || (!isLocalBrowserHost && !isGithubPagesHost && location.protocol.startsWith("http"));
 const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
-  (isCloudflareWorkerHost ? `${location.origin}/personal-server` : "") ||
+  (isCloudflareWorkerHost ? location.origin : "") ||
   (sameOriginApi ? location.origin : "http://127.0.0.1:4180");
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 

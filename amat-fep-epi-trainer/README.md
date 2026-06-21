@@ -125,6 +125,17 @@ Build output directory: dist
 Root directory: 비워둠
 ```
 
+D1 원격 저장 조건:
+
+```text
+Binding name: DB
+Environment variables:
+EPI_PASSWORD=9175
+SESSION_SECRET=긴_랜덤_문자열
+```
+
+현재처럼 Deploy command가 `npx wrangler deploy`이면 Cloudflare Pages의 D1 binding이 아니라 `projectuniverse` Worker의 D1 binding에 `DB`를 연결해야 합니다. Worker 런타임에서 `/api/health`가 `storage: "Cloudflare D1"`을 반환해야 진짜 원격 저장 상태입니다.
+
 포함된 파일:
 
 ```text
