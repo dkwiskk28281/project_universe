@@ -12,6 +12,8 @@ const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (sameOriginApi ? location.origin : "http://127.0.0.1:4180");
 const THINK_TANK_CLIENT_PASS = "ceTrainerPass";
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
+const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
+const LOCAL_VAULT_TOKEN = "epiThinkTankLocalToken";
 const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
 
 const masteryDomains = [
@@ -61,9 +63,14 @@ function vaultToken() {
   return sessionStorage.getItem(THINK_TANK_REMOTE_TOKEN) || "";
 }
 
+function localVaultToken() {
+  return sessionStorage.getItem(LOCAL_VAULT_TOKEN) || "";
+}
+
 function clearClientAuthState() {
   sessionStorage.removeItem(THINK_TANK_CLIENT_PASS);
   sessionStorage.removeItem(THINK_TANK_REMOTE_TOKEN);
+  sessionStorage.removeItem(LOCAL_VAULT_TOKEN);
 }
 
 async function purgeBrowserPrivacyCaches() {
@@ -119,15 +126,20 @@ function saveEntries(entries) {
   localStorage.setItem(THINK_TANK_KEY, JSON.stringify(entries));
 }
 
-async function apiFetch(path, options = {}) {
+function tokenForApi(base) {
+  return base === LOCAL_VAULT_API ? localVaultToken() : vaultToken();
+}
+
+async function apiFetch(path, options = {}, base = THINK_TANK_API) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 1800);
-  const token = vaultToken();
+  const { timeoutMs, ...fetchOptions } = options;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs || (base === LOCAL_VAULT_API ? 900 : 1800));
+  const token = tokenForApi(base);
   try {
-    const response = await fetch(`${THINK_TANK_API}${path}`, {
-      ...options,
+    const response = await fetch(`${base}${path}`, {
+      ...fetchOptions,
       signal: controller.signal,
-      credentials: "include",
+      credentials: base === LOCAL_VAULT_API ? "omit" : "include",
       headers: {
         "Content-Type": "application/json",
         "X-ThinkTank-Password": vaultPassword(),
@@ -142,26 +154,34 @@ async function apiFetch(path, options = {}) {
   }
 }
 
-async function remoteLogin(password) {
+async function loginToApi(base, password, tokenKey, timeoutMs = 2500) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 2500);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(`${THINK_TANK_API}/api/login`, {
+    const response = await fetch(`${base}/api/login`, {
       method: "POST",
-      credentials: "include",
+      credentials: base === LOCAL_VAULT_API ? "omit" : "include",
       signal: controller.signal,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password })
     });
     if (!response.ok) return false;
     const data = await response.json();
-    if (data?.token) sessionStorage.setItem(THINK_TANK_REMOTE_TOKEN, data.token);
+    if (data?.token) sessionStorage.setItem(tokenKey, data.token);
     return !!data?.ok;
   } catch {
     return false;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function remoteLogin(password) {
+  const primaryOk = await loginToApi(THINK_TANK_API, password, THINK_TANK_REMOTE_TOKEN, 2500);
+  if (THINK_TANK_API !== LOCAL_VAULT_API) {
+    await loginToApi(LOCAL_VAULT_API, password, LOCAL_VAULT_TOKEN, 900);
+  }
+  return primaryOk;
 }
 
 function getLocalStorageSnapshot() {
@@ -188,6 +208,53 @@ async function pullRemoteEntries() {
   }
 }
 
+async function localVaultHealth() {
+  if (THINK_TANK_API === LOCAL_VAULT_API) {
+    return apiFetch("/api/health");
+  }
+  if (!localVaultToken()) return null;
+  return apiFetch("/api/health", { timeoutMs: 900 }, LOCAL_VAULT_API);
+}
+
+async function mirrorToLocalVault(path, payload) {
+  if (THINK_TANK_API === LOCAL_VAULT_API || !localVaultToken()) return null;
+  return apiFetch(path, {
+    method: "POST",
+    timeoutMs: 1200,
+    body: JSON.stringify(payload)
+  }, LOCAL_VAULT_API);
+}
+
+async function syncAppStateV2(reason = "interval") {
+  if (!vaultPassword() && !vaultToken()) return;
+  const payload = {
+    reason,
+    href: location.href,
+    savedAt: new Date().toISOString(),
+    localStorage: getLocalStorageSnapshot()
+  };
+  let primarySaved = false;
+  let localSaved = false;
+  try {
+    await apiFetch("/api/state", { method: "POST", body: JSON.stringify(payload) });
+    primarySaved = true;
+  } catch {
+    primarySaved = false;
+  }
+  try {
+    const localResult = await mirrorToLocalVault("/api/state", payload);
+    localSaved = !!localResult?.ok;
+  } catch {
+    localSaved = false;
+  }
+  const marker = document.querySelector("#vault-last-sync");
+  if (marker) {
+    const dbText = primarySaved ? "DB 저장 완료" : "DB 저장 대기";
+    const localText = localSaved ? "D 드라이브 백업 완료" : "D 드라이브 미연결";
+    marker.textContent = `최근 동기화: ${new Date().toLocaleString()} · ${dbText} · ${localText}`;
+  }
+}
+
 async function syncAppState(reason = "interval") {
   if (!vaultPassword()) return;
   try {
@@ -211,6 +278,33 @@ async function syncAppState(reason = "interval") {
 function renderVaultStatus(status = {}) {
   const statusEl = document.querySelector("#vault-status-panel");
   if (!statusEl) return;
+  const primary = status.primary || status;
+  const local = status.local || null;
+  const dbOnline = !!primary.ok;
+  const localOnline = !!local?.ok;
+  statusEl.innerHTML = `
+    <div>
+      <p class="eyebrow">Storage Status</p>
+      <h2>${dbOnline ? "Cloudflare D1 저장소 연결됨" : "Cloudflare D1 저장소 확인 중"}</h2>
+      <p id="vault-last-sync">DB: ${escapeHtml(primary.storage || "Cloudflare D1")} ${primary.binding ? `· binding ${escapeHtml(primary.binding)}` : ""}</p>
+      <div class="vault-pill-row">
+        <span class="vault-pill ${dbOnline ? "" : "offline"}">Cloud DB ${dbOnline ? "ONLINE" : "OFFLINE"}</span>
+        <span class="vault-pill ${localOnline ? "" : "offline"}">D Drive ${localOnline ? "MIRROR ON" : "MIRROR OFF"}</span>
+        <span class="vault-pill">Password Gate</span>
+      </div>
+    </div>
+    <div>
+      <strong>${localOnline ? "D 드라이브 미러 백업 활성" : "이 PC의 D 드라이브 백업 대기"}</strong>
+      <div class="vault-map">
+        <span>Primary DB: Cloudflare D1 / ce_data</span>
+        <span>Local mirror: ${localOnline ? escapeHtml(local.vaultRoot || "D:\\FEP_EPI_ThinkTank_Vault") : "이 PC에서 vault 서버가 켜지면 자동 감지"}</span>
+        <span>D:\\FEP_EPI_ThinkTank_Vault\\entries\\YYYY\\MM\\entry-id.json</span>
+        <span>D:\\FEP_EPI_ThinkTank_Vault\\snapshots\\state-YYYYMMDD-HHMMSS.json</span>
+        <span>D:\\FEP_EPI_ThinkTank_Vault\\exports\\thinktank-export.json</span>
+      </div>
+    </div>
+  `;
+  return;
   const online = !!status.ok;
   statusEl.innerHTML = `
     <div>
@@ -304,7 +398,12 @@ async function saveThinkTankEntry(event) {
 
   try {
     await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(entry) });
-    await syncAppState("entry-save");
+    try {
+      await mirrorToLocalVault("/api/entries", entry);
+    } catch {
+      // D drive mirror is optional; Cloudflare D1 remains the source of truth.
+    }
+    await syncAppStateV2("entry-save");
   } catch {
     const marker = document.querySelector("#vault-last-sync");
     if (marker) marker.textContent = "최근 백업: 브라우저 저장 완료, D 드라이브 vault 미연결";
@@ -320,7 +419,12 @@ async function exportThinkTank() {
   };
   try {
     await apiFetch("/api/export", { method: "POST", body: JSON.stringify(payload) });
-    await syncAppState("manual-export");
+    try {
+      await mirrorToLocalVault("/api/export", payload);
+    } catch {
+      // D drive mirror is optional; Cloudflare D1 remains the source of truth.
+    }
+    await syncAppStateV2("manual-export");
   } catch {
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -380,11 +484,19 @@ function renderThinkTank() {
 }
 
 async function refreshVaultStatus() {
+  let primary = { ok: false };
+  let local = null;
   try {
-    renderVaultStatus(await apiFetch("/api/health"));
+    primary = await apiFetch("/api/health");
   } catch {
-    renderVaultStatus({ ok: false });
+    primary = { ok: false };
   }
+  try {
+    local = await localVaultHealth();
+  } catch {
+    local = null;
+  }
+  renderVaultStatus({ primary, local });
 }
 
 function unlockApp() {
@@ -392,8 +504,8 @@ function unlockApp() {
   document.body.classList.add("auth-unlocked");
   renderThinkTank();
   refreshVaultStatus().then(pullRemoteEntries);
-  syncAppState("unlock");
-  setInterval(() => syncAppState("interval"), 30000);
+  syncAppStateV2("unlock");
+  setInterval(() => syncAppStateV2("interval"), 30000);
 }
 
 async function initPasswordGate() {

@@ -69,6 +69,14 @@ function sendHtml(res, status, html, headers = {}) {
   res.end(html);
 }
 
+function corsHeaders(req) {
+  return {
+    "Access-Control-Allow-Origin": req.headers.origin || "*",
+    "Access-Control-Allow-Headers": "Content-Type, X-ThinkTank-Password, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+  };
+}
+
 function base64Url(value) {
   return Buffer.from(value).toString("base64url");
 }
@@ -270,7 +278,8 @@ async function handleApi(req, res, pathname) {
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Set-Cookie": `${COOKIE_NAME}=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
-      "Cache-Control": "no-store"
+      "Cache-Control": "no-store",
+      ...corsHeaders(req)
     });
     res.end(JSON.stringify({ ok: true, token }, null, 2));
     return;
