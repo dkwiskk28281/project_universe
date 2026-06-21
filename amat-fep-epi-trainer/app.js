@@ -1493,22 +1493,319 @@ flashcards.push(
   ["Current jack trap", "current jack에 꽂힌 lead로 voltage source를 재면 short/arc 위험이 있습니다."]
 );
 
+const commandCenterActions = [
+  {
+    view: "runbook",
+    label: "설치 런북",
+    title: "Pass evidence 먼저 모으기",
+    text: "현장에서는 '했다'보다 사진, trace, sign-off, log, punch item이 더 강합니다. 오늘은 각 단계의 통과 증거와 hold 조건을 먼저 외웁니다.",
+    chips: ["readiness", "hook-up", "qualification"]
+  },
+  {
+    view: "cluster",
+    label: "구성게임",
+    title: "FI/EFEM - LL - TM - PM 흐름 잡기",
+    text: "wafer가 대기압에서 진공 cluster로 들어가고 다시 나오는 길을 손으로 배치하며 익힙니다. Load lock이 왜 필요한지 몸으로 기억하는 구간입니다.",
+    chips: ["wafer path", "module docking", "robot"]
+  },
+  {
+    view: "electrical",
+    label: "전기/DVM",
+    title: "측정 전에 expected value 말하기",
+    text: "DVM은 찍어보는 도구가 아니라 가설 검증 도구입니다. 모드, lead 위치, 에너지 상태, 예상값을 말한 뒤 측정합니다.",
+    chips: ["LOTO", "relay", "voltage drop"]
+  },
+  {
+    view: "thinktank",
+    label: "싱크탱크",
+    title: "경험을 재사용 가능한 지식으로 저장",
+    text: "문제 경험을 symptom, evidence, root cause, corrective action, prevention으로 쪼개 저장하면 다음 현장에서 훨씬 빨라집니다.",
+    chips: ["D1 DB", "D drive mirror", "field memory"]
+  }
+];
+
+const fieldRunbookStages = [
+  {
+    id: "readiness",
+    badge: "01",
+    title: "Site Readiness",
+    plain: "장비가 들어오기 전에 현장이 정말 준비됐는지 확인하는 단계입니다.",
+    owner: "CE + Senior CE + 고객 tool/facility owner",
+    objective: "POC, 도면 revision, utility availability, route, floor/loading, permit, 작업 owner를 한 장으로 정렬합니다.",
+    mustSee: [
+      "최신 tool matrix, hook-up drawing, POC label, redline/as-built 관리 방법",
+      "power, ground, CDA/N2, process gas, exhaust, abatement, PCW/chiller, network 준비 상태",
+      "move-in route, cleanroom 반입 규칙, service clearance, EMO 접근성"
+    ],
+    holdIf: [
+      "도면 revision과 현장 label이 다르다",
+      "gas/exhaust/abatement release owner가 불명확하다",
+      "permit, LOTO, multi-employer work area 경계가 정리되지 않았다"
+    ],
+    seniorQuestions: [
+      "이 POC는 누가 열고, 누가 witness하고, 실패하면 누가 복구하는가?",
+      "이 항목이 늦어지면 installation critical path에 어떤 영향을 주는가?"
+    ],
+    customerLine: "현재 site readiness에서 열린 항목은 owner와 ETA까지 묶어 punch list로 관리하고 있습니다."
+  },
+  {
+    id: "movein",
+    badge: "02",
+    title: "Move-in / Set",
+    plain: "장비를 fab 안으로 들여와 정확한 위치에 놓고 수평, 접근성, 손상 여부를 확인하는 단계입니다.",
+    owner: "CE + rigging team + 고객 cleanroom/안전 담당",
+    objective: "crate 상태, shock/tilt, 반입 동선, footprint, leveling, anchor/seismic, service clearance를 증거화합니다.",
+    mustSee: [
+      "crate damage, missing kit, shock/tilt indicator 사진",
+      "floor mark, tool footprint, maintenance door/pump cart/gas box 접근성",
+      "leveling record, anchor/seismic 조건, cleanroom housekeeping"
+    ],
+    holdIf: [
+      "damage 또는 missing kit이 확인됐는데 deviation 기록이 없다",
+      "service door, pump cart, gas box, EMO 접근이 막힌다",
+      "leveling 기준을 만족하지 못한다"
+    ],
+    seniorQuestions: [
+      "이 위치에서 PM 작업자가 실제 자세로 안전하게 접근할 수 있는가?",
+      "move-in 중 contamination source를 남기지 않았는가?"
+    ],
+    customerLine: "장비 반입과 위치 세팅은 완료/미완료 항목을 사진과 punch list로 분리해 공유하겠습니다."
+  },
+  {
+    id: "modules",
+    badge: "03",
+    title: "Module Docking",
+    plain: "Load lock, transfer chamber, process/clean/cool module이 wafer path 안에서 맞물리게 붙는 단계입니다.",
+    owner: "CE + Senior CE + module specialist",
+    objective: "FI/EFEM, LL, TM, PM/CM 사이의 물리 boundary와 robot handoff가 안전하게 맞는지 확인합니다.",
+    mustSee: [
+      "FI/EFEM: FOUP와 대기압 wafer handling을 담당하는 전면 interface",
+      "LL: 대기압과 진공 사이를 연결하는 완충 chamber",
+      "TM: 중앙 진공 robot 공간, PM/CM으로 wafer를 보내는 hub",
+      "PM/CM: 실제 공정 또는 clean/cool/support가 일어나는 module"
+    ],
+    holdIf: [
+      "gate/slit valve alignment가 맞지 않는다",
+      "robot blade height, WOB, handoff 위치가 불확실하다",
+      "vacuum seal이나 docking face에 손상/오염 의심이 있다"
+    ],
+    seniorQuestions: [
+      "wafer가 지나는 모든 boundary에서 pressure, door, sensor, robot sequence가 어떤 순서로 맞물리는가?",
+      "PM 수가 늘어나면 qualification 범위와 chamber matching이 어떻게 늘어나는가?"
+    ],
+    customerLine: "module docking은 dry run 전에 mechanical alignment와 vacuum boundary evidence를 먼저 닫겠습니다."
+  },
+  {
+    id: "hookup",
+    badge: "04",
+    title: "Facility Hook-up",
+    plain: "fab utility와 장비를 연결하는 단계입니다. 전기, gas, 배기, 냉각, 네트워크가 모두 scope별로 갈라집니다.",
+    owner: "CE + 고객 facility owner + contractor + EHS",
+    objective: "각 utility를 공식 승인, 입회, 측정값, as-built 기록으로 연결합니다.",
+    mustSee: [
+      "power/ground verification, panel label, LOTO boundary",
+      "gas cabinet, purge, leak integrity, detector, exhaust/abatement ready",
+      "PCW/chiller supply/return, CDA/N2 pressure, network/host approval"
+    ],
+    holdIf: [
+      "gas line release, abatement ready, exhaust flow 증거가 없다",
+      "interlock 또는 facility ready signal이 실제 물리 상태와 다르다",
+      "승인 없는 valve 조작이나 bypass 요구가 있다"
+    ],
+    seniorQuestions: [
+      "화면의 ready와 local panel의 ready가 같은 의미인가?",
+      "setpoint/actual/physical local gauge 중 무엇을 신뢰할 수 있는가?"
+    ],
+    customerLine: "hook-up은 utility별 owner, witness result, open risk를 분리해 다음 업데이트에 공유하겠습니다."
+  },
+  {
+    id: "bringup",
+    badge: "05",
+    title: "Power-on / Bring-up",
+    plain: "전원을 넣고 controller, interlock, pump, valve, robot, sensor가 정상 sequence로 움직이는지 보는 단계입니다.",
+    owner: "CE + Senior CE + controls/facility owner",
+    objective: "recipe나 wafer보다 먼저 safety chain, I/O, alarm meaning, subsystem baseline을 안정화합니다.",
+    mustSee: [
+      "EMO/E-stop, cover, gas box, exhaust, cooling, vacuum interlock matrix",
+      "PLC/I/O status, sensor scaling, alarm history, controller boot, host/data link",
+      "pumpdown trend, valve/MFC response, robot dry run, LL pump/vent"
+    ],
+    holdIf: [
+      "safety interlock 원인을 설명하지 못한다",
+      "alarm을 지운 뒤에도 발생 조건을 재현/설명하지 못한다",
+      "pumpdown, pressure, valve, robot signal baseline이 불안정하다"
+    ],
+    seniorQuestions: [
+      "이 alarm은 원인인가 결과인가?",
+      "hardwired chain인가, software state인가, facility ready인가?"
+    ],
+    customerLine: "bring-up 단계는 안전 chain과 subsystem baseline을 먼저 닫은 뒤 wafer 단계로 넘어가겠습니다."
+  },
+  {
+    id: "qual",
+    badge: "06",
+    title: "Qualification / Handover",
+    plain: "장비가 실제 site 조건에서 요구 성능을 만족하는지 확인하고 고객에게 넘기는 단계입니다.",
+    owner: "CE + process owner + customer tool owner + Senior CE",
+    objective: "wafer path reliability, process baseline, metrology result, open punch, handover 문서를 연결합니다.",
+    mustSee: [
+      "wafer transfer count, scratch/particle check, chamber matching plan",
+      "temperature trace, MFC response, pumpdown curve, film thickness/resistivity/defect trend",
+      "SAT/OQ/PQ 또는 고객 acceptance criteria, open punch owner/ETA"
+    ],
+    holdIf: [
+      "particle jump, transfer scratch, leak suspicion, temperature drift가 설명되지 않는다",
+      "acceptance fail 항목의 rework/retest 범위가 정의되지 않았다",
+      "handover 문서와 실제 상태가 다르다"
+    ],
+    seniorQuestions: [
+      "이 데이터는 production release를 설득할 만큼 반복성과 traceability가 있는가?",
+      "다음 shift가 이 기록만 보고 안전하게 이어받을 수 있는가?"
+    ],
+    customerLine: "qualification 결과는 pass/fail보다 evidence, deviation, retest scope, release 조건을 중심으로 공유하겠습니다."
+  }
+];
+
+const runbookGates = [
+  ["gate-drawing", "최신 drawing revision과 현장 POC label을 대조했다", "도면과 라벨이 다르면 hook-up 기준이 흔들립니다."],
+  ["gate-owner", "utility별 facility owner와 witness 담당자를 적었다", "문제 발생 시 '누구에게 물어볼지'가 먼저 정리되어야 합니다."],
+  ["gate-permit", "permit, LOTO, work boundary, PPE rule을 확인했다", "권한 없는 작업은 속도가 아니라 사고 위험입니다."],
+  ["gate-gas", "gas cabinet, detector, purge, exhaust, abatement release 증거를 확인했다", "toxic/flammable/corrosive gas는 감각이 아니라 계측과 승인으로 다룹니다."],
+  ["gate-interlock", "EMO/E-stop/interlock matrix와 ready signal 의미를 설명할 수 있다", "interlock은 우회 대상이 아니라 원인 추적의 출발점입니다."],
+  ["gate-waferpath", "FI/EFEM, LL, TM, PM/CM wafer path를 순서대로 설명할 수 있다", "장비 구조를 모르면 transfer alarm과 qualification scope를 설명하기 어렵습니다."],
+  ["gate-baseline", "pumpdown, MFC response, temperature trace, wafer transfer baseline을 저장했다", "정상 trace가 있어야 이상 trace를 빠르게 봅니다."],
+  ["gate-handover", "고객 보고와 shift handover 문장을 준비했다", "사실, 리스크, 다음 액션, ETA가 없으면 보고가 흔들립니다."]
+];
+
+const briefingTemplates = [
+  {
+    title: "30초 고객 업데이트",
+    body: "현재 상태: {phase}. 확인된 사실: {evidence}. 리스크: {risk}. 다음 액션: {next_action}. 다음 업데이트: {time}. 필요한 승인/지원: {owner_request}."
+  },
+  {
+    title: "Hold / Stop-work 알림",
+    body: "중단 사유: {unsafe_or_unverified_condition}. 근거: {measurement_or_log}. 영향 범위: {scope}. 요청 owner: {owner}. 재개 조건: {release_condition}."
+  },
+  {
+    title: "Shift handover",
+    body: "완료: {done}. 미완료: {open_items}. 건드리지 말 것: {do_not_touch}. 의심 원인: {suspect}. 다음 테스트: {next_test}. 고객 커뮤니케이션: {last_update}."
+  }
+];
+
+const raciItems = [
+  ["Site readiness", "CE", "Senior CE", "Customer tool/facility owner", "EHS / contractor"],
+  ["Gas line release", "Facility owner", "EHS + Senior CE", "CE", "Process owner"],
+  ["Module docking", "CE", "Senior CE", "Customer tool owner", "Rigging / module specialist"],
+  ["Interlock verification", "CE + controls owner", "Senior CE", "EHS", "Customer facility owner"],
+  ["Process qualification", "Process owner", "Customer tool owner", "CE + Senior CE", "Metrology / yield team"],
+  ["Production release", "Customer owner", "Customer management", "CE", "Process / EHS / facility"]
+];
+
+const storageTopology = [
+  ["Cloudflare D1 / ce_data", "어디서 접속해도 저장되는 기본 DB입니다.", "싱크탱크 entries, app state, 장기 학습 기록"],
+  ["Local D drive mirror", "이 PC에서 vault server가 켜져 있을 때 D:\\FEP_EPI_ThinkTank_Vault로 복제됩니다.", "로컬 백업, export, 개인 자료 축적"],
+  ["Browser localStorage", "화면 반응성을 위한 임시 캐시입니다.", "체크박스, 선택 상태, 짧은 학습 진행률"]
+];
+
 const state = JSON.parse(localStorage.getItem("ceTrainerState") || "{}");
 let activeSystem = systems[0].id;
 let activeScenario = 0;
 let qIndex = 0;
 let activeMeterCase = "prove";
 let activeGlossaryCategory = "전체";
+let activeRunbookStage = fieldRunbookStages[0].id;
 
 function save() {
   localStorage.setItem("ceTrainerState", JSON.stringify(state));
   renderMetrics();
+  renderCommandCenter();
+  renderRunbook();
 }
 
 function showView(id) {
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function getRoadmapMissions() {
+  return roadmap.flatMap(week => week.missions.map(([id, label, hint]) => ({
+    id,
+    label,
+    hint,
+    week: week.week
+  })));
+}
+
+function getRunbookGateProgress() {
+  const checked = runbookGates.filter(([id]) => state.runbookGates?.[id]).length;
+  return {
+    checked,
+    total: runbookGates.length,
+    percent: Math.round(checked / runbookGates.length * 100)
+  };
+}
+
+function renderCommandCenter() {
+  const root = document.querySelector("#command-center");
+  if (!root) return;
+
+  const missions = getRoadmapMissions();
+  const missionDone = missions.filter(item => state.missions?.[item.id]).length;
+  const nextMission = missions.find(item => !state.missions?.[item.id]) || missions[0];
+  const gateProgress = getRunbookGateProgress();
+  const attempts = state.quizAttempts || [];
+  const quizScore = attempts.length ? Math.round(attempts.filter(Boolean).length / attempts.length * 100) : 0;
+
+  root.innerHTML = `
+    <div class="command-head">
+      <div>
+        <p class="eyebrow">Mission Control</p>
+        <h2>오늘은 이 순서로 누르면 됩니다</h2>
+        <p>정보를 많이 읽기보다 구조를 만들고, 판단 기준을 체크하고, 경험을 저장하는 흐름으로 설계했습니다.</p>
+      </div>
+      <button class="primary" type="button" data-command-view="runbook">현장 런북 열기</button>
+    </div>
+    <div class="command-kpis">
+      <article>
+        <span>로드맵</span>
+        <strong>${missionDone}/${missions.length}</strong>
+        <small>완료한 미션</small>
+      </article>
+      <article>
+        <span>런북 gate</span>
+        <strong>${gateProgress.percent}%</strong>
+        <small>${gateProgress.checked}/${gateProgress.total}개 준비</small>
+      </article>
+      <article>
+        <span>퀴즈 recall</span>
+        <strong>${quizScore}%</strong>
+        <small>최근 응답 기준</small>
+      </article>
+    </div>
+    <div class="command-next">
+      <span class="command-badge">Next</span>
+      <div>
+        <strong>${nextMission.week} · ${nextMission.label}</strong>
+        <small>${nextMission.hint}</small>
+      </div>
+      <button class="secondary" type="button" data-command-view="roadmap">로드맵에서 체크</button>
+    </div>
+    <div class="command-actions">
+      ${commandCenterActions.map(action => `
+        <button class="command-card" type="button" data-command-view="${action.view}">
+          <span>${action.label}</span>
+          <strong>${action.title}</strong>
+          <small>${action.text}</small>
+          <em>${action.chips.map(chip => `<b>${chip}</b>`).join("")}</em>
+        </button>
+      `).join("")}
+    </div>
+  `;
+
+  root.querySelectorAll("[data-command-view]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.commandView));
+  });
 }
 
 function renderLearningUX() {
@@ -1759,6 +2056,176 @@ function renderInstall() {
   `).join("");
 }
 
+function renderRunbook() {
+  const rail = document.querySelector("#runbook-rail");
+  const detail = document.querySelector("#runbook-detail");
+  const gates = document.querySelector("#runbook-gates");
+  const briefing = document.querySelector("#runbook-briefing");
+  const raci = document.querySelector("#runbook-raci");
+  const storage = document.querySelector("#runbook-storage-map");
+  if (!rail || !detail || !gates || !briefing || !raci || !storage) return;
+
+  const current = fieldRunbookStages.find(stage => stage.id === activeRunbookStage) || fieldRunbookStages[0];
+  const gateProgress = getRunbookGateProgress();
+
+  rail.innerHTML = fieldRunbookStages.map(stage => `
+    <button class="runbook-step ${stage.id === current.id ? "active" : ""}" type="button" data-runbook-stage="${stage.id}">
+      <span>${stage.badge}</span>
+      <strong>${stage.title}</strong>
+      <small>${stage.plain}</small>
+    </button>
+  `).join("");
+
+  detail.innerHTML = `
+    <div class="runbook-detail-head">
+      <span>${current.badge}</span>
+      <div>
+        <p class="eyebrow">Active Phase</p>
+        <h2>${current.title}</h2>
+        <p>${current.plain}</p>
+      </div>
+    </div>
+    <div class="runbook-owner">
+      <strong>Owner map</strong>
+      <span>${current.owner}</span>
+    </div>
+    <div class="runbook-objective">
+      <strong>목표</strong>
+      <p>${current.objective}</p>
+    </div>
+    <div class="runbook-detail-grid">
+      <section>
+        <h3>반드시 봐야 할 증거</h3>
+        <ul>${current.mustSee.map(item => `<li>${item}</li>`).join("")}</ul>
+      </section>
+      <section class="hold-section">
+        <h3>Hold / Stop 조건</h3>
+        <ul>${current.holdIf.map(item => `<li>${item}</li>`).join("")}</ul>
+      </section>
+      <section>
+        <h3>선임처럼 묻는 질문</h3>
+        <ul>${current.seniorQuestions.map(item => `<li>${item}</li>`).join("")}</ul>
+      </section>
+      <section>
+        <h3>고객에게 말하는 문장</h3>
+        <p>${current.customerLine}</p>
+      </section>
+    </div>
+  `;
+
+  gates.innerHTML = `
+    <div class="runbook-panel-head">
+      <div>
+        <p class="eyebrow">Pass Gate</p>
+        <h2>설치 전 자기 점검</h2>
+      </div>
+      <strong>${gateProgress.checked}/${gateProgress.total}</strong>
+    </div>
+    <div class="gate-progress">
+      <span style="width: ${gateProgress.percent}%"></span>
+    </div>
+    <div class="gate-list">
+      ${runbookGates.map(([id, label, hint]) => `
+        <label class="gate-row" for="runbook-${id}">
+          <input id="runbook-${id}" type="checkbox" data-runbook-gate="${id}" ${state.runbookGates?.[id] ? "checked" : ""} />
+          <span>
+            <strong>${label}</strong>
+            <small>${hint}</small>
+          </span>
+        </label>
+      `).join("")}
+    </div>
+  `;
+
+  briefing.innerHTML = `
+    <div class="runbook-panel-head">
+      <div>
+        <p class="eyebrow">Communication</p>
+        <h2>현장 보고 템플릿</h2>
+      </div>
+    </div>
+    <div class="briefing-list">
+      ${briefingTemplates.map((template, index) => `
+        <article class="briefing-template">
+          <strong>${template.title}</strong>
+          <p>${template.body}</p>
+          <button class="secondary" type="button" data-briefing-index="${index}">문장 복사</button>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  raci.innerHTML = `
+    <div class="runbook-panel-head">
+      <div>
+        <p class="eyebrow">RACI</p>
+        <h2>누가 결정하고 누가 입회하는가</h2>
+      </div>
+    </div>
+    <div class="raci-table" role="table" aria-label="installation responsibility map">
+      <div class="raci-row raci-head" role="row">
+        <span>작업</span><span>Responsible</span><span>Accountable</span><span>Consulted</span><span>Informed</span>
+      </div>
+      ${raciItems.map(row => `
+        <div class="raci-row" role="row">
+          ${row.map(cell => `<span>${cell}</span>`).join("")}
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  storage.innerHTML = `
+    <div class="runbook-panel-head">
+      <div>
+        <p class="eyebrow">Storage Map</p>
+        <h2>기록이 어디에 남는가</h2>
+      </div>
+    </div>
+    <div class="storage-flow">
+      ${storageTopology.map(([name, text, data], index) => `
+        <article>
+          <span>${index + 1}</span>
+          <strong>${name}</strong>
+          <p>${text}</p>
+          <small>${data}</small>
+        </article>
+      `).join("")}
+    </div>
+    <p class="storage-note">외부 접속은 Cloudflare D1을 기본 저장소로 사용하고, 이 PC에서는 local vault server가 켜져 있을 때 D 드라이브 mirror가 함께 쌓입니다.</p>
+  `;
+
+  rail.querySelectorAll("[data-runbook-stage]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeRunbookStage = button.dataset.runbookStage;
+      renderRunbook();
+    });
+  });
+
+  gates.querySelectorAll("[data-runbook-gate]").forEach(input => {
+    input.addEventListener("change", () => {
+      state.runbookGates = state.runbookGates || {};
+      state.runbookGates[input.dataset.runbookGate] = input.checked;
+      save();
+    });
+  });
+
+  briefing.querySelectorAll("[data-briefing-index]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const template = briefingTemplates[Number(button.dataset.briefingIndex)];
+      try {
+        await navigator.clipboard.writeText(template.body);
+        const original = button.textContent;
+        button.textContent = "복사됨";
+        setTimeout(() => {
+          button.textContent = original;
+        }, 1200);
+      } catch {
+        button.textContent = "복사 실패";
+      }
+    });
+  });
+}
+
 function renderFacility() {
   document.querySelector("#facility-map").innerHTML = facilitySystems.map(item => `
     <article class="facility-card">
@@ -2006,6 +2473,7 @@ document.querySelector("#next-question").addEventListener("click", () => {
 
 renderRoleFit();
 renderLearningUX();
+renderCommandCenter();
 renderRoadmap();
 renderSystems();
 renderEquipmentFamilies();
@@ -2013,6 +2481,7 @@ renderScenarios();
 renderQuiz();
 renderFlashcards();
 renderInstall();
+renderRunbook();
 renderFacility();
 renderElectrical();
 renderGasSafety();
