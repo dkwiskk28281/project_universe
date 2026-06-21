@@ -241,9 +241,21 @@ async function readBody(request) {
   return {};
 }
 
+function d1Binding(env) {
+  return env.DB || env.ce_data || env.CE_DATA || null;
+}
+
+function d1BindingName(env) {
+  if (env.DB) return "DB";
+  if (env.ce_data) return "ce_data";
+  if (env.CE_DATA) return "CE_DATA";
+  return "";
+}
+
 async function ensureSchema(env) {
-  if (!env.DB) return;
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS entries (
+  const db = d1Binding(env);
+  if (!db) return;
+  await db.prepare(`CREATE TABLE IF NOT EXISTS entries (
     id TEXT PRIMARY KEY,
     created_at TEXT,
     updated_at TEXT,
@@ -253,13 +265,13 @@ async function ensureSchema(env) {
     severity TEXT,
     payload TEXT NOT NULL
   )`).run();
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS snapshots (
+  await db.prepare(`CREATE TABLE IF NOT EXISTS snapshots (
     id TEXT PRIMARY KEY,
     created_at TEXT,
     reason TEXT,
     payload TEXT NOT NULL
   )`).run();
-  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS exports (
+  await db.prepare(`CREATE TABLE IF NOT EXISTS exports (
     id TEXT PRIMARY KEY,
     created_at TEXT,
     payload TEXT NOT NULL
@@ -267,7 +279,9 @@ async function ensureSchema(env) {
 }
 
 function requireDb(env) {
-  if (!env.DB) throw new Error("D1 binding DB is not configured.");
+  const db = d1Binding(env);
+  if (!db) throw new Error("D1 binding is not configured. Expected binding name DB or ce_data.");
+  return db;
 }
 
 async function handleLogin(request, env, formMode = false) {
@@ -300,13 +314,19 @@ async function handleApi(request, env, url) {
 
   await ensureSchema(env);
   if (url.pathname === "/api/health" && request.method === "GET") {
-    return jsonResponse(request, { ok: true, remote: true, storage: env.DB ? "Cloudflare D1" : "unbound" });
+    const bindingName = d1BindingName(env);
+    return jsonResponse(request, {
+      ok: true,
+      remote: true,
+      storage: bindingName ? "Cloudflare D1" : "unbound",
+      binding: bindingName || null
+    });
   }
 
-  requireDb(env);
+  const db = requireDb(env);
 
   if (url.pathname === "/api/entries" && request.method === "GET") {
-    const result = await env.DB.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 500").all();
+    const result = await db.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 500").all();
     const entries = (result.results || []).map(row => JSON.parse(row.payload));
     return jsonResponse(request, { ok: true, entries });
   }
@@ -317,7 +337,7 @@ async function handleApi(request, env, url) {
     const createdAt = String(entry.createdAt || new Date().toISOString());
     const updatedAt = new Date().toISOString();
     const payload = { ...entry, id, createdAt, updatedAt, remoteSavedAt: updatedAt };
-    await env.DB.prepare(`INSERT OR REPLACE INTO entries
+    await db.prepare(`INSERT OR REPLACE INTO entries
       (id, created_at, updated_at, title, type, subsystem, severity, payload)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
       .bind(id, createdAt, updatedAt, entry.title || "", entry.type || "", entry.subsystem || "", entry.severity || "", JSON.stringify(payload))
@@ -329,7 +349,7 @@ async function handleApi(request, env, url) {
     const payload = await readBody(request);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    await env.DB.prepare("INSERT INTO snapshots (id, created_at, reason, payload) VALUES (?, ?, ?, ?)")
+    await db.prepare("INSERT INTO snapshots (id, created_at, reason, payload) VALUES (?, ?, ?, ?)")
       .bind(id, createdAt, payload.reason || "", JSON.stringify({ ...payload, remoteSavedAt: createdAt }))
       .run();
     return jsonResponse(request, { ok: true, id, createdAt });
@@ -339,7 +359,7 @@ async function handleApi(request, env, url) {
     const payload = await readBody(request);
     const id = crypto.randomUUID();
     const createdAt = new Date().toISOString();
-    await env.DB.prepare("INSERT INTO exports (id, created_at, payload) VALUES (?, ?, ?)")
+    await db.prepare("INSERT INTO exports (id, created_at, payload) VALUES (?, ?, ?)")
       .bind(id, createdAt, JSON.stringify({ ...payload, remoteSavedAt: createdAt }))
       .run();
     return jsonResponse(request, { ok: true, id, createdAt });
