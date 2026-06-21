@@ -7,6 +7,12 @@
     "directory": "dist",
     "not_found_handling": "single-page-application"
   },
+  "d1_databases": [
+    {
+      "binding": "ce_data",
+      "database_name": "ce_data"
+    }
+  ],
   "observability": {
     "enabled": true
   }
