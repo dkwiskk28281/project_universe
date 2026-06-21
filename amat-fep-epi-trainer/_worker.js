@@ -1,5 +1,8 @@
 const COOKIE_NAME = "epi_vault_session";
 const SESSION_DAYS = 30;
+const PERSONAL_SERVER_PREFIX = "/personal-server";
+const PUBLIC_VAULT_INDEX = "https://dkwiskk28281.github.io/project_universe/amat-fep-epi-trainer/current-vault-url.json";
+const DEFAULT_PERSONAL_SERVER_URL = "https://fep-epi-vault-9175.loca.lt";
 
 function jsonResponse(request, data, status = 200, headers = {}) {
   const origin = request.headers.get("Origin") || "*";
@@ -23,6 +26,16 @@ function htmlResponse(html, status = 200, headers = {}) {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
       ...headers
+    }
+  });
+}
+
+function plainResponse(message, status = 500) {
+  return new Response(message, {
+    status,
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-store"
     }
   });
 }
@@ -126,6 +139,93 @@ function loginPage(message = "") {
   </form>
 </body>
 </html>`;
+}
+
+function validTunnelUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith(".loca.lt") ? url.toString().replace(/\/$/, "") : "";
+  } catch {
+    return "";
+  }
+}
+
+async function resolvePersonalServerUrl(env) {
+  const configured = validTunnelUrl(env.PERSONAL_SERVER_URL || "");
+  if (configured) return configured;
+
+  try {
+    const response = await fetch(PUBLIC_VAULT_INDEX, {
+      headers: { "Cache-Control": "no-store" },
+      cf: { cacheTtl: 0, cacheEverything: false }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      const publicUrl = validTunnelUrl(data.publicUrl || "");
+      if (publicUrl) return publicUrl;
+    }
+  } catch {
+    // Fall back to the requested localtunnel subdomain below.
+  }
+
+  return DEFAULT_PERSONAL_SERVER_URL;
+}
+
+function rewriteProxyLocation(value, targetBase, proxyBase) {
+  if (!value) return value;
+  if (value === "/") return `${proxyBase}/`;
+  if (value.startsWith("/")) return `${proxyBase}${value}`;
+  if (value.startsWith(targetBase)) return `${proxyBase}${value.slice(targetBase.length) || "/"}`;
+  return value;
+}
+
+async function rewriteProxyBody(response, proxyBase) {
+  const contentType = response.headers.get("Content-Type") || "";
+  if (!contentType.includes("text/html") && !contentType.includes("javascript")) return response.body;
+  const text = await response.text();
+  return text
+    .replaceAll('action="/api/login-form"', `action="${proxyBase}/api/login-form"`)
+    .replaceAll('href="/', `href="${proxyBase}/`)
+    .replaceAll('src="/', `src="${proxyBase}/`);
+}
+
+async function handlePersonalServerProxy(request, env, url) {
+  const targetBase = await resolvePersonalServerUrl(env);
+  const target = new URL(targetBase);
+  const proxyBase = `${url.origin}${PERSONAL_SERVER_PREFIX}`;
+  const suffix = url.pathname.slice(PERSONAL_SERVER_PREFIX.length) || "/";
+  target.pathname = suffix.startsWith("/") ? suffix : `/${suffix}`;
+  target.search = url.search;
+
+  const headers = new Headers(request.headers);
+  headers.delete("Host");
+  headers.set("bypass-tunnel-reminder", "1");
+  headers.set("User-Agent", "FEP-EPI-Vault-Cloudflare-Proxy");
+  headers.set("X-Forwarded-Host", url.host);
+  headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
+
+  const upstreamRequest = new Request(target.toString(), {
+    method: request.method,
+    headers,
+    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+    redirect: "manual"
+  });
+
+  const upstream = await fetch(upstreamRequest);
+  const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.set("Cache-Control", "no-store");
+  responseHeaders.set("X-Personal-Server-Target", targetBase);
+  responseHeaders.delete("Content-Length");
+
+  const location = responseHeaders.get("Location");
+  if (location) responseHeaders.set("Location", rewriteProxyLocation(location, targetBase, PERSONAL_SERVER_PREFIX));
+
+  const body = await rewriteProxyBody(upstream, PERSONAL_SERVER_PREFIX);
+  return new Response(body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers: responseHeaders
+  });
 }
 
 async function readBody(request) {
@@ -249,6 +349,12 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
+      if (url.pathname === PERSONAL_SERVER_PREFIX) {
+        return Response.redirect(`${url.origin}${PERSONAL_SERVER_PREFIX}/`, 302);
+      }
+      if (url.pathname.startsWith(`${PERSONAL_SERVER_PREFIX}/`)) {
+        return handlePersonalServerProxy(request, env, url);
+      }
       if (url.pathname.startsWith("/api/")) return handleApi(request, env, url);
       if (!(await isAuthenticated(request, env))) return htmlResponse(loginPage());
       return env.ASSETS.fetch(request);

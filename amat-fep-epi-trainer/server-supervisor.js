@@ -12,6 +12,7 @@ const PUBLIC_SUBDOMAIN = process.env.EPI_PUBLIC_SUBDOMAIN || "fep-epi-vault-9175
 const PUBLIC_URL = `https://${PUBLIC_SUBDOMAIN}.loca.lt`;
 const PUBLIC_URL_POINTER_ROOT = process.env.EPI_PUBLIC_URL_POINTER_ROOT || "";
 const PUBLIC_POINTER_PAGE = process.env.EPI_PUBLIC_POINTER_PAGE || "";
+const PUBLIC_PROXY_URL = process.env.EPI_PUBLIC_PROXY_URL || "https://projectuniverse.chang2058.workers.dev/personal-server/";
 
 const state = {
   startedAt: new Date().toISOString(),
@@ -20,6 +21,7 @@ const state = {
   localUrl: "http://127.0.0.1:4180/",
   requestedPublicUrl: PUBLIC_URL,
   publicUrl: "",
+  publicProxyUrl: PUBLIC_PROXY_URL,
   publicPointerPage: PUBLIC_POINTER_PAGE,
   publisherStatus: PUBLIC_URL_POINTER_ROOT ? "waiting" : "disabled",
   vaultRoot: VAULT_ROOT,
@@ -84,13 +86,14 @@ function log(name, chunk) {
 }
 
 function pointerHtml(url) {
+  const destination = PUBLIC_PROXY_URL || url;
   return `<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
-  <meta http-equiv="refresh" content="2; url=${url}" />
+  <meta http-equiv="refresh" content="2; url=${destination}" />
   <title>FEP/EPI Personal Server</title>
   <style>
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Arial, sans-serif; background: #101828; color: #f8fafc; }
@@ -103,8 +106,9 @@ function pointerHtml(url) {
 <body>
   <main>
     <h1>FEP/EPI Personal Server</h1>
-    <p>현재 살아있는 개인서버 주소로 이동합니다. 접속 비밀번호는 별도로 입력해야 합니다.</p>
-    <p><a href="${url}">${url}</a></p>
+    <p>현재 살아있는 개인서버로 이동합니다. Cloudflare 프록시가 localtunnel 안내 화면을 우회해 줍니다.</p>
+    <p><a href="${destination}">${destination}</a></p>
+    <p>현재 터널 원본: <a href="${url}">${url}</a></p>
   </main>
 </body>
 </html>
@@ -139,6 +143,7 @@ function publishPublicUrl(url) {
   const payload = {
     updatedAt: new Date().toISOString(),
     publicUrl: url,
+    proxyUrl: PUBLIC_PROXY_URL,
     requestedPublicUrl: PUBLIC_URL,
     vaultRoot: VAULT_ROOT
   };
