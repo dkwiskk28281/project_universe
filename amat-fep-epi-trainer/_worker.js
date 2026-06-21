@@ -1,0 +1,262 @@
+const COOKIE_NAME = "epi_vault_session";
+const SESSION_DAYS = 30;
+
+function jsonResponse(request, data, status = 200, headers = {}) {
+  const origin = request.headers.get("Origin") || "*";
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      ...headers
+    }
+  });
+}
+
+function htmlResponse(html, status = 200, headers = {}) {
+  return new Response(html, {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      ...headers
+    }
+  });
+}
+
+function base64Url(bytes) {
+  let binary = "";
+  new Uint8Array(bytes).forEach(byte => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlText(text) {
+  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function decodeBase64Url(value) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((value.length + 3) % 4);
+  return atob(padded);
+}
+
+async function hmac(secret, value) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  return base64Url(await crypto.subtle.sign("HMAC", key, encoder.encode(value)));
+}
+
+async function createToken(env) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = base64UrlText(JSON.stringify({
+    iat: now,
+    exp: now + SESSION_DAYS * 24 * 60 * 60,
+    nonce: crypto.randomUUID()
+  }));
+  const signature = await hmac(sessionSecret(env), payload);
+  return `${payload}.${signature}`;
+}
+
+function sessionSecret(env) {
+  return env.SESSION_SECRET || env.EPI_PASSWORD || "change-me";
+}
+
+async function verifyToken(env, token) {
+  if (!token || !token.includes(".")) return false;
+  const [payload, signature] = token.split(".");
+  const expected = await hmac(sessionSecret(env), payload);
+  if (signature !== expected) return false;
+  try {
+    const data = JSON.parse(decodeBase64Url(payload));
+    return Number(data.exp) > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
+function cookieToken(request) {
+  const cookie = request.headers.get("Cookie") || "";
+  const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  return match?.[1] || "";
+}
+
+function bearerToken(request) {
+  const auth = request.headers.get("Authorization") || "";
+  return auth.startsWith("Bearer ") ? auth.slice(7) : "";
+}
+
+async function isAuthenticated(request, env) {
+  return verifyToken(env, bearerToken(request) || cookieToken(request));
+}
+
+function loginPage(message = "") {
+  return `<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FEP/EPI Vault Login</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#16232d;font-family:Segoe UI,Malgun Gothic,Arial,sans-serif;color:#17232d}
+    form{width:min(420px,calc(100vw - 32px));display:grid;gap:14px;padding:28px;border-radius:8px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.32)}
+    .mark{display:grid;place-items:center;width:42px;height:42px;border-radius:8px;background:#007f86;color:#fff;font-weight:900}
+    p{margin:0;color:#617080;line-height:1.55} h1{margin:0} label{display:grid;gap:6px;font-weight:800}
+    input{min-height:44px;padding:0 12px;border:1px solid #d8e1e8;border-radius:8px} button{min-height:44px;border:0;border-radius:8px;background:#007f86;color:#fff;font-weight:850}
+    small{color:#b35a16}
+  </style>
+</head>
+<body>
+  <form method="post" action="/api/login-form">
+    <span class="mark">FE</span>
+    <h1>FEP/EPI Vault Login</h1>
+    <p>비밀번호를 입력하면 개인 학습 웹과 원격 저장소가 열립니다.</p>
+    <label>Password<input name="password" type="password" inputmode="numeric" autocomplete="current-password" autofocus /></label>
+    <button type="submit">열기</button>
+    <small>${message}</small>
+  </form>
+</body>
+</html>`;
+}
+
+async function readBody(request) {
+  const contentType = request.headers.get("Content-Type") || "";
+  if (contentType.includes("application/json")) return request.json();
+  if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+    const form = await request.formData();
+    return Object.fromEntries(form.entries());
+  }
+  return {};
+}
+
+async function ensureSchema(env) {
+  if (!env.DB) return;
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS entries (
+    id TEXT PRIMARY KEY,
+    created_at TEXT,
+    updated_at TEXT,
+    title TEXT,
+    type TEXT,
+    subsystem TEXT,
+    severity TEXT,
+    payload TEXT NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS snapshots (
+    id TEXT PRIMARY KEY,
+    created_at TEXT,
+    reason TEXT,
+    payload TEXT NOT NULL
+  )`).run();
+  await env.DB.prepare(`CREATE TABLE IF NOT EXISTS exports (
+    id TEXT PRIMARY KEY,
+    created_at TEXT,
+    payload TEXT NOT NULL
+  )`).run();
+}
+
+function requireDb(env) {
+  if (!env.DB) throw new Error("D1 binding DB is not configured.");
+}
+
+async function handleLogin(request, env, formMode = false) {
+  const body = await readBody(request);
+  const password = String(body.password || "");
+  if (password !== String(env.EPI_PASSWORD || "9175")) {
+    if (formMode) return htmlResponse(loginPage("비밀번호가 맞지 않습니다."), 401);
+    return jsonResponse(request, { ok: false, error: "invalid password" }, 401);
+  }
+  const token = await createToken(env);
+  const cookie = `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${SESSION_DAYS * 24 * 60 * 60}`;
+  if (formMode) {
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: "/",
+        "Set-Cookie": cookie,
+        "Cache-Control": "no-store"
+      }
+    });
+  }
+  return jsonResponse(request, { ok: true, token }, 200, { "Set-Cookie": cookie });
+}
+
+async function handleApi(request, env, url) {
+  if (request.method === "OPTIONS") return jsonResponse(request, { ok: true });
+  if (url.pathname === "/api/login" && request.method === "POST") return handleLogin(request, env);
+  if (url.pathname === "/api/login-form" && request.method === "POST") return handleLogin(request, env, true);
+  if (!(await isAuthenticated(request, env))) return jsonResponse(request, { ok: false, error: "unauthorized" }, 401);
+
+  await ensureSchema(env);
+  if (url.pathname === "/api/health" && request.method === "GET") {
+    return jsonResponse(request, { ok: true, remote: true, storage: env.DB ? "Cloudflare D1" : "unbound" });
+  }
+
+  requireDb(env);
+
+  if (url.pathname === "/api/entries" && request.method === "GET") {
+    const result = await env.DB.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 500").all();
+    const entries = (result.results || []).map(row => JSON.parse(row.payload));
+    return jsonResponse(request, { ok: true, entries });
+  }
+
+  if (url.pathname === "/api/entries" && request.method === "POST") {
+    const entry = await readBody(request);
+    const id = String(entry.id || crypto.randomUUID());
+    const createdAt = String(entry.createdAt || new Date().toISOString());
+    const updatedAt = new Date().toISOString();
+    const payload = { ...entry, id, createdAt, updatedAt, remoteSavedAt: updatedAt };
+    await env.DB.prepare(`INSERT OR REPLACE INTO entries
+      (id, created_at, updated_at, title, type, subsystem, severity, payload)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(id, createdAt, updatedAt, entry.title || "", entry.type || "", entry.subsystem || "", entry.severity || "", JSON.stringify(payload))
+      .run();
+    return jsonResponse(request, { ok: true, entry: payload });
+  }
+
+  if (url.pathname === "/api/state" && request.method === "POST") {
+    const payload = await readBody(request);
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO snapshots (id, created_at, reason, payload) VALUES (?, ?, ?, ?)")
+      .bind(id, createdAt, payload.reason || "", JSON.stringify({ ...payload, remoteSavedAt: createdAt }))
+      .run();
+    return jsonResponse(request, { ok: true, id, createdAt });
+  }
+
+  if (url.pathname === "/api/export" && request.method === "POST") {
+    const payload = await readBody(request);
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO exports (id, created_at, payload) VALUES (?, ?, ?)")
+      .bind(id, createdAt, JSON.stringify({ ...payload, remoteSavedAt: createdAt }))
+      .run();
+    return jsonResponse(request, { ok: true, id, createdAt });
+  }
+
+  return jsonResponse(request, { ok: false, error: "not found" }, 404);
+}
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    try {
+      if (url.pathname.startsWith("/api/")) return handleApi(request, env, url);
+      if (!(await isAuthenticated(request, env))) return htmlResponse(loginPage());
+      return env.ASSETS.fetch(request);
+    } catch (error) {
+      if (url.pathname.startsWith("/api/")) {
+        return jsonResponse(request, { ok: false, error: error.message }, 500);
+      }
+      return htmlResponse(`<h1>Vault error</h1><pre>${error.message}</pre>`, 500);
+    }
+  }
+};

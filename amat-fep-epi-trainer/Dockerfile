@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+COPY . .
+
+ENV EPI_VAULT_HOST=0.0.0.0
+ENV EPI_VAULT_PORT=4180
+ENV EPI_VAULT_ROOT=/vault
+ENV EPI_VAULT_PASSWORD=9175
+
+EXPOSE 4180
+VOLUME ["/vault"]
+
+CMD ["node", "vault-server.js"]

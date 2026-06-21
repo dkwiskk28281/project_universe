@@ -28,6 +28,11 @@ const readinessGates = [
   ["rg-016", "나는 모르는 상태에서 추정 원인을 확정처럼 말하지 않고 escalation note를 작성할 수 있다."],
   ["rg-017", "나는 tool owner, facility owner, EHS, senior CE, contractor의 책임 경계를 구분할 수 있다."],
   ["rg-018", "나는 어떤 상황에서 작업을 멈추고 선임/고객 승인을 기다려야 하는지 10개 이상 말할 수 있다."]
+  ,
+  ["rg-019", "나는 install 단계별 pass evidence와 stop condition을 구분해 말할 수 있다."],
+  ["rg-020", "나는 LL, TM, PM/CM, FI/EFEM 사이 wafer handoff와 pressure boundary를 설명할 수 있다."],
+  ["rg-021", "나는 facility ready signal과 실제 physical state가 다를 때 작업을 보류하고 owner를 지정할 수 있다."],
+  ["rg-022", "나는 SAT/qualification sign-off 전에 필요한 evidence pack과 open punch item을 구분할 수 있다."]
 ];
 
 const noSoloRules = [

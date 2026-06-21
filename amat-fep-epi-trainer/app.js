@@ -7,6 +7,52 @@ const roleFit = [
   "고객 대응: downtime, next action, risk, ETA를 명확히 공유"
 ];
 
+const learningCockpit = [
+  {
+    step: "01",
+    mode: "Prime",
+    title: "큰 그림 먼저",
+    text: "FEP/EPI가 단일 장비명이 아니라 EPI/RTP 설치 업무 영역이라는 점을 잡고 시작합니다.",
+    view: "equipment",
+    action: "장비군 보기",
+    principle: "worked example"
+  },
+  {
+    step: "02",
+    mode: "Build",
+    title: "손으로 구조 만들기",
+    text: "Centura/Vantage 개념과 LL, TM, PM/CM wafer path를 드래그로 구성합니다.",
+    view: "cluster",
+    action: "구성게임 열기",
+    principle: "active retrieval"
+  },
+  {
+    step: "03",
+    mode: "Decide",
+    title: "멈출 조건 판단",
+    text: "pass evidence와 stop condition을 보며 install 현장 판단력을 훈련합니다.",
+    view: "install",
+    action: "설치 미션",
+    principle: "transfer practice"
+  },
+  {
+    step: "04",
+    mode: "Recall",
+    title: "안 보고 꺼내기",
+    text: "퀴즈, readiness gate, mastery mission으로 기억을 다시 끌어냅니다.",
+    view: "readiness",
+    action: "현장투입 체크",
+    principle: "spacing"
+  }
+];
+
+const learningScienceCards = [
+  ["Retrieval Practice", "다시 읽기보다 먼저 떠올리면 장기 기억이 강해집니다.", "정답 보기 전 PM/CM/LL 배치, Stop/Go 판단, 퀴즈를 먼저 누르게 설계했습니다."],
+  ["Spacing", "짧은 학습을 시간 간격을 두고 반복하면 몰아치기보다 오래 남습니다.", "18분 루프를 오늘, 내일, 3일 뒤 다시 돌리도록 작은 카드 단위로 쪼갰습니다."],
+  ["Interleaving", "비슷한 문제를 섞어 풀면 처음엔 어렵지만 전이와 장기 기억이 좋아집니다.", "장비 구조, facility, gas, safety, qualification을 한 루프 안에서 섞었습니다."],
+  ["Worked Examples", "초보자는 완전한 예시를 먼저 보면 cognitive load가 줄어듭니다.", "install mission board가 선임의 사고 순서와 pass evidence를 먼저 보여줍니다."]
+];
+
 const roadmap = [
   {
     week: "1주차",
@@ -626,6 +672,175 @@ const gasQualificationChecks = [
   "고객 보고는 gas name을 숨기지 말고 hazard, 현재 안전 상태, 확인된 계측값, 다음 승인 필요 항목을 분명히 말한다."
 ];
 
+const electricalHero = [
+  ["1", "전기 안전", "LOTO, stored energy, arc flash, CAT rating, PPE, 권한 경계를 먼저 확인합니다."],
+  ["2", "도면 읽기", "power path, 0V/common, fuse, relay coil, contact, sensor input, actuator output을 색으로 나눕니다."],
+  ["3", "DVM 측정", "전압은 병렬, 저항/연속성은 무전원, 전류는 특별히 위험하다는 원칙을 몸에 넣습니다."],
+  ["4", "증거 보고", "측정 위치, mode, expected value, actual value, 다음 확인을 한 줄로 남깁니다."]
+];
+
+const electricalPath = [
+  {
+    step: "E1",
+    title: "전기 언어 익히기",
+    goal: "Voltage, current, resistance, power, ground, open/short를 장비 증상과 연결합니다.",
+    drills: ["Ohm's law로 24V 부하 전류 추정", "series/parallel에서 전압이 어디에 걸리는지 그리기", "open circuit과 short circuit 증상을 말로 구분"]
+  },
+  {
+    step: "E2",
+    title: "DVM/DMM 안전 루틴",
+    goal: "측정값보다 먼저 meter 상태와 회로 에너지 상태를 확인합니다.",
+    drills: ["lead 손상, fuse, jack 위치 확인", "known source로 meter prove", "power off 뒤 resistance/continuity 측정", "live 측정은 자격/승인/PPE 조건에서만"]
+  },
+  {
+    step: "E3",
+    title: "24V control circuit",
+    goal: "장비에서 자주 만나는 sensor, relay, solenoid, interlock chain을 24VDC 기준으로 읽습니다.",
+    drills: ["+24V to 0V 기준 잡기", "closed contact 양단 전압강하 보기", "fuse line/load side 비교", "PNP/NPN sensor output toggle 이해"]
+  },
+  {
+    step: "E4",
+    title: "Relay / contactor / SSR",
+    goal: "코일은 전자석, 접점은 별도 스위치라는 구조를 확실히 분리합니다.",
+    drills: ["A1-A2 coil voltage", "COM-NO/NC continuity", "energized/de-energized 상태 비교", "chatter, welded contact, open coil 증상 구분"]
+  },
+  {
+    step: "E5",
+    title: "장비 증상으로 역추적",
+    goal: "알람에서 부품명으로 뛰지 않고 command, output, wiring, load, feedback 순서로 좁힙니다.",
+    drills: ["solenoid command 있는데 valve 미동작", "interlock chain 중간에서 24V 사라짐", "sensor LED는 켜지지만 PLC input off", "SMPS 24V sag"]
+  },
+  {
+    step: "E6",
+    title: "보고 가능한 계측",
+    goal: "선임/고객에게 신뢰받는 문장으로 측정 증거를 전달합니다.",
+    drills: ["TP명, 기준점, DVM mode, expected, actual 기록", "변경 전후 값 비교", "측정 불가 이유와 필요한 승인 명시"]
+  }
+];
+
+const meterCases = [
+  {
+    id: "prove",
+    title: "측정 전: meter prove",
+    symptom: "전장 박스에서 값을 재기 전, 측정기 자체를 신뢰할 수 있는지 확인해야 합니다.",
+    mode: "V AC 또는 V DC, 회로에 맞는 range / CAT rating 확인",
+    leads: "black은 COM, red는 V/Ω jack. 절대 current jack에 꽂힌 상태로 voltage source에 대지 않습니다.",
+    expect: "known live source에서 정상값, known zero에서 0V에 가까운 값. 측정 후 다시 known source로 재확인하면 더 안전합니다.",
+    means: "값이 이상하면 회로가 아니라 meter, lead, fuse, jack 위치, range 설정부터 의심합니다.",
+    trap: "HOLD 값, wrong mode, current jack, 손상된 lead, 낮은 CAT rating은 현장 사고의 시작점입니다."
+  },
+  {
+    id: "24v",
+    title: "24VDC control power 확인",
+    symptom: "여러 sensor/relay/valve가 동시에 이상하거나 I/O가 불안정합니다.",
+    mode: "V DC",
+    leads: "black을 0V/common 기준점에 고정하고 red로 +24V supply, fuse line side, fuse load side, terminal block을 따라갑니다.",
+    expect: "정상 supply는 보통 장비 spec 근처의 안정된 DC 전압입니다. 부하가 켜질 때 크게 sag하면 power supply, short, 과부하, loose connection을 봅니다.",
+    means: "line side는 24V인데 load side가 0V면 fuse/open path 가능성. 둘 다 낮으면 upstream supply/EMO/interlock/power enable을 봅니다.",
+    trap: "0V 기준점을 잘못 잡으면 정상 회로도 고장처럼 보입니다. schematic의 0V/common/earth 구분을 먼저 확인합니다."
+  },
+  {
+    id: "fuse",
+    title: "Fuse / breaker open 찾기",
+    symptom: "특정 subsystem만 전원이 없고 upstream power는 살아 있습니다.",
+    mode: "V DC 또는 V AC. 무전원 확인 후 resistance/continuity.",
+    leads: "live 확인 시 black은 기준점, red를 fuse 양쪽에 각각 댑니다. 무전원/LOTO 후에는 fuse를 분리하거나 회로 영향을 고려해 continuity를 봅니다.",
+    expect: "정상 fuse는 양쪽 모두 source 전압이 보입니다. line side만 전압이 있고 load side가 0V면 fuse open 가능성이 큽니다.",
+    means: "fuse가 끊어진 것은 결과일 수 있습니다. downstream short, 잘못된 부하, wiring pinch를 확인하지 않고 교체만 반복하지 않습니다.",
+    trap: "회로 안에서 저항을 재면 parallel path 때문에 오판할 수 있습니다. 필요하면 한쪽을 분리하고 공식 절차를 따릅니다."
+  },
+  {
+    id: "relay",
+    title: "Relay coil과 contact 분리 진단",
+    symptom: "출력 명령은 있는 것 같은데 solenoid, pump, lamp enable, ready signal이 바뀌지 않습니다.",
+    mode: "coil은 V DC/AC 또는 Ω, contact는 continuity/Ω 또는 voltage drop",
+    leads: "명령 상태에서 A1-A2 coil 전압을 확인합니다. 무전원 상태에서는 coil resistance를 spec과 비교합니다. COM-NO/NC 접점은 상태별 continuity를 봅니다.",
+    expect: "coil 정격 전압이 걸리면 접점 상태가 바뀌어야 합니다. coil 전압 정상인데 접점이 안 바뀌면 relay 자체, socket, mechanical sticking 가능성.",
+    means: "coil이 정상이어도 접점이 나쁠 수 있고, 접점이 정상이어도 coil command가 없을 수 있습니다. 두 회로를 따로 봅니다.",
+    trap: "flyback diode나 suppression circuit이 있으면 polarity와 residual voltage가 진단에 영향을 줄 수 있습니다."
+  },
+  {
+    id: "interlock",
+    title: "Interlock chain에서 끊긴 지점 찾기",
+    symptom: "door, exhaust, cooling, gas box, EMO 중 하나가 not ready로 장비가 진행하지 않습니다.",
+    mode: "V DC, 필요 시 schematic 기반 continuity는 무전원에서만",
+    leads: "0V 기준으로 chain 시작점부터 각 contact 후단을 순서대로 찍습니다. closed contact 양단 전압강하는 거의 0V에 가까워야 합니다.",
+    expect: "어느 contact 전까지 24V가 있고 후단에서 사라지면 그 contact 조건, wiring, connector, input 모듈을 확인합니다.",
+    means: "interlock은 bypass 대상이 아니라 보호 기능입니다. 원인 조건이 실제 unsafe인지, sensor/wiring issue인지 분리합니다.",
+    trap: "software 화면의 ready만 믿지 말고 실제 local panel, facility ready, hardwired input 상태를 같이 봅니다."
+  },
+  {
+    id: "sensor",
+    title: "3-wire sensor / proximity / switch",
+    symptom: "슬릿밸브 open sensor, door switch, wafer presence, actuator position feedback이 바뀌지 않습니다.",
+    mode: "V DC",
+    leads: "일반적인 24V sensor는 brown +24V, blue 0V, black output인 경우가 많지만 반드시 schematic을 우선합니다. output을 0V 기준으로 확인합니다.",
+    expect: "대상 상태가 바뀔 때 output이 low/high로 전환되어야 합니다. PNP/NPN, NO/NC logic은 장비 문서로 확인합니다.",
+    means: "sensor 전원 없음, target 위치 불량, cable 단선, input module 문제, logic inversion을 분리합니다.",
+    trap: "sensor LED가 켜져도 PLC input까지 신호가 도달하지 않을 수 있습니다. sensor output과 controller input을 둘 다 확인합니다."
+  },
+  {
+    id: "solenoid",
+    title: "Solenoid valve / pneumatic actuator",
+    symptom: "command는 나갔는데 valve가 움직이지 않거나 cylinder가 늦게 움직입니다.",
+    mode: "V DC/AC, Ω는 무전원에서",
+    leads: "coil terminal 양단 전압을 명령 시점에 봅니다. 무전원/승인 후 coil resistance와 connector seating을 확인합니다.",
+    expect: "정격 전압이 coil에 걸리고 CDA/N2 pressure가 정상이어야 움직입니다. 전압 정상인데 미동작이면 coil, valve spool, air pressure, mechanical bind를 봅니다.",
+    means: "전기 명령과 공압 에너지를 분리해야 합니다. output이 정상이라고 actuator가 정상이라는 뜻은 아닙니다.",
+    trap: "coil을 오래 강제 energize하거나 임의 jumper를 쓰는 것은 장비 손상과 안전 사고로 이어질 수 있습니다."
+  },
+  {
+    id: "drop",
+    title: "Voltage drop으로 loose contact 찾기",
+    symptom: "무부하에서는 정상인데 부하가 켜질 때만 alarm, reset, relay chatter가 발생합니다.",
+    mode: "V DC 또는 V AC",
+    leads: "부하가 실제 동작 중일 때 suspect contact, connector, cable section 양단에 probe를 댑니다.",
+    expect: "닫힌 접점/짧은 배선 구간의 전압강하는 작아야 합니다. 예상보다 큰 drop은 resistance 증가, loose terminal, contact wear 가능성.",
+    means: "open-circuit 전압만 보면 놓치는 결함을 load-on 상태에서 잡을 수 있습니다.",
+    trap: "측정 자세가 위험하면 하지 않습니다. live panel 접근은 권한, PPE, 선임 입회, site 절차가 먼저입니다."
+  }
+];
+
+const electricalTheory = [
+  ["Voltage / 전압", "전류를 밀어주는 전기적 압력처럼 이해합니다. DVM 전압 측정은 회로에 병렬로 대며, 기준점 선택이 결과를 좌우합니다."],
+  ["Current / 전류", "실제로 흐르는 전하의 양입니다. DVM으로 직접 current를 재려면 회로를 끊고 직렬 삽입해야 하므로 현장에서는 clamp meter나 controller data를 우선 고려합니다."],
+  ["Resistance / 저항", "전류 흐름을 방해하는 정도입니다. 저항/연속성/diode 측정은 전원을 끄고 stored energy를 방전한 뒤 수행합니다."],
+  ["Ohm's Law", "V = I x R. 24V coil에 흐를 예상 전류, voltage drop, short 가능성을 수치로 생각하게 해줍니다."],
+  ["Series / Parallel", "직렬 chain에서는 한 지점 open이 전체를 멈추고, 병렬 path는 회로 안 저항 측정을 속일 수 있습니다."],
+  ["Open / Short / Ground Fault", "open은 길이 끊긴 상태, short는 원치 않는 낮은 저항 경로, ground fault는 전원이 chassis/earth 쪽으로 새는 상태입니다."],
+  ["Sourcing / Sinking", "PNP는 보통 +전압을 내보내고 NPN은 0V 쪽으로 끌어내리는 방식입니다. sensor output과 PLC input type이 맞아야 합니다."],
+  ["Noise / Shield / Ground", "RTP lamp, motor, inverter, relay coil은 noise source가 될 수 있습니다. shield 접지, cable routing, loose ground가 intermittent fault를 만들 수 있습니다."]
+];
+
+const relayConcepts = [
+  ["Relay", "코일에 전류가 흐르면 자력이 생기고, 그 힘으로 별도 접점을 열거나 닫는 전기적 스위치입니다."],
+  ["Coil A1/A2", "relay를 움직이는 전자석 부분입니다. 정격 전압, polarity, coil resistance, suppression diode를 확인합니다."],
+  ["COM / NO / NC", "COM은 공통, NO는 평상시 열림, NC는 평상시 닫힘입니다. energize되면 NO는 닫히고 NC는 열리는 방향입니다."],
+  ["Contact Rating", "접점이 견딜 수 있는 전압/전류/부하 종류입니다. motor, lamp, solenoid는 inrush 때문에 단순 정격보다 stress가 큽니다."],
+  ["Chatter", "coil 전압 부족이나 inrush, loose terminal, control instability로 relay가 빠르게 붙었다 떨어지는 현상입니다."],
+  ["SSR", "Solid State Relay. 기계 접점 대신 반도체로 switching합니다. 빠르고 수명이 길지만 leakage, heat, failure mode가 다릅니다."]
+];
+
+const electricalTroubleshooting = [
+  ["No power", "main disconnect, EMO, breaker, fuse, SMPS input/output, 24V distribution, terminal block 순서로 전원이 어디서 사라지는지 봅니다."],
+  ["Output command exists, load off", "controller output LED/data, relay coil, contact, fuse, connector, load coil, return path, pneumatic/mechanical energy를 분리합니다."],
+  ["Input not changing", "field sensor power, sensor output, cable, junction, input module terminal, software mapping, NO/NC logic을 비교합니다."],
+  ["Intermittent fault", "최근 PM/설치 변경점, loose terminal, cable strain, vibration, temperature, humidity, contact wear, min/max capture를 봅니다."],
+  ["Repeated fuse blow", "fuse 교체 반복 금지. downstream short, wrong load, wire pinch, coil short, moisture, wrong fuse rating을 찾습니다."],
+  ["Relay chatter", "coil voltage sag, inrush, bad supply, loose terminal, overloaded output, suppression device, contactor auxiliary feedback을 확인합니다."],
+  ["Ground/noise issue", "shield termination, chassis bond, cable routing, motor/lamp switching noise, analog signal reference를 의심합니다."]
+];
+
+const electricalSafetyRules = [
+  "전기 작업은 de-energize가 기본입니다. live 측정이 필요하더라도 자격, 승인, PPE, 선임 입회, site rule을 먼저 확인합니다.",
+  "LOTO는 전기만이 아니라 pneumatic, hydraulic, vacuum, thermal, mechanical, chemical stored energy까지 포함해 생각합니다.",
+  "DVM은 회로 category와 voltage rating에 맞는 CAT rating, lead rating, fuse protection이 필요합니다.",
+  "저항/연속성/diode/capacitance 측정은 전원 차단과 capacitor 방전 후 수행합니다.",
+  "current jack에 lead가 꽂힌 상태로 전압 source에 대면 short/arc 사고가 날 수 있습니다.",
+  "interlock, EMO, gas/exhaust ready signal은 bypass 대상이 아닙니다. 원인과 승인 절차가 먼저입니다.",
+  "측정할 수 없을 만큼 위험하거나 권한 밖이면 좋은 CE는 멈추고 escalation합니다."
+];
+
 const compliance = [
   "삼성 평택 Fab의 구체적 현장 규칙은 공개 자료만으로 완전 확인할 수 없으므로, 입사 후 고객 site orientation과 Applied EHS 교육을 최우선으로 따른다.",
   "대형 semiconductor fab은 cleanroom 완공, base build, process lateral systems, tool install이 연결되는 프로젝트 구조로 이해한다.",
@@ -698,6 +913,41 @@ sources.push(
   ["Hybrid cluster tool architecture", "https://www.semiconductoronline.com/doc/hybrid-cluster-tool-architectures-for-300mm-a-0001"]
 );
 
+sources.push(
+  ["Pfeiffer Vacuum Load Lock and Transfer", "https://www.pfeiffervacuum.com/global/en/applications/load-lock-transfer/"],
+  ["Roediger & Karpicke 2006 Testing Effect", "https://pubmed.ncbi.nlm.nih.gov/16507066/"],
+  ["Retrieval practice and long-term retention", "https://pubmed.ncbi.nlm.nih.gov/20951630/"],
+  ["The Gamification of Learning: a Meta-analysis", "https://link.springer.com/article/10.1007/s10648-019-09498-w"],
+  ["Test-enhanced learning review", "https://pmc.ncbi.nlm.nih.gov/articles/PMC4477741/"]
+);
+
+sources.push(
+  ["SEMI Safety Standards list", "https://www.semi.org/en/products-services/standards/safety"],
+  ["SEMI EHS Guidelines overview", "https://www.semi.org/en/node/114001"],
+  ["SEMI S24 Multi-Employer Work Areas", "https://store-us.semi.org/products/s02400-semi-s24-safety-guideline-for-multi-employer-work-areas"],
+  ["Semiconductor base build / PLS / tool install", "https://jedunn.com/blog/closing-the-loop-integrating-design-construction-in-semiconductor-manufacturing/"],
+  ["Semiconductor fab tool installation patent", "https://patents.google.com/patent/US7039999B2/en"],
+  ["Site Acceptance Test overview", "https://operations1.com/en/glossary/site-acceptance-test"]
+);
+
+sources.push(
+  ["Spacing review: Using Spacing to Enhance Diverse Forms of Learning", "https://files.eric.ed.gov/fulltext/ED536925.pdf"],
+  ["Interleaved practice and transfer", "https://pmc.ncbi.nlm.nih.gov/articles/PMC8476370/"],
+  ["Worked examples and cognitive load", "https://pmc.ncbi.nlm.nih.gov/articles/PMC8379662/"],
+  ["Retrieval practice enhances new learning", "https://pmc.ncbi.nlm.nih.gov/articles/PMC3983480/"],
+  ["Cognitive science and retrieval practice", "https://pubmed.ncbi.nlm.nih.gov/30125899/"]
+);
+
+sources.push(
+  ["Fluke ABCs of DMMs", "https://media.fluke.com/ade6b718-4577-4b57-903b-b10600664c67_original%20file.pdf"],
+  ["Fluke ABCs of multimeter safety", "https://media.fluke.com/51012112-8f43-4aa7-a30a-b2e3016e8f2f_original%20file.pdf"],
+  ["Fluke 87V MAX User Manual measurement cautions", "https://media.fluke.com/d6882a66-83b2-4309-9ea7-b10800c2b791_original%20file.pdf"],
+  ["OSHA Control of Hazardous Energy", "https://www.osha.gov/control-hazardous-energy"],
+  ["NIOSH Hazardous Energy Control", "https://www.cdc.gov/niosh/manufacturing/hazardous-energy-control/index.html"],
+  ["NFPA 70E safe electrical work practices overview", "https://www.nfpa.org/product/70e-safe-electrical-work-practices-training-series/ols70esewp"],
+  ["Omron General-purpose Relay Technical Guide", "https://edata.omron.com.au/eData/Relays/GeneralRelay_TG.pdf"]
+);
+
 const publicFacts = [
   ["RTP 공정 목적", "Applied 공개 자료는 RTP/anneal을 wafer를 짧은 시간 특정 온도로 가열해 conductivity, permittivity, densification, contamination reduction 등 물성 변화를 만드는 영역으로 설명합니다."],
   ["RTP 방식", "공개 자료에서 soak, spike, millisecond anneal과 thermal-radical oxidation이 응용별로 언급됩니다. CE는 방식 이름보다 시간-온도 budget, repeatability, uniformity가 왜 중요한지 이해해야 합니다."],
@@ -726,6 +976,104 @@ const installDeliverables = [
   ["Bring-up checklist", "EMO/E-stop, interlocks, controller boot, I/O map, sensor scaling, pumpdown, valve/MFC response, robot dry run"],
   ["Qualification package", "baseline trend, wafer handling reliability, process/metrology acceptance, open punch list, customer sign-off"],
   ["Shift handover", "current status, blockers, risk, next action, owner, ETA, parts/tools needed, customer communication history"]
+];
+
+const installGapRadar = [
+  ["Site Boundary", "고객 facility scope와 OEM tool scope를 헷갈리면 일정과 안전이 동시에 무너집니다.", "POC label, drawing revision, owner, witness, permit를 한 장으로 묶어 확인합니다."],
+  ["Evidence Habit", "초보자는 '확인했다'고 말하지만 선임은 trace, 사진, sign-off, trend, log를 남깁니다.", "각 phase마다 통과 증거와 중단 조건을 먼저 적습니다."],
+  ["Safety Envelope", "gas, exhaust, abatement, interlock, energized power는 일정 때문에 밀어붙일 수 없는 영역입니다.", "SEMI S2/S6/S19/S24 관점으로 stop authority와 multi-employer work area를 학습합니다."],
+  ["Process Link", "설치 문제는 결국 particle, pumpdown, temperature, film uniformity, transfer reliability로 돌아옵니다.", "facility 값과 chamber baseline을 qualification 결과에 연결합니다."]
+];
+
+const installMissionStages = [
+  {
+    badge: "M1",
+    title: "Site Readiness Walkdown",
+    goal: "장비가 들어오기 전에 floor, route, POC, utility, owner, permit, blocker를 닫습니다.",
+    evidence: ["tool matrix와 POC 목록", "drawing revision", "site readiness punch list", "owner / ETA"],
+    stop: "POC label이 drawing과 다르거나 exhaust/abatement/gas release owner가 불명확하면 move-in 이후로 넘기지 않습니다.",
+    senior: "이 utility는 누가 열고, 누가 witness하며, 실패하면 누가 복구하는가?"
+  },
+  {
+    badge: "M2",
+    title: "Move-in / Set / Level",
+    goal: "crate damage, rigging route, footprint, service clearance, leveling, seismic/anchor 조건을 현장에서 맞춥니다.",
+    evidence: ["shock/tilt 기록", "damage photo log", "leveling record", "service clearance check"],
+    stop: "damage, missing kit, clearance 간섭, access obstruction이 있으면 설치 속도보다 deviation 기록이 먼저입니다.",
+    senior: "이 위치에서 PM door, pump cart, gas box, EMO 접근이 실제 작업 자세로 가능한가?"
+  },
+  {
+    badge: "M3",
+    title: "Module Docking / Vacuum Boundary",
+    goal: "LL, TM, PM/CM이 gate valve와 robot reach 안에서 wafer path를 안정적으로 만들도록 맞춥니다.",
+    evidence: ["module seating check", "gate valve alignment", "robot blade teach plan", "vacuum seal inspection"],
+    stop: "docking face, slit valve, blade height, LL handoff 기준이 맞지 않으면 dry run 전 수정합니다.",
+    senior: "wafer가 지나가는 모든 boundary에서 pressure, door, sensor, robot handoff가 어떤 순서로 맞물리는가?"
+  },
+  {
+    badge: "M4",
+    title: "Facility Hook-up",
+    goal: "power, gas, exhaust, abatement, PCW/chiller, vacuum, CDA/N2, network를 scope별로 연결하고 증거화합니다.",
+    evidence: ["power/ground check", "purge/leak record", "exhaust/abatement ready", "cooling flow", "as-built markup"],
+    stop: "gas line release, interlock bypass, facility valve operation은 승인과 입회 없이 진행하지 않습니다.",
+    senior: "실제 flow/pressure/ready signal이 화면 값과 물리 상태 모두에서 맞는가?"
+  },
+  {
+    badge: "M5",
+    title: "Safety / Controls Bring-up",
+    goal: "EMO/E-stop, covers, gas box, exhaust, cooling, vacuum, PLC I/O, host/data 상태를 먼저 안정화합니다.",
+    evidence: ["interlock matrix", "I/O status", "alarm history", "sensor scaling", "pumpdown trend"],
+    stop: "safety interlock이 불명확하거나 alarm을 설명하지 못하면 recipe나 wafer 단계로 넘어가지 않습니다.",
+    senior: "이 alarm은 원인인가 결과인가, hardwired chain인가 software state인가?"
+  },
+  {
+    badge: "M6",
+    title: "Wafer Path / Qualification",
+    goal: "robot dry run, LL pump/vent, PM transfer, temperature/gas/vacuum baseline, process acceptance를 연결합니다.",
+    evidence: ["wafer transfer count", "pumpdown curve", "MFC response", "temperature trace", "metrology baseline"],
+    stop: "particle jump, transfer scratch, temperature drift, leak suspicion은 production release 전에 닫습니다.",
+    senior: "acceptance fail이면 rework 범위와 retest 범위를 어디까지 잡을 것인가?"
+  }
+];
+
+const installDecisionDrills = [
+  {
+    title: "Exhaust ready signal은 OK, 실제 abatement local panel은 fault",
+    wrong: "host ready만 보고 gas introduction을 진행한다.",
+    right: "facility owner와 실제 exhaust/abatement 상태, signal mapping, interlock chain을 witness로 확인하고 release 전까지 hold한다."
+  },
+  {
+    title: "PM docking 후 robot blade teach가 1 mm 정도 빗나가 보임",
+    wrong: "작게 보이므로 first wafer로 확인한다.",
+    right: "dry run, blade height, slit valve center, lift pin/handoff 기준을 wafer 없이 먼저 확인하고 deviation을 기록한다."
+  },
+  {
+    title: "고객 일정 압박으로 leak check 기록 없이 다음 단계 요청",
+    wrong: "선임에게 나중에 물어보기로 하고 power-on한다.",
+    right: "필수 acceptance evidence가 없음을 명확히 말하고, owner/ETA/punch item으로 올린다."
+  },
+  {
+    title: "RTP temperature trace가 chamber A/B에서 다르게 흔들림",
+    wrong: "recipe 문제라고 가정하고 바로 recipe를 바꾼다.",
+    right: "lamp zone, sensor/window, wafer rotation, cooling, chamber condition, calibration history를 분리해 baseline 비교한다."
+  }
+];
+
+const installSeniorMap = [
+  ["Mechanical Geometry", "leveling, module docking, gate valve, slit valve, blade height, lift pin, service clearance"],
+  ["Facility Plane", "POC, gas cabinet, purge, exhaust, abatement, PCW/chiller, CDA/N2, process vacuum, power/ground"],
+  ["Safety / Controls", "EMO, E-stop, covers, gas box, interlock matrix, PLC I/O, sensor scaling, host/data, alarm mapping"],
+  ["Process Quality", "pumpdown, leak integrity, MFC response, temperature trace, particle/defect, thickness/resistivity, chamber matching"],
+  ["Customer Interface", "scope boundary, permit, witness, sign-off, shift handover, open punch, ETA, escalation owner"]
+];
+
+const installSourceLinks = [
+  ["SEMI safety standards list", "https://www.semi.org/en/products-services/standards/safety"],
+  ["SEMI EHS guidelines overview", "https://www.semi.org/en/node/114001"],
+  ["SEMI S24 multi-employer work areas", "https://store-us.semi.org/products/s02400-semi-s24-safety-guideline-for-multi-employer-work-areas"],
+  ["Base build / PLS / tool install", "https://jedunn.com/blog/closing-the-loop-integrating-design-construction-in-semiconductor-manufacturing/"],
+  ["Semiconductor fab tool install patent", "https://patents.google.com/patent/US7039999B2/en"],
+  ["SAT concept", "https://operations1.com/en/glossary/site-acceptance-test"]
 ];
 
 const studyDrills = [
@@ -791,6 +1139,43 @@ const fabBasics = [
 ];
 
 const paperNotes = [
+  {
+    title: "Retrieval practice / Testing effect",
+    source: "Roediger & Karpicke 2006; retrieval-practice reviews",
+    notes: [
+      "장비 구조는 읽기만 하면 금방 익숙해 보이지만 현장에서는 바로 꺼내 말하고 연결해야 합니다. 공개 논문들은 기억 시험 자체가 장기 보존을 강화하는 testing effect를 반복적으로 보고합니다.",
+      "이 앱의 cluster builder는 PM/CM/LL 수를 먼저 예측하고, 정답 예시를 본 뒤, wafer path를 단계별로 다시 누르게 해서 retrieval practice를 만들도록 구성했습니다.",
+      "학습 루틴: 정답 보기 전 FOUP-FI/EFEM-LL-TM-PM/CM-TM-LL-FOUP을 말하고, 틀린 단계만 다시 배치한 뒤 10분 뒤 한 번 더 재생합니다."
+    ]
+  },
+  {
+    title: "Spacing / Interleaving / Cognitive Load",
+    source: "Spacing review, interleaving studies, worked-example research",
+    notes: [
+      "Spacing 연구는 같은 내용을 짧은 간격을 두고 여러 번 꺼내 볼 때 장기 기억이 좋아진다고 설명합니다. 그래서 첫 화면을 긴 목차가 아니라 18분 루프로 만들었습니다.",
+      "Interleaving 연구는 비슷한 유형을 섞어 연습할 때 전이와 장기 기억에 유리할 수 있음을 보여줍니다. 그래서 장비 구조, facility, gas, safety, qualification을 분리하지 않고 같은 루프에서 오가게 했습니다.",
+      "Worked example과 cognitive load 연구는 초보자에게 완성된 예시와 사고 순서를 먼저 보여주는 것이 부담을 줄인다고 봅니다. 그래서 install mission board는 바로 문제를 던지기 전에 pass evidence와 senior question을 먼저 보여줍니다."
+    ]
+  },
+  {
+    title: "DVM / Electrical Safety Public References",
+    source: "Fluke, OSHA, NIOSH, NFPA, Omron public materials",
+    notes: [
+      "Fluke의 DMM 자료는 voltage/current/resistance 측정 원리, current jack misuse, continuity/resistance는 de-energized 상태에서 수행해야 한다는 안전 포인트를 강조합니다.",
+      "OSHA와 NIOSH의 hazardous energy 자료는 servicing/maintenance 중 unexpected energization과 stored energy를 막기 위해 LOTO 체계가 필요하다고 설명합니다.",
+      "Omron relay 기술 자료는 coil 전압 저하, inrush, chattering, contact 부하 같은 릴레이 현장 이슈를 이해하는 데 도움이 됩니다.",
+      "학습 포인트: DVM은 부품 찾는 도구가 아니라 안전하게 가설을 검증하는 증거 수집 도구입니다."
+    ]
+  },
+  {
+    title: "Gamification and feedback",
+    source: "The Gamification of Learning meta-analysis",
+    notes: [
+      "학습 게임화 연구는 게임 요소가 인지, 동기, 행동 학습 결과에 작지만 유의한 긍정 효과를 줄 수 있다고 종합합니다.",
+      "따라서 이 페이지는 단순 다이어그램이 아니라 drag/drop, 즉시 피드백, 단계 선택, 공개 근거 링크, install 관점 checklist를 같은 화면에 묶었습니다.",
+      "현장형 CE 학습에서는 점수보다 빠른 피드백이 중요합니다. 배치가 틀리면 LL boundary, PM type, Clean/Cool CM 수를 바로 수정하게 만드는 구조가 핵심입니다."
+    ]
+  },
   {
     title: "RTP 온도 제어",
     source: "Advances in RTP Temperature Measurement and Control",
@@ -1058,10 +1443,61 @@ glossaryTerms.push(
   ["Recipe Routing", "장비구조", "wafer가 어떤 chamber 순서로 이동해 공정을 받는지 정한 경로입니다.", "chamber count가 같아도 route가 다르면 throughput과 qualification이 달라집니다."]
 );
 
+glossaryTerms.push(
+  ["DVM / DMM", "전기/DVM", "Digital Voltmeter 또는 Digital Multimeter. 전압, 저항, 연속성 등을 확인하는 계측기입니다.", "측정 전 lead 위치, mode, CAT rating, 회로 에너지 상태를 확인합니다."],
+  ["CAT Rating", "전기/DVM", "측정기가 견딜 수 있는 transient/measurement category 등급입니다.", "panel, facility, tool 내부 측정 위치에 맞는 meter와 probe를 사용해야 합니다."],
+  ["Voltage", "전기/DVM", "전류를 흐르게 하는 전위차입니다.", "DVM 전압 측정은 회로에 병렬로 대며 기준점 선택이 중요합니다."],
+  ["Current", "전기/DVM", "회로에 실제로 흐르는 전하의 양입니다.", "직접 current 측정은 회로를 끊고 meter를 직렬로 넣어야 하므로 특히 위험합니다."],
+  ["Resistance", "전기/DVM", "전류 흐름을 방해하는 정도입니다.", "저항 측정은 전원 차단과 stored energy 방전 후 수행합니다."],
+  ["Continuity", "전기/DVM", "전기적으로 길이 이어져 있는지 확인하는 기능입니다.", "무전원 상태에서 wiring, fuse, contact, switch 상태 확인에 씁니다."],
+  ["Ohm's Law", "전기/DVM", "V = I x R 관계입니다.", "coil 전류 예상, voltage drop, short/open 판단의 수학적 기본기입니다."],
+  ["Open Circuit", "전기/DVM", "회로가 끊겨 전류가 흐르지 않는 상태입니다.", "fuse open, connector 빠짐, 접점 불량, wire break가 대표적입니다."],
+  ["Short Circuit", "전기/DVM", "원치 않는 낮은 저항 경로가 생겨 과전류가 흐를 수 있는 상태입니다.", "반복 fuse blow나 power supply sag의 원인이 될 수 있습니다."],
+  ["Ground Fault", "전기/DVM", "전원이 chassis/earth 쪽으로 의도치 않게 연결되는 고장입니다.", "안전과 장비 손상 위험이 커서 공식 절차와 escalation이 필요합니다."],
+  ["Relay", "전기/DVM", "코일로 접점을 움직여 다른 회로를 여닫는 전기적 스위치입니다.", "coil과 contact를 분리해서 측정해야 오판을 줄입니다."],
+  ["Relay Coil", "전기/DVM", "전류가 흐르면 자력이 생겨 relay 접점을 움직이는 부분입니다.", "A1-A2 전압, coil resistance, polarity, suppression을 확인합니다."],
+  ["NO / NC Contact", "전기/DVM", "Normally Open / Normally Closed 접점입니다.", "de-energized와 energized 상태에서 continuity가 반대로 바뀌는지 봅니다."],
+  ["Voltage Drop", "전기/DVM", "부하가 동작 중 배선이나 접점에 걸리는 전압 손실입니다.", "loose terminal, worn contact, 과부하를 잡는 현장 진단법입니다."],
+  ["PNP / NPN Sensor", "전기/DVM", "산업용 sensor output 방식입니다. PNP는 보통 +를 내보내고 NPN은 0V 쪽으로 끌어내립니다.", "PLC input type과 맞지 않으면 sensor는 살아도 input이 안 바뀔 수 있습니다."],
+  ["SMPS", "전기/DVM", "Switch Mode Power Supply. AC를 DC 제어 전원으로 바꾸는 전원 공급 장치입니다.", "24V sag, ripple, 과부하, input power, output distribution을 봅니다."],
+  ["Flyback Diode", "전기/DVM", "coil이 꺼질 때 생기는 역전압을 흡수하는 보호 부품입니다.", "polarity와 residual voltage가 relay/solenoid 진단에 영향을 줍니다."],
+  ["Arc Flash", "전기안전", "전기 arc로 인한 열, 빛, 압력 폭발 위험입니다.", "전장 panel live 작업은 자격, PPE, 작업허가, 거리, 절차가 필요합니다."],
+  ["Stored Energy", "전기안전", "전원을 끊어도 capacitor, 압축공기, 열, 진공, 중력 등에 남아 있는 에너지입니다.", "LOTO 후에도 방전/bleed-down/zero-energy 확인이 필요합니다."]
+);
+
+questions.push(
+  {
+    q: "24VDC interlock chain에서 어느 contact 전까지는 24V가 있고 후단에서 0V가 된다. 가장 좋은 다음 판단은?",
+    a: ["그 contact 조건, wiring, connector, input을 확인한다.", "interlock을 우회하고 recipe를 진행한다.", "무조건 PLC를 교체한다.", "gas qualification을 먼저 진행한다."],
+    c: 0,
+    e: "interlock은 보호 체인입니다. 끊긴 지점을 찾았으면 왜 열렸는지 조건/배선/접점/입력 상태를 확인해야 합니다."
+  },
+  {
+    q: "DVM red lead가 current jack에 꽂힌 상태에서 voltage source를 재면 왜 위험한가?",
+    a: ["전압이 더 정확히 보인다.", "meter 내부 저임피던스 경로가 short처럼 되어 arc/퓨즈 사고가 날 수 있다.", "저항값만 표시된다.", "CAT rating이 자동으로 올라간다."],
+    c: 1,
+    e: "current 측정 입력은 낮은 임피던스 경로입니다. voltage source에 병렬로 대면 short 사고가 될 수 있습니다."
+  },
+  {
+    q: "relay 진단에서 coil과 contact를 분리해서 봐야 하는 이유는?",
+    a: ["coil 전압이 정상이어도 접점이 붙지 않을 수 있고, 접점이 정상이어도 coil command가 없을 수 있기 때문이다.", "relay는 항상 software 문제이기 때문이다.", "접점은 전압 측정이 불가능하기 때문이다.", "coil resistance는 live 상태에서만 잴 수 있기 때문이다."],
+    c: 0,
+    e: "relay는 전자석 coil 회로와 부하 contact 회로가 분리된 구조입니다. 두 회로를 따로 검증해야 합니다."
+  }
+);
+
+flashcards.push(
+  ["DVM safe loop", "권한/LOTO -> lead/jack/mode/CAT 확인 -> known source prove -> expected value 세우기 -> 측정 -> 기록."],
+  ["Closed contact voltage drop", "닫힌 접점 양단 전압은 작아야 합니다. 크면 접점 저항, loose terminal, 과부하를 의심합니다."],
+  ["Relay coil vs contact", "coil은 relay를 움직이는 전자석, contact는 별도 회로를 여닫는 스위치입니다."],
+  ["Current jack trap", "current jack에 꽂힌 lead로 voltage source를 재면 short/arc 위험이 있습니다."]
+);
+
 const state = JSON.parse(localStorage.getItem("ceTrainerState") || "{}");
 let activeSystem = systems[0].id;
 let activeScenario = 0;
 let qIndex = 0;
+let activeMeterCase = "prove";
 let activeGlossaryCategory = "전체";
 
 function save() {
@@ -1073,6 +1509,46 @@ function showView(id) {
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function renderLearningUX() {
+  const cockpit = document.querySelector("#learning-cockpit");
+  if (cockpit) {
+    cockpit.innerHTML = learningCockpit.map(item => `
+      <button class="cockpit-card" type="button" data-cockpit-view="${item.view}">
+        <span class="cockpit-step">${item.step}</span>
+        <small>${item.mode} · ${item.principle}</small>
+        <strong>${item.title}</strong>
+        <em>${item.text}</em>
+        <b>${item.action}</b>
+      </button>
+    `).join("");
+    cockpit.querySelectorAll("[data-cockpit-view]").forEach(button => {
+      button.addEventListener("click", () => showView(button.dataset.cockpitView));
+    });
+  }
+  const science = document.querySelector("#learning-science-panel");
+  if (science) {
+    science.innerHTML = `
+      <div class="science-head">
+        <p class="eyebrow">Learning Science</p>
+        <h2>논문 근거를 UI 동선으로 바꾼 설계</h2>
+        <button class="science-source-link" type="button" data-science-view="papers">논문 노트 보기</button>
+      </div>
+      <div class="science-grid">
+        ${learningScienceCards.map(([title, idea, design]) => `
+          <article>
+            <strong>${title}</strong>
+            <span>${idea}</span>
+            <small>${design}</small>
+          </article>
+        `).join("")}
+      </div>
+    `;
+    science.querySelector("[data-science-view]")?.addEventListener("click", button => {
+      showView(button.currentTarget.dataset.scienceView);
+    });
+  }
 }
 
 function renderMetrics() {
@@ -1217,6 +1693,35 @@ function renderFlashcards() {
 }
 
 function renderInstall() {
+  document.querySelector("#install-gap-radar").innerHTML = `
+    <div>
+      <p class="eyebrow">Gap Radar</p>
+      <h2>지금 웹에서 더 채워야 했던 핵심 약점</h2>
+      <p>설치 엔지니어에게 가장 위험한 공백은 장비 지식이 아니라 scope, evidence, safety envelope, qualification link를 한 번에 묶지 못하는 것입니다. 아래 네 칸을 계속 자기 점검 기준으로 쓰세요.</p>
+    </div>
+    <div class="radar-grid">
+      ${installGapRadar.map(([title, risk, fix]) => `
+        <article>
+          <strong>${title}</strong>
+          <span>${risk}</span>
+          <small>${fix}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+  document.querySelector("#install-mission-board").innerHTML = installMissionStages.map(stage => `
+    <article class="mission-card">
+      <span class="mission-badge">${stage.badge}</span>
+      <h2>${stage.title}</h2>
+      <p>${stage.goal}</p>
+      <strong>Pass evidence</strong>
+      <ul>${stage.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+      <strong>Stop condition</strong>
+      <p>${stage.stop}</p>
+      <strong>Senior question</strong>
+      <p>${stage.senior}</p>
+    </article>
+  `).join("");
   document.querySelector("#install-grid").innerHTML = installPhases.map(item => `
     <article class="install-card">
       <span class="phase">Phase ${item.phase}</span>
@@ -1226,6 +1731,31 @@ function renderInstall() {
       <h3>입사 후 반드시 물어볼 질문</h3>
       <ul>${item.questions.map(question => `<li>${question}</li>`).join("")}</ul>
     </article>
+  `).join("");
+  document.querySelector("#install-decision-drills").innerHTML = `
+    <h2>Stop / Go 판단 훈련</h2>
+    <p>아래 상황은 실제 현장 감각을 키우기 위한 공개 정보 기반 훈련입니다. 정답을 열기 전에 먼저 “계속 / 중단 / escalate”를 말해보세요.</p>
+    <div class="decision-drill-list">
+      ${installDecisionDrills.map((drill, index) => `
+        <details class="decision-drill">
+          <summary><span>${index + 1}</span>${drill.title}</summary>
+          <div>
+            <strong>위험한 판단</strong>
+            <p>${drill.wrong}</p>
+            <strong>선임형 판단</strong>
+            <p>${drill.right}</p>
+          </div>
+        </details>
+      `).join("")}
+    </div>
+  `;
+  document.querySelector("#install-senior-map").innerHTML = `
+    <h2>Senior CE System Map</h2>
+    <p>장비를 하나의 금속 박스로 보지 말고, 다섯 평면이 동시에 맞아야 하는 시스템으로 보세요.</p>
+    ${installSeniorMap.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#install-source-strip").innerHTML = installSourceLinks.map(([label, url]) => `
+    <a href="${url}" target="_blank" rel="noreferrer">${label}</a>
   `).join("");
 }
 
@@ -1240,6 +1770,99 @@ function renderFacility() {
       <ul>${item.ask.map(point => `<li>${point}</li>`).join("")}</ul>
     </article>
   `).join("");
+}
+
+function renderElectrical() {
+  document.querySelector("#electrical-hero").innerHTML = `
+    <div>
+      <p class="eyebrow">Safe Diagnostic Loop</p>
+      <h2>전기 문제는 값을 재기 전에 에너지와 권한부터 확인합니다</h2>
+      <p>DVM/DMM은 현장에서 가장 자주 쓰는 증거 수집 도구입니다. 하지만 좋은 CE는 먼저 도면, LOTO, CAT rating, lead 위치, 기준점, expected value를 확인한 뒤 측정합니다.</p>
+    </div>
+    <div class="electrical-hero-steps">
+      ${electricalHero.map(([step, title, text]) => `
+        <article>
+          <span>${step}</span>
+          <strong>${title}</strong>
+          <small>${text}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  document.querySelector("#electrical-path").innerHTML = electricalPath.map(item => `
+    <article class="electrical-card">
+      <span class="phase">${item.step}</span>
+      <h2>${item.title}</h2>
+      <p>${item.goal}</p>
+      <strong>훈련</strong>
+      <ul>${item.drills.map(drill => `<li>${drill}</li>`).join("")}</ul>
+    </article>
+  `).join("");
+
+  document.querySelector("#meter-selector").innerHTML = `
+    <p class="eyebrow">DVM Field Cases</p>
+    <h2>측정 상황 선택</h2>
+    ${meterCases.map(item => `
+      <button class="meter-tab ${item.id === activeMeterCase ? "active" : ""}" data-meter-case="${item.id}">
+        <strong>${item.title}</strong>
+        <span>${item.symptom}</span>
+      </button>
+    `).join("")}
+  `;
+
+  const selected = meterCases.find(item => item.id === activeMeterCase) || meterCases[0];
+  document.querySelector("#meter-panel").innerHTML = `
+    <span class="scenario-status">DVM / DMM</span>
+    <h2>${selected.title}</h2>
+    <p>${selected.symptom}</p>
+    <div class="meter-readout">
+      <span>MODE</span>
+      <strong>${selected.mode}</strong>
+    </div>
+    <div class="detail-grid">
+      <section class="info-block">
+        <h3>Probe / Lead 위치</h3>
+        <p>${selected.leads}</p>
+      </section>
+      <section class="info-block">
+        <h3>예상 정상값</h3>
+        <p>${selected.expect}</p>
+      </section>
+      <section class="info-block">
+        <h3>판단</h3>
+        <p>${selected.means}</p>
+      </section>
+      <section class="info-block danger-block">
+        <h3>실수하면 위험한 점</h3>
+        <p>${selected.trap}</p>
+      </section>
+    </div>
+  `;
+
+  document.querySelector("#electrical-theory").innerHTML = `
+    <h2>전기 이론을 현장 언어로</h2>
+    ${electricalTheory.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#relay-lab").innerHTML = `
+    <h2>Relay를 해부해서 보기</h2>
+    ${relayConcepts.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#electrical-troubleshooting").innerHTML = `
+    <h2>현장 고장 추적 루틴</h2>
+    ${electricalTroubleshooting.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#electrical-safety").innerHTML = `
+    <h2>전기 작업 Stop 조건</h2>
+    ${electricalSafetyRules.map(item => `<div class="deep-item"><span>${item}</span></div>`).join("")}
+  `;
+
+  document.querySelectorAll("[data-meter-case]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeMeterCase = button.dataset.meterCase;
+      renderElectrical();
+    });
+  });
 }
 
 function renderGasSafety() {
@@ -1382,6 +2005,7 @@ document.querySelector("#next-question").addEventListener("click", () => {
 });
 
 renderRoleFit();
+renderLearningUX();
 renderRoadmap();
 renderSystems();
 renderEquipmentFamilies();
@@ -1390,6 +2014,7 @@ renderQuiz();
 renderFlashcards();
 renderInstall();
 renderFacility();
+renderElectrical();
 renderGasSafety();
 renderCompliance();
 renderSources();

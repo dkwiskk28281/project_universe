@@ -1,0 +1,18 @@
+[Unit]
+Description=FEP EPI Think Tank Vault
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/fep-epi-vault
+ExecStart=/usr/bin/node /opt/fep-epi-vault/vault-server.js
+Restart=always
+RestartSec=5
+Environment=EPI_VAULT_HOST=0.0.0.0
+Environment=EPI_VAULT_PORT=4180
+Environment=EPI_VAULT_ROOT=/var/lib/fep-epi-vault
+Environment=EPI_VAULT_PASSWORD=9175
+Environment=EPI_VAULT_SESSION_SECRET=change-this-to-a-long-random-string-before-vps-use
+
+[Install]
+WantedBy=multi-user.target

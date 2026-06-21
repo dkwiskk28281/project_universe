@@ -1,0 +1,15 @@
+services:
+  fep-epi-vault:
+    build: .
+    container_name: fep-epi-vault
+    restart: unless-stopped
+    ports:
+      - "4180:4180"
+    environment:
+      EPI_VAULT_HOST: "0.0.0.0"
+      EPI_VAULT_PORT: "4180"
+      EPI_VAULT_ROOT: "/vault"
+      EPI_VAULT_PASSWORD: "9175"
+      EPI_VAULT_SESSION_SECRET: "change-this-to-a-long-random-string-before-vps-use"
+    volumes:
+      - ./vault-data:/vault

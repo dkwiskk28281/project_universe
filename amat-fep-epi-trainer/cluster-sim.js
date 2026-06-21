@@ -67,12 +67,12 @@ const clusterPlatforms = {
 };
 
 const clusterSlots = [
-  { id: "ll-a", role: "LL-A", family: "loadlock", x: 29, y: 76 },
-  { id: "ll-b", role: "LL-B", family: "loadlock", x: 55, y: 76 },
-  { id: "facet-1", role: "Facet 1", family: "module", x: 40, y: 41 },
-  { id: "facet-2", role: "Facet 2", family: "module", x: 72, y: 56 },
-  { id: "facet-3", role: "Facet 3", family: "module", x: 40, y: 68 },
-  { id: "facet-4", role: "Facet 4", family: "module", x: 8, y: 56 }
+  { id: "ll-a", role: "LL-A", family: "loadlock", x: 28, y: 84 },
+  { id: "ll-b", role: "LL-B", family: "loadlock", x: 56, y: 84 },
+  { id: "facet-1", role: "Facet 1", family: "module", x: 39, y: 38 },
+  { id: "facet-2", role: "Facet 2", family: "module", x: 73, y: 55 },
+  { id: "facet-3", role: "Facet 3", family: "module", x: 39, y: 76 },
+  { id: "facet-4", role: "Facet 4", family: "module", x: 7, y: 55 }
 ];
 
 const moduleDefs = {
@@ -188,13 +188,13 @@ const clusterFlowSteps = [
 ];
 
 const clusterFlowPositions = [
-  { left: 16, top: 31 },
-  { left: 26, top: 38 },
-  { left: 36, top: 73 },
-  { left: 50, top: 58 },
-  { left: 76, top: 64 },
-  { left: 50, top: 72 },
-  { left: 62, top: 79 }
+  { left: 16, top: 22 },
+  { left: 29, top: 23 },
+  { left: 36, top: 84 },
+  { left: 50, top: 63 },
+  { left: 78, top: 60 },
+  { left: 50, top: 63 },
+  { left: 64, top: 84 }
 ];
 
 function clusterTarget() {
@@ -340,7 +340,7 @@ function paletteModule(type) {
 }
 
 function drawFlowLine(board, slot) {
-  const core = { x: 50, y: 50 };
+  const core = { x: 50, y: 63 };
   const slotCenter = { x: slot.x + 9, y: slot.y + 6 };
   const dx = slotCenter.x - core.x;
   const dy = slotCenter.y - core.y;
@@ -380,7 +380,7 @@ function renderClusterBoard() {
         <div class="foup foup-b"><span></span></div>
       </div>
       <div class="atmos-vacuum-bridge">
-        <span>LL handoff</span>
+        <span>LL</span>
       </div>
       <div class="mainframe-cabinet">
         <span class="status-light"></span>
@@ -403,13 +403,13 @@ function renderClusterBoard() {
       </div>
     </div>
     <div class="robot-arm"></div>
-    <svg class="wafer-flow-svg" viewBox="0 0 1000 760" preserveAspectRatio="none" aria-hidden="true">
+    <svg class="wafer-flow-svg" viewBox="0 0 1000 1040" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <marker id="flowArrow" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L0,6 L8,3 z" fill="#f2b33d"></path>
         </marker>
       </defs>
-      <path class="flow-route" d="M150 205 C255 235 300 565 405 625 C470 665 480 500 500 440 C535 335 640 340 770 455 C680 545 585 560 500 545 C430 535 395 605 352 665 C450 710 600 705 675 660" />
+      <path class="flow-route" d="M160 230 C260 250 310 560 360 875 C420 790 455 700 500 655 C595 590 680 575 780 625 C675 665 580 675 500 655 C450 715 410 800 360 875 C455 915 565 915 640 875" />
     </svg>
     <div class="wafer-step-dot" aria-hidden="true">W</div>
   `;
@@ -517,6 +517,25 @@ function renderClusterFlowPanel() {
       `).join("")}
     </div>
     <article class="flow-step-detail" id="flow-step-detail"></article>
+    <div class="cluster-coach">
+      <article>
+        <p class="eyebrow">Memory Loop</p>
+        <h3>정답을 보기 전에 떠올리게 만드는 학습 루프</h3>
+        <p>논문에서 반복 확인되는 retrieval practice는 읽기보다 “먼저 꺼내 말하기”가 장기 기억을 더 강하게 만듭니다. 이 보드는 PM/CM/LL을 맞히고 wafer path를 한 단계씩 누르며 피드백을 받도록 설계했습니다.</p>
+      </article>
+      <div class="memory-pill-grid">
+        <span><strong>Recall</strong> FOUP, FI/EFEM, LL, TM, PM/CM 순서를 보지 않고 말하기</span>
+        <span><strong>Build</strong> 고객 PM 수를 보고 LL 2개와 필요한 CM을 먼저 배치하기</span>
+        <span><strong>Qualify</strong> pumpdown, robot teaching, gas/exhaust, temperature trace를 checklist로 연결하기</span>
+      </div>
+    </div>
+    <div class="cluster-source-strip" aria-label="공개 근거">
+      <a href="https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html" target="_blank" rel="noreferrer">Centura Prime Epi: Siconi/Clarion/Ajax pre-clean</a>
+      <a href="https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html" target="_blank" rel="noreferrer">Xtera Epi: selective epi, chemistry, temp control</a>
+      <a href="https://patents.google.com/patent/EP1056123A2/en" target="_blank" rel="noreferrer">Cluster tool: load locks, transfer robot, process chambers</a>
+      <a href="https://www.pfeiffervacuum.com/global/en/applications/load-lock-transfer/" target="_blank" rel="noreferrer">Load lock/transfer vacuum concept</a>
+      <a href="https://pubmed.ncbi.nlm.nih.gov/16507066/" target="_blank" rel="noreferrer">Testing effect: memory tests improve retention</a>
+    </div>
   `;
   panel.querySelectorAll("[data-flow-step]").forEach(button => {
     button.addEventListener("click", () => selectClusterFlowStep(Number(button.dataset.flowStep)));

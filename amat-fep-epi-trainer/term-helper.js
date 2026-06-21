@@ -88,6 +88,29 @@ englishTermGuide.push(
   ["Recipe Routing", "웨이퍼 이동 경로", "Structure", "wafer가 어떤 chamber 순서로 이동해 공정을 받는지입니다.", "PM 개수만 맞아도 route가 다르면 throughput과 결과가 달라집니다."]
 );
 
+englishTermGuide.push(
+  ["DVM", "디지털 전압계", "Electrical", "Digital Voltmeter. 전압을 숫자로 보여주는 계측기입니다.", "현장에서는 DMM과 함께 부르며, 측정 전 mode와 lead 위치가 생명입니다."],
+  ["DMM", "디지털 멀티미터", "Electrical", "Digital Multimeter. 전압, 저항, 연속성 등을 재는 계측기입니다.", "부품을 찍는 도구가 아니라 가설을 안전하게 검증하는 증거 도구입니다."],
+  ["Multimeter", "멀티미터", "Electrical", "여러 전기량을 측정하는 계측기입니다.", "voltage는 병렬, resistance/continuity는 무전원, current는 특별히 조심합니다."],
+  ["Voltage", "전압", "Electrical", "전류를 흐르게 하는 전위차입니다.", "기준점이 틀리면 측정값 해석도 틀립니다."],
+  ["Current", "전류", "Electrical", "회로에 흐르는 전하의 양입니다.", "meter를 직렬로 넣어야 하는 측정이라 현장에서는 위험도가 큽니다."],
+  ["Resistance", "저항", "Electrical", "전류 흐름을 방해하는 정도입니다.", "전원 차단과 stored energy 방전 후 측정합니다."],
+  ["Continuity", "연속성", "Electrical", "전기적으로 길이 이어져 있는지 확인하는 기능입니다.", "fuse, contact, wiring open을 찾는 기본 기능입니다."],
+  ["Ohm's Law", "옴의 법칙", "Electrical", "V = I x R 관계입니다.", "24V control circuit에서 expected current와 voltage drop을 생각하게 해줍니다."],
+  ["CAT Rating", "측정 안전 등급", "Electrical", "meter와 probe가 견딜 수 있는 measurement category 등급입니다.", "장비 내부, 분전, facility 위치에 맞는 등급을 사용해야 합니다."],
+  ["Relay", "릴레이", "Electrical", "coil로 접점을 움직이는 전기적 스위치입니다.", "coil과 contact를 분리해서 진단합니다."],
+  ["Coil", "코일", "Electrical", "전류가 흐르면 자력이 생기는 감긴 도선입니다.", "relay와 solenoid에서 voltage, resistance, polarity가 중요합니다."],
+  ["Contact", "접점", "Electrical", "전기 회로를 열고 닫는 물리적 접촉부입니다.", "welded, worn, high-resistance contact가 intermittent fault를 만듭니다."],
+  ["NO", "평상시 열림", "Electrical", "Normally Open. relay가 동작하지 않을 때 열려 있는 접점입니다.", "energize되면 닫히는지 확인합니다."],
+  ["NC", "평상시 닫힘", "Electrical", "Normally Closed. relay가 동작하지 않을 때 닫혀 있는 접점입니다.", "energize되면 열리는지 확인합니다."],
+  ["Voltage Drop", "전압강하", "Electrical", "부하가 동작할 때 배선이나 접점에 걸리는 전압 손실입니다.", "loose terminal과 worn contact를 찾는 강력한 방법입니다."],
+  ["PNP", "소싱 센서", "Electrical", "보통 +전압을 output으로 내보내는 sensor 방식입니다.", "PLC input type과 맞는지 확인합니다."],
+  ["NPN", "싱킹 센서", "Electrical", "보통 0V 쪽으로 output을 끌어내리는 sensor 방식입니다.", "PNP/NPN 혼동은 sensor는 켜졌는데 input이 안 바뀌는 원인이 됩니다."],
+  ["SMPS", "스위칭 전원", "Electrical", "Switch Mode Power Supply. AC를 DC 전원으로 바꿉니다.", "24V sag나 ripple은 여러 I/O 문제처럼 보일 수 있습니다."],
+  ["Arc Flash", "아크 플래시", "Safety", "전기 arc로 큰 열과 압력이 발생하는 위험입니다.", "live panel 작업은 자격, PPE, permit 없이는 접근하지 않습니다."],
+  ["Stored Energy", "잔류 에너지", "Safety", "전원 차단 후에도 capacitor, 공압, 열, 중력 등에 남은 에너지입니다.", "LOTO 후 zero-energy 확인이 필요합니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }
@@ -128,7 +151,7 @@ function shouldSkipTextNode(node) {
     return true;
   }
   termRegex.lastIndex = 0;
-  return !!parent.closest("script, style, input, textarea, select, option, .term-explain, .english-card, .glossary-grid, #source-list, .cluster-board, .cluster-palette, .cluster-controls, .cluster-feedback");
+  return !!parent.closest("script, style, input, textarea, select, option, .no-term, .term-explain, .english-card, .glossary-grid, #source-list, .cluster-board, .cluster-palette, .cluster-controls, .cluster-feedback");
 }
 
 function enhanceEnglishTerms(root = document.querySelector("main")) {

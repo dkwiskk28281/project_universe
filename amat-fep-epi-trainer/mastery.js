@@ -122,6 +122,11 @@ const masteryMissions = [
   ["m-018", "golden tool 비교에 필요한 trace와 metrology를 선택한다."],
   ["m-019", "shift handover note를 open item, risk, owner, ETA로 작성한다."],
   ["m-020", "알람 하나를 fact, hypothesis, test, result, next action 형식으로 기록한다."]
+  ,
+  ["m-021", "install phase별 pass evidence와 stop condition을 각각 3개 이상 말한다."],
+  ["m-022", "LL-TM-PM/CM wafer path에서 pressure boundary, gate valve, robot handoff를 순서대로 설명한다."],
+  ["m-023", "SAT/qualification package에 들어갈 trace, metrology, safety, open punch evidence를 분리해 작성한다."],
+  ["m-024", "facility ready signal과 실제 physical state가 다를 때 hold/escalation 메시지를 작성한다."]
 ];
 
 const failureAtlas = [

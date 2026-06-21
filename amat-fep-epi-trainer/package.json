@@ -1,0 +1,10 @@
+{
+  "name": "amat-fep-epi-trainer-static",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone static Cloudflare Pages build for the FEP/EPI trainer.",
+  "scripts": {
+    "build": "node build-static.js"
+  },
+  "license": "UNLICENSED"
+}
