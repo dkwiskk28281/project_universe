@@ -2143,6 +2143,25 @@ main {
   color: rgba(255, 255, 255, 0.72);
 }
 
+.english-pool-card {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid #dfe9ed;
+  border-radius: 8px;
+  background: #f5f9fa;
+}
+
+.english-pool-card strong {
+  color: var(--ink);
+}
+
+.english-pool-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .english-sync-note {
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);

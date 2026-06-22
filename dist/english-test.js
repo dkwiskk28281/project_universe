@@ -215,6 +215,14 @@ const englishTestState = {
 
 const ENGLISH_ATTEMPTS_KEY = "amkEnglishAttempts";
 const ENGLISH_RECORDS_KEY = "amkEnglishSessionRecords";
+const amkEnglishExpansion = window.AMK_ENGLISH_EXPANSION || {};
+const ENGLISH_SET_COUNTS = {
+  grammar: 18,
+  vocabulary: 16,
+  reading: 8,
+  listening: 8,
+  speaking: 8
+};
 
 function escapeEnglishTest(value) {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -234,12 +242,47 @@ function takeEnglishTest(items, count) {
   return shuffleEnglishTest(items).slice(0, count);
 }
 
+function englishBank(base, key) {
+  const expansion = Array.isArray(amkEnglishExpansion[key]) ? amkEnglishExpansion[key] : [];
+  return [...base, ...expansion];
+}
+
+function getEnglishPoolCounts() {
+  return {
+    grammar: englishBank(amkGrammarBank, "grammar").length,
+    vocabulary: englishBank(amkVocabBank, "vocabulary").length,
+    reading: englishBank(amkReadingBank, "reading").length,
+    listening: englishBank(amkListeningBank, "listening").length,
+    speaking: englishBank(amkSpeakingBank, "speaking").length
+  };
+}
+
+function normalizeEnglishQuestion(item) {
+  if (Array.isArray(item.options) && Number.isInteger(item.answer)) return { ...item };
+  const correct = String(item.correct || "");
+  const distractors = Array.isArray(item.distractors) ? takeEnglishTest(item.distractors, 3) : [];
+  const options = shuffleEnglishTest([correct, ...distractors]).filter(Boolean).slice(0, 4);
+  return {
+    ...item,
+    options,
+    answer: Math.max(0, options.indexOf(correct))
+  };
+}
+
+function makeEnglishItems(items, count, prefix, type) {
+  return takeEnglishTest(items, count).map((item, index) => ({
+    ...normalizeEnglishQuestion(item),
+    type,
+    id: `${prefix}-${index}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  }));
+}
+
 function makeEnglishTestSet() {
-  const grammar = takeEnglishTest(amkGrammarBank, 3).map((item, index) => ({ ...item, type: "Grammar", id: `grammar-${index}-${Date.now()}` }));
-  const vocab = takeEnglishTest(amkVocabBank, 3).map((item, index) => ({ ...item, type: "Vocabulary", id: `vocab-${index}-${Date.now()}` }));
-  const reading = takeEnglishTest(amkReadingBank, 2).map((item, index) => ({ ...item, type: "Reading", id: `reading-${index}-${Date.now()}` }));
-  const listening = takeEnglishTest(amkListeningBank, 2).map((item, index) => ({ ...item, type: "Listening", id: `listening-${index}-${Date.now()}` }));
-  const speaking = takeEnglishTest(amkSpeakingBank, 3).map((item, index) => ({ ...item, type: "Speaking", id: `speaking-${index}-${Date.now()}` }));
+  const grammar = makeEnglishItems(englishBank(amkGrammarBank, "grammar"), ENGLISH_SET_COUNTS.grammar, "grammar", "Grammar");
+  const vocab = makeEnglishItems(englishBank(amkVocabBank, "vocabulary"), ENGLISH_SET_COUNTS.vocabulary, "vocab", "Vocabulary");
+  const reading = makeEnglishItems(englishBank(amkReadingBank, "reading"), ENGLISH_SET_COUNTS.reading, "reading", "Reading");
+  const listening = makeEnglishItems(englishBank(amkListeningBank, "listening"), ENGLISH_SET_COUNTS.listening, "listening", "Listening");
+  const speaking = makeEnglishItems(englishBank(amkSpeakingBank, "speaking"), ENGLISH_SET_COUNTS.speaking, "speaking", "Speaking");
   return [...grammar, ...vocab, ...reading, ...listening, ...speaking];
 }
 
@@ -334,6 +377,8 @@ function renderEnglishTestProfile() {
   if (!target) return;
   const score = getEnglishScore();
   const latestRecord = getEnglishRecords()[0];
+  const pool = getEnglishPoolCounts();
+  const objectiveCount = ENGLISH_SET_COUNTS.grammar + ENGLISH_SET_COUNTS.vocabulary + ENGLISH_SET_COUNTS.reading + ENGLISH_SET_COUNTS.listening;
   target.innerHTML = `
     <p class="eyebrow">Likely Format</p>
     <h2>온라인 CBT 약 1시간</h2>
@@ -346,6 +391,11 @@ function renderEnglishTestProfile() {
     <div class="english-score-card">
       <strong>${score.percent}%</strong>
       <small>누적 객관식 ${score.correct}/${score.total}</small>
+    </div>
+    <div class="english-pool-card">
+      <strong>현재 세트 ${objectiveCount + ENGLISH_SET_COUNTS.speaking}문항</strong>
+      <span>객관식 ${objectiveCount} + 말하기 ${ENGLISH_SET_COUNTS.speaking}</span>
+      <span>문제풀 ${pool.grammar + pool.vocabulary + pool.reading + pool.listening + pool.speaking}+개</span>
     </div>
     ${latestRecord ? `<p class="english-sync-note">최근 세트: ${latestRecord.score}/${latestRecord.total} · ${escapeEnglishTest(latestRecord.createdAtLabel || "")}</p>` : ""}
     ${englishTestState.lastSync ? `<p class="english-sync-note">${escapeEnglishTest(englishTestState.lastSync)}</p>` : ""}
@@ -446,8 +496,8 @@ function renderEnglishTestMain() {
     <section class="english-test-brief">
       <div>
         <p class="eyebrow">Test Analysis</p>
-        <h2>토익식 객관식 + 짧은 오픽/토스식 말하기</h2>
-        <p>공개 정보로 보면 시험은 특정 반도체 지식을 묻기보다 실무 영어 기본 체력, 빠른 독해, 듣기 이해, 짧은 말하기 거부감을 확인하는 쪽에 가깝습니다. CE 지원자는 고객 보고 문장, hold 조건 설명, 경험 영어 설명을 특히 반복하세요.</p>
+        <h2>1시간 CBT 밀도: 토익식 객관식 + 짧은 오픽/토스식 말하기</h2>
+        <p>공개 정보로 보면 시험은 특정 반도체 지식을 묻기보다 실무 영어 기본 체력, 빠른 독해, 듣기 이해, 짧은 말하기 거부감을 확인하는 쪽에 가깝습니다. 이번 세트는 문법 ${ENGLISH_SET_COUNTS.grammar}, 어휘 ${ENGLISH_SET_COUNTS.vocabulary}, 독해 ${ENGLISH_SET_COUNTS.reading}, 듣기 ${ENGLISH_SET_COUNTS.listening}, 말하기 ${ENGLISH_SET_COUNTS.speaking}개로 구성되어 한 번 앉아서 끝까지 풀면 실제 CBT 피로도에 훨씬 가깝습니다.</p>
       </div>
       <div class="english-live-score">
         <span>현재 세트</span>
@@ -457,14 +507,14 @@ function renderEnglishTestMain() {
     </section>
     <section class="english-section-band">
       <h2>객관식 CBT</h2>
-      <p>문법·어휘·독해·듣기 순서가 섞여 나옵니다. 먼저 풀고, 채점 후 해설과 듣기 transcript를 확인하세요.</p>
+      <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 먼저 끝까지 풀고 채점한 뒤 해설과 듣기 transcript를 확인하세요. 새 CBT 세트를 누르면 같은 형식에서 다른 현장 시나리오와 보기 조합이 다시 생성됩니다.</p>
       <div class="english-question-grid">
         ${objectiveItems.map(renderObjectiveQuestion).join("")}
       </div>
     </section>
     <section class="english-section-band">
       <h2>말하기 CBT</h2>
-      <p>카메라보다 마이크/녹음형에 가깝다고 보고 훈련합니다. 45초 준비 후 60초 안에 3문장 이상 말하는 것을 목표로 하세요.</p>
+      <p>카메라보다 마이크/녹음형에 가깝다고 보고 훈련합니다. 45초 준비 후 60초 안에 status, fact, risk, next action을 포함해 3문장 이상 말하는 것을 목표로 하세요.</p>
       <div class="english-speaking-grid">
         ${speakingItems.map((item, index) => renderSpeakingPrompt(item, objectiveItems.length + index)).join("")}
       </div>
