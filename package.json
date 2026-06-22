@@ -5,6 +5,7 @@
   "description": "Cloudflare static build for the FEP/EPI trainer.",
   "scripts": {
     "build": "node build-static.js",
+    "validate:english": "npm run build && node validate-english-test.js",
     "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {

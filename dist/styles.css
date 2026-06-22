@@ -2162,6 +2162,26 @@ main {
   font-weight: 750;
 }
 
+.english-timer-card {
+  display: grid;
+  gap: 3px;
+  padding: 13px;
+  border-radius: 8px;
+  background: #fff4e8;
+  color: #8a4b15;
+}
+
+.english-timer-card span,
+.english-timer-card small {
+  color: #9b632e;
+  font-weight: 800;
+}
+
+.english-timer-card strong {
+  font-size: 26px;
+  color: #7b3e0f;
+}
+
 .english-sync-note {
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2244,6 +2264,41 @@ main {
 .english-section-band {
   margin-top: 14px;
   padding: 18px;
+}
+
+.english-insight-band,
+.english-similarity-band {
+  display: grid;
+  gap: 14px;
+}
+
+.english-similarity-grid,
+.english-weakness-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.english-similarity-grid article,
+.english-weakness-grid article {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #dfe9ed;
+  border-radius: 8px;
+  background: #fbfdfe;
+}
+
+.english-similarity-grid strong,
+.english-weakness-grid strong {
+  color: var(--ink);
+}
+
+.english-similarity-grid span,
+.english-weakness-grid span,
+.english-weakness-grid small {
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .english-question-grid {
@@ -3911,6 +3966,8 @@ main {
   .english-question-grid,
   .english-speaking-grid,
   .english-transfer-grid,
+  .english-similarity-grid,
+  .english-weakness-grid,
   .mastery-scoreboard,
   .mastery-grid,
   .template-grid,

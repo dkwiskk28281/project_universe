@@ -207,6 +207,9 @@ const englishTestState = {
   selected: {},
   checked: false,
   timer: null,
+  cbtTimer: null,
+  cbtSeconds: 60 * 60,
+  cbtRunning: false,
   seconds: 0,
   mode: "prep",
   set: [],
@@ -372,6 +375,101 @@ function updateSpeakingTimer() {
   });
 }
 
+function formatEnglishCbtTime(seconds) {
+  const minutes = Math.floor(Math.max(0, seconds) / 60);
+  const rest = Math.max(0, seconds) % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
+
+function updateEnglishCbtTimer() {
+  document.querySelectorAll("[data-english-cbt-timer]").forEach(node => {
+    node.textContent = formatEnglishCbtTime(englishTestState.cbtSeconds);
+  });
+  document.querySelectorAll("[data-english-cbt-state]").forEach(node => {
+    node.textContent = englishTestState.cbtRunning ? "실전 진행 중" : "대기";
+  });
+}
+
+function stopEnglishCbtTimer(reset = false) {
+  if (englishTestState.cbtTimer) clearInterval(englishTestState.cbtTimer);
+  englishTestState.cbtTimer = null;
+  englishTestState.cbtRunning = false;
+  if (reset) englishTestState.cbtSeconds = 60 * 60;
+  updateEnglishCbtTimer();
+}
+
+function startEnglishCbtTimer() {
+  stopEnglishCbtTimer(false);
+  if (englishTestState.cbtSeconds <= 0) englishTestState.cbtSeconds = 60 * 60;
+  englishTestState.cbtRunning = true;
+  updateEnglishCbtTimer();
+  englishTestState.cbtTimer = setInterval(() => {
+    englishTestState.cbtSeconds -= 1;
+    updateEnglishCbtTimer();
+    if (englishTestState.cbtSeconds <= 0) stopEnglishCbtTimer(false);
+  }, 1000);
+}
+
+function getEnglishWeaknessSummary(objectiveItems) {
+  const summary = objectiveItems.reduce((acc, item) => {
+    const key = item.type;
+    if (!acc[key]) acc[key] = { total: 0, wrong: 0 };
+    acc[key].total += 1;
+    if (englishTestState.selected[item.id] !== item.answer) acc[key].wrong += 1;
+    return acc;
+  }, {});
+  return Object.entries(summary)
+    .map(([type, data]) => ({ type, ...data, accuracy: Math.round((data.total - data.wrong) / data.total * 100) }))
+    .sort((a, b) => b.wrong - a.wrong);
+}
+
+function renderEnglishWeaknessPanel(objectiveItems) {
+  if (!englishTestState.checked) return "";
+  const summary = getEnglishWeaknessSummary(objectiveItems);
+  const focus = summary.filter(item => item.wrong > 0).slice(0, 2).map(item => item.type).join(", ") || "유지";
+  return `
+    <section class="english-section-band english-insight-band">
+      <div>
+        <p class="eyebrow">After-Action Review</p>
+        <h2>오답 약점 분석</h2>
+        <p>다음 세트에서는 ${escapeEnglishTest(focus)} 영역을 먼저 천천히 보고, 틀린 문항의 해설을 한 문장으로 다시 말해보세요.</p>
+      </div>
+      <div class="english-weakness-grid">
+        ${summary.map(item => `
+          <article>
+            <strong>${escapeEnglishTest(item.type)}</strong>
+            <span>정확도 ${item.accuracy}%</span>
+            <small>오답 ${item.wrong}/${item.total}</small>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderEnglishSimilarityPanel() {
+  return `
+    <section class="english-section-band english-similarity-band">
+      <p class="eyebrow">Reality Check</p>
+      <h2>실제 시험과 얼마나 비슷할까?</h2>
+      <div class="english-similarity-grid">
+        <article>
+          <strong>구성 유사도: 높음</strong>
+          <span>공식/채용 정보에서 확인되는 온라인 CBT, 약 1시간, 문법·독해·듣기·말하기 구성을 그대로 훈련합니다.</span>
+        </article>
+        <article>
+          <strong>문항 느낌: 중상</strong>
+          <span>잡코리아 설명회의 “토플식 형식, 토익 유사 내용”과 후기의 토익/오픽 혼합 느낌을 기준으로 만들었습니다.</span>
+        </article>
+        <article>
+          <strong>기출 적중: 보장 불가</strong>
+          <span>벤더와 실제 문항은 비공개입니다. 목표는 기출 암기가 아니라 1시간 동안 영어 거부감 없이 풀고 말하는 체력을 만드는 것입니다.</span>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderEnglishTestProfile() {
   const target = document.querySelector("#english-test-profile");
   if (!target) return;
@@ -396,6 +494,11 @@ function renderEnglishTestProfile() {
       <strong>현재 세트 ${objectiveCount + ENGLISH_SET_COUNTS.speaking}문항</strong>
       <span>객관식 ${objectiveCount} + 말하기 ${ENGLISH_SET_COUNTS.speaking}</span>
       <span>문제풀 ${pool.grammar + pool.vocabulary + pool.reading + pool.listening + pool.speaking}+개</span>
+    </div>
+    <div class="english-timer-card">
+      <span data-english-cbt-state>${englishTestState.cbtRunning ? "실전 진행 중" : "대기"}</span>
+      <strong data-english-cbt-timer>${formatEnglishCbtTime(englishTestState.cbtSeconds)}</strong>
+      <small>1시간 CBT 페이스</small>
     </div>
     ${latestRecord ? `<p class="english-sync-note">최근 세트: ${latestRecord.score}/${latestRecord.total} · ${escapeEnglishTest(latestRecord.createdAtLabel || "")}</p>` : ""}
     ${englishTestState.lastSync ? `<p class="english-sync-note">${escapeEnglishTest(englishTestState.lastSync)}</p>` : ""}
@@ -505,6 +608,8 @@ function renderEnglishTestMain() {
         <small>객관식만 자동 채점</small>
       </div>
     </section>
+    ${renderEnglishSimilarityPanel()}
+    ${renderEnglishWeaknessPanel(objectiveItems)}
     <section class="english-section-band">
       <h2>객관식 CBT</h2>
       <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 먼저 끝까지 풀고 채점한 뒤 해설과 듣기 transcript를 확인하세요. 새 CBT 세트를 누르면 같은 형식에서 다른 현장 시나리오와 보기 조합이 다시 생성됩니다.</p>
@@ -598,6 +703,7 @@ function newEnglishTestSet() {
   englishTestState.selected = {};
   englishTestState.checked = false;
   englishTestState.set = makeEnglishTestSet();
+  renderEnglishTestProfile();
   renderEnglishTestMain();
 }
 
@@ -618,8 +724,11 @@ function initEnglishTest() {
   renderEnglishTestSources();
   renderEnglishTestMain();
   document.querySelector("#english-new-mock")?.addEventListener("click", newEnglishTestSet);
+  document.querySelector("#english-start-timer")?.addEventListener("click", startEnglishCbtTimer);
+  document.querySelector("#english-stop-timer")?.addEventListener("click", () => stopEnglishCbtTimer(true));
   document.querySelector("#english-check-all")?.addEventListener("click", checkEnglishTestSet);
   document.querySelector("#english-reset-score")?.addEventListener("click", resetEnglishScore);
+  updateEnglishCbtTimer();
 }
 
 initEnglishTest();
