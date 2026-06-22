@@ -43,14 +43,17 @@
       <button class="nav-btn" data-view="safety">라인준수</button>
       <button class="nav-btn" data-view="mastery">마스터리</button>
       <button class="nav-btn" data-view="readiness">현장투입</button>
+      <button class="nav-btn" data-view="runbook">런북</button>
       <button class="nav-btn" data-view="thinktank">싱크탱크</button>
       <button class="nav-btn" data-view="deep">심화</button>
       <button class="nav-btn" data-view="fab101">Fab기초</button>
       <button class="nav-btn" data-view="papers">논문노트</button>
+      <button class="nav-btn" data-view="english-test">영어시험</button>
       <button class="nav-btn" data-view="english">영어풀이</button>
       <button class="nav-btn" data-view="glossary">용어집</button>
       <button class="nav-btn" data-view="diagnostics">진단훈련</button>
       <button class="nav-btn" data-view="quiz">퀴즈</button>
+      <button class="nav-btn" id="logout-btn" type="button">LOCK</button>
     </nav>
   </header>
 
@@ -86,6 +89,8 @@
           <small>PM/CM + 고객 대응</small>
         </article>
       </section>
+
+      <section class="command-center no-term" id="command-center"></section>
 
       <section class="learning-cockpit no-term">
         <div class="cockpit-copy">
@@ -359,6 +364,27 @@
       <div class="mastery-panel" id="readiness-panel"></div>
     </section>
 
+    <section id="runbook" class="view no-term">
+      <div class="page-title">
+        <p>Senior CE Field Runbook</p>
+        <h1>현장에 들어가기 전 머릿속에서 돌리는 설치 운영 런북</h1>
+      </div>
+      <article class="source-note">
+        <h2>목적</h2>
+        <p>이 섹션은 실제 권한이나 공식 절차를 대체하지 않습니다. 대신 site rule, Applied 공식 교육, 선임 입회, 고객 승인 전에 어떤 질문과 증거를 준비해야 하는지 빠르게 정렬하는 개인 훈련판입니다.</p>
+      </article>
+      <section class="runbook-layout">
+        <aside class="runbook-rail" id="runbook-rail"></aside>
+        <article class="runbook-detail" id="runbook-detail"></article>
+      </section>
+      <section class="runbook-grid">
+        <article class="runbook-panel" id="runbook-gates"></article>
+        <article class="runbook-panel" id="runbook-briefing"></article>
+        <article class="runbook-panel" id="runbook-raci"></article>
+        <article class="runbook-panel" id="runbook-storage-map"></article>
+      </section>
+    </section>
+
     <section id="thinktank" class="view">
       <div class="page-title">
         <p>EPI Think Tank Vault</p>
@@ -427,6 +453,29 @@
       <div class="english-grid" id="english-terms-grid"></div>
     </section>
 
+    <section id="english-test" class="view no-term">
+      <div class="page-title">
+        <p>AMK English CBT Simulator</p>
+        <h1>어플라이드 영어테스트 무한 연습실</h1>
+      </div>
+      <article class="source-note">
+        <h2>공개 정보로 재구성한 유사 연습</h2>
+        <p>공식 FAQ와 채용설명회 기준으로 영어테스트는 온라인 CBT 약 1시간이며 문법, 독해, 듣기, 말하기 평가가 포함됩니다. 후기는 토익식 객관식과 짧은 스피킹이 섞인 느낌을 말합니다. 이 화면은 실제 기출 복원이 아니라 공개 정보 기반의 가장 가까운 훈련 환경입니다.</p>
+      </article>
+      <section class="english-test-shell">
+        <aside class="english-test-console">
+          <div id="english-test-profile"></div>
+          <div class="english-test-actions">
+            <button class="primary" id="english-new-mock" type="button">새 CBT 세트 생성</button>
+            <button class="secondary" id="english-check-all" type="button">객관식 채점</button>
+            <button class="secondary" id="english-reset-score" type="button">점수 초기화</button>
+          </div>
+          <div id="english-test-sources"></div>
+        </aside>
+        <article class="english-test-main" id="english-test-main"></article>
+      </section>
+    </section>
+
     <section id="quiz" class="view">
       <div class="page-title">
         <p>Quiz & Flashcards</p>
@@ -456,6 +505,7 @@
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260620-flow5"></script>
+  <script src="english-test.js?v=20260622-amk1"></script>
   <script src="term-helper.js?v=20260621-elec1"></script>
   <script src="think-tank.js?v=20260621-vault1"></script>
 </body>
