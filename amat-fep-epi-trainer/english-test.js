@@ -209,8 +209,12 @@ const englishTestState = {
   timer: null,
   seconds: 0,
   mode: "prep",
-  set: []
+  set: [],
+  lastSync: ""
 };
+
+const ENGLISH_ATTEMPTS_KEY = "amkEnglishAttempts";
+const ENGLISH_RECORDS_KEY = "amkEnglishSessionRecords";
 
 function escapeEnglishTest(value) {
   return String(value).replace(/[&<>"']/g, char => ({
@@ -240,7 +244,7 @@ function makeEnglishTestSet() {
 }
 
 function getEnglishScore() {
-  const attempts = JSON.parse(localStorage.getItem("amkEnglishAttempts") || "[]");
+  const attempts = JSON.parse(localStorage.getItem(ENGLISH_ATTEMPTS_KEY) || "[]");
   const correct = attempts.filter(Boolean).length;
   return {
     attempts,
@@ -251,9 +255,45 @@ function getEnglishScore() {
 }
 
 function saveEnglishAttempt(isCorrect) {
-  const attempts = JSON.parse(localStorage.getItem("amkEnglishAttempts") || "[]");
+  const attempts = JSON.parse(localStorage.getItem(ENGLISH_ATTEMPTS_KEY) || "[]");
   attempts.push(Boolean(isCorrect));
-  localStorage.setItem("amkEnglishAttempts", JSON.stringify(attempts.slice(-200)));
+  localStorage.setItem(ENGLISH_ATTEMPTS_KEY, JSON.stringify(attempts.slice(-200)));
+}
+
+function getEnglishRecords() {
+  try {
+    return JSON.parse(localStorage.getItem(ENGLISH_RECORDS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function makeEnglishRecordId() {
+  if (window.crypto?.randomUUID) return `english-${crypto.randomUUID()}`;
+  return `english-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function saveEnglishRecordLocally(record) {
+  const records = getEnglishRecords();
+  records.unshift(record);
+  localStorage.setItem(ENGLISH_RECORDS_KEY, JSON.stringify(records.slice(0, 100)));
+}
+
+async function pushEnglishRecordToVault(record) {
+  if (!location.protocol.startsWith("http")) return;
+  try {
+    const response = await fetch("/api/entries", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record)
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    englishTestState.lastSync = `DB 저장 완료 ${new Date().toLocaleTimeString()}`;
+  } catch {
+    englishTestState.lastSync = "DB 저장 대기: 브라우저에는 기록됨";
+  }
+  renderEnglishTestProfile();
 }
 
 function speakEnglishText(text) {
@@ -293,6 +333,7 @@ function renderEnglishTestProfile() {
   const target = document.querySelector("#english-test-profile");
   if (!target) return;
   const score = getEnglishScore();
+  const latestRecord = getEnglishRecords()[0];
   target.innerHTML = `
     <p class="eyebrow">Likely Format</p>
     <h2>온라인 CBT 약 1시간</h2>
@@ -306,6 +347,8 @@ function renderEnglishTestProfile() {
       <strong>${score.percent}%</strong>
       <small>누적 객관식 ${score.correct}/${score.total}</small>
     </div>
+    ${latestRecord ? `<p class="english-sync-note">최근 세트: ${latestRecord.score}/${latestRecord.total} · ${escapeEnglishTest(latestRecord.createdAtLabel || "")}</p>` : ""}
+    ${englishTestState.lastSync ? `<p class="english-sync-note">${escapeEnglishTest(englishTestState.lastSync)}</p>` : ""}
     <p>목표는 만점이 아니라, 영어 거부감 없이 3문장 이상을 안정적으로 말하고 객관식에서 실수 패턴을 줄이는 것입니다.</p>
   `;
 }
@@ -462,12 +505,42 @@ function renderEnglishTestMain() {
 
 function checkEnglishTestSet() {
   const objectiveItems = englishTestState.set.filter(item => item.type !== "Speaking");
+  const correctCount = objectiveItems.reduce((acc, item) => (
+    acc + (englishTestState.selected[item.id] === item.answer ? 1 : 0)
+  ), 0);
   objectiveItems.forEach(item => {
     saveEnglishAttempt(englishTestState.selected[item.id] === item.answer);
   });
+  const createdAt = new Date();
+  const record = {
+    id: makeEnglishRecordId(),
+    type: "English CBT Practice",
+    subsystem: "English test / interview",
+    severity: correctCount >= Math.ceil(objectiveItems.length * 0.8) ? "Strong" : "Practice",
+    title: `English CBT practice ${correctCount}/${objectiveItems.length}`,
+    createdAt: createdAt.toISOString(),
+    createdAtLabel: createdAt.toLocaleString(),
+    score: correctCount,
+    total: objectiveItems.length,
+    scorePercent: Math.round((correctCount / objectiveItems.length) * 100),
+    source: "AMK public English-test practice simulator",
+    results: objectiveItems.map(item => ({
+      type: item.type,
+      prompt: item.question || item.stem,
+      selected: Number.isInteger(englishTestState.selected[item.id]) ? item.options[englishTestState.selected[item.id]] : "",
+      answer: item.options[item.answer],
+      correct: englishTestState.selected[item.id] === item.answer
+    })),
+    speakingPrompts: englishTestState.set
+      .filter(item => item.type === "Speaking")
+      .map(item => ({ title: item.title, prompt: item.prompt, pattern: item.pattern }))
+  };
+  saveEnglishRecordLocally(record);
+  englishTestState.lastSync = "DB 저장 중...";
   englishTestState.checked = true;
   renderEnglishTestProfile();
   renderEnglishTestMain();
+  pushEnglishRecordToVault(record);
 }
 
 function newEnglishTestSet() {
@@ -479,7 +552,9 @@ function newEnglishTestSet() {
 }
 
 function resetEnglishScore() {
-  localStorage.removeItem("amkEnglishAttempts");
+  localStorage.removeItem(ENGLISH_ATTEMPTS_KEY);
+  localStorage.removeItem(ENGLISH_RECORDS_KEY);
+  englishTestState.lastSync = "브라우저 연습 통계 초기화 완료";
   englishTestState.selected = {};
   englishTestState.checked = false;
   renderEnglishTestProfile();
