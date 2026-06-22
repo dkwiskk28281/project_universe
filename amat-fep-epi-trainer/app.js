@@ -1721,18 +1721,50 @@ let qIndex = 0;
 let activeMeterCase = "prove";
 let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
+const uxPaletteState = { query: "", results: [] };
+
+const uxHotViews = [
+  ["runbook", "런북"],
+  ["cluster", "구성"],
+  ["electrical", "DVM"],
+  ["english-test", "영어"],
+  ["thinktank", "기록"]
+];
 
 function save() {
-  localStorage.setItem("ceTrainerState", JSON.stringify(state));
+  persistState();
   renderMetrics();
   renderCommandCenter();
   renderRunbook();
+  renderLearningHud();
 }
 
-function showView(id) {
+function persistState() {
+  localStorage.setItem("ceTrainerState", JSON.stringify(state));
+}
+
+function getNavLabel(id) {
+  const button = document.querySelector(`.nav-btn[data-view="${id}"]`);
+  return button?.textContent?.trim() || id;
+}
+
+function updateViewMemory(id) {
+  state.lastView = id;
+  state.viewVisits = state.viewVisits || {};
+  state.viewVisits[id] = (state.viewVisits[id] || 0) + 1;
+  state.recentViews = [id, ...(state.recentViews || []).filter(item => item !== id)].slice(0, 5);
+  persistState();
+}
+
+function showView(id, options = {}) {
+  if (!document.getElementById(id)) return;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (!options.skipMemory) updateViewMemory(id);
+  closeCommandPalette();
+  renderLearningHud();
+  document.title = `${getNavLabel(id)} | FEP/EPI CE Trainer`;
+  window.scrollTo({ top: 0, behavior: options.instant ? "auto" : "smooth" });
 }
 
 function getRoadmapMissions() {
@@ -1751,6 +1783,204 @@ function getRunbookGateProgress() {
     total: runbookGates.length,
     percent: Math.round(checked / runbookGates.length * 100)
   };
+}
+
+function getRoadmapProgress() {
+  const missions = getRoadmapMissions();
+  const done = missions.filter(item => state.missions?.[item.id]).length;
+  return {
+    done,
+    total: missions.length,
+    percent: missions.length ? Math.round(done / missions.length * 100) : 0
+  };
+}
+
+function getQuizProgress() {
+  const attempts = state.quizAttempts || [];
+  return {
+    total: attempts.length,
+    percent: attempts.length ? Math.round(attempts.filter(Boolean).length / attempts.length * 100) : 0
+  };
+}
+
+function getUxSearchItems() {
+  const navItems = [...document.querySelectorAll(".nav-btn[data-view]")].map(button => ({
+    title: button.textContent.trim(),
+    meta: "화면",
+    body: `${button.dataset.view} 탭으로 이동`,
+    view: button.dataset.view
+  }));
+  const commandItems = commandCenterActions.map(item => ({
+    title: item.title,
+    meta: item.label,
+    body: `${item.text} ${item.chips.join(" ")}`,
+    view: item.view
+  }));
+  const roadmapItems = getRoadmapMissions().map(item => ({
+    title: item.label,
+    meta: `로드맵 ${item.week}`,
+    body: item.hint,
+    view: "roadmap"
+  }));
+  const systemItems = systems.map(item => ({
+    title: item.name,
+    meta: "장비/공정",
+    body: item.one,
+    view: "systems",
+    onOpen: () => {
+      activeSystem = item.id;
+      renderSystems();
+    }
+  }));
+  const equipmentItems = equipmentFamilies.map(item => ({
+    title: item.name,
+    meta: item.family,
+    body: `${item.what} ${item.study.join(" ")}`,
+    view: "equipment"
+  }));
+  const gasItems = gasProfiles.map(item => ({
+    title: item.name,
+    meta: "가스안전",
+    body: `${item.use} ${item.hazards.join(" ")} ${item.ce.join(" ")}`,
+    view: "gases"
+  }));
+  const runbookItems = fieldRunbookStages.map(item => ({
+    title: item.title,
+    meta: "현장 런북",
+    body: `${item.plain} ${item.objective} ${item.holdIf.join(" ")}`,
+    view: "runbook",
+    onOpen: () => {
+      activeRunbookStage = item.id;
+      renderRunbook();
+    }
+  }));
+  return [...navItems, ...commandItems, ...roadmapItems, ...systemItems, ...equipmentItems, ...gasItems, ...runbookItems];
+}
+
+function scoreUxSearchItem(item, query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return 1;
+  const title = item.title.toLowerCase();
+  const meta = item.meta.toLowerCase();
+  const body = item.body.toLowerCase();
+  let score = 0;
+  if (title === q) score += 20;
+  if (title.includes(q)) score += 10;
+  if (meta.includes(q)) score += 5;
+  if (body.includes(q)) score += 2;
+  q.split(/\s+/).filter(Boolean).forEach(token => {
+    if (title.includes(token)) score += 4;
+    if (meta.includes(token)) score += 2;
+    if (body.includes(token)) score += 1;
+  });
+  return score;
+}
+
+function renderLearningHud() {
+  const root = document.querySelector("#learning-hud");
+  if (!root) return;
+  const roadmapProgress = getRoadmapProgress();
+  const gateProgress = getRunbookGateProgress();
+  const quizProgress = getQuizProgress();
+  const currentView = document.querySelector(".view.active")?.id || state.lastView || "dashboard";
+  const recentViews = (state.recentViews || [currentView]).filter(Boolean).slice(0, 3);
+  root.innerHTML = `
+    <div class="learning-hud-card">
+      <button class="hud-search" type="button" data-ux-search>검색</button>
+      <div class="hud-progress">
+        <span>Roadmap <b>${roadmapProgress.percent}%</b></span>
+        <i><em style="width:${roadmapProgress.percent}%"></em></i>
+        <span>Runbook <b>${gateProgress.percent}%</b></span>
+        <i><em style="width:${gateProgress.percent}%"></em></i>
+      </div>
+      <div class="hud-jumps">
+        ${uxHotViews.map(([view, label]) => `
+          <button type="button" class="${view === currentView ? "active" : ""}" data-ux-view="${view}">${label}</button>
+        `).join("")}
+      </div>
+      <div class="hud-recents">
+        ${recentViews.map(view => `<button type="button" data-ux-view="${view}">${getNavLabel(view)}</button>`).join("")}
+      </div>
+      <button class="hud-top" type="button" data-ux-top>맨 위</button>
+      <span class="hud-quiz">Quiz ${quizProgress.total ? `${quizProgress.percent}%` : "0%"}</span>
+    </div>
+  `;
+  root.querySelector("[data-ux-search]")?.addEventListener("click", () => openCommandPalette());
+  root.querySelectorAll("[data-ux-view]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.uxView));
+  });
+  root.querySelector("[data-ux-top]")?.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
+function renderCommandPalette() {
+  const results = document.querySelector("#command-palette-results");
+  const input = document.querySelector("#command-palette-input");
+  if (!results || !input) return;
+  const query = input.value.trim();
+  uxPaletteState.query = query;
+  uxPaletteState.results = getUxSearchItems()
+    .map(item => ({ ...item, score: scoreUxSearchItem(item, query) }))
+    .filter(item => !query || item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 9);
+  results.innerHTML = uxPaletteState.results.length ? uxPaletteState.results.map((item, index) => `
+    <button class="palette-result" type="button" data-palette-index="${index}">
+      <span>${item.meta}</span>
+      <strong>${item.title}</strong>
+      <small>${item.body}</small>
+    </button>
+  `).join("") : `
+    <div class="palette-empty">
+      <strong>결과 없음</strong>
+      <span>다른 장비명, 공정명, 가스명, 현장 용어로 검색해보세요.</span>
+    </div>
+  `;
+  results.querySelectorAll("[data-palette-index]").forEach(button => {
+    button.addEventListener("click", () => {
+      const item = uxPaletteState.results[Number(button.dataset.paletteIndex)];
+      if (!item) return;
+      item.onOpen?.();
+      showView(item.view);
+    });
+  });
+}
+
+function openCommandPalette(seed = "") {
+  const palette = document.querySelector("#command-palette");
+  const input = document.querySelector("#command-palette-input");
+  if (!palette || !input) return;
+  palette.classList.remove("hidden");
+  input.value = seed;
+  renderCommandPalette();
+  input.focus();
+  input.select();
+}
+
+function closeCommandPalette() {
+  document.querySelector("#command-palette")?.classList.add("hidden");
+}
+
+function bindGlobalUx() {
+  document.querySelector("#command-palette-input")?.addEventListener("input", renderCommandPalette);
+  document.querySelector("#command-palette-close")?.addEventListener("click", closeCommandPalette);
+  document.querySelector("#command-palette")?.addEventListener("click", event => {
+    if (event.target.id === "command-palette") closeCommandPalette();
+  });
+  document.addEventListener("keydown", event => {
+    const tag = document.activeElement?.tagName;
+    const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(tag);
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openCommandPalette();
+    } else if (!typing && event.key === "/") {
+      event.preventDefault();
+      openCommandPalette();
+    } else if (event.key === "Escape") {
+      closeCommandPalette();
+    }
+  });
 }
 
 function renderCommandCenter() {
@@ -2499,5 +2729,8 @@ renderGlossary();
 renderFab101();
 renderPaperNotes();
 renderMetrics();
+bindGlobalUx();
+showView(document.getElementById(state.lastView) ? state.lastView : "dashboard", { instant: true, skipMemory: true });
+renderLearningHud();
 
 document.querySelector("#glossary-search").addEventListener("input", renderGlossary);
