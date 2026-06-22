@@ -10,6 +10,7 @@ const webFiles = [
   "styles.css",
   "app.js",
   "cluster-sim.js",
+  "english-test.js",
   "mastery.js",
   "readiness.js",
   "term-helper.js",

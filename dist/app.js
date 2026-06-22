@@ -1521,6 +1521,13 @@ const commandCenterActions = [
     title: "경험을 재사용 가능한 지식으로 저장",
     text: "문제 경험을 symptom, evidence, root cause, corrective action, prevention으로 쪼개 저장하면 다음 현장에서 훨씬 빨라집니다.",
     chips: ["D1 DB", "D drive mirror", "field memory"]
+  },
+  {
+    view: "english-test",
+    label: "영어시험",
+    title: "AMK CBT 형식으로 매일 한 세트",
+    text: "공식 FAQ와 후기에서 확인되는 문법·독해·듣기·짧은 말하기 조합을 무한 세트로 반복합니다.",
+    chips: ["grammar", "reading", "listening", "speaking"]
   }
 ];
 
