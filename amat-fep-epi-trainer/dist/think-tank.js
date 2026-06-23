@@ -437,7 +437,9 @@ function entryTags(entry) {
 function renderEntries() {
   const list = document.querySelector("#thinktank-entry-list");
   if (!list) return;
-  const entries = loadEntries().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const entries = loadEntries()
+    .filter(entry => !entry.hidden)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   list.innerHTML = entries.length ? entries.map(entry => `
     <article class="vault-entry">
       <header>
