@@ -9,8 +9,13 @@
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isGithubPagesHost = location.hostname.endsWith("github.io");
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
-  const sameOriginApi = location.port === "4180" || (!isLocalBrowserHost && !isGithubPagesHost && location.protocol.startsWith("http"));
-  const BOOKSHELF_API = isCloudflareWorkerHost || sameOriginApi ? location.origin : LOCAL_VAULT_API;
+  const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
+  const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";
+  const BOOKSHELF_API =
+    EPI_VAULT_CONFIG.apiUrl ||
+    (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
+    (isCloudflareWorkerHost ? location.origin : "") ||
+    (location.port === "4180" ? location.origin : REMOTE_VAULT_API);
 
   const BOOKSHELF_BOOKS = [
     {

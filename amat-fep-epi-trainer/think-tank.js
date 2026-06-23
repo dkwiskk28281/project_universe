@@ -1,15 +1,16 @@
 (() => {
 const THINK_TANK_KEY = "epiThinkTankEntries";
+const THINK_TANK_PENDING_KEY = "epiThinkTankPendingEntries";
 const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
 const isGithubPagesHost = location.hostname.endsWith("github.io");
 const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
 const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
-const sameOriginApi = location.port === "4180" || (!isLocalBrowserHost && !isGithubPagesHost && location.protocol.startsWith("http"));
+const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";
 const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
   (isCloudflareWorkerHost ? location.origin : "") ||
-  (sameOriginApi ? location.origin : "http://127.0.0.1:4180");
+  (location.port === "4180" ? location.origin : REMOTE_VAULT_API);
 const THINK_TANK_CLIENT_PASS = "ceTrainerPass";
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
@@ -126,6 +127,82 @@ function saveEntries(entries) {
   localStorage.setItem(THINK_TANK_KEY, JSON.stringify(entries));
 }
 
+function loadPendingEntries() {
+  try {
+    return JSON.parse(localStorage.getItem(THINK_TANK_PENDING_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function savePendingEntries(entries) {
+  localStorage.setItem(THINK_TANK_PENDING_KEY, JSON.stringify(entries));
+}
+
+function updateEntry(id, patch) {
+  const entries = loadEntries();
+  const next = entries.map(entry => entry.id === id ? { ...entry, ...patch } : entry);
+  saveEntries(next);
+  renderEntries();
+}
+
+function queuePendingEntry(entry) {
+  const pending = loadPendingEntries();
+  const byId = new Map(pending.map(item => [item.id, item]));
+  byId.set(entry.id, { ...entry, syncStatus: "pending D1 sync" });
+  savePendingEntries([...byId.values()]);
+}
+
+function removePendingEntry(id) {
+  savePendingEntries(loadPendingEntries().filter(entry => entry.id !== id));
+}
+
+async function pushEntryToPrimary(entry) {
+  const result = await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(entry) });
+  const savedEntry = result.entry || { ...entry, remoteSavedAt: new Date().toISOString() };
+  updateEntry(entry.id, {
+    ...savedEntry,
+    syncStatus: "D1 saved"
+  });
+  removePendingEntry(entry.id);
+  try {
+    await mirrorToLocalVault("/api/entries", savedEntry);
+  } catch {
+    // D drive mirror is optional; Cloudflare D1 remains the source of truth.
+  }
+  return savedEntry;
+}
+
+async function retryPendingEntries() {
+  const pending = loadPendingEntries();
+  if (!pending.length || !vaultToken()) return;
+  for (const entry of pending) {
+    try {
+      await pushEntryToPrimary(entry);
+    } catch {
+      queuePendingEntry(entry);
+    }
+  }
+}
+
+async function syncUnsavedLocalEntries(reason = "manual") {
+  const localOnly = loadEntries().filter(entry =>
+    entry.id &&
+    (!entry.remoteSavedAt || entry.syncStatus === "pending D1 sync" || entry.syncStatus === "local saved")
+  );
+  if (!localOnly.length || !vaultToken()) return 0;
+  let saved = 0;
+  for (const entry of localOnly) {
+    try {
+      await pushEntryToPrimary({ ...entry, syncReason: reason });
+      saved += 1;
+    } catch {
+      queuePendingEntry(entry);
+    }
+  }
+  return saved;
+}
+
 function tokenForApi(base) {
   return base === LOCAL_VAULT_API ? localVaultToken() : vaultToken();
 }
@@ -200,7 +277,10 @@ async function pullRemoteEntries() {
     if (!Array.isArray(data.entries)) return;
     const local = loadEntries();
     const byId = new Map(local.map(entry => [entry.id, entry]));
-    data.entries.forEach(entry => byId.set(entry.id, entry));
+    data.entries.forEach(entry => {
+      byId.set(entry.id, { ...entry, syncStatus: "D1 saved" });
+      removePendingEntry(entry.id);
+    });
     saveEntries([...byId.values()]);
     renderEntries();
   } catch {
@@ -270,7 +350,11 @@ async function syncAppState(reason = "interval") {
     const marker = document.querySelector("#vault-last-sync");
     if (marker) marker.textContent = `최근 백업: ${new Date().toLocaleString()}`;
   } catch {
+    queuePendingEntry(entry);
+    updateEntry(entry.id, { syncStatus: "pending D1 sync" });
     const marker = document.querySelector("#vault-last-sync");
+    if (marker) marker.textContent = "최근 저장: 이 기기에는 저장됨, D1 동기화 재시도 대기";
+    return;
     if (marker) marker.textContent = "최근 백업: 로컬 vault 서버 미연결";
   }
 }
@@ -361,7 +445,10 @@ function renderEntries() {
           <h2>${escapeHtml(entry.title || "Untitled experience")}</h2>
           <small>${escapeHtml(entry.createdAt || "")}</small>
         </div>
-        <span class="vault-pill">${escapeHtml(entry.severity || "Learning")}</span>
+        <div class="vault-pill-stack">
+          <span class="vault-pill">${escapeHtml(entry.severity || "Learning")}</span>
+          <span class="vault-pill ${entry.remoteSavedAt ? "" : "offline"}">${escapeHtml(entry.syncStatus || (entry.remoteSavedAt ? "D1 saved" : "local only"))}</span>
+        </div>
       </header>
       <p>${escapeHtml(entry.context || "").slice(0, 260)}</p>
       <ul>
@@ -388,6 +475,7 @@ async function saveThinkTankEntry(event) {
     id: `entry-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    syncStatus: "syncing to D1",
     ...data
   };
   const entries = loadEntries();
@@ -397,14 +485,11 @@ async function saveThinkTankEntry(event) {
   form.reset();
 
   try {
-    await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(entry) });
-    try {
-      await mirrorToLocalVault("/api/entries", entry);
-    } catch {
-      // D drive mirror is optional; Cloudflare D1 remains the source of truth.
-    }
+    await pushEntryToPrimary(entry);
     await syncAppStateV2("entry-save");
   } catch {
+    queuePendingEntry(entry);
+    updateEntry(entry.id, { syncStatus: "pending D1 sync" });
     const marker = document.querySelector("#vault-last-sync");
     if (marker) marker.textContent = "최근 백업: 브라우저 저장 완료, D 드라이브 vault 미연결";
   }
@@ -461,6 +546,7 @@ function renderThinkTank() {
           <label>태그<input name="tags" placeholder="pumpdown, relay, MFC, GAA, defect..." /></label>
           <div class="thinktank-actions">
             <button class="primary" type="submit">경험 저장</button>
+            <button class="secondary" type="button" id="thinktank-sync-all">로컬 기록 DB로 동기화</button>
             <button class="secondary" type="button" id="thinktank-export">백업/내보내기</button>
           </div>
         </form>
@@ -479,6 +565,12 @@ function renderThinkTank() {
     </section>
   `;
   document.querySelector("#thinktank-form").addEventListener("submit", saveThinkTankEntry);
+  document.querySelector("#thinktank-sync-all").addEventListener("click", async () => {
+    const saved = await syncUnsavedLocalEntries("manual-sync");
+    await retryPendingEntries();
+    const marker = document.querySelector("#vault-last-sync");
+    if (marker) marker.textContent = `수동 동기화 완료: ${saved}개 기록 확인`;
+  });
   document.querySelector("#thinktank-export").addEventListener("click", exportThinkTank);
   renderEntries();
 }
@@ -503,9 +595,16 @@ function unlockApp() {
   document.body.classList.remove("auth-locked");
   document.body.classList.add("auth-unlocked");
   renderThinkTank();
-  refreshVaultStatus().then(pullRemoteEntries);
+  refreshVaultStatus().then(async () => {
+    await pullRemoteEntries();
+    await retryPendingEntries();
+    await syncUnsavedLocalEntries("unlock");
+  });
   syncAppStateV2("unlock");
-  setInterval(() => syncAppStateV2("interval"), 30000);
+  setInterval(() => {
+    syncAppStateV2("interval");
+    retryPendingEntries();
+  }, 30000);
 }
 
 async function initPasswordGate() {
