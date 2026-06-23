@@ -244,6 +244,17 @@
       page.syncStatus = "local saved";
       remoteState = "local cache only until vault is reachable";
     }
+    if (BOOKSHELF_API !== LOCAL_VAULT_API && tokenForApi(LOCAL_VAULT_API)) {
+      try {
+        await apiFetch("/api/entries", {
+          method: "POST",
+          body: JSON.stringify({ ...page, localMirror: true })
+        }, LOCAL_VAULT_API);
+        page.syncStatus = `${page.syncStatus} / D drive mirrored`;
+      } catch {
+        page.syncStatus = `${page.syncStatus} / D drive pending`;
+      }
+    }
     savePages();
     renderBookshelf();
   }
