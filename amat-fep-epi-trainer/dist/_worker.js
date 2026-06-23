@@ -300,6 +300,129 @@ function requireDb(env) {
   return db;
 }
 
+function inferEnglishSkill(result = {}) {
+  const type = String(result.type || "").toLowerCase();
+  const prompt = String(result.prompt || "").toLowerCase();
+  if (result.skillTag) return String(result.skillTag);
+  if (type.includes("grammar")) {
+    if (prompt.includes("neither") || prompt.includes("nor")) return "subject-verb agreement";
+    if (prompt.includes("has been") || prompt.includes("since") || prompt.includes("for")) return "present perfect and time expressions";
+    if (prompt.includes("asked us") || prompt.includes("let me know")) return "verb pattern and indirect question";
+    if (prompt.includes("locked out") || prompt.includes("reseated")) return "passive voice";
+    if (prompt.includes("if") || prompt.includes("unless")) return "conditionals for safety holds";
+    return "core grammar accuracy";
+  }
+  if (type.includes("vocabulary")) return "field-service vocabulary";
+  if (type.includes("reading")) return "reading for status, risk, and next action";
+  if (type.includes("listening")) return "listening for hold reason and owner";
+  return String(result.type || "general English");
+}
+
+function buildEnglishWeakness(entries) {
+  const records = entries.filter(entry => entry.type === "English CBT Practice");
+  const stats = {};
+  let totalQuestions = 0;
+  let correctQuestions = 0;
+
+  records.forEach(record => {
+    (record.results || []).forEach(result => {
+      const skill = inferEnglishSkill(result);
+      if (!stats[skill]) stats[skill] = {
+        skill,
+        total: 0,
+        wrong: 0,
+        examples: []
+      };
+      stats[skill].total += 1;
+      totalQuestions += 1;
+      if (result.correct) {
+        correctQuestions += 1;
+      } else {
+        stats[skill].wrong += 1;
+        if (stats[skill].examples.length < 4) {
+          stats[skill].examples.push({
+            prompt: result.prompt || "",
+            selected: result.selected || "",
+            answer: result.answer || ""
+          });
+        }
+      }
+    });
+  });
+
+  const weaknesses = Object.values(stats)
+    .map(item => ({
+      ...item,
+      accuracy: item.total ? Math.round((item.total - item.wrong) / item.total * 100) : 0,
+      priority: item.wrong * 2 + Math.max(0, 80 - (item.total ? Math.round((item.total - item.wrong) / item.total * 100) : 0))
+    }))
+    .sort((a, b) => b.priority - a.priority);
+
+  return {
+    records: records.length,
+    totalQuestions,
+    correctQuestions,
+    accuracy: totalQuestions ? Math.round(correctQuestions / totalQuestions * 100) : 0,
+    weaknesses,
+    nextStudy: weaknesses.slice(0, 3).map(item => ({
+      skill: item.skill,
+      action: `Practice 10 focused questions and make 3 spoken field-service sentences using ${item.skill}.`
+    }))
+  };
+}
+
+function buildAiContext(entries) {
+  const visible = entries.filter(entry => !entry.hidden);
+  const bookshelfPages = visible.filter(entry => entry.type === "Personal Bookshelf Page");
+  const byBook = {};
+  bookshelfPages.forEach(page => {
+    const key = page.bookId || page.subsystem || "unknown";
+    if (!byBook[key]) byBook[key] = {
+      bookId: key,
+      bookTitle: page.bookTitle || page.subsystem || key,
+      pages: 0,
+      exportApproved: 0,
+      latestPages: []
+    };
+    byBook[key].pages += 1;
+    if (page.aiExportOk) byBook[key].exportApproved += 1;
+    if (byBook[key].latestPages.length < 5) {
+      byBook[key].latestPages.push({
+        title: page.title || "",
+        pageType: page.pageType || "",
+        summary: page.summary || "",
+        nextAction: page.nextAction || "",
+        createdAt: page.createdAt || ""
+      });
+    }
+  });
+
+  const countsByType = {};
+  visible.forEach(entry => {
+    const key = entry.type || "Unknown";
+    countsByType[key] = (countsByType[key] || 0) + 1;
+  });
+
+  return {
+    schema: "project-universe-ai-context-v1",
+    generatedAt: new Date().toISOString(),
+    privacyRule: "Use summaries and metadata only. Do not request passwords, account numbers, raw medical documents, confidential customer files, or third-party sensitive identifiers.",
+    countsByType,
+    bookshelf: Object.values(byBook),
+    english: buildEnglishWeakness(visible),
+    recentItems: visible.slice(0, 30).map(entry => ({
+      id: entry.id || "",
+      type: entry.type || "",
+      title: entry.title || "",
+      subsystem: entry.subsystem || "",
+      severity: entry.severity || "",
+      createdAt: entry.createdAt || "",
+      summary: entry.summary || entry.context || "",
+      nextAction: entry.nextAction || entry.nextStudy || ""
+    }))
+  };
+}
+
 async function handleLogin(request, env, formMode = false) {
   const body = await readBody(request);
   const password = String(body.password || "");
@@ -359,6 +482,12 @@ async function handleApi(request, env, url) {
     const result = await db.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 500").all();
     const entries = (result.results || []).map(row => JSON.parse(row.payload));
     return jsonResponse(request, { ok: true, entries });
+  }
+
+  if (url.pathname === "/api/ai-context" && request.method === "GET") {
+    const result = await db.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 1000").all();
+    const entries = (result.results || []).map(row => JSON.parse(row.payload));
+    return jsonResponse(request, { ok: true, context: buildAiContext(entries) });
   }
 
   if (url.pathname === "/api/entries" && request.method === "POST") {

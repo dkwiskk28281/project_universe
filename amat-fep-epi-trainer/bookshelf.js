@@ -5,6 +5,7 @@
   const REMOTE_TOKEN_KEY = "epiThinkTankRemoteToken";
   const LOCAL_TOKEN_KEY = "epiThinkTankLocalToken";
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
+  const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isGithubPagesHost = location.hostname.endsWith("github.io");
@@ -32,7 +33,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["cluster", "install", "electrical", "english-test", "thinktank"]
+      linkedViews: ["dashboard", "cluster", "install", "electrical", "english-test", "thinktank"]
     },
     {
       id: "life-os",
@@ -297,6 +298,22 @@
     return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   }
 
+  function viewLabel(view) {
+    const labels = {
+      dashboard: "EPI 홈",
+      cluster: "구성게임",
+      install: "설치",
+      electrical: "전기/DVM",
+      "english-test": "영어시험",
+      thinktank: "싱크탱크",
+      english: "영어풀이",
+      papers: "논문노트",
+      glossary: "용어집",
+      bookshelf: "책장"
+    };
+    return labels[view] || view;
+  }
+
   function renderBookDetail() {
     const book = currentBook();
     const detail = document.querySelector("#bookshelf-detail");
@@ -319,6 +336,10 @@
           <span>Decision</span>
           <span>Next Action</span>
           <span>AI Export</span>
+        </div>
+        <div class="book-open-actions">
+          <button class="primary" type="button" data-open-book-view="${escapeHtml(book.linkedViews[0] || "thinktank")}">이 책 열기</button>
+          ${book.linkedViews.slice(1, 5).map(view => `<button class="secondary" type="button" data-open-book-view="${escapeHtml(view)}">${escapeHtml(viewLabel(view))}</button>`).join("")}
         </div>
         <p class="book-purpose">${escapeHtml(book.purpose)}</p>
         <div class="book-meta-grid">
@@ -344,6 +365,13 @@
         </div>
       </article>
     `;
+    detail.querySelectorAll("[data-open-book-view]").forEach(button => {
+      button.addEventListener("click", () => {
+        const view = button.dataset.openBookView;
+        if (window.showView) window.showView(view);
+        else document.querySelector(`[data-view="${view}"]`)?.click();
+      });
+    });
   }
 
   function renderCapture() {
@@ -432,11 +460,44 @@
           </div>
           <textarea readonly class="ai-briefing-text">${escapeHtml(briefing)}</textarea>
         </article>
+
+        <article class="capture-panel ai-briefing-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="eyebrow">Global AI Context</p>
+              <h2>책장 전체 데이터 통합 패킷</h2>
+            </div>
+            <button class="secondary" id="bookshelf-ai-context-refresh" type="button">AI 패킷 새로고침</button>
+          </div>
+          <p>Cloudflare D1에 쌓인 책장 페이지, 싱크탱크 기록, 영어 오답 기록을 AI가 읽기 쉬운 구조로 요약합니다. 민감 원문이 아니라 요약과 메타데이터 중심으로 사용합니다.</p>
+          <pre class="ai-context-preview" id="bookshelf-ai-context-preview">아직 불러오지 않았습니다.</pre>
+        </article>
       </section>
     `;
 
     document.querySelector("#bookshelf-form")?.addEventListener("submit", saveBookPage);
     document.querySelector("#bookshelf-refresh")?.addEventListener("click", pullRemotePages);
+    document.querySelector("#bookshelf-ai-context-refresh")?.addEventListener("click", renderAiContextPreview);
+  }
+
+  async function renderAiContextPreview() {
+    const target = document.querySelector("#bookshelf-ai-context-preview");
+    if (!target) return;
+    target.textContent = "D1에서 AI 통합 패킷을 불러오는 중...";
+    try {
+      const data = await apiFetch("/api/ai-context");
+      const context = data.context || {};
+      target.textContent = JSON.stringify({
+        schema: context.schema,
+        generatedAt: context.generatedAt,
+        countsByType: context.countsByType,
+        english: context.english,
+        bookshelf: context.bookshelf,
+        recentItemsPreview: (context.recentItems || []).slice(0, 8)
+      }, null, 2);
+    } catch {
+      target.textContent = "AI 통합 패킷을 불러오지 못했습니다. 로그인 상태와 D1 연결을 확인하세요.";
+    }
   }
 
   function renderPageCard(page) {

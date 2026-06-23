@@ -601,6 +601,7 @@ function unlockApp() {
     await pullRemoteEntries();
     await retryPendingEntries();
     await syncUnsavedLocalEntries("unlock");
+    if (window.refreshEnglishFromVault) await window.refreshEnglishFromVault();
   });
   syncAppStateV2("unlock");
   setInterval(() => {

@@ -1767,6 +1767,8 @@ function showView(id, options = {}) {
   window.scrollTo({ top: 0, behavior: options.instant ? "auto" : "smooth" });
 }
 
+window.showView = showView;
+
 function getRoadmapMissions() {
   return roadmap.flatMap(week => week.missions.map(([id, label, hint]) => ({
     id,
@@ -1882,7 +1884,7 @@ function renderLearningHud() {
   const roadmapProgress = getRoadmapProgress();
   const gateProgress = getRunbookGateProgress();
   const quizProgress = getQuizProgress();
-  const currentView = document.querySelector(".view.active")?.id || state.lastView || "dashboard";
+  const currentView = document.querySelector(".view.active")?.id || state.lastView || "bookshelf";
   const recentViews = (state.recentViews || [currentView]).filter(Boolean).slice(0, 3);
   root.innerHTML = `
     <div class="learning-hud-card">
@@ -2730,7 +2732,7 @@ renderFab101();
 renderPaperNotes();
 renderMetrics();
 bindGlobalUx();
-showView(document.getElementById(state.lastView) ? state.lastView : "dashboard", { instant: true, skipMemory: true });
+showView("bookshelf", { instant: true, skipMemory: true });
 renderLearningHud();
 
 document.querySelector("#glossary-search").addEventListener("input", renderGlossary);
