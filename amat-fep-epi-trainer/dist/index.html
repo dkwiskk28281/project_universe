@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FEP/EPI CE 입사 전 학습 트레이너</title>
-  <link rel="stylesheet" href="styles.css?v=20260622-ux1" />
+  <link rel="stylesheet" href="styles.css?v=20260623-bookshelf1" />
 </head>
 <body class="auth-locked">
   <div id="password-gate" class="password-gate" role="dialog" aria-modal="true" aria-labelledby="password-title">
@@ -44,6 +44,7 @@
       <button class="nav-btn" data-view="mastery">마스터리</button>
       <button class="nav-btn" data-view="readiness">현장투입</button>
       <button class="nav-btn" data-view="runbook">런북</button>
+      <button class="nav-btn" data-view="bookshelf">책장</button>
       <button class="nav-btn" data-view="thinktank">싱크탱크</button>
       <button class="nav-btn" data-view="deep">심화</button>
       <button class="nav-btn" data-view="fab101">Fab기초</button>
@@ -401,6 +402,24 @@
       </section>
     </section>
 
+    <section id="bookshelf" class="view no-term">
+      <div class="page-title">
+        <p>Personal Think Tank Bookshelf</p>
+        <h1>인생 전체를 책처럼 정리하는 개인 지식 책장</h1>
+      </div>
+      <article class="source-note">
+        <h2>운영 원칙</h2>
+        <p>FEP/EPI 트레이너는 이 책장의 첫 번째 전문서입니다. 앞으로 건강, 자산, 사업, 가족, 학습, 의사결정, 아이디어를 같은 방식으로 쌓되 원문 비밀자료가 아니라 요약, 판단 근거, 다음 액션, AI에게 보여줘도 되는 범위를 중심으로 저장합니다.</p>
+      </article>
+      <section class="bookshelf-shell">
+        <aside class="bookshelf-rail" id="bookshelf-rail" aria-label="Think Tank books"></aside>
+        <article class="bookshelf-main">
+          <div id="bookshelf-detail"></div>
+          <div id="bookshelf-capture"></div>
+        </article>
+      </section>
+    </section>
+
     <section id="thinktank" class="view">
       <div class="page-title">
         <p>EPI Think Tank Vault</p>
@@ -526,6 +545,7 @@
   <script src="english-test-expansion.js?v=20260622-large1"></script>
   <script src="english-test.js?v=20260622-amk4"></script>
   <script src="term-helper.js?v=20260621-elec1"></script>
+  <script src="bookshelf.js?v=20260623-bookshelf1"></script>
   <script src="think-tank.js?v=20260621-vault1"></script>
 </body>
 </html>

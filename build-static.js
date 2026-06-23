@@ -15,6 +15,7 @@ const webFiles = [
   "mastery.js",
   "readiness.js",
   "term-helper.js",
+  "bookshelf.js",
   "think-tank.js",
   "current-vault-url.html",
   "current-vault-url.json"

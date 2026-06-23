@@ -1804,6 +1804,322 @@ main {
   margin-top: 14px;
 }
 
+.bookshelf-shell {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.35fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.bookshelf-rail {
+  position: sticky;
+  top: 88px;
+  display: grid;
+  gap: 14px;
+  max-height: calc(100vh - 112px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.bookshelf-group {
+  display: grid;
+  gap: 8px;
+}
+
+.bookshelf-group p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.book-spine {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "code title"
+    "code privacy";
+  gap: 2px 10px;
+  align-items: center;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(26, 44, 57, 0.04);
+}
+
+.book-spine:hover,
+.book-spine.active {
+  border-color: rgba(0, 127, 134, 0.5);
+  background: #eef8f8;
+}
+
+.book-spine span {
+  grid-area: code;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 48px;
+  border-radius: 8px;
+  background: #172c37;
+  color: #ffffff;
+  font-weight: 950;
+}
+
+.book-spine strong {
+  grid-area: title;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.book-spine small {
+  grid-area: privacy;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.bookshelf-main {
+  display: grid;
+  gap: 14px;
+}
+
+.book-detail,
+.capture-panel {
+  padding: 18px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(26, 44, 57, 0.06);
+}
+
+.book-detail-head {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.book-code {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 950;
+}
+
+.book-detail h2,
+.capture-panel h2 {
+  margin: 0;
+}
+
+.book-detail p,
+.capture-panel p,
+.book-meta-grid li,
+.bookshelf-page-card p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.book-purpose {
+  margin: 14px 0 0;
+  padding: 12px;
+  border-left: 4px solid var(--accent);
+  background: #f4f9fa;
+}
+
+.bookshelf-schema {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.bookshelf-schema span {
+  display: grid;
+  place-items: center;
+  min-height: 42px;
+  padding: 8px;
+  border: 1px solid rgba(0, 127, 134, 0.2);
+  border-radius: 8px;
+  background: #f5fafb;
+  color: #155e63;
+  font-size: 12px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.book-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.book-meta-grid section {
+  min-width: 0;
+  padding: 0 0 0 12px;
+  border-left: 3px solid rgba(0, 127, 134, 0.24);
+}
+
+.book-meta-grid section.do-not-store {
+  border-left-color: rgba(179, 90, 22, 0.45);
+}
+
+.book-meta-grid h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.book-meta-grid ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.starter-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.starter-strip span,
+.sync-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #eef5f6;
+  color: #155e63;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.bookshelf-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(280px, 0.75fr);
+  gap: 14px;
+}
+
+.ai-briefing-panel {
+  grid-column: 1 / -1;
+}
+
+.panel-title-row,
+.bookshelf-page-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bookshelf-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.bookshelf-capture-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bookshelf-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.bookshelf-form input,
+.bookshelf-form select,
+.bookshelf-form textarea,
+.ai-briefing-text {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfdfe;
+}
+
+.bookshelf-form textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.bookshelf-checkline {
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center;
+}
+
+.bookshelf-checkline input {
+  width: 18px;
+  height: 18px;
+}
+
+.bookshelf-page-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.bookshelf-page-card {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfe;
+}
+
+.bookshelf-page-card h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.bookshelf-page-card small,
+.bookshelf-page-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.bookshelf-page-card strong {
+  display: block;
+  margin-top: 8px;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.empty-note {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed rgba(0, 127, 134, 0.35);
+  border-radius: 8px;
+  background: #f7fbfb;
+}
+
+.ai-briefing-text {
+  min-height: 220px;
+  margin-top: 12px;
+  color: #2c4150;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
 .taxonomy-card ul,
 .vault-entry ul {
   margin: 12px 0 0;
@@ -4131,9 +4447,16 @@ main {
   .meter-lab,
   .vault-status,
   .thinktank-layout,
+  .bookshelf-shell,
   .runbook-layout {
     grid-template-columns: 1fr;
     padding: 18px;
+  }
+
+  .bookshelf-rail {
+    position: static;
+    max-height: none;
+    padding-right: 0;
   }
 
   .cockpit-steps,
@@ -4174,6 +4497,9 @@ main {
   .english-transfer-grid,
   .english-similarity-grid,
   .english-weakness-grid,
+  .bookshelf-workspace,
+  .book-meta-grid,
+  .bookshelf-capture-grid,
   .mastery-scoreboard,
   .mastery-grid,
   .template-grid,
@@ -4181,6 +4507,10 @@ main {
   .english-grid,
   .cluster-shell {
     grid-template-columns: 1fr;
+  }
+
+  .bookshelf-schema {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .command-head {
@@ -4413,7 +4743,8 @@ main {
 
   .cockpit-steps,
   .science-grid,
-  .electrical-hero-steps {
+  .electrical-hero-steps,
+  .bookshelf-schema {
     grid-template-columns: 1fr;
   }
 
