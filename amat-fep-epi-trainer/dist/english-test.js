@@ -621,6 +621,17 @@ function renderEnglishCumulativeCoach() {
         <span>저장 세트 <strong>${records.length}</strong></span>
         <span>최우선 약점 <strong>${escapeEnglishTest(top[0]?.skill || "유지")}</strong></span>
       </div>
+      <div class="english-coach-bars" aria-label="약점 강도">
+        ${top.map(item => {
+          const errorRate = item.total ? Math.round(item.wrong / item.total * 100) : 0;
+          return `
+            <article>
+              <div><strong>${escapeEnglishTest(item.skill)}</strong><span>${errorRate}% error pressure</span></div>
+              <i><em style="width:${errorRate}%"></em></i>
+            </article>
+          `;
+        }).join("")}
+      </div>
       <div class="english-coach-list">
         ${top.map(item => `
           <article>
@@ -637,6 +648,12 @@ function renderEnglishCumulativeCoach() {
           <li>틀린 선택지가 왜 틀렸는지 한국어 1문장, 영어 1문장으로 적기</li>
           <li>현장 문장으로 바꾸기: “I checked..., I found..., I will...”</li>
         </ol>
+      </div>
+      <div class="english-field-ladder">
+        <strong>현장 답변 뼈대</strong>
+        <span>Situation: The tool alarm occurred during...</span>
+        <span>Evidence: I checked the log, DVM reading, and interlock status.</span>
+        <span>Action: I will isolate the cause, update the customer, and verify recovery.</span>
       </div>
     </section>
   `;

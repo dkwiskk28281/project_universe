@@ -168,6 +168,7 @@
   let activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || BOOKSHELF_BOOKS[0].id;
   let pages = loadPages();
   let remoteState = "local-first";
+  let latestAiPacketText = "";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -227,6 +228,20 @@
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
+  }
+
+  async function copyText(text, statusSelector) {
+    const status = document.querySelector(statusSelector);
+    if (!text) {
+      if (status) status.textContent = "복사할 내용이 아직 없습니다.";
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      if (status) status.textContent = "클립보드에 복사했습니다.";
+    } catch {
+      if (status) status.textContent = "브라우저 권한 때문에 자동 복사하지 못했습니다. 텍스트를 직접 선택해 복사하세요.";
+    }
   }
 
   async function pullRemotePages() {
@@ -318,14 +333,58 @@
     return pages.filter(page => page.bookId === bookId);
   }
 
+  function formatDateLabel(value) {
+    if (!value) return "기록 없음";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "날짜 불명";
+    return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
+  }
+
+  function getBookStats(book) {
+    const bookPages = pagesForBook(book.id);
+    const aiReady = bookPages.filter(page => page.aiExportOk).length;
+    const nextReady = bookPages.filter(page => page.nextAction).length;
+    const tagged = bookPages.filter(page => page.tags?.length).length;
+    const latest = [...bookPages].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0];
+    const score = Math.min(100, Math.round(
+      Math.min(bookPages.length, 6) / 6 * 40 +
+      (bookPages.length ? aiReady / bookPages.length : 0) * 25 +
+      (bookPages.length ? nextReady / bookPages.length : 0) * 25 +
+      (bookPages.length ? tagged / bookPages.length : 0) * 10
+    ));
+    const missingNext = bookPages.filter(page => !page.nextAction).slice(0, 3);
+    const suggestion = !bookPages.length
+      ? "첫 페이지를 하나 저장해서 이 책을 활성화하세요."
+      : !aiReady
+        ? "AI에게 보여줘도 되는 비식별 요약 1개를 체크하세요."
+        : missingNext.length
+          ? "다음 행동이 비어 있는 페이지를 닫아주세요."
+          : score < 80
+            ? "태그와 근거를 보강해서 검색 가능한 지식으로 만드세요."
+            : "이번 주에는 새 사례보다 기존 페이지를 재검토해 패턴을 뽑으세요.";
+    return {
+      pages: bookPages,
+      aiReady,
+      nextReady,
+      tagged,
+      latest,
+      score,
+      missingNext,
+      suggestion
+    };
+  }
+
   function libraryStats() {
     const exportReady = pages.filter(page => page.aiExportOk).length;
     const booksWithPages = new Set(pages.map(page => page.bookId).filter(Boolean)).size;
+    const pagesWithNextAction = pages.filter(page => page.nextAction).length;
+    const overallScore = pages.length ? Math.round((exportReady / pages.length * 45) + (pagesWithNextAction / pages.length * 45) + (booksWithPages / BOOKSHELF_BOOKS.length * 10)) : 0;
     return {
       books: BOOKSHELF_BOOKS.length,
       pages: pages.length,
       exportReady,
-      booksWithPages
+      booksWithPages,
+      overallScore
     };
   }
 
@@ -342,7 +401,7 @@
           <span><strong>${stats.books}</strong> books</span>
           <span><strong>${stats.pages}</strong> pages</span>
           <span><strong>${stats.exportReady}</strong> AI-ready</span>
-          <span><strong>${stats.booksWithPages}</strong> active</span>
+          <span><strong>${stats.overallScore}</strong> health</span>
         </div>
       </section>
       <section class="library-overview" aria-label="전체 책장">
@@ -372,6 +431,7 @@
 
   function renderBookDetail() {
     const book = currentBook();
+    const stats = getBookStats(book);
     const detail = document.querySelector("#bookshelf-detail");
     if (!detail) return;
     detail.innerHTML = `
@@ -396,6 +456,20 @@
           <button class="primary" type="button" data-open-book-view="${escapeHtml(book.linkedViews[0] || "thinktank")}">이 책 열기</button>
           ${book.linkedViews.slice(1, 5).map(view => `<button class="secondary" type="button" data-open-book-view="${escapeHtml(view)}">${escapeHtml(viewLabel(view))}</button>`).join("")}
         </div>
+        <section class="book-health-panel" aria-label="책 데이터 건강도">
+          <div class="book-health-score">
+            <span>Data Health</span>
+            <strong>${stats.score}</strong>
+            <i><em style="width:${stats.score}%"></em></i>
+          </div>
+          <div class="book-health-grid">
+            <span><strong>${stats.pages.length}</strong> pages</span>
+            <span><strong>${stats.aiReady}</strong> AI-ready</span>
+            <span><strong>${stats.nextReady}</strong> next action</span>
+            <span><strong>${formatDateLabel(stats.latest?.createdAt)}</strong> latest</span>
+          </div>
+          <p>${escapeHtml(stats.suggestion)}</p>
+        </section>
         <p class="book-purpose">${escapeHtml(book.purpose)}</p>
         <div class="book-meta-grid">
           <section>
@@ -416,8 +490,14 @@
           </section>
         </div>
         <div class="starter-strip">
-          ${book.starterQuestions.map(question => `<span>${escapeHtml(question)}</span>`).join("")}
+          ${book.starterQuestions.map(question => `<button type="button" data-starter-question="${escapeHtml(question)}">${escapeHtml(question)}</button>`).join("")}
         </div>
+        ${stats.missingNext.length ? `
+          <div class="book-review-queue">
+            <strong>닫아야 할 열린 루프</strong>
+            ${stats.missingNext.map(page => `<span>${escapeHtml(page.title || "Untitled page")} · 다음 행동 없음</span>`).join("")}
+          </div>
+        ` : ""}
       </article>
     `;
     detail.querySelectorAll("[data-book-card]").forEach(button => {
@@ -432,6 +512,15 @@
         const view = button.dataset.openBookView;
         if (window.showView) window.showView(view);
         else document.querySelector(`[data-view="${view}"]`)?.click();
+      });
+    });
+    detail.querySelectorAll("[data-starter-question]").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelector("#bookshelf-title")?.focus();
+        const title = document.querySelector("#bookshelf-title");
+        const summary = document.querySelector("#bookshelf-summary");
+        if (title && !title.value) title.value = "질문에서 시작한 페이지";
+        if (summary && !summary.value) summary.value = button.dataset.starterQuestion;
       });
     });
   }
@@ -518,9 +607,10 @@
               <p class="eyebrow">AI Briefing Packet</p>
               <h2>나중에 AI에게 보여줄 요약 형태</h2>
             </div>
-            <span class="sync-pill">export-safe</span>
+            <button class="secondary" id="bookshelf-copy-briefing" type="button">요약 복사</button>
           </div>
           <textarea readonly class="ai-briefing-text">${escapeHtml(briefing)}</textarea>
+          <p class="copy-status" id="bookshelf-briefing-copy-status"></p>
         </article>
 
         <article class="capture-panel ai-briefing-panel">
@@ -529,10 +619,14 @@
               <p class="eyebrow">Global AI Context</p>
               <h2>책장 전체 데이터 통합 패킷</h2>
             </div>
-            <button class="secondary" id="bookshelf-ai-context-refresh" type="button">AI 패킷 새로고침</button>
+            <div class="thinktank-actions">
+              <button class="secondary" id="bookshelf-ai-context-refresh" type="button">AI 패킷 새로고침</button>
+              <button class="secondary" id="bookshelf-ai-context-copy" type="button">AI 패킷 복사</button>
+            </div>
           </div>
           <p>Cloudflare D1에 쌓인 책장 페이지, 싱크탱크 기록, 영어 오답 기록을 AI가 읽기 쉬운 구조로 요약합니다. 민감 원문이 아니라 요약과 메타데이터 중심으로 사용합니다.</p>
           <div class="ai-context-preview" id="bookshelf-ai-context-preview">아직 불러오지 않았습니다.</div>
+          <p class="copy-status" id="bookshelf-ai-context-copy-status"></p>
         </article>
       </section>
     `;
@@ -540,6 +634,8 @@
     document.querySelector("#bookshelf-form")?.addEventListener("submit", saveBookPage);
     document.querySelector("#bookshelf-refresh")?.addEventListener("click", pullRemotePages);
     document.querySelector("#bookshelf-ai-context-refresh")?.addEventListener("click", renderAiContextPreview);
+    document.querySelector("#bookshelf-copy-briefing")?.addEventListener("click", () => copyText(briefing, "#bookshelf-briefing-copy-status"));
+    document.querySelector("#bookshelf-ai-context-copy")?.addEventListener("click", () => copyText(latestAiPacketText, "#bookshelf-ai-context-copy-status"));
   }
 
   async function renderAiContextPreview() {
@@ -557,6 +653,7 @@
         bookshelf: context.bookshelf,
         recentItemsPreview: (context.recentItems || []).slice(0, 8)
       };
+      latestAiPacketText = JSON.stringify(packet, null, 2);
       const counts = Object.entries(context.countsByType || {});
       const books = context.bookshelf || [];
       const english = context.english || {};
@@ -588,10 +685,11 @@
         </div>
         <details class="ai-context-json">
           <summary>구조화 JSON 보기</summary>
-          <pre>${escapeHtml(JSON.stringify(packet, null, 2))}</pre>
+          <pre>${escapeHtml(latestAiPacketText)}</pre>
         </details>
       `;
     } catch {
+      latestAiPacketText = "";
       target.textContent = "AI 통합 패킷을 불러오지 못했습니다. 로그인 상태와 D1 연결을 확인하세요.";
     }
   }

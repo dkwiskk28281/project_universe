@@ -2166,6 +2166,88 @@ main {
   margin-top: 14px;
 }
 
+.book-health-panel {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.45fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(0, 127, 134, 0.2);
+  border-radius: 8px;
+  background: #f7fbfb;
+}
+
+.book-health-score {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #17232d;
+  color: #ffffff;
+}
+
+.book-health-score span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.book-health-score strong {
+  display: block;
+  font-size: 34px;
+  line-height: 1.32;
+}
+
+.book-health-score i,
+.english-coach-bars i {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.book-health-score em,
+.english-coach-bars em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.book-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.book-health-grid span {
+  display: grid;
+  gap: 2px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.book-health-grid strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.book-health-panel p {
+  grid-column: 2;
+  margin: -4px 0 0;
+  color: #155e63;
+  font-weight: 850;
+}
+
 .book-flow-map {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2232,7 +2314,7 @@ main {
   margin-top: 14px;
 }
 
-.starter-strip span,
+.starter-strip button,
 .sync-pill {
   display: inline-flex;
   align-items: center;
@@ -2243,6 +2325,37 @@ main {
   color: #155e63;
   font-size: 12px;
   font-weight: 850;
+}
+
+.starter-strip button {
+  text-align: left;
+}
+
+.starter-strip button:hover {
+  background: #dff0f1;
+}
+
+.book-review-queue {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(179, 90, 22, 0.25);
+  border-radius: 8px;
+  background: #fffaf4;
+}
+
+.book-review-queue strong {
+  color: #7b3e0f;
+}
+
+.book-review-queue span {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .bookshelf-workspace {
@@ -2355,6 +2468,14 @@ main {
   font-size: 13px;
   line-height: 1.55;
   resize: vertical;
+}
+
+.copy-status {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 850;
 }
 
 .ai-context-preview {
@@ -2490,6 +2611,41 @@ main {
   gap: 8px;
 }
 
+.english-coach-bars {
+  display: grid;
+  gap: 8px;
+}
+
+.english-coach-bars article {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.english-coach-bars article div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.english-coach-bars strong {
+  color: var(--ink);
+}
+
+.english-coach-bars i {
+  background: #e7eef2;
+}
+
+.english-coach-bars em {
+  background: var(--accent-2);
+}
+
 .english-coach-list article:first-child {
   border-color: rgba(196, 107, 35, 0.38);
   background: #fffaf4;
@@ -2526,6 +2682,28 @@ main {
   padding-left: 20px;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.english-field-ladder {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #17232d;
+  color: #ffffff;
+}
+
+.english-field-ladder strong {
+  color: #ffffff;
+}
+
+.english-field-ladder span {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .taxonomy-card ul,
@@ -4916,6 +5094,8 @@ main {
   .bookshelf-workspace,
   .library-book-grid,
   .ai-context-readout,
+  .book-health-panel,
+  .book-health-grid,
   .book-meta-grid,
   .bookshelf-capture-grid,
   .mastery-scoreboard,
@@ -4930,6 +5110,14 @@ main {
   .book-flow-map,
   .library-command-grid,
   .bookshelf-schema {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .book-health-panel p {
+    grid-column: 1 / -1;
+  }
+
+  .book-health-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
