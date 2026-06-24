@@ -332,38 +332,339 @@
     ["timestamp", "recorded date and time of an event", "a tool nickname", "a pressure unit", "an electrical connector"]
   ];
 
+  const distractorRewrites = new Map([
+    ["a decorative cover", "a normal status indication"],
+    ["a customer invoice", "a customer approval note"],
+    ["a normal recipe step", "a routine process step without a safety function"],
+    ["a random alarm", "an alarm with no confirmed trend"],
+    ["a spare tool cart", "a maintenance item not used as reference data"],
+    ["a customer badge", "a customer access record"],
+    ["hide an issue", "keep the issue at the same level without escalation"],
+    ["delete a log file", "close the log before the owner reviews it"],
+    ["skip a procedure", "continue before the required review is complete"],
+    ["a list of lunch orders", "a general task list without acceptance criteria"],
+    ["a wafer map", "a process result map rather than open action items"],
+    ["a gas bottle label", "a material label rather than a close-out list"],
+    ["a spare-part catalog", "a parts list that does not show installed condition"],
+    ["a training video", "a training reference without site condition data"],
+    ["a place to store gloves", "a waiting location that is not a formal stop point"],
+    ["a faster recipe mode", "a recipe shortcut that bypasses review"],
+    ["a power cable type", "an electrical part name rather than an approval point"],
+    ["a tool power failure", "a failure event rather than formal approval"],
+    ["a pressure drop", "a measured symptom rather than approval"],
+    ["a robot home error", "a tool alarm rather than sign-off"],
+    ["cleaning a wafer", "performing a task rather than transferring ownership"],
+    ["a guess from memory", "an unverified statement from memory"],
+    ["a rumor from another shift", "a shift comment without supporting data"],
+    ["a preferred conclusion", "a conclusion selected before evidence is reviewed"],
+    ["a completed approval", "a final approval record rather than an assumption"],
+    ["a passed leak check", "a verified result rather than an assumption"],
+    ["a final customer release", "a release decision rather than an assumption"],
+    ["the first email in a thread", "the first observed symptom rather than the cause"],
+    ["a protective cover", "a component related to protection, not the cause"],
+    ["a normal gas flow", "a normal condition rather than the underlying reason"],
+    ["the final approval", "a final decision rather than an observed condition"],
+    ["a tool serial number", "a static identifier rather than an observed symptom"],
+    ["a customer meal request", "an unrelated customer request"],
+    ["a permanent badge", "a site access item rather than a risk control"],
+    ["a shipment label", "a logistics record rather than a risk action"],
+    ["an unrelated meeting", "a meeting that does not reduce technical risk"],
+    ["a pump lubricant", "a maintenance material rather than a containment action"],
+    ["a test wafer carrier", "a carrier item rather than a temporary risk control"],
+    ["a daily commute route", "a logistics detail rather than containment"],
+    ["a pressure sensor", "a measured device rather than permission to deviate"],
+    ["a robot command", "a tool command rather than an approval exception"],
+    ["a cleanroom shoe cover", "PPE rather than a documented exception"],
+    ["a casual preference", "a preference without measurable acceptance limits"],
+    ["a meeting room", "a meeting location rather than a measurable limit"],
+    ["a spare screw", "a spare part rather than a required condition"],
+    ["missing from the checklist", "not yet verified against the required limit"],
+    ["physically damaged", "a physical condition rather than a range result"],
+    ["not connected to power", "an unrelated readiness failure"],
+    ["a customer badge", "an access record rather than a data trace"],
+    ["a gas cylinder rack", "a facility item rather than a recorded signal trend"],
+    ["an email signature", "a document footer rather than recorded data"],
+    ["a tool color", "a visual attribute rather than a data trend"],
+    ["a type of glove", "PPE rather than a parameter trend"],
+    ["a training certificate", "a qualification record rather than data movement"],
+    ["a completed installation", "a project status rather than value drift"],
+    ["a perfect baseline", "a reference condition rather than deviation over time"],
+    ["a shipping document", "a logistics record rather than parameter drift"],
+    ["a normal approval", "an approval event rather than a data spike"],
+    ["a cleanroom chair", "a site item rather than a signal change"],
+    ["a recipe owner", "a person rather than a sudden data change"],
+    ["an emergency stop", "a safety action rather than a numerical offset"],
+    ["a missing wafer", "a handling event rather than measured offset"],
+    ["a badge scan", "an access event rather than reference difference"],
+    ["opening a crate", "a move-in task rather than measurement verification"],
+    ["changing a shift", "a staffing change rather than calibration"],
+    ["sending a meeting invite", "communication rather than measurement verification"],
+    ["guessing the cause", "choosing a cause before checking the condition"],
+    ["hiding the issue", "not reporting the condition to the owner"],
+    ["changing the owner", "moving responsibility without verifying the condition"],
+    ["turning off the monitor", "stopping display rather than proving performance"],
+    ["moving a chair", "moving site furniture rather than validating a process"],
+    ["printing a label", "documentation only, not process validation"],
+    ["daily lunch break", "a schedule pause rather than formal testing"],
+    ["tool decoration", "appearance change rather than formal testing"],
+    ["uncontrolled operation", "running without the required acceptance basis"],
+    ["dropping a wafer", "a handling incident rather than release approval"],
+    ["unplugging a cable", "disconnecting hardware rather than allowing release"],
+    ["losing data", "data loss rather than controlled release"],
+    ["approve final results", "finish the step rather than stopping it"],
+    ["increase flow secretly", "change a parameter without approval"],
+    ["skip documentation", "continue without documenting the stop condition"],
+    ["a normal production recipe", "a standard operation rather than an override"],
+    ["a cleanroom wall", "a facility structure rather than a protective override"],
+    ["a wafer cassette", "a carrier rather than a bypass action"],
+    ["logging into email", "using an account rather than isolating energy"],
+    ["starting a recipe", "beginning operation rather than isolating energy"],
+    ["printing a report", "documentation rather than energy isolation"],
+    ["remove all power", "de-energize rather than energize"],
+    ["write an email", "communicate status rather than applying power"],
+    ["replace a badge", "access administration rather than applying power"],
+    ["increase tool speed", "change motion rather than remove power"],
+    ["approve a punch list", "administrative approval rather than de-energizing"],
+    ["start a wafer transfer", "start motion rather than remove energy"],
+    ["tighten a bolt", "mechanical work rather than inert-gas purge"],
+    ["edit a resume", "unrelated writing rather than purge"],
+    ["move a toolbox", "work-area movement rather than purge"],
+    ["start a pumpdown", "reduce pressure rather than venting toward atmosphere"],
+    ["lower the temperature", "thermal adjustment rather than venting"],
+    ["send a customer invoice", "commercial document rather than venting"],
+    ["increase pressure with CDA", "pressurize with air rather than evacuate gas"],
+    ["load a FOUP", "load material rather than pump down"],
+    ["approve a recipe", "approval action rather than pressure reduction"],
+    ["count badges", "access counting rather than leak testing"],
+    ["measure floor color", "visual check rather than leak testing"],
+    ["send a meeting note", "communication rather than leak verification"],
+    ["a random actual value", "a measured value that may differ from the command"],
+    ["a customer title", "a role label rather than a commanded value"],
+    ["a spare cable", "hardware item rather than a control target"],
+    ["a cafeteria review", "nontechnical feedback rather than sensor feedback"],
+    ["a shipping box", "packaging rather than controller response"],
+    ["a badge holder", "access item rather than measured response"],
+    ["main facility cabinet only", "a facility cabinet name rather than gas-flow control"],
+    ["manual floor checker", "manual inspection rather than mass-flow control"],
+    ["monthly finance code", "administrative code rather than mass-flow control"],
+    ["personal cleanroom wallet", "personal item rather than process cooling water"],
+    ["primary customer wafer", "wafer reference rather than cooling water"],
+    ["pump control warning only", "an alarm phrase rather than process cooling water"],
+    ["chamber data archive only", "data storage rather than clean dry air"],
+    ["customer delivery approval", "approval phrase rather than clean dry air"],
+    ["critical design alarm", "alarm phrase rather than clean dry air"],
+    ["a software license", "permission item rather than nitrogen"],
+    ["a floor level", "site location rather than nitrogen service"],
+    ["tool leveling screw", "mechanical adjustment rather than exhaust treatment"],
+    ["wafer carrier", "material carrier rather than exhaust treatment"],
+    ["operator chair", "site furniture rather than exhaust treatment"],
+    ["writing a resume", "personal writing rather than utility connection"],
+    ["changing a password", "account work rather than facility connection"],
+    ["ordering lunch", "personal order rather than utility connection"],
+    ["random preferences", "preferences without measurable criteria"],
+    ["a personal checklist only", "private notes rather than acceptance criteria"],
+    ["unmeasured guesses", "claims without measurable acceptance basis"],
+    ["a tool alarm sound", "an alarm indication rather than responsible person"],
+    ["a spare O-ring", "part inventory rather than responsible person"],
+    ["a gas pressure unit", "measurement unit rather than responsible person"],
+    ["a finished movie", "unrelated completed item rather than action item"],
+    ["a color code", "visual label rather than task with owner"],
+    ["a cleanroom window", "facility feature rather than assigned task"],
+    ["a tool nickname", "informal name rather than date and time record"],
+    ["a pressure unit", "measurement unit rather than event time"],
+    ["an electrical connector", "hardware item rather than timestamp"]
+  ]);
+
   const vocabulary = vocabTerms.map(([term, correct, ...distractors]) => ({
     stem: `In a field-service or CBT sentence, what does "${term}" most likely mean?`,
     correct,
-    distractors,
+    distractors: distractors.map(option => distractorRewrites.get(option) || option),
     explain: `"${term}"는 CE 업무 영어에서 자주 나오는 현장/보고 표현입니다. 뜻만 외우지 말고 customer update 문장 안에서 바로 쓰는 연습이 필요합니다.`
   }));
 
-  const reading = scenarios.map(s => ({
-    title: `${s.area} Update`,
-    passage: `Team, the current status is that we will ${s.action}. The ${s.component} ${s.issue}. The confirmed risk is ${s.risk}. Before we continue, the ${s.owner} must help us verify ${s.check}. The next update will include the verification result, the owner, and the ETA for the next step.`,
-    question: "Why is the next step not allowed yet?",
-    correct: `Because the ${s.component} ${s.issue} and ${s.check} must be verified.`,
-    distractors: [
-      "Because the customer has already released the tool to production.",
-      "Because the team wants to skip the checklist.",
-      "Because all acceptance criteria have already been closed."
-    ],
-    explain: "독해에서는 세부 단어보다 hold 이유와 next action을 먼저 잡아야 합니다. CE 현장 영어는 원인, 위험, 다음 조치가 핵심입니다."
-  }));
+  const readingFrames = [
+    s => ({
+      question: "What is the main reason the next step is not allowed yet?",
+      correct: `The ${s.component} ${s.issue}, so ${s.check} must be verified.`,
+      distractors: [
+        `The ${s.owner} already approved final release.`,
+        `The team completed ${s.next} and closed every item.`,
+        "The note says the issue is only a training schedule change."
+      ],
+      explain: "독해에서는 세부 단어보다 hold 이유와 verification 조건을 먼저 잡아야 합니다."
+    }),
+    s => ({
+      question: "Which action should the team take next?",
+      correct: s.next,
+      distractors: [
+        "release the tool without documenting the condition",
+        "skip the owner confirmation because the schedule is tight",
+        "change the conclusion before checking the evidence"
+      ],
+      explain: "next action 질문은 지문 마지막의 owner, ETA, verification 표현을 확인해야 합니다."
+    }),
+    s => ({
+      question: "Who is the best owner to confirm the open condition?",
+      correct: s.owner,
+      distractors: [
+        "the shift member who only received the handover note",
+        "the owner of a different closed action item",
+        "the person who can update the schedule but cannot verify the condition"
+      ],
+      explain: "CBT 독해에서는 책임 owner를 정확히 잡는 문제가 나올 수 있습니다."
+    }),
+    s => ({
+      question: "Which statement is an assumption, not a confirmed fact?",
+      correct: `The root cause is already proven before checking ${s.check}.`,
+      distractors: [
+        `The ${s.component} ${s.issue}.`,
+        `There is a risk of ${s.risk}.`,
+        `The next update should include the owner and ETA.`
+      ],
+      explain: "현장 영어 독해에서는 confirmed fact와 assumption을 구분하는 힘이 중요합니다."
+    }),
+    s => ({
+      question: "What should be included in the next customer update?",
+      correct: "verification result, owner, and ETA",
+      distractors: [
+        "only the suspected cause without evidence or owner",
+        "internal-only details that do not help the customer decide the next step",
+        "a release statement before the open condition is verified"
+      ],
+      explain: "고객 업데이트는 사실, 담당자, 다음 시간 약속을 포함해야 합니다."
+    }),
+    s => ({
+      question: "Which detail is explicitly confirmed in the update?",
+      correct: `The confirmed risk is ${s.risk}.`,
+      distractors: [
+        `The root cause was proven by the ${s.owner}.`,
+        `The tool was released after ${s.next}.`,
+        `The ${s.component} passed without any open item.`
+      ],
+      explain: "explicitly confirmed는 지문에 직접 나온 사실만 고르는 문제입니다. 추론과 사실을 섞지 않아야 합니다."
+    }),
+    s => ({
+      question: "Which evidence is still required before continuing?",
+      correct: s.check,
+      distractors: [
+        "a revised schedule without technical confirmation",
+        "a verbal release note without measurement data",
+        "a general statement that the team is almost finished"
+      ],
+      explain: "현장 독해에서는 계속 진행하기 전에 필요한 evidence를 정확히 잡는 문제가 자주 실전형입니다."
+    }),
+    s => ({
+      question: "Which reply would sound most professional to the customer?",
+      correct: `We are holding the step until ${s.check} is verified, and we will share the owner and ETA in the next update.`,
+      distractors: [
+        "It is probably fine, so we will continue and explain later if needed.",
+        "The issue is not important because the schedule is more urgent.",
+        "We cannot provide any update until everything is completely finished."
+      ],
+      explain: "전문적인 답변은 status, hold reason, owner/ETA를 담고 추측이나 책임 전가를 피합니다."
+    })
+  ];
 
-  const listening = scenarios.map(s => ({
-    title: `${s.area} Voice Note`,
-    audioText: `Please hold the next step. The ${s.component} ${s.issue}. We need to check ${s.check} with the ${s.owner}. Do not continue until the risk of ${s.risk} is controlled.`,
-    question: "What is the speaker asking the team to do?",
-    correct: `Hold the next step and verify ${s.check}.`,
-    distractors: [
-      "Release the tool immediately.",
-      "Ignore the issue and continue the recipe.",
-      "Delete the handover note."
-    ],
-    explain: "듣기에서는 첫 문장 hold/continue/release 같은 동사를 잡으면 정답률이 크게 올라갑니다."
-  }));
+  const reading = scenarios.flatMap(s => {
+    const passage = `Team, the current status is that we will ${s.action}. The ${s.component} ${s.issue}. The confirmed risk is ${s.risk}. Before we continue, the ${s.owner} must help us verify ${s.check}. The next update will include the verification result, the owner, and the ETA for the next step.`;
+    return readingFrames.map(frame => ({
+      title: `${s.area} Update`,
+      passage,
+      ...frame(s)
+    }));
+  });
+
+  const listeningFrames = [
+    s => ({
+      question: "What is the speaker asking the team to do first?",
+      correct: `Hold the next step and verify ${s.check}.`,
+      distractors: [
+        `Continue the sequence and check ${s.check} afterward.`,
+        `Ask for a schedule update without verifying ${s.check}.`,
+        "Report final release because the issue is already controlled."
+      ],
+      explain: "듣기에서는 첫 문장 hold/continue/release 같은 동사를 잡으면 정답률이 크게 올라갑니다."
+    }),
+    s => ({
+      question: "What should the listener NOT do?",
+      correct: `Continue before the risk of ${s.risk} is controlled.`,
+      distractors: [
+        `Check ${s.check}.`,
+        `Contact the ${s.owner}.`,
+        "Wait for the hold condition to be cleared."
+      ],
+      explain: "금지 행동 문제는 do not, hold, until 같은 신호어가 핵심입니다."
+    }),
+    s => ({
+      question: "Which owner is mentioned in the voice note?",
+      correct: s.owner,
+      distractors: [
+        "customer schedule owner",
+        "shipping coordinator",
+        "document control reviewer"
+      ],
+      explain: "듣기에서 owner를 놓치면 다음 행동을 잘못 이해할 수 있습니다."
+    }),
+    s => ({
+      question: "What risk is the speaker trying to control?",
+      correct: s.risk,
+      distractors: [
+        "a schedule slip without technical impact",
+        "a documentation mismatch that has already been closed",
+        "a completed acceptance condition with no open risk"
+      ],
+      explain: "risk를 잡아야 왜 hold하는지 이해할 수 있습니다."
+    }),
+    s => ({
+      question: "Which sentence best summarizes the voice note?",
+      correct: `The team should hold, verify ${s.check}, and control the risk before continuing.`,
+      distractors: [
+        "The team should continue because every condition is already verified.",
+        "The team should focus only on the schedule because the technical condition is not relevant.",
+        "The speaker asks the team to update the conclusion before checking the open condition."
+      ],
+      explain: "요약 문제는 status, reason, next action을 한 문장으로 묶어야 합니다."
+    }),
+    s => ({
+      question: "What condition must be true before the team continues?",
+      correct: `The risk of ${s.risk} must be controlled.`,
+      distractors: [
+        `The ${s.owner} must change the schedule only.`,
+        `The team must remove ${s.component} from the report.`,
+        `The next step must begin before ${s.check} is reviewed.`
+      ],
+      explain: "until 뒤의 조건을 잡으면 진행 가능 조건을 정확히 이해할 수 있습니다."
+    }),
+    s => ({
+      question: "Which phrase from the voice note signals a stop condition?",
+      correct: "Please hold the next step.",
+      distractors: [
+        "We need to check",
+        "with the owner",
+        "the component issue"
+      ],
+      explain: "hold, do not continue, until 같은 표현은 듣기에서 stop condition을 알려주는 핵심 신호입니다."
+    }),
+    s => ({
+      question: "How should the listener respond after hearing the note?",
+      correct: `Confirm the hold, contact the ${s.owner}, and verify ${s.check}.`,
+      distractors: [
+        `Start the next step and ask the ${s.owner} to check later.`,
+        "Send a final release message because the speaker did not mention any risk.",
+        `Ignore ${s.check} and update only the schedule.`
+      ],
+      explain: "듣기 실전에서는 들은 내용을 action으로 바꾸는 문제가 나올 수 있습니다."
+    })
+  ];
+
+  const listening = scenarios.flatMap(s => {
+    const audioText = `Please hold the next step. The ${s.component} ${s.issue}. We need to check ${s.check} with the ${s.owner}. Do not continue until the risk of ${s.risk} is controlled.`;
+    return listeningFrames.map(frame => ({
+      title: `${s.area} Voice Note`,
+      audioText,
+      ...frame(s)
+    }));
+  });
 
   const speakingActions = [
     {

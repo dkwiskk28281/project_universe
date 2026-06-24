@@ -3375,12 +3375,14 @@ main {
 }
 
 .english-insight-band,
-.english-similarity-band {
+.english-similarity-band,
+.english-quality-band {
   display: grid;
   gap: 14px;
 }
 
 .english-similarity-grid,
+.english-quality-grid,
 .english-weakness-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3388,6 +3390,7 @@ main {
 }
 
 .english-similarity-grid article,
+.english-quality-grid article,
 .english-weakness-grid article {
   display: grid;
   gap: 6px;
@@ -3398,11 +3401,13 @@ main {
 }
 
 .english-similarity-grid strong,
+.english-quality-grid strong,
 .english-weakness-grid strong {
   color: var(--ink);
 }
 
 .english-similarity-grid span,
+.english-quality-grid span,
 .english-weakness-grid span,
 .english-weakness-grid small {
   color: var(--muted);
@@ -5090,6 +5095,7 @@ main {
   .english-speaking-grid,
   .english-transfer-grid,
   .english-similarity-grid,
+  .english-quality-grid,
   .english-weakness-grid,
   .bookshelf-workspace,
   .library-book-grid,

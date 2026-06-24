@@ -244,8 +244,34 @@ function shuffleEnglishTest(items) {
   return [...items].sort(() => Math.random() - 0.5);
 }
 
+function shuffleEnglishOptions(options, answer) {
+  const correct = options[answer];
+  const distractors = options.filter((_, index) => index !== answer);
+  return { correct, distractors };
+}
+
 function takeEnglishTest(items, count) {
   return shuffleEnglishTest(items).slice(0, count);
+}
+
+function getEnglishQuestionKey(item) {
+  return String(item.question || item.stem || item.prompt || item.title || "").trim();
+}
+
+function takeDiverseEnglishTest(items, count) {
+  const shuffled = shuffleEnglishTest(items);
+  const selected = [];
+  const usedKeys = new Set();
+  shuffled.forEach(item => {
+    const key = getEnglishQuestionKey(item);
+    if (selected.length >= count || usedKeys.has(key)) return;
+    usedKeys.add(key);
+    selected.push(item);
+  });
+  shuffled.forEach(item => {
+    if (selected.length < count && !selected.includes(item)) selected.push(item);
+  });
+  return selected.slice(0, count);
 }
 
 function englishBank(base, key) {
@@ -264,23 +290,68 @@ function getEnglishPoolCounts() {
 }
 
 function normalizeEnglishQuestion(item) {
-  if (Array.isArray(item.options) && Number.isInteger(item.answer)) return { ...item };
+  if (Array.isArray(item.options) && Number.isInteger(item.answer)) {
+    const { correct, distractors } = shuffleEnglishOptions(item.options, item.answer);
+    return { ...item, correct, distractors };
+  }
   const correct = String(item.correct || "");
   const distractors = Array.isArray(item.distractors) ? takeEnglishTest(item.distractors, 3) : [];
-  const options = shuffleEnglishTest([correct, ...distractors]).filter(Boolean).slice(0, 4);
+  return { ...item, correct, distractors };
+}
+
+function placeEnglishAnswer(item, targetIndex) {
+  const normalized = normalizeEnglishQuestion(item);
+  const correct = String(normalized.correct || "");
+  const distractors = shuffleEnglishTest(normalized.distractors || [])
+    .filter(option => option && option !== correct)
+    .slice(0, 3);
+  while (distractors.length < 3) distractors.push(`Not enough information ${distractors.length + 1}`);
+  const options = [];
+  const remaining = [...distractors];
+  for (let i = 0; i < 4; i += 1) {
+    options[i] = i === targetIndex ? correct : remaining.shift();
+  }
   return {
-    ...item,
+    ...normalized,
     options,
-    answer: Math.max(0, options.indexOf(correct))
+    answer: targetIndex
   };
 }
 
 function makeEnglishItems(items, count, prefix, type) {
-  return takeEnglishTest(items, count).map((item, index) => ({
-    ...normalizeEnglishQuestion(item),
+  if (type === "Speaking") {
+    return takeDiverseEnglishTest(items, count).map((item, index) => ({
+      ...item,
+      type,
+      id: `${prefix}-${index}-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    }));
+  }
+  const answerPattern = shuffleEnglishTest([...Array(count)].map((_, index) => index % 4));
+  return takeDiverseEnglishTest(items, count).map((item, index) => ({
+    ...placeEnglishAnswer(item, answerPattern[index]),
     type,
     id: `${prefix}-${index}-${Date.now()}-${Math.random().toString(16).slice(2)}`
   }));
+}
+
+function interleaveEnglishItems(groups) {
+  const pools = groups.map(group => shuffleEnglishTest(group)).filter(group => group.length);
+  const result = [];
+  while (pools.some(group => group.length)) {
+    const last = result[result.length - 1]?.type;
+    const beforeLast = result[result.length - 2]?.type;
+    const candidates = pools
+      .map((group, index) => ({ group, index, type: group[0]?.type, length: group.length }))
+      .filter(item => item.length && !(item.type === last && item.type === beforeLast));
+    const usable = candidates.length ? candidates : pools
+      .map((group, index) => ({ group, index, type: group[0]?.type, length: group.length }))
+      .filter(item => item.length);
+    const maxLength = Math.max(...usable.map(item => item.length));
+    const heavy = usable.filter(item => item.length >= Math.max(1, maxLength - 1));
+    const picked = shuffleEnglishTest(heavy)[0];
+    result.push(pools[picked.index].shift());
+  }
+  return result;
 }
 
 function makeEnglishTestSet() {
@@ -289,7 +360,7 @@ function makeEnglishTestSet() {
   const reading = makeEnglishItems(englishBank(amkReadingBank, "reading"), ENGLISH_SET_COUNTS.reading, "reading", "Reading");
   const listening = makeEnglishItems(englishBank(amkListeningBank, "listening"), ENGLISH_SET_COUNTS.listening, "listening", "Listening");
   const speaking = makeEnglishItems(englishBank(amkSpeakingBank, "speaking"), ENGLISH_SET_COUNTS.speaking, "speaking", "Speaking");
-  return [...grammar, ...vocab, ...reading, ...listening, ...speaking];
+  return [...interleaveEnglishItems([grammar, vocab, reading, listening]), ...speaking];
 }
 
 function getEnglishScore() {
@@ -682,6 +753,52 @@ function renderEnglishSimilarityPanel() {
   `;
 }
 
+function getEnglishSetQuality(objectiveItems) {
+  const answerCounts = [0, 1, 2, 3].map(index => objectiveItems.filter(item => item.answer === index).length);
+  let longestRun = 0;
+  let currentRun = 0;
+  let lastType = "";
+  objectiveItems.forEach(item => {
+    currentRun = item.type === lastType ? currentRun + 1 : 1;
+    lastType = item.type;
+    longestRun = Math.max(longestRun, currentRun);
+  });
+  const uniqueStems = new Set(objectiveItems.map(item => `${item.type}:${item.question || item.stem}`)).size;
+  return {
+    answerCounts,
+    longestRun,
+    uniqueStems,
+    total: objectiveItems.length
+  };
+}
+
+function renderEnglishQualityPanel(objectiveItems) {
+  const quality = getEnglishSetQuality(objectiveItems);
+  return `
+    <section class="english-section-band english-quality-band">
+      <div>
+        <p class="eyebrow">Quality Guard</p>
+        <h2>패턴 암기 방지 장치</h2>
+        <p>정답 위치를 균형 배치하고, 문법·어휘·독해·듣기가 길게 몰리지 않도록 섞었습니다. 실제 기출은 비공개라 복원할 수 없고, 공개된 형식과 후기의 난이도 감각을 기준으로 훈련 세트를 만듭니다.</p>
+      </div>
+      <div class="english-quality-grid">
+        <article>
+          <strong>${quality.answerCounts.join(" / ")}</strong>
+          <span>A/B/C/D 정답 분포</span>
+        </article>
+        <article>
+          <strong>${quality.longestRun}</strong>
+          <span>최장 동일 유형 연속</span>
+        </article>
+        <article>
+          <strong>${quality.uniqueStems}/${quality.total}</strong>
+          <span>이번 세트 고유 문항</span>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderEnglishTestProfile() {
   const target = document.querySelector("#english-test-profile");
   if (!target) return;
@@ -822,6 +939,7 @@ function renderEnglishTestMain() {
       </div>
     </section>
     ${renderEnglishSimilarityPanel()}
+    ${renderEnglishQualityPanel(objectiveItems)}
     ${renderEnglishWeaknessPanel(objectiveItems)}
     <section class="english-section-band">
       <h2>객관식 CBT</h2>

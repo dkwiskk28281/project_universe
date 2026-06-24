@@ -65,6 +65,19 @@ window.__englishAudit = (() => {
 })();`, context);
 
 const audit = context.window.__englishAudit;
+const answerCounts = [0, 1, 2, 3].map(index => audit.objective.filter(item => item.answer === index).length);
+const maxAnswerCount = Math.max(...answerCounts);
+const minAnswerCount = Math.min(...answerCounts);
+let longestTypeRun = 0;
+let currentTypeRun = 0;
+let lastType = "";
+audit.objective.forEach(item => {
+  currentTypeRun = item.type === lastType ? currentTypeRun + 1 : 1;
+  lastType = item.type;
+  longestTypeRun = Math.max(longestTypeRun, currentTypeRun);
+});
+const uniqueObjectiveStems = new Set(audit.objective.map(item => `${item.type}:${item.question || item.stem}`)).size;
+
 assert(audit.totalSet === 58, `Expected 58 questions per set, got ${audit.totalSet}`);
 assert(audit.counts.Grammar === 18, "Expected 18 grammar questions");
 assert(audit.counts.Vocabulary === 16, "Expected 16 vocabulary questions");
@@ -74,6 +87,9 @@ assert(audit.counts.Speaking === 8, "Expected 8 speaking prompts");
 assert(audit.poolTotal >= 450, `Expected at least 450 pool items, got ${audit.poolTotal}`);
 assert(audit.objective.every(item => Array.isArray(item.options) && item.options.length === 4), "Every objective item must have four options");
 assert(audit.objective.every(item => Number.isInteger(item.answer) && item.answer >= 0 && item.answer < item.options.length), "Every objective item must have a valid answer index");
+assert(maxAnswerCount - minAnswerCount <= 1, `Answer positions too uneven: ${answerCounts.join("/")}`);
+assert(longestTypeRun <= 2, `Too many same-type questions in a row: ${longestTypeRun}`);
+assert(uniqueObjectiveStems === audit.objective.length, "Duplicate objective stems found in one objective set");
 assert(audit.speaking.every(item => item.prompt && item.pattern && item.sample), "Every speaking item must include prompt, pattern, and sample");
 
 console.log(JSON.stringify({
@@ -81,5 +97,8 @@ console.log(JSON.stringify({
   totalSet: audit.totalSet,
   counts: audit.counts,
   pool: audit.pool,
-  poolTotal: audit.poolTotal
+  poolTotal: audit.poolTotal,
+  answerCounts,
+  longestTypeRun,
+  uniqueObjectiveStems
 }, null, 2));
