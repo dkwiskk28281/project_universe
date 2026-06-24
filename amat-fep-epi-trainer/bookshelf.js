@@ -7,6 +7,134 @@
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
+  const BOOK_VIEW_LABELS = {
+    dashboard: "EPI Home",
+    roadmap: "Roadmap",
+    systems: "Tool/Process",
+    equipment: "Tool Families",
+    cluster: "Cluster Builder",
+    install: "Install",
+    facility: "Facility",
+    electrical: "Electrical/DVM",
+    gases: "Gas Safety",
+    safety: "Line Rules",
+    mastery: "Mastery",
+    readiness: "Readiness",
+    runbook: "Runbook",
+    thinktank: "Experience Vault",
+    deep: "Deep Dive",
+    fab101: "Fab 101",
+    papers: "Paper Notes",
+    "english-test": "English CBT",
+    english: "English Terms",
+    glossary: "Glossary",
+    diagnostics: "Diagnostics",
+    quiz: "Quiz"
+  };
+
+  const FEP_EPI_BOOK_MODULES = [
+    {
+      group: "Start Here",
+      items: [
+        ["dashboard", "Orientation", "역할, 오늘의 루틴, 전체 학습 흐름"],
+        ["roadmap", "4-Week Roadmap", "입사 전 순서형 학습 계획"],
+        ["fab101", "Fab 101", "팹 현장 용어와 장비 구조 기초"],
+        ["glossary", "Glossary", "FEP/EPI/CE 용어 사전"]
+      ]
+    },
+    {
+      group: "Equipment Mastery",
+      items: [
+        ["systems", "Tool & Process", "RTP/EPI 공정과 서브시스템"],
+        ["equipment", "Applied Tool Families", "Centura/Vantage/EPI/RTP 공개 장비군"],
+        ["cluster", "Cluster Builder", "LL/TM/PM/CM 연결 구조 시뮬레이션"],
+        ["deep", "Deep Dive", "공개 논문/웹 기반 심화 학습"]
+      ]
+    },
+    {
+      group: "Install & Field Execution",
+      items: [
+        ["install", "Install Flow", "move-in, hook-up, power-on, qualification"],
+        ["facility", "Facility Hook-up", "전기, CDA, PCW, exhaust, abatement 연결"],
+        ["gases", "Gas Safety", "EPI/FEP 가스 위험성, purge, qualification"],
+        ["safety", "Line Rules", "평택/삼성 라인 투입 전 준수 사고방식"]
+      ]
+    },
+    {
+      group: "Troubleshooting & Growth",
+      items: [
+        ["electrical", "Electrical/DVM", "릴레이, DVM, interlock, 전기 기초"],
+        ["diagnostics", "Diagnostic Simulator", "현장 트러블슈팅 판단 훈련"],
+        ["mastery", "Mastery OS", "시니어 CE급 사고 루프"],
+        ["readiness", "Readiness Gate", "현장 투입 가능성 자가 평가"],
+        ["runbook", "Senior Runbook", "현장 보고, RACI, punch list, 인수인계"],
+        ["thinktank", "EPI Vault", "인스톨/트러블 경험 축적"]
+      ]
+    },
+    {
+      group: "Interview & Language",
+      items: [
+        ["english-test", "English CBT", "Applied 공개 형식 기반 영어 CBT 훈련"],
+        ["english", "English Terms", "생소한 영어 단어와 현장 표현"],
+        ["papers", "Paper Notes", "논문/공개자료 학습 노트"],
+        ["quiz", "Quiz", "면접/현장 질문 회상 훈련"]
+      ]
+    }
+  ];
+
+  const BOOK_BLUEPRINTS = {
+    "family-health": [
+      ["Symptom Timeline", "증상, 날짜, 지속시간, 악화/완화 요인을 기록하는 내부 페이지"],
+      ["Checkup History", "건강검진 결과 업로드 요약, 이상 수치 변화, 추적검사 일정"],
+      ["Hospital Shortlist", "유명 병원, 전문센터, 진료과, 예약 메모를 비교하는 목록"],
+      ["Doctor Questions", "진료 전 질문, 검사 전 확인사항, 보호자 전달 메모"],
+      ["Medication & Lifestyle", "복약 여부, 수면, 식사, 운동, 생활 변화 추적"],
+      ["Care Briefing", "AI나 가족에게 보여줄 수 있는 비식별 요약 패킷"]
+    ],
+    "assets-finance": [
+      ["Asset Snapshot", "자산군별 비중과 현금흐름을 원문 없이 요약"],
+      ["Risk Register", "집중도, 변동성, 만기, 고정비 리스크 추적"],
+      ["Decision Ledger", "투자/지출 의사결정의 근거와 사후 평가"],
+      ["Tax & Admin Questions", "세무사/은행/보험사에 물어볼 질문 목록"]
+    ],
+    "business-foundry": [
+      ["Idea Seeds", "아이디어 원석을 문제, 고객, 가설로 분리"],
+      ["MVP Experiments", "가장 작은 검증 실험과 성공/실패 기준"],
+      ["Market Notes", "시장, 경쟁사, 고객 인터뷰 기록"],
+      ["Pitch Drafts", "설명, 가치제안, 수익모델 초안"]
+    ],
+    "learning-library": [
+      ["Wrong Answers", "영어/전기/반도체 오답과 약점 패턴"],
+      ["Concept Cards", "개념을 내 말로 다시 설명하는 카드"],
+      ["Paper Summaries", "논문 핵심, 장비 연결점, 현장 적용 질문"],
+      ["Spaced Review", "복습 주기와 회상 훈련 큐"]
+    ],
+    "life-os": [
+      ["Decision Ledger", "중요 선택의 이유, 감정, 결과 기록"],
+      ["Weekly Review", "이번 주 에너지, 우선순위, 다음 행동"],
+      ["Goal Map", "3개월/1년 목표와 중간 지표"],
+      ["Habit Audit", "반복 습관, 방해 요인, 개선 실험"]
+    ],
+    "people-network": [
+      ["Follow-ups", "약속, 안부, 다시 연락할 날짜"],
+      ["Family Schedule", "가족 일정과 챙길 일"],
+      ["Support Plans", "도움이 필요한 사람과 구체적 행동"],
+      ["Boundary Notes", "관계에서 지켜야 할 선과 배려"]
+    ],
+    "admin-vault": [
+      ["Document Index", "원문이 아니라 위치, 만료일, 담당기관만 기록"],
+      ["Renewal Checklist", "갱신/납부/예약 일정"],
+      ["Home Maintenance", "집, 차량, 구독, 생활 관리 기록"],
+      ["Question List", "기관에 문의할 질문과 답변 요약"]
+    ],
+    "ai-briefing-desk": [
+      ["Export Policy", "AI에게 보여줄 수 있는 범위와 금지 범위"],
+      ["Monthly Synthesis", "책장 전체 요약과 다음 달 제안"],
+      ["Cross-book Insight", "건강/일/자산/사업 사이의 충돌과 우선순위"],
+      ["Prompt Drafts", "AI 분석에 넣을 안전한 프롬프트"]
+    ]
+  };
+
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isGithubPagesHost = location.hostname.endsWith("github.io");
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
@@ -33,7 +161,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["dashboard", "cluster", "install", "electrical", "english-test", "thinktank"]
+      linkedViews: ["dashboard", "roadmap", "systems", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "life-os",
@@ -313,6 +441,64 @@
     return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   }
 
+  function renderFepEpiBookInterior() {
+    return `
+      <section class="book-interior" aria-label="FEP/EPI Mastery book modules">
+        <div class="book-interior-head">
+          <div>
+            <p class="eyebrow">Inside This Book</p>
+            <h3>FEP/EPI Mastery 목차</h3>
+            <p>기존 오른쪽 상단에 흩어져 있던 모든 EPI 학습 탭을 이 책 내부 목차로 옮겼습니다. 책장에서 이 책을 펼치고, 필요한 장을 골라 들어가는 구조입니다.</p>
+          </div>
+          <span class="sync-pill">${FEP_EPI_BOOK_MODULES.reduce((sum, group) => sum + group.items.length, 0)} modules</span>
+        </div>
+        ${FEP_EPI_BOOK_MODULES.map(group => `
+          <div class="book-module-group">
+            <strong>${escapeHtml(group.group)}</strong>
+            <div class="book-module-grid">
+              ${group.items.map(([view, title, desc]) => `
+                <button class="book-module-card" type="button" data-open-book-view="${escapeHtml(view)}">
+                  <span>${escapeHtml(BOOK_VIEW_LABELS[view] || view)}</span>
+                  <strong>${escapeHtml(title)}</strong>
+                  <small>${escapeHtml(desc)}</small>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        `).join("")}
+      </section>
+    `;
+  }
+
+  function renderBookBlueprint(book) {
+    const blueprint = BOOK_BLUEPRINTS[book.id] || book.pageTypes.map(type => [type, `${type} 페이지를 이 책 안에서 계속 확장할 수 있습니다.`]);
+    return `
+      <section class="book-interior" aria-label="Book expansion blueprint">
+        <div class="book-interior-head">
+          <div>
+            <p class="eyebrow">Book Blueprint</p>
+            <h3>이 책 안에 앞으로 생길 공간</h3>
+            <p>각 책은 독립 앱처럼 커질 수 있습니다. 지금은 저장 구조와 내부 페이지 설계부터 세워두고, 실제 기능은 책별로 하나씩 확장합니다.</p>
+          </div>
+          <span class="sync-pill">${blueprint.length} rooms</span>
+        </div>
+        <div class="book-blueprint-grid">
+          ${blueprint.map(([title, desc]) => `
+            <article class="book-blueprint-card">
+              <span>Planned</span>
+              <strong>${escapeHtml(title)}</strong>
+              <small>${escapeHtml(desc)}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderBookInterior(book) {
+    return book.id === "career-fep-epi" ? renderFepEpiBookInterior() : renderBookBlueprint(book);
+  }
+
   function viewLabel(view) {
     const labels = {
       dashboard: "EPI 홈",
@@ -470,6 +656,7 @@
           </div>
           <p>${escapeHtml(stats.suggestion)}</p>
         </section>
+        ${renderBookInterior(book)}
         <p class="book-purpose">${escapeHtml(book.purpose)}</p>
         <div class="book-meta-grid">
           <section>

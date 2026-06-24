@@ -4,7 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FEP/EPI CE 입사 전 학습 트레이너</title>
-  <link rel="stylesheet" href="styles.css?v=20260624-english2" />
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem("projectUniverseTheme") || "light";
+  </script>
+  <link rel="stylesheet" href="styles.css?v=20260624-bookshelf1" />
 </head>
 <body class="auth-locked">
   <div id="password-gate" class="password-gate" role="dialog" aria-modal="true" aria-labelledby="password-title">
@@ -30,8 +33,11 @@
         <span>Bookshelf · AI-ready Memory · FEP/EPI Mastery</span>
       </div>
     </div>
-    <nav class="top-nav" aria-label="주요 메뉴">
-      <button class="nav-btn active" data-view="bookshelf">책장</button>
+    <nav class="top-nav global-nav" aria-label="Global navigation">
+      <button class="nav-btn active" data-view="bookshelf">Bookshelf</button>
+      <button class="nav-btn global-only" id="open-active-book" type="button">Current Book</button>
+      <button class="nav-btn global-only" id="open-command-search" type="button">Search</button>
+      <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="false">Dark</button>
       <button class="nav-btn" data-view="dashboard">EPI 홈</button>
       <button class="nav-btn" data-view="roadmap">로드맵</button>
       <button class="nav-btn" data-view="systems">장비/공정</button>
@@ -538,14 +544,14 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260624-ux3"></script>
+  <script src="app.js?v=20260624-bookshelf1"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260620-flow5"></script>
   <script src="english-test-expansion.js?v=20260624-english2"></script>
   <script src="english-test.js?v=20260624-english2"></script>
   <script src="term-helper.js?v=20260621-elec1"></script>
-  <script src="bookshelf.js?v=20260624-ux3"></script>
-  <script src="think-tank.js?v=20260623-library1"></script>
+  <script src="bookshelf.js?v=20260624-bookshelf1"></script>
+  <script src="think-tank.js?v=20260624-bookshelf1"></script>
 </body>
 </html>

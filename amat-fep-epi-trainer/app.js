@@ -1723,6 +1723,34 @@ let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
 const uxPaletteState = { query: "", results: [] };
 
+const VIEW_LABELS = {
+  bookshelf: "Bookshelf",
+  dashboard: "EPI Home",
+  roadmap: "Roadmap",
+  systems: "Tool/Process",
+  equipment: "Tool Families",
+  cluster: "Cluster Builder",
+  install: "Install",
+  facility: "Facility",
+  electrical: "Electrical/DVM",
+  gases: "Gas Safety",
+  safety: "Line Rules",
+  mastery: "Mastery",
+  readiness: "Readiness",
+  runbook: "Runbook",
+  thinktank: "Think Tank",
+  deep: "Deep Dive",
+  fab101: "Fab 101",
+  papers: "Paper Notes",
+  "english-test": "English CBT",
+  english: "English Terms",
+  glossary: "Glossary",
+  diagnostics: "Diagnostics",
+  quiz: "Quiz"
+};
+
+const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => id !== "bookshelf");
+
 const uxHotViews = [
   ["runbook", "런북"],
   ["cluster", "구성"],
@@ -1745,7 +1773,7 @@ function persistState() {
 
 function getNavLabel(id) {
   const button = document.querySelector(`.nav-btn[data-view="${id}"]`);
-  return button?.textContent?.trim() || id;
+  return VIEW_LABELS[id] || button?.textContent?.trim() || id;
 }
 
 function updateViewMemory(id) {
@@ -1760,6 +1788,7 @@ function showView(id, options = {}) {
   if (!document.getElementById(id)) return;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
+  document.querySelector("#open-active-book")?.classList.toggle("active", BOOK_VIEW_IDS.includes(id));
   if (!options.skipMemory) updateViewMemory(id);
   closeCommandPalette();
   renderLearningHud();
@@ -1970,7 +1999,26 @@ function closeCommandPalette() {
   document.querySelector("#command-palette")?.classList.add("hidden");
 }
 
+function applyTheme(theme) {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = nextTheme;
+  localStorage.setItem("projectUniverseTheme", nextTheme);
+  const toggle = document.querySelector("#theme-toggle");
+  if (toggle) {
+    toggle.textContent = nextTheme === "dark" ? "Light" : "Dark";
+    toggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
+  }
+}
+
+function toggleTheme() {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+}
+
 function bindGlobalUx() {
+  applyTheme(localStorage.getItem("projectUniverseTheme") || document.documentElement.dataset.theme || "light");
+  document.querySelector("#theme-toggle")?.addEventListener("click", toggleTheme);
+  document.querySelector("#open-active-book")?.addEventListener("click", () => showView("bookshelf"));
+  document.querySelector("#open-command-search")?.addEventListener("click", () => openCommandPalette());
   document.querySelector("#command-palette-input")?.addEventListener("input", renderCommandPalette);
   document.querySelector("#command-palette-close")?.addEventListener("click", closeCommandPalette);
   document.querySelector("#command-palette")?.addEventListener("click", event => {
