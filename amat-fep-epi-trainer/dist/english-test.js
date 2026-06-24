@@ -601,9 +601,18 @@ function renderEnglishCumulativeCoach() {
         <p class="eyebrow">Wrong Answer Memory</p>
         <h3>오답 데이터가 쌓이면 약점 지도가 생깁니다</h3>
         <p>CBT 세트를 채점하면 문법, 어휘, 독해, 듣기 약점이 자동으로 분류되고 다음 학습 루틴으로 이어집니다.</p>
+        <div class="english-coach-next">
+          <strong>처음 시작 루틴</strong>
+          <ol>
+            <li>새 CBT 세트를 20분 안에 풀기</li>
+            <li>틀린 문제 해설을 한 문장으로 다시 말하기</li>
+            <li>Speaking 카드 하나를 45초 준비 후 60초 답변하기</li>
+          </ol>
+        </div>
       </section>
     `;
   }
+  const mainWeakness = top[0];
   return `
     <section class="english-coach-panel">
       <p class="eyebrow">Wrong Answer Memory</p>
@@ -620,6 +629,14 @@ function renderEnglishCumulativeCoach() {
             <ul>${item.guide.slice(0, 3).map(step => `<li>${escapeEnglishTest(step)}</li>`).join("")}</ul>
           </article>
         `).join("")}
+      </div>
+      <div class="english-coach-next">
+        <strong>오늘 15분 처방</strong>
+        <ol>
+          <li>${escapeEnglishTest(mainWeakness?.skill || "최신 오답")} 유형 해설 3개를 소리 내어 읽기</li>
+          <li>틀린 선택지가 왜 틀렸는지 한국어 1문장, 영어 1문장으로 적기</li>
+          <li>현장 문장으로 바꾸기: “I checked..., I found..., I will...”</li>
+        </ol>
       </div>
     </section>
   `;

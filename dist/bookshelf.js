@@ -314,11 +314,68 @@
     return labels[view] || view;
   }
 
+  function pagesForBook(bookId) {
+    return pages.filter(page => page.bookId === bookId);
+  }
+
+  function libraryStats() {
+    const exportReady = pages.filter(page => page.aiExportOk).length;
+    const booksWithPages = new Set(pages.map(page => page.bookId).filter(Boolean)).size;
+    return {
+      books: BOOKSHELF_BOOKS.length,
+      pages: pages.length,
+      exportReady,
+      booksWithPages
+    };
+  }
+
+  function renderLibraryOverview(activeBook) {
+    const stats = libraryStats();
+    return `
+      <section class="library-command">
+        <div class="library-command-copy">
+          <p class="eyebrow">Bookshelf Home</p>
+          <h2>책장은 입구, 각 책은 하나의 전문 시스템입니다</h2>
+          <p>필요한 책을 먼저 고르고, 기록은 요약-근거-다음 행동-AI 공개 범위로 쌓습니다. 나중에 AI에게 보여줄 때도 원문이 아니라 구조화된 판단 재료만 넘기도록 설계했습니다.</p>
+        </div>
+        <div class="library-command-grid" aria-label="책장 현황">
+          <span><strong>${stats.books}</strong> books</span>
+          <span><strong>${stats.pages}</strong> pages</span>
+          <span><strong>${stats.exportReady}</strong> AI-ready</span>
+          <span><strong>${stats.booksWithPages}</strong> active</span>
+        </div>
+      </section>
+      <section class="library-overview" aria-label="전체 책장">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">Choose a Book</p>
+            <h2>오늘 다룰 책 선택</h2>
+          </div>
+          <span class="sync-pill">${escapeHtml(activeBook.shelf)} shelf</span>
+        </div>
+        <div class="library-book-grid">
+          ${BOOKSHELF_BOOKS.map(book => {
+            const count = pagesForBook(book.id).length;
+            return `
+              <button class="library-book-card ${book.id === activeBook.id ? "active" : ""}" type="button" data-book-card="${escapeHtml(book.id)}">
+                <span class="book-card-code">${escapeHtml(book.code)}</span>
+                <strong>${escapeHtml(book.title)}</strong>
+                <small>${escapeHtml(book.shelf)} / ${escapeHtml(book.privacyLevel)}</small>
+                <em>${count} page${count === 1 ? "" : "s"}</em>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderBookDetail() {
     const book = currentBook();
     const detail = document.querySelector("#bookshelf-detail");
     if (!detail) return;
     detail.innerHTML = `
+      ${renderLibraryOverview(book)}
       <article class="book-detail">
         <div class="book-detail-head">
           <span class="book-code">${escapeHtml(book.code)}</span>
@@ -328,14 +385,12 @@
             <p>${escapeHtml(book.subtitle)}</p>
           </div>
         </div>
-        <div class="bookshelf-schema">
-          <span>Book</span>
-          <span>Section</span>
-          <span>Page</span>
-          <span>Evidence</span>
-          <span>Decision</span>
-          <span>Next Action</span>
-          <span>AI Export</span>
+        <div class="book-flow-map" aria-label="기록 흐름">
+          <span><b>1</b> 책 선택</span>
+          <span><b>2</b> 요약 기록</span>
+          <span><b>3</b> 근거 분리</span>
+          <span><b>4</b> 다음 행동</span>
+          <span><b>5</b> AI 공개 판단</span>
         </div>
         <div class="book-open-actions">
           <button class="primary" type="button" data-open-book-view="${escapeHtml(book.linkedViews[0] || "thinktank")}">이 책 열기</button>
@@ -365,6 +420,13 @@
         </div>
       </article>
     `;
+    detail.querySelectorAll("[data-book-card]").forEach(button => {
+      button.addEventListener("click", () => {
+        activeBookId = button.dataset.bookCard;
+        localStorage.setItem(ACTIVE_BOOK_KEY, activeBookId);
+        renderBookshelf();
+      });
+    });
     detail.querySelectorAll("[data-open-book-view]").forEach(button => {
       button.addEventListener("click", () => {
         const view = button.dataset.openBookView;
@@ -470,7 +532,7 @@
             <button class="secondary" id="bookshelf-ai-context-refresh" type="button">AI 패킷 새로고침</button>
           </div>
           <p>Cloudflare D1에 쌓인 책장 페이지, 싱크탱크 기록, 영어 오답 기록을 AI가 읽기 쉬운 구조로 요약합니다. 민감 원문이 아니라 요약과 메타데이터 중심으로 사용합니다.</p>
-          <pre class="ai-context-preview" id="bookshelf-ai-context-preview">아직 불러오지 않았습니다.</pre>
+          <div class="ai-context-preview" id="bookshelf-ai-context-preview">아직 불러오지 않았습니다.</div>
         </article>
       </section>
     `;
@@ -487,14 +549,48 @@
     try {
       const data = await apiFetch("/api/ai-context");
       const context = data.context || {};
-      target.textContent = JSON.stringify({
+      const packet = {
         schema: context.schema,
         generatedAt: context.generatedAt,
         countsByType: context.countsByType,
         english: context.english,
         bookshelf: context.bookshelf,
         recentItemsPreview: (context.recentItems || []).slice(0, 8)
-      }, null, 2);
+      };
+      const counts = Object.entries(context.countsByType || {});
+      const books = context.bookshelf || [];
+      const english = context.english || {};
+      const topWeakness = english.weaknesses?.[0];
+      const recent = (context.recentItems || []).slice(0, 5);
+      target.innerHTML = `
+        <div class="ai-context-readout">
+          <article>
+            <span>Records</span>
+            <strong>${counts.reduce((sum, [, count]) => sum + Number(count || 0), 0)}</strong>
+            <small>${counts.map(([type, count]) => `${escapeHtml(type)} ${count}`).join(" · ") || "아직 D1 기록 없음"}</small>
+          </article>
+          <article>
+            <span>Books</span>
+            <strong>${books.length}</strong>
+            <small>${books.slice(0, 3).map(book => `${escapeHtml(book.bookTitle || book.bookId)} ${book.pages || 0}p`).join(" · ") || "책장 페이지 대기"}</small>
+          </article>
+          <article>
+            <span>English</span>
+            <strong>${english.accuracy ?? 0}%</strong>
+            <small>${topWeakness ? `${escapeHtml(topWeakness.skill)} 우선 보강` : "영어 오답 데이터 대기"}</small>
+          </article>
+        </div>
+        <div class="ai-context-recent">
+          <strong>최근 AI 재료</strong>
+          ${recent.length ? recent.map(item => `
+            <span>${escapeHtml(item.type || "Record")} · ${escapeHtml(item.title || item.subsystem || "Untitled")}</span>
+          `).join("") : `<span>아직 최근 항목이 없습니다.</span>`}
+        </div>
+        <details class="ai-context-json">
+          <summary>구조화 JSON 보기</summary>
+          <pre>${escapeHtml(JSON.stringify(packet, null, 2))}</pre>
+        </details>
+      `;
     } catch {
       target.textContent = "AI 통합 패킷을 불러오지 못했습니다. 로그인 상태와 D1 연결을 확인하세요.";
     }

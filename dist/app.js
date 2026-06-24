@@ -1887,25 +1887,31 @@ function renderLearningHud() {
   const currentView = document.querySelector(".view.active")?.id || state.lastView || "bookshelf";
   const recentViews = (state.recentViews || [currentView]).filter(Boolean).slice(0, 3);
   root.innerHTML = `
-    <div class="learning-hud-card">
-      <button class="hud-search" type="button" data-ux-search>검색</button>
-      <div class="hud-progress">
-        <span>Roadmap <b>${roadmapProgress.percent}%</b></span>
-        <i><em style="width:${roadmapProgress.percent}%"></em></i>
-        <span>Runbook <b>${gateProgress.percent}%</b></span>
-        <i><em style="width:${gateProgress.percent}%"></em></i>
+    <details class="learning-hud-card">
+      <summary>
+        <strong>빠른 이동</strong>
+        <span>Roadmap ${roadmapProgress.percent}% · Runbook ${gateProgress.percent}%</span>
+      </summary>
+      <div class="hud-body">
+        <button class="hud-search" type="button" data-ux-search>검색</button>
+        <div class="hud-progress">
+          <span>Roadmap <b>${roadmapProgress.percent}%</b></span>
+          <i><em style="width:${roadmapProgress.percent}%"></em></i>
+          <span>Runbook <b>${gateProgress.percent}%</b></span>
+          <i><em style="width:${gateProgress.percent}%"></em></i>
+        </div>
+        <div class="hud-jumps">
+          ${uxHotViews.map(([view, label]) => `
+            <button type="button" class="${view === currentView ? "active" : ""}" data-ux-view="${view}">${label}</button>
+          `).join("")}
+        </div>
+        <div class="hud-recents">
+          ${recentViews.map(view => `<button type="button" data-ux-view="${view}">${getNavLabel(view)}</button>`).join("")}
+        </div>
+        <button class="hud-top" type="button" data-ux-top>맨 위</button>
+        <span class="hud-quiz">Quiz ${quizProgress.total ? `${quizProgress.percent}%` : "0%"}</span>
       </div>
-      <div class="hud-jumps">
-        ${uxHotViews.map(([view, label]) => `
-          <button type="button" class="${view === currentView ? "active" : ""}" data-ux-view="${view}">${label}</button>
-        `).join("")}
-      </div>
-      <div class="hud-recents">
-        ${recentViews.map(view => `<button type="button" data-ux-view="${view}">${getNavLabel(view)}</button>`).join("")}
-      </div>
-      <button class="hud-top" type="button" data-ux-top>맨 위</button>
-      <span class="hud-quiz">Quiz ${quizProgress.total ? `${quizProgress.percent}%` : "0%"}</span>
-    </div>
+    </details>
   `;
   root.querySelector("[data-ux-search]")?.addEventListener("click", () => openCommandPalette());
   root.querySelectorAll("[data-ux-view]").forEach(button => {
