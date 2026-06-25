@@ -257,8 +257,68 @@ textarea:focus-visible {
   background: var(--warn);
 }
 
+.auth-locked .book-context-bar {
+  display: none;
+}
+
+.book-context-bar {
+  position: sticky;
+  top: 73px;
+  z-index: 32;
+  width: min(1180px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px auto 0;
+  padding: 12px;
+  border: 1px solid rgba(0, 127, 134, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 127, 134, 0.08), rgba(196, 107, 35, 0.06)),
+    rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(23, 41, 54, 0.1);
+  backdrop-filter: blur(14px);
+}
+
+.book-context-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.book-context-kicker {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.book-context-copy strong {
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.book-context-copy small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.book-context-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.book-context-actions button {
+  min-height: 34px;
+}
+
 :root[data-theme="dark"] .app-header,
 :root[data-theme="dark"] .top-nav,
+:root[data-theme="dark"] .book-context-bar,
 :root[data-theme="dark"] .learning-hud-card,
 :root[data-theme="dark"] .command-palette-card,
 :root[data-theme="dark"] .password-box,
@@ -5273,9 +5333,53 @@ main {
     justify-content: flex-start;
   }
 
+  .book-context-bar {
+    position: static;
+    width: min(100% - 20px, 1180px);
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 10px;
+  }
+
+  .book-context-actions {
+    justify-content: flex-start;
+  }
+
   main {
     width: min(100% - 20px, 1180px);
     margin-top: 12px;
+  }
+
+  #bookshelf .page-title {
+    margin: 0 0 8px;
+  }
+
+  #bookshelf .page-title h1 {
+    font-size: 24px;
+    line-height: 1.22;
+  }
+
+  #bookshelf > .source-note {
+    margin-top: 8px;
+    padding: 12px;
+  }
+
+  #bookshelf > .source-note h2 {
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  #bookshelf > .source-note p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.45;
+  }
+
+  #bookshelf .bookshelf-shell {
+    margin-top: 10px;
+    padding: 0;
   }
 
   .hero {
@@ -5308,6 +5412,31 @@ main {
 
   .bookshelf-main {
     order: 1;
+  }
+
+  #bookshelf-detail {
+    display: grid;
+    gap: 14px;
+  }
+
+  #bookshelf-detail .library-overview {
+    order: -3;
+  }
+
+  #bookshelf-detail .book-detail {
+    order: -2;
+  }
+
+  #bookshelf-detail .library-command {
+    order: -1;
+  }
+
+  .library-command {
+    gap: 12px;
+  }
+
+  .library-command p:not(.eyebrow) {
+    margin-top: 6px;
   }
 
   .cockpit-steps,

@@ -1751,6 +1751,56 @@ const VIEW_LABELS = {
 
 const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => id !== "bookshelf");
 
+const BOOK_VIEW_SEQUENCE = [
+  "dashboard",
+  "roadmap",
+  "fab101",
+  "glossary",
+  "systems",
+  "equipment",
+  "cluster",
+  "install",
+  "facility",
+  "gases",
+  "safety",
+  "electrical",
+  "diagnostics",
+  "mastery",
+  "readiness",
+  "runbook",
+  "thinktank",
+  "deep",
+  "papers",
+  "english-test",
+  "english",
+  "quiz"
+];
+
+const VIEW_CHAPTERS = {
+  dashboard: "Orientation",
+  roadmap: "Start Here",
+  fab101: "Start Here",
+  glossary: "Start Here",
+  systems: "Equipment Mastery",
+  equipment: "Equipment Mastery",
+  cluster: "Equipment Mastery",
+  deep: "Equipment Mastery",
+  install: "Install & Field Execution",
+  facility: "Install & Field Execution",
+  gases: "Install & Field Execution",
+  safety: "Install & Field Execution",
+  electrical: "Troubleshooting & Growth",
+  diagnostics: "Troubleshooting & Growth",
+  mastery: "Troubleshooting & Growth",
+  readiness: "Troubleshooting & Growth",
+  runbook: "Troubleshooting & Growth",
+  thinktank: "Troubleshooting & Growth",
+  papers: "Interview & Language",
+  "english-test": "Interview & Language",
+  english: "Interview & Language",
+  quiz: "Interview & Language"
+};
+
 const uxHotViews = [
   ["runbook", "런북"],
   ["cluster", "구성"],
@@ -1784,6 +1834,42 @@ function updateViewMemory(id) {
   persistState();
 }
 
+function getNextBookView(id) {
+  const index = BOOK_VIEW_SEQUENCE.indexOf(id);
+  if (index < 0) return BOOK_VIEW_SEQUENCE[0];
+  return BOOK_VIEW_SEQUENCE[(index + 1) % BOOK_VIEW_SEQUENCE.length];
+}
+
+function renderBookContextBar(id) {
+  const bar = document.querySelector("#book-context-bar");
+  if (!bar) return;
+  if (!BOOK_VIEW_IDS.includes(id)) {
+    bar.classList.add("hidden");
+    bar.innerHTML = "";
+    return;
+  }
+  const nextView = getNextBookView(id);
+  const chapter = VIEW_CHAPTERS[id] || "Book Module";
+  const visits = state.viewVisits?.[id] || 0;
+  bar.classList.remove("hidden");
+  bar.innerHTML = `
+    <div class="book-context-copy">
+      <span class="book-context-kicker">FEP/EPI Customer Engineer Mastery</span>
+      <strong>${chapter} / ${getNavLabel(id)}</strong>
+      <small>이 화면은 책장 속 FEP/EPI 책의 한 장입니다. 방문 ${visits}회</small>
+    </div>
+    <div class="book-context-actions">
+      <button class="secondary" type="button" data-context-view="bookshelf">책장으로</button>
+      <button class="secondary" type="button" data-context-search>검색</button>
+      <button class="primary" type="button" data-context-view="${nextView}">다음 장: ${getNavLabel(nextView)}</button>
+    </div>
+  `;
+  bar.querySelectorAll("[data-context-view]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.contextView));
+  });
+  bar.querySelector("[data-context-search]")?.addEventListener("click", () => openCommandPalette());
+}
+
 function showView(id, options = {}) {
   if (!document.getElementById(id)) return;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
@@ -1791,6 +1877,7 @@ function showView(id, options = {}) {
   document.querySelector("#open-active-book")?.classList.toggle("active", BOOK_VIEW_IDS.includes(id));
   if (!options.skipMemory) updateViewMemory(id);
   closeCommandPalette();
+  renderBookContextBar(id);
   renderLearningHud();
   document.title = `${getNavLabel(id)} | FEP/EPI CE Trainer`;
   window.scrollTo({ top: 0, behavior: options.instant ? "auto" : "smooth" });
@@ -1835,11 +1922,11 @@ function getQuizProgress() {
 }
 
 function getUxSearchItems() {
-  const navItems = [...document.querySelectorAll(".nav-btn[data-view]")].map(button => ({
-    title: button.textContent.trim(),
-    meta: "화면",
-    body: `${button.dataset.view} 탭으로 이동`,
-    view: button.dataset.view
+  const navItems = Object.entries(VIEW_LABELS).map(([view, title]) => ({
+    title,
+    meta: view === "bookshelf" ? "Bookshelf" : VIEW_CHAPTERS[view] || "Book module",
+    body: view === "bookshelf" ? "책장으로 이동" : `FEP/EPI Mastery 책의 ${title} 장으로 이동`,
+    view
   }));
   const commandItems = commandCenterActions.map(item => ({
     title: item.title,

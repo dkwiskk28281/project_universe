@@ -428,8 +428,11 @@ function renderTaxonomy() {
 }
 
 function entryTags(entry) {
-  return [entry.type, entry.tool, entry.subsystem, ...(entry.tags || "").split(",")]
-    .map(tag => tag.trim())
+  const rawTags = Array.isArray(entry.tags)
+    ? entry.tags
+    : String(entry.tags || "").split(",");
+  return [entry.type, entry.tool, entry.subsystem, ...rawTags]
+    .map(tag => String(tag || "").trim())
     .filter(Boolean)
     .slice(0, 10);
 }
@@ -627,7 +630,7 @@ async function initPasswordGate() {
     }
     location.href = "/logout";
   });
-  if (vaultToken()) {
+  if (vaultToken() && vaultPassword()) {
     try {
       await apiFetch("/api/health");
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
@@ -637,21 +640,22 @@ async function initPasswordGate() {
       clearClientAuthState();
     }
   }
-  try {
-    await apiFetch("/api/health");
-    sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "server-cookie");
-    unlockApp();
-    return;
-  } catch {
-    // No server session yet. Fall through to password form.
-  }
   input?.focus();
   form?.addEventListener("submit", async event => {
     event.preventDefault();
     const password = input.value.trim();
+    error.textContent = "";
+    if (password === "9175") {
+      sessionStorage.setItem(THINK_TANK_CLIENT_PASS, password);
+      unlockApp();
+      remoteLogin(password).then(remoteOk => {
+        if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
+      });
+      return;
+    }
     const remoteOk = await remoteLogin(password);
-    if (remoteOk || password === "9175") {
-      sessionStorage.setItem(THINK_TANK_CLIENT_PASS, remoteOk ? "remote" : password);
+    if (remoteOk) {
+      sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       unlockApp();
     } else {
       error.textContent = "비밀번호가 맞지 않습니다.";
