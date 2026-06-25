@@ -3,7 +3,6 @@ const LEGACY_COOKIE_NAMES = ["epi_vault_session"];
 const SESSION_SECONDS = 2 * 60 * 60;
 const SESSION_VERSION = "strict-v2";
 const PERSONAL_SERVER_PREFIX = "/personal-server";
-const PUBLIC_VAULT_INDEX = "https://dkwiskk28281.github.io/project_universe/amat-fep-epi-trainer/current-vault-url.json";
 const DEFAULT_PERSONAL_SERVER_URL = "https://fep-epi-vault-9175.loca.lt";
 
 function jsonResponse(request, data, status = 200, headers = {}) {
@@ -169,21 +168,6 @@ function validTunnelUrl(value) {
 async function resolvePersonalServerUrl(env) {
   const configured = validTunnelUrl(env.PERSONAL_SERVER_URL || "");
   if (configured) return configured;
-
-  try {
-    const response = await fetch(PUBLIC_VAULT_INDEX, {
-      headers: { "Cache-Control": "no-store" },
-      cf: { cacheTtl: 0, cacheEverything: false }
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const publicUrl = validTunnelUrl(data.publicUrl || "");
-      if (publicUrl) return publicUrl;
-    }
-  } catch {
-    // Fall back to the requested localtunnel subdomain below.
-  }
-
   return DEFAULT_PERSONAL_SERVER_URL;
 }
 

@@ -14,8 +14,8 @@ run-personal-server.cmd
 
 ```text
 로컬: http://127.0.0.1:4180/
-외부 고정 안내 페이지: https://dkwiskk28281.github.io/project_universe/amat-fep-epi-trainer/current-vault-url.html
-현재 tunnel 후보: https://fep-epi-vault-9175.loca.lt
+공식 원격 웹: https://projectuniverse.chang2058.workers.dev/
+개인서버 tunnel 후보: https://fep-epi-vault-9175.loca.lt
 비밀번호: 9175
 ```
 
@@ -23,8 +23,8 @@ run-personal-server.cmd
 
 - `vault-server.js`가 이 PC에서 비밀번호 보호 서버를 엽니다.
 - `server-supervisor.js`가 vault 서버와 public tunnel을 함께 감시하고, 죽으면 다시 시작합니다.
-- 외부 접속은 localtunnel을 통해 `https://fep-epi-vault-9175.loca.lt`로 연결됩니다.
-- localtunnel이 다른 임시 URL을 반환하면 `current-vault-url.html` 안내 페이지가 자동 갱신됩니다.
+- 공식 접속 경로는 Cloudflare Worker URL 하나로 통일합니다.
+- GitHub Pages 공개 안내 페이지와 자동 Git 퍼블리싱은 폐기했습니다.
 - HTML, JS, CSS, API 모두 서버 측 로그인 뒤에 숨겨집니다.
 - 싱크탱크 기록과 학습 상태는 계속 `D:\FEP_EPI_ThinkTank_Vault`에 저장됩니다.
 
@@ -113,9 +113,9 @@ sudo systemctl enable --now fep-epi-vault
 
 VPS에서 쓸 때는 반드시 환경 변수의 `EPI_VAULT_SESSION_SECRET`을 긴 랜덤 문자열로 바꾸고, 가능하면 Caddy나 Nginx로 HTTPS를 붙이세요.
 
-## Cloudflare 원격 배포 옵션
+## Cloudflare 원격 배포
 
-GitHub Pages는 정적 호스팅이라 서버 측 비밀번호 보호와 원격 DB 저장을 직접 제공하지 않습니다. Cloudflare Pages + Pages `_worker.js` + D1 DB를 쓰면 외부 서버리스 방식으로도 배포할 수 있습니다.
+GitHub Pages 공개 페이지는 사용하지 않습니다. 공식 원격 접속, 비밀번호 보호, D1 원격 저장은 Cloudflare Worker + `_worker.js` + D1 DB 기준으로 유지합니다.
 
 Cloudflare Pages 빌드 설정:
 

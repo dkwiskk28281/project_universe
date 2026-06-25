@@ -136,7 +136,6 @@
   };
 
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
-  const isGithubPagesHost = location.hostname.endsWith("github.io");
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
   const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
   const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";

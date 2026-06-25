@@ -3,7 +3,6 @@ const THINK_TANK_KEY = "epiThinkTankEntries";
 const THINK_TANK_PENDING_KEY = "epiThinkTankPendingEntries";
 const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
-const isGithubPagesHost = location.hostname.endsWith("github.io");
 const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
 const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
 const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";

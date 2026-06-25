@@ -16,8 +16,6 @@ const webFiles = [
   "term-helper.js",
   "bookshelf.js",
   "think-tank.js",
-  "current-vault-url.html",
-  "current-vault-url.json",
   "_worker.js",
   "cloudflare-d1-schema.sql",
   "README.md"
