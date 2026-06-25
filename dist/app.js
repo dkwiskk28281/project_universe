@@ -2086,24 +2086,57 @@ function closeCommandPalette() {
   document.querySelector("#command-palette")?.classList.add("hidden");
 }
 
-function applyTheme(theme) {
+const THEME_STORAGE_KEY = "projectUniverseTheme";
+
+function normalizeTheme(theme) {
+  return theme === "dark" ? "dark" : "light";
+}
+
+function storedThemePreference() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {
+    // Storage can be blocked in strict browser modes; keep the UI usable.
+  }
+  const current = document.documentElement.dataset.theme;
+  if (current === "dark" || current === "light") return current;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function persistThemePreference(theme) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Theme still applies for the current session even when persistence is unavailable.
+  }
+}
+
+function applyTheme(theme, options = {}) {
   const nextTheme = theme === "dark" ? "dark" : "light";
   document.documentElement.dataset.theme = nextTheme;
-  localStorage.setItem("projectUniverseTheme", nextTheme);
+  document.documentElement.style.colorScheme = nextTheme;
+  if (options.persist !== false) persistThemePreference(nextTheme);
   const toggle = document.querySelector("#theme-toggle");
   if (toggle) {
     toggle.textContent = nextTheme === "dark" ? "Light" : "Dark";
     toggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
+    toggle.setAttribute("aria-label", nextTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
   }
 }
 
 function toggleTheme() {
-  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+  applyTheme(normalizeTheme(document.documentElement.dataset.theme) === "dark" ? "light" : "dark");
 }
 
 function bindGlobalUx() {
-  applyTheme(localStorage.getItem("projectUniverseTheme") || document.documentElement.dataset.theme || "light");
+  applyTheme(storedThemePreference(), { persist: false });
   document.querySelector("#theme-toggle")?.addEventListener("click", toggleTheme);
+  window.addEventListener("storage", event => {
+    if (event.key === THEME_STORAGE_KEY && (event.newValue === "dark" || event.newValue === "light")) {
+      applyTheme(event.newValue, { persist: false });
+    }
+  });
   document.querySelector("#open-active-book")?.addEventListener("click", () => showView("bookshelf"));
   document.querySelector("#open-command-search")?.addEventListener("click", () => openCommandPalette());
   document.querySelector("#command-palette-input")?.addEventListener("input", renderCommandPalette);

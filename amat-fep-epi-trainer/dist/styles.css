@@ -9,6 +9,13 @@
   --accent-2: #c46b23;
   --good: #28784f;
   --warn: #b35a16;
+  --page-bg: #eef3f6;
+  --surface-1: #ffffff;
+  --surface-2: #fbfdfe;
+  --surface-3: #f5f8fa;
+  --accent-soft: #eef8f8;
+  --accent-soft-strong: #e7f4f5;
+  --warm-soft: #fff4e8;
   --shadow: 0 18px 45px rgba(23, 41, 54, 0.12);
 }
 
@@ -23,6 +30,13 @@
   --accent-2: #f09a57;
   --good: #69d49c;
   --warn: #f19b62;
+  --page-bg: #081018;
+  --surface-1: #101a23;
+  --surface-2: #13212c;
+  --surface-3: #0d1720;
+  --accent-soft: #0d2a31;
+  --accent-soft-strong: #102f38;
+  --warm-soft: #26180f;
   --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
 }
 
@@ -32,7 +46,7 @@ body {
   margin: 0;
   font-family: "Segoe UI", "Malgun Gothic", Arial, sans-serif;
   color: var(--ink);
-  background: #eef3f6;
+  background: var(--page-bg);
   line-height: 1.5;
 }
 
@@ -88,7 +102,7 @@ textarea:focus-visible {
   gap: 14px;
   padding: 28px;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--surface-1);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
 }
 
@@ -135,7 +149,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 18px;
   padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.96);
+  background: color-mix(in srgb, var(--surface-1), transparent 4%);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(14px);
 }
@@ -187,7 +201,7 @@ textarea:focus-visible {
   padding: 4px;
   border: 1px solid rgba(216, 225, 232, 0.82);
   border-radius: 8px;
-  background: #f7fafb;
+  background: var(--surface-3);
   scrollbar-width: thin;
   scrollbar-color: #c7d6dc transparent;
 }
@@ -238,7 +252,7 @@ textarea:focus-visible {
 
 .nav-btn[data-view="bookshelf"] {
   color: #102f38;
-  background: #e7f4f5;
+  background: var(--accent-soft-strong);
 }
 
 .nav-btn[data-view="bookshelf"].active,
@@ -249,7 +263,7 @@ textarea:focus-visible {
 
 #logout-btn {
   color: #7b3e0f;
-  background: #fff4e8;
+  background: var(--warm-soft);
 }
 
 #logout-btn:hover {
@@ -276,7 +290,7 @@ textarea:focus-visible {
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(0, 127, 134, 0.08), rgba(196, 107, 35, 0.06)),
-    rgba(255, 255, 255, 0.96);
+    color-mix(in srgb, var(--surface-1), transparent 4%);
   box-shadow: 0 12px 28px rgba(23, 41, 54, 0.1);
   backdrop-filter: blur(14px);
 }
@@ -441,6 +455,170 @@ textarea:focus-visible {
 :root[data-theme="dark"] #logout-btn {
   background: #2a180f;
   color: #ffc196;
+}
+
+:root[data-theme="dark"] .secondary,
+:root[data-theme="dark"] .hud-search,
+:root[data-theme="dark"] .hud-top,
+:root[data-theme="dark"] .hud-jumps button,
+:root[data-theme="dark"] .hud-recents button,
+:root[data-theme="dark"] .system-tab,
+:root[data-theme="dark"] .scenario-tab,
+:root[data-theme="dark"] .filter-btn,
+:root[data-theme="dark"] .mastery-tab,
+:root[data-theme="dark"] .case-choice,
+:root[data-theme="dark"] .book-open-actions .secondary {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .secondary:hover,
+:root[data-theme="dark"] .hud-top:hover,
+:root[data-theme="dark"] .hud-jumps button:hover,
+:root[data-theme="dark"] .hud-recents button:hover,
+:root[data-theme="dark"] .filter-btn.active,
+:root[data-theme="dark"] .mastery-tab.active,
+:root[data-theme="dark"] .system-tab.active,
+:root[data-theme="dark"] .scenario-tab.active {
+  background: var(--accent);
+  color: #061016;
+}
+
+:root[data-theme="dark"] .hud-progress i,
+:root[data-theme="dark"] .gate-progress {
+  background: #233744;
+}
+
+:root[data-theme="dark"] .command-kpis article,
+:root[data-theme="dark"] .command-next,
+:root[data-theme="dark"] .learning-cockpit,
+:root[data-theme="dark"] .learning-science-panel,
+:root[data-theme="dark"] .week,
+:root[data-theme="dark"] .mission,
+:root[data-theme="dark"] .info-block,
+:root[data-theme="dark"] .reference-band,
+:root[data-theme="dark"] .scenario-status,
+:root[data-theme="dark"] .decision,
+:root[data-theme="dark"] .install-radar,
+:root[data-theme="dark"] .install-mission-board,
+:root[data-theme="dark"] .install-source-strip,
+:root[data-theme="dark"] .install-deep,
+:root[data-theme="dark"] .mission-card,
+:root[data-theme="dark"] .decision-drill,
+:root[data-theme="dark"] .electrical-hero,
+:root[data-theme="dark"] .electrical-card,
+:root[data-theme="dark"] .meter-panel,
+:root[data-theme="dark"] .meter-selector,
+:root[data-theme="dark"] .runbook-step,
+:root[data-theme="dark"] .runbook-owner,
+:root[data-theme="dark"] .runbook-objective,
+:root[data-theme="dark"] .gate-row,
+:root[data-theme="dark"] .briefing-template,
+:root[data-theme="dark"] .raci-row,
+:root[data-theme="dark"] .storage-note,
+:root[data-theme="dark"] .vault-status,
+:root[data-theme="dark"] .taxonomy-card,
+:root[data-theme="dark"] .vault-entry,
+:root[data-theme="dark"] .ai-briefing-panel,
+:root[data-theme="dark"] .ai-context-readout,
+:root[data-theme="dark"] .ai-context-recent,
+:root[data-theme="dark"] .ai-context-json,
+:root[data-theme="dark"] .equipment-card,
+:root[data-theme="dark"] .mastery-card,
+:root[data-theme="dark"] .template-block,
+:root[data-theme="dark"] .case-card,
+:root[data-theme="dark"] .english-card,
+:root[data-theme="dark"] .english-transfer-grid article {
+  background: var(--surface-1);
+  border-color: var(--line);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+:root[data-theme="dark"] .cockpit-card,
+:root[data-theme="dark"] .storage-flow,
+:root[data-theme="dark"] .briefing-list,
+:root[data-theme="dark"] .gate-list,
+:root[data-theme="dark"] .vault-pill-stack,
+:root[data-theme="dark"] .thinktank-form,
+:root[data-theme="dark"] .bookshelf-form,
+:root[data-theme="dark"] .bookshelf-page-card,
+:root[data-theme="dark"] .palette-empty,
+:root[data-theme="dark"] .book-meta-grid section {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .command-card b,
+:root[data-theme="dark"] .cockpit-step,
+:root[data-theme="dark"] .cockpit-card b,
+:root[data-theme="dark"] .equipment-card .family,
+:root[data-theme="dark"] .english-card .tag,
+:root[data-theme="dark"] .vault-pill,
+:root[data-theme="dark"] .copy-status,
+:root[data-theme="dark"] .term-explain {
+  background: var(--accent-soft);
+  color: #aee9e7;
+}
+
+:root[data-theme="dark"] .danger-block,
+:root[data-theme="dark"] .hold-section,
+:root[data-theme="dark"] .book-review-queue,
+:root[data-theme="dark"] .case-choice.good {
+  background: #21180f;
+  border-color: rgba(240, 154, 87, 0.3);
+}
+
+:root[data-theme="dark"] .cluster-shell,
+:root[data-theme="dark"] .cluster-workbench {
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .module-token {
+  color: var(--ink);
+  border-color: #314858;
+  background:
+    linear-gradient(145deg, rgba(25, 42, 54, 0.98), rgba(13, 27, 36, 0.96)),
+    repeating-linear-gradient(90deg, rgba(115, 141, 156, 0.08) 0 1px, transparent 1px 12px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 9px 18px rgba(0,0,0,0.28);
+}
+
+:root[data-theme="dark"] .module-token:hover,
+:root[data-theme="dark"] .module-token.selected {
+  border-color: rgba(65, 196, 194, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 12px 24px rgba(65,196,194,0.14);
+}
+
+:root[data-theme="dark"] .token-machine {
+  border-color: rgba(158, 175, 186, 0.36);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), transparent 35%),
+    linear-gradient(180deg, #263b49, #101d27);
+}
+
+:root[data-theme="dark"] .token-machine::before {
+  background: linear-gradient(90deg, #506574, #9eb7c2, #506574);
+}
+
+:root[data-theme="dark"] .dock-socket {
+  border-color: rgba(158, 175, 186, 0.38);
+  background:
+    linear-gradient(180deg, rgba(23, 44, 56, 0.9), rgba(10, 22, 30, 0.82)),
+    repeating-linear-gradient(90deg, rgba(158,175,186,0.08) 0 2px, transparent 2px 18px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 12px 24px rgba(0,0,0,0.2);
+}
+
+:root[data-theme="dark"] .dock-hint {
+  background: rgba(65, 196, 194, 0.12);
+  color: #aee9e7;
+}
+
+:root[data-theme="dark"] .module-face {
+  background: rgba(13, 27, 36, 0.96);
+  color: var(--ink);
+  border-color: rgba(158, 175, 186, 0.32);
 }
 
 main {
