@@ -4111,7 +4111,7 @@ main {
 
 .english-options label {
   display: grid;
-  grid-template-columns: 20px 1fr;
+  grid-template-columns: 20px 26px 1fr;
   gap: 8px;
   align-items: start;
   padding: 10px;
@@ -4127,6 +4127,18 @@ main {
   accent-color: var(--accent);
 }
 
+.english-options label b {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #eef4f7;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .english-options label.picked {
   border-color: rgba(0, 127, 134, 0.45);
   background: #eef8f8;
@@ -4140,6 +4152,98 @@ main {
 .english-options label.wrong {
   border-color: #e2a076;
   background: #fff3eb;
+}
+
+.english-options label.correct b {
+  background: #2f9b5f;
+  color: #fff;
+}
+
+.english-options label.wrong b {
+  background: #c9682f;
+  color: #fff;
+}
+
+.english-instant-hint,
+.english-instant-feedback {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.english-instant-hint {
+  display: grid;
+  gap: 4px;
+  background: #f5f9fa;
+  color: var(--muted);
+}
+
+.english-instant-hint strong {
+  color: var(--ink);
+}
+
+.english-instant-feedback {
+  display: grid;
+  gap: 10px;
+}
+
+.english-instant-feedback.good {
+  background: #ecf7f0;
+  border-color: #85c69e;
+}
+
+.english-instant-feedback.bad {
+  background: #fff3eb;
+  border-color: #e2a076;
+}
+
+.english-instant-feedback > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.english-instant-feedback strong {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.english-instant-feedback span,
+.english-instant-feedback p {
+  color: var(--muted);
+}
+
+.english-instant-feedback dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.english-instant-feedback dl > div {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.24fr) 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.english-instant-feedback dt {
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.english-instant-feedback dd {
+  margin: 0;
+  color: var(--ink);
+  font-weight: 750;
+}
+
+.english-instant-feedback p {
+  margin: 0;
+  line-height: 1.55;
 }
 
 .english-explain,
@@ -6082,6 +6186,9 @@ main {
 :root[data-theme="dark"] .speaking-pattern,
 :root[data-theme="dark"] .english-source-list a,
 :root[data-theme="dark"] .english-options label,
+:root[data-theme="dark"] .english-options label b,
+:root[data-theme="dark"] .english-instant-hint,
+:root[data-theme="dark"] .english-instant-feedback,
 :root[data-theme="dark"] .english-similarity-grid article,
 :root[data-theme="dark"] .english-quality-grid article,
 :root[data-theme="dark"] .english-weakness-grid article,
@@ -6112,6 +6219,7 @@ main {
 :root[data-theme="dark"] .danger-block,
 :root[data-theme="dark"] .book-review-queue,
 :root[data-theme="dark"] .english-options label.wrong,
+:root[data-theme="dark"] .english-instant-feedback.bad,
 :root[data-theme="dark"] .english-timer-card,
 :root[data-theme="dark"] .english-live-score {
   background: #21180f !important;
@@ -6120,6 +6228,7 @@ main {
 }
 
 :root[data-theme="dark"] .english-options label.correct,
+:root[data-theme="dark"] .english-instant-feedback.good,
 :root[data-theme="dark"] .case-choice.good {
   background: #10281d !important;
   border-color: rgba(105, 212, 156, 0.42) !important;
@@ -6127,6 +6236,8 @@ main {
 }
 
 :root[data-theme="dark"] .english-options label.picked,
+:root[data-theme="dark"] .english-options label.correct b,
+:root[data-theme="dark"] .english-options label.wrong b,
 :root[data-theme="dark"] .flow-step-button.active,
 :root[data-theme="dark"] .flow-mode,
 :root[data-theme="dark"] .flow-step-button > span,
@@ -6141,6 +6252,16 @@ main {
   background: var(--accent-soft) !important;
   border-color: rgba(65, 196, 194, 0.62) !important;
   color: #aee9e7 !important;
+}
+
+:root[data-theme="dark"] .english-options label.correct b {
+  background: #2f9b5f !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme="dark"] .english-options label.wrong b {
+  background: #c9682f !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .cluster-flow-panel a,

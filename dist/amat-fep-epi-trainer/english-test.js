@@ -205,6 +205,8 @@ const amkSpeakingBank = [
 
 const englishTestState = {
   selected: {},
+  graded: {},
+  attemptLogged: {},
   checked: false,
   timer: null,
   cbtTimer: null,
@@ -378,6 +380,35 @@ function saveEnglishAttempt(isCorrect) {
   const attempts = JSON.parse(localStorage.getItem(ENGLISH_ATTEMPTS_KEY) || "[]");
   attempts.push(Boolean(isCorrect));
   localStorage.setItem(ENGLISH_ATTEMPTS_KEY, JSON.stringify(attempts.slice(-200)));
+}
+
+function isEnglishQuestionGraded(item) {
+  return Boolean(englishTestState.graded[item.id] || englishTestState.checked);
+}
+
+function getEnglishObjectiveStats(objectiveItems) {
+  const answeredItems = objectiveItems.filter(item => isEnglishQuestionGraded(item));
+  const correct = answeredItems.reduce((acc, item) => (
+    acc + (englishTestState.selected[item.id] === item.answer ? 1 : 0)
+  ), 0);
+  return {
+    answered: answeredItems.length,
+    correct,
+    total: objectiveItems.length
+  };
+}
+
+function markEnglishQuestionAnswered(item, selectedIndex) {
+  englishTestState.selected[item.id] = selectedIndex;
+  englishTestState.graded[item.id] = {
+    selected: selectedIndex,
+    correct: selectedIndex === item.answer,
+    answeredAt: new Date().toISOString()
+  };
+  if (!englishTestState.attemptLogged[item.id]) {
+    saveEnglishAttempt(selectedIndex === item.answer);
+    englishTestState.attemptLogged[item.id] = true;
+  }
 }
 
 function getEnglishRecords() {
@@ -627,6 +658,7 @@ function startEnglishCbtTimer() {
 
 function getEnglishWeaknessSummary(objectiveItems) {
   const summary = objectiveItems.reduce((acc, item) => {
+    if (!isEnglishQuestionGraded(item)) return acc;
     const key = item.type;
     if (!acc[key]) acc[key] = { total: 0, wrong: 0 };
     acc[key].total += 1;
@@ -639,15 +671,17 @@ function getEnglishWeaknessSummary(objectiveItems) {
 }
 
 function renderEnglishWeaknessPanel(objectiveItems) {
-  if (!englishTestState.checked) return "";
+  const stats = getEnglishObjectiveStats(objectiveItems);
+  if (!stats.answered) return "";
   const summary = getEnglishWeaknessSummary(objectiveItems);
+  if (!summary.length) return "";
   const focus = summary.filter(item => item.wrong > 0).slice(0, 2).map(item => item.type).join(", ") || "유지";
   return `
     <section class="english-section-band english-insight-band">
       <div>
-        <p class="eyebrow">After-Action Review</p>
-        <h2>오답 약점 분석</h2>
-        <p>다음 세트에서는 ${escapeEnglishTest(focus)} 영역을 먼저 천천히 보고, 틀린 문항의 해설을 한 문장으로 다시 말해보세요.</p>
+        <p class="eyebrow">${englishTestState.checked ? "After-Action Review" : "Live Review"}</p>
+        <h2>${englishTestState.checked ? "오답 약점 분석" : "실시간 약점 분석"}</h2>
+        <p>현재 답변 ${stats.answered}/${stats.total}개 기준입니다. 다음 문제로 넘어가기 전에 ${escapeEnglishTest(focus)} 영역 해설을 한 문장으로 다시 말해보세요.</p>
       </div>
       <div class="english-weakness-grid">
         ${summary.map(item => `
@@ -852,8 +886,41 @@ function renderEnglishTestSources() {
   `;
 }
 
+function renderObjectiveFeedback(item) {
+  const isGraded = isEnglishQuestionGraded(item);
+  if (!isGraded) {
+    return `
+      <div class="english-instant-hint">
+        <strong>선택하면 즉시 채점</strong>
+        <span>한 문제만 풀어도 정답, 해설, 약점 포인트가 바로 열립니다.</span>
+      </div>
+    `;
+  }
+  const selectedIndex = englishTestState.selected[item.id];
+  const isCorrect = selectedIndex === item.answer;
+  const selectedText = Number.isInteger(selectedIndex) ? item.options[selectedIndex] : "미선택";
+  const answerText = item.options[item.answer];
+  const [skillTag, skillNote] = classifyEnglishQuestion(item);
+  return `
+    <div class="english-instant-feedback ${isCorrect ? "good" : "bad"}">
+      <div>
+        <strong>${isCorrect ? "정답입니다" : "오답입니다"}</strong>
+        <span>${isCorrect ? "이 감각을 바로 다음 문제에 이어가세요." : "틀린 이유를 지금 한 문장으로 붙잡고 넘어가세요."}</span>
+      </div>
+      <dl>
+        <div><dt>내 선택</dt><dd>${escapeEnglishTest(selectedText)}</dd></div>
+        <div><dt>정답</dt><dd>${escapeEnglishTest(answerText)}</dd></div>
+        <div><dt>학습 포인트</dt><dd>${escapeEnglishTest(skillTag)} · ${escapeEnglishTest(skillNote)}</dd></div>
+      </dl>
+      <p>${escapeEnglishTest(item.explain || "정답 근거를 문제 문장 안에서 다시 확인하세요.")}</p>
+    </div>
+  `;
+}
+
 function renderObjectiveQuestion(item, index) {
-  const resultClass = englishTestState.checked && englishTestState.selected[item.id] === item.answer ? "is-correct" : "";
+  const isGraded = isEnglishQuestionGraded(item);
+  const isCorrect = isGraded && englishTestState.selected[item.id] === item.answer;
+  const resultClass = isGraded ? (isCorrect ? "is-correct" : "is-wrong") : "";
   return `
     <article class="english-question ${resultClass}">
       <div class="english-question-head">
@@ -872,18 +939,19 @@ function renderObjectiveQuestion(item, index) {
       <div class="english-options">
         ${item.options.map((option, optionIndex) => {
           const picked = englishTestState.selected[item.id] === optionIndex;
-          const correct = englishTestState.checked && optionIndex === item.answer;
-          const wrong = englishTestState.checked && picked && optionIndex !== item.answer;
+          const correct = isGraded && optionIndex === item.answer;
+          const wrong = isGraded && picked && optionIndex !== item.answer;
           return `
             <label class="${picked ? "picked" : ""} ${correct ? "correct" : ""} ${wrong ? "wrong" : ""}">
               <input type="radio" name="${item.id}" data-english-answer="${item.id}" value="${optionIndex}" ${picked ? "checked" : ""} />
+              <b>${String.fromCharCode(65 + optionIndex)}</b>
               <span>${escapeEnglishTest(option)}</span>
             </label>
           `;
         }).join("")}
       </div>
-      ${englishTestState.checked ? `<p class="english-explain">${escapeEnglishTest(item.explain)}</p>` : ""}
-      ${item.audioText && englishTestState.checked ? `<details class="english-transcript"><summary>스크립트 보기</summary><p>${escapeEnglishTest(item.audioText)}</p></details>` : ""}
+      ${renderObjectiveFeedback(item)}
+      ${item.audioText && isGraded ? `<details class="english-transcript"><summary>스크립트 보기</summary><p>${escapeEnglishTest(item.audioText)}</p></details>` : ""}
     </article>
   `;
 }
@@ -920,22 +988,19 @@ function renderEnglishTestMain() {
   if (!englishTestState.set.length) englishTestState.set = makeEnglishTestSet();
   const objectiveItems = englishTestState.set.filter(item => item.type !== "Speaking");
   const speakingItems = englishTestState.set.filter(item => item.type === "Speaking");
-  const score = objectiveItems.reduce((acc, item) => {
-    if (englishTestState.selected[item.id] === item.answer) return acc + 1;
-    return acc;
-  }, 0);
+  const stats = getEnglishObjectiveStats(objectiveItems);
 
   target.innerHTML = `
     <section class="english-test-brief">
       <div>
         <p class="eyebrow">Test Analysis</p>
         <h2>1시간 CBT 밀도: 토익식 객관식 + 짧은 오픽/토스식 말하기</h2>
-        <p>공개 정보로 보면 시험은 특정 반도체 지식을 묻기보다 실무 영어 기본 체력, 빠른 독해, 듣기 이해, 짧은 말하기 거부감을 확인하는 쪽에 가깝습니다. 이번 세트는 문법 ${ENGLISH_SET_COUNTS.grammar}, 어휘 ${ENGLISH_SET_COUNTS.vocabulary}, 독해 ${ENGLISH_SET_COUNTS.reading}, 듣기 ${ENGLISH_SET_COUNTS.listening}, 말하기 ${ENGLISH_SET_COUNTS.speaking}개로 구성되어 한 번 앉아서 끝까지 풀면 실제 CBT 피로도에 훨씬 가깝습니다.</p>
+        <p>공개 정보로 보면 시험은 특정 반도체 지식을 묻기보다 실무 영어 기본 체력, 빠른 독해, 듣기 이해, 짧은 말하기 거부감을 확인하는 쪽에 가깝습니다. 객관식은 보기 하나를 선택하는 즉시 정오답, 정답, 해설, 약점 포인트가 열립니다. 전체 저장 버튼은 세트 결과를 DB와 오답 지도에 남길 때 씁니다.</p>
       </div>
       <div class="english-live-score">
-        <span>현재 세트</span>
-        <strong>${englishTestState.checked ? `${score}/${objectiveItems.length}` : "미채점"}</strong>
-        <small>객관식만 자동 채점</small>
+        <span>${englishTestState.checked ? "전체 리뷰" : "즉시 채점"}</span>
+        <strong>${stats.correct}/${stats.answered || 0}</strong>
+        <small>답변 ${stats.answered}/${objectiveItems.length} · 객관식 자동 채점</small>
       </div>
     </section>
     ${renderEnglishSimilarityPanel()}
@@ -943,7 +1008,7 @@ function renderEnglishTestMain() {
     ${renderEnglishWeaknessPanel(objectiveItems)}
     <section class="english-section-band">
       <h2>객관식 CBT</h2>
-      <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 먼저 끝까지 풀고 채점한 뒤 해설과 듣기 transcript를 확인하세요. 새 CBT 세트를 누르면 같은 형식에서 다른 현장 시나리오와 보기 조합이 다시 생성됩니다.</p>
+      <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 이제 끝까지 기다릴 필요 없이 한 문제를 선택하는 순간 공부가 시작됩니다. 틀리면 바로 해설을 읽고, 정답 문장을 소리 내어 한 번 말한 뒤 다음 문제로 넘어가세요.</p>
       <div class="english-question-grid">
         ${objectiveItems.map(renderObjectiveQuestion).join("")}
       </div>
@@ -967,9 +1032,10 @@ function renderEnglishTestMain() {
 
   target.querySelectorAll("[data-english-answer]").forEach(input => {
     input.addEventListener("change", () => {
-      englishTestState.selected[input.dataset.englishAnswer] = Number(input.value);
-      englishTestState.checked = false;
+      const item = englishTestState.set.find(question => question.id === input.dataset.englishAnswer);
+      if (item) markEnglishQuestionAnswered(item, Number(input.value));
       renderEnglishTestMain();
+      renderEnglishTestProfile();
     });
   });
 
@@ -991,12 +1057,22 @@ function renderEnglishTestMain() {
 
 function checkEnglishTestSet() {
   const objectiveItems = englishTestState.set.filter(item => item.type !== "Speaking");
+  objectiveItems.forEach(item => {
+    if (!englishTestState.graded[item.id]) {
+      englishTestState.graded[item.id] = {
+        selected: englishTestState.selected[item.id],
+        correct: englishTestState.selected[item.id] === item.answer,
+        answeredAt: new Date().toISOString()
+      };
+    }
+    if (!englishTestState.attemptLogged[item.id]) {
+      saveEnglishAttempt(englishTestState.selected[item.id] === item.answer);
+      englishTestState.attemptLogged[item.id] = true;
+    }
+  });
   const correctCount = objectiveItems.reduce((acc, item) => (
     acc + (englishTestState.selected[item.id] === item.answer ? 1 : 0)
   ), 0);
-  objectiveItems.forEach(item => {
-    saveEnglishAttempt(englishTestState.selected[item.id] === item.answer);
-  });
   const createdAt = new Date();
   const record = {
     id: makeEnglishRecordId(),
@@ -1038,6 +1114,8 @@ function checkEnglishTestSet() {
 function newEnglishTestSet() {
   stopSpeakingTimer();
   englishTestState.selected = {};
+  englishTestState.graded = {};
+  englishTestState.attemptLogged = {};
   englishTestState.checked = false;
   englishTestState.set = makeEnglishTestSet();
   renderEnglishTestProfile();
@@ -1049,6 +1127,8 @@ function resetEnglishScore() {
   localStorage.removeItem(ENGLISH_RECORDS_KEY);
   englishTestState.lastSync = "브라우저 연습 통계 초기화 완료";
   englishTestState.selected = {};
+  englishTestState.graded = {};
+  englishTestState.attemptLogged = {};
   englishTestState.checked = false;
   renderEnglishTestProfile();
   renderEnglishTestMain();
