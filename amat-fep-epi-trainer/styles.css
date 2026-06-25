@@ -536,6 +536,35 @@ textarea:focus-visible {
   box-shadow: var(--shadow);
 }
 
+:root[data-theme="dark"] .command-center,
+:root[data-theme="dark"] .book-interior,
+:root[data-theme="dark"] .english-coach-panel,
+:root[data-theme="dark"] .english-coach-next,
+:root[data-theme="dark"] .english-coach-list article,
+:root[data-theme="dark"] .english-coach-bars article,
+:root[data-theme="dark"] .english-pool-card,
+:root[data-theme="dark"] .english-passage,
+:root[data-theme="dark"] .english-audio-box,
+:root[data-theme="dark"] .speaking-pattern,
+:root[data-theme="dark"] .english-source-list a,
+:root[data-theme="dark"] .english-options label,
+:root[data-theme="dark"] .cluster-flow-panel,
+:root[data-theme="dark"] .flow-step-detail,
+:root[data-theme="dark"] .cluster-coach,
+:root[data-theme="dark"] .meter-tab,
+:root[data-theme="dark"] .storage-flow article,
+:root[data-theme="dark"] .briefing-list article,
+:root[data-theme="dark"] .hazard,
+:root[data-theme="dark"] .tag,
+:root[data-theme="dark"] .science-grid article,
+:root[data-theme="dark"] .flow-term-grid > span,
+:root[data-theme="dark"] .memory-pill-grid > span,
+:root[data-theme="dark"] .flow-mode {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
 :root[data-theme="dark"] .cockpit-card,
 :root[data-theme="dark"] .storage-flow,
 :root[data-theme="dark"] .briefing-list,
@@ -566,9 +595,27 @@ textarea:focus-visible {
 :root[data-theme="dark"] .danger-block,
 :root[data-theme="dark"] .hold-section,
 :root[data-theme="dark"] .book-review-queue,
-:root[data-theme="dark"] .case-choice.good {
+:root[data-theme="dark"] .case-choice.good,
+:root[data-theme="dark"] .english-options label.wrong,
+:root[data-theme="dark"] .english-timer-card,
+:root[data-theme="dark"] .english-live-score {
   background: #21180f;
   border-color: rgba(240, 154, 87, 0.3);
+  color: #ffd1b0;
+}
+
+:root[data-theme="dark"] .english-options label.correct {
+  background: #10281d;
+  border-color: rgba(105, 212, 156, 0.42);
+  color: #c8f7db;
+}
+
+:root[data-theme="dark"] .english-options label.picked,
+:root[data-theme="dark"] .flow-step-button.active,
+:root[data-theme="dark"] .science-source-link {
+  background: var(--accent-soft);
+  border-color: rgba(65, 196, 194, 0.62);
+  color: #aee9e7;
 }
 
 :root[data-theme="dark"] .cluster-shell,
@@ -615,10 +662,99 @@ textarea:focus-visible {
   color: #aee9e7;
 }
 
+:root[data-theme="dark"] .dock-ring {
+  border-color: rgba(65, 196, 194, 0.48);
+  background: radial-gradient(circle at 50% 50%, rgba(65,196,194,0.2) 0 40%, rgba(16,31,42,0.9) 41% 100%);
+}
+
 :root[data-theme="dark"] .module-face {
   background: rgba(13, 27, 36, 0.96);
   color: var(--ink);
   border-color: rgba(158, 175, 186, 0.32);
+}
+
+:root[data-theme="dark"] .flow-step-button {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .flow-step-button > span,
+:root[data-theme="dark"] .flow-step-button.active > span,
+:root[data-theme="dark"] .runbook-step span,
+:root[data-theme="dark"] .runbook-detail-head > span,
+:root[data-theme="dark"] .storage-flow span,
+:root[data-theme="dark"] .entry-tags span {
+  background: var(--accent-soft);
+  color: #aee9e7;
+}
+
+:root[data-theme="dark"] .cluster-flow-panel a,
+:root[data-theme="dark"] .flow-step-detail a {
+  background: var(--surface-2);
+  border-color: var(--line);
+  color: #aee9e7;
+}
+
+:root[data-theme="dark"] .cluster-board {
+  background:
+    linear-gradient(180deg, #0d1720 0 31%, #1d303d 31% 32%, #0b141c 32% 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+:root[data-theme="dark"] .cleanroom-depth {
+  background:
+    linear-gradient(90deg, rgba(65,196,194,0.11) 0 1px, transparent 1px),
+    linear-gradient(rgba(158,175,186,0.1) 0 1px, transparent 1px);
+  opacity: 0.58;
+}
+
+:root[data-theme="dark"] .fab-scene {
+  background:
+    linear-gradient(180deg, rgba(16,26,35,0.96), rgba(28,45,57,0.86)),
+    linear-gradient(110deg, transparent 0 50%, rgba(65,196,194,0.08) 50% 53%, transparent 53% 100%),
+    repeating-linear-gradient(90deg, rgba(158,175,186,0.1) 0 1px, transparent 1px 48px);
+}
+
+:root[data-theme="dark"] .fab-scene::before {
+  background:
+    linear-gradient(160deg, rgba(65,196,194,0.08) 0 12%, transparent 12% 100%),
+    repeating-linear-gradient(90deg, rgba(158,175,186,0.1) 0 2px, transparent 2px 44px),
+    #111f2a;
+}
+
+:root[data-theme="dark"] .cutaway-deck {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(65,196,194,0.18) 0 15%, transparent 15.4%),
+    radial-gradient(circle at 50% 52%, rgba(158,175,186,0.1) 0 21%, transparent 21.5%),
+    linear-gradient(120deg, transparent 0 48%, rgba(65,196,194,0.12) 48% 50%, transparent 50% 100%),
+    linear-gradient(90deg, rgba(158,175,186,0.1) 1px, transparent 1px),
+    linear-gradient(rgba(158,175,186,0.1) 1px, transparent 1px),
+    #0d1720;
+  box-shadow: inset 0 0 0 12px rgba(255,255,255,0.04), inset 0 20px 35px rgba(0,0,0,0.18);
+}
+
+:root[data-theme="dark"] .efem-body,
+:root[data-theme="dark"] .mainframe-cabinet,
+:root[data-theme="dark"] .load-port,
+:root[data-theme="dark"] .service-spine,
+:root[data-theme="dark"] .service-spine span,
+:root[data-theme="dark"] .atmos-vacuum-bridge {
+  color: var(--ink);
+  border-color: rgba(158, 175, 186, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.12), transparent 35%),
+    linear-gradient(180deg, #263b49, #111f2a);
+}
+
+:root[data-theme="dark"] .cab-label,
+:root[data-theme="dark"] .load-port,
+:root[data-theme="dark"] .service-spine span,
+:root[data-theme="dark"] .module-face,
+:root[data-theme="dark"] .flow-step-button small,
+:root[data-theme="dark"] .flow-step-detail > span,
+:root[data-theme="dark"] .flow-step-detail > small {
+  color: var(--ink);
 }
 
 main {
@@ -5927,4 +6063,141 @@ main {
   .cockpit-card em {
     min-height: auto;
   }
+}
+
+/* Final dark-mode guardrail: keep late component rules from repainting white surfaces. */
+:root[data-theme="dark"] .command-center,
+:root[data-theme="dark"] .science-grid article,
+:root[data-theme="dark"] .science-source-link,
+:root[data-theme="dark"] .book-interior,
+:root[data-theme="dark"] .book-module-card,
+:root[data-theme="dark"] .book-blueprint-card,
+:root[data-theme="dark"] .english-coach-panel,
+:root[data-theme="dark"] .english-coach-next,
+:root[data-theme="dark"] .english-coach-list article,
+:root[data-theme="dark"] .english-coach-bars article,
+:root[data-theme="dark"] .english-pool-card,
+:root[data-theme="dark"] .english-passage,
+:root[data-theme="dark"] .english-audio-box,
+:root[data-theme="dark"] .speaking-pattern,
+:root[data-theme="dark"] .english-source-list a,
+:root[data-theme="dark"] .english-options label,
+:root[data-theme="dark"] .english-similarity-grid article,
+:root[data-theme="dark"] .english-quality-grid article,
+:root[data-theme="dark"] .english-weakness-grid article,
+:root[data-theme="dark"] .cluster-flow-panel,
+:root[data-theme="dark"] .flow-step-detail,
+:root[data-theme="dark"] .cluster-coach,
+:root[data-theme="dark"] .flow-term-grid > span,
+:root[data-theme="dark"] .memory-pill-grid > span,
+:root[data-theme="dark"] .flow-step-button,
+:root[data-theme="dark"] .meter-tab,
+:root[data-theme="dark"] .runbook-detail-grid section,
+:root[data-theme="dark"] .runbook-grid article,
+:root[data-theme="dark"] .runbook-panel,
+:root[data-theme="dark"] .storage-flow article,
+:root[data-theme="dark"] .briefing-list article,
+:root[data-theme="dark"] .raci-row,
+:root[data-theme="dark"] .taxonomy-card,
+:root[data-theme="dark"] .vault-entry,
+:root[data-theme="dark"] .entry-tags span,
+:root[data-theme="dark"] .hazard,
+:root[data-theme="dark"] .tag {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+
+:root[data-theme="dark"] .hold-section,
+:root[data-theme="dark"] .danger-block,
+:root[data-theme="dark"] .book-review-queue,
+:root[data-theme="dark"] .english-options label.wrong,
+:root[data-theme="dark"] .english-timer-card,
+:root[data-theme="dark"] .english-live-score {
+  background: #21180f !important;
+  border-color: rgba(240, 154, 87, 0.32) !important;
+  color: #ffd1b0 !important;
+}
+
+:root[data-theme="dark"] .english-options label.correct,
+:root[data-theme="dark"] .case-choice.good {
+  background: #10281d !important;
+  border-color: rgba(105, 212, 156, 0.42) !important;
+  color: #c8f7db !important;
+}
+
+:root[data-theme="dark"] .english-options label.picked,
+:root[data-theme="dark"] .flow-step-button.active,
+:root[data-theme="dark"] .flow-mode,
+:root[data-theme="dark"] .flow-step-button > span,
+:root[data-theme="dark"] .flow-step-button.active > span,
+:root[data-theme="dark"] .runbook-step span,
+:root[data-theme="dark"] .runbook-detail-head > span,
+:root[data-theme="dark"] .raci-head span,
+:root[data-theme="dark"] .runbook-panel-head strong,
+:root[data-theme="dark"] .storage-flow span,
+:root[data-theme="dark"] .sync-pill,
+:root[data-theme="dark"] .starter-strip button {
+  background: var(--accent-soft) !important;
+  border-color: rgba(65, 196, 194, 0.62) !important;
+  color: #aee9e7 !important;
+}
+
+:root[data-theme="dark"] .cluster-flow-panel a,
+:root[data-theme="dark"] .flow-step-detail a,
+:root[data-theme="dark"] .install-source-strip a,
+:root[data-theme="dark"] .reference-band a {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: #aee9e7 !important;
+}
+
+:root[data-theme="dark"] .cluster-board {
+  background:
+    linear-gradient(180deg, #0d1720 0 31%, #1d303d 31% 32%, #0b141c 32% 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08) !important;
+}
+
+:root[data-theme="dark"] .cleanroom-depth {
+  background:
+    linear-gradient(90deg, rgba(65,196,194,0.11) 0 1px, transparent 1px),
+    linear-gradient(rgba(158,175,186,0.1) 0 1px, transparent 1px) !important;
+}
+
+:root[data-theme="dark"] .fab-scene {
+  background:
+    linear-gradient(180deg, rgba(16,26,35,0.96), rgba(28,45,57,0.86)),
+    linear-gradient(110deg, transparent 0 50%, rgba(65,196,194,0.08) 50% 53%, transparent 53% 100%),
+    repeating-linear-gradient(90deg, rgba(158,175,186,0.1) 0 1px, transparent 1px 48px) !important;
+}
+
+:root[data-theme="dark"] .fab-scene::before {
+  background:
+    linear-gradient(160deg, rgba(65,196,194,0.08) 0 12%, transparent 12% 100%),
+    repeating-linear-gradient(90deg, rgba(158,175,186,0.1) 0 2px, transparent 2px 44px),
+    #111f2a !important;
+}
+
+:root[data-theme="dark"] .cutaway-deck {
+  background:
+    radial-gradient(circle at 50% 52%, rgba(65,196,194,0.18) 0 15%, transparent 15.4%),
+    radial-gradient(circle at 50% 52%, rgba(158,175,186,0.1) 0 21%, transparent 21.5%),
+    linear-gradient(120deg, transparent 0 48%, rgba(65,196,194,0.12) 48% 50%, transparent 50% 100%),
+    linear-gradient(90deg, rgba(158,175,186,0.1) 1px, transparent 1px),
+    linear-gradient(rgba(158,175,186,0.1) 1px, transparent 1px),
+    #0d1720 !important;
+}
+
+:root[data-theme="dark"] .efem-body,
+:root[data-theme="dark"] .mainframe-cabinet,
+:root[data-theme="dark"] .load-port,
+:root[data-theme="dark"] .service-spine,
+:root[data-theme="dark"] .service-spine span,
+:root[data-theme="dark"] .atmos-vacuum-bridge,
+:root[data-theme="dark"] .dock-ring {
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.12), transparent 35%),
+    linear-gradient(180deg, #263b49, #111f2a) !important;
+  border-color: rgba(158, 175, 186, 0.34) !important;
+  color: var(--ink) !important;
 }
