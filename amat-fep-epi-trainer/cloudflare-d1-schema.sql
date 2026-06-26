@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS entries (
   payload TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_entries_type_created_at ON entries(type, created_at);
+CREATE INDEX IF NOT EXISTS idx_entries_subsystem_created_at ON entries(subsystem, created_at);
+
 CREATE TABLE IF NOT EXISTS snapshots (
   id TEXT PRIMARY KEY,
   created_at TEXT,

@@ -276,12 +276,68 @@ async function ensureSchema(env) {
     created_at TEXT,
     payload TEXT NOT NULL
   )`).run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_entries_type_created_at ON entries(type, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_entries_subsystem_created_at ON entries(subsystem, created_at)").run();
 }
 
 function requireDb(env) {
   const db = d1Binding(env);
   if (!db) throw new Error("D1 binding is not configured. Expected binding name DB or ce_data.");
   return db;
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function hashText(value = "") {
+  let hash = 2166136261;
+  const text = String(value);
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function parsePayload(row) {
+  try {
+    return JSON.parse(row.payload);
+  } catch {
+    return {
+      id: row.id || crypto.randomUUID(),
+      type: "Corrupt Payload",
+      title: row.title || "JSON parse failed",
+      hidden: true,
+      createdAt: row.created_at || ""
+    };
+  }
+}
+
+function normalizeStoredEntry(entry, id, createdAt, updatedAt) {
+  const payload = {
+    ...entry,
+    id,
+    createdAt,
+    updatedAt,
+    remoteSavedAt: updatedAt
+  };
+  payload.serverIntegrityHash = hashText(stableJson({
+    id: payload.id,
+    type: payload.type || "",
+    title: payload.title || "",
+    subsystem: payload.subsystem || "",
+    severity: payload.severity || "",
+    createdAt: payload.createdAt,
+    summary: payload.summary || payload.context || "",
+    evidence: payload.evidence || "",
+    nextAction: payload.nextAction || payload.nextStudy || ""
+  }));
+  return payload;
 }
 
 function inferEnglishSkill(result = {}) {
@@ -375,7 +431,9 @@ function buildAiContext(entries) {
         title: page.title || "",
         pageType: page.pageType || "",
         summary: page.summary || "",
+        evidence: page.evidence || "",
         nextAction: page.nextAction || "",
+        tags: page.tags || [],
         createdAt: page.createdAt || ""
       });
     }
@@ -388,10 +446,25 @@ function buildAiContext(entries) {
   });
 
   return {
-    schema: "project-universe-ai-context-v1",
+    schema: "project-universe-ai-context-v2",
     generatedAt: new Date().toISOString(),
     privacyRule: "Use summaries and metadata only. Do not request passwords, account numbers, raw medical documents, confidential customer files, or third-party sensitive identifiers.",
+    operatingPrompt: [
+      "Treat this as a lifelong personal bookshelf, not a chat transcript.",
+      "Find repeated patterns across work, health, learning, assets, business, relationships, and administration.",
+      "Separate facts, assumptions, risks, missing data, and next actions.",
+      "Never ask for raw secrets or confidential third-party documents.",
+      "Return the smallest useful next step for the next 7 days."
+    ],
     countsByType,
+    quality: {
+      totalEntries: visible.length,
+      bookshelfPages: bookshelfPages.length,
+      booksWithPages: Object.keys(byBook).length,
+      aiExportApproved: bookshelfPages.filter(page => page.aiExportOk).length,
+      pagesWithEvidence: bookshelfPages.filter(page => page.evidence).length,
+      pagesWithNextAction: bookshelfPages.filter(page => page.nextAction).length
+    },
     bookshelf: Object.values(byBook),
     english: buildEnglishWeakness(visible),
     recentItems: visible.slice(0, 30).map(entry => ({
@@ -402,6 +475,8 @@ function buildAiContext(entries) {
       severity: entry.severity || "",
       createdAt: entry.createdAt || "",
       summary: entry.summary || entry.context || "",
+      evidence: entry.evidence || "",
+      integrityHash: entry.integrityHash || entry.serverIntegrityHash || "",
       nextAction: entry.nextAction || entry.nextStudy || ""
     }))
   };
@@ -452,25 +527,45 @@ async function handleApi(request, env, url) {
   await ensureSchema(env);
   if (url.pathname === "/api/health" && request.method === "GET") {
     const bindingName = d1BindingName(env);
+    const db = d1Binding(env);
+    let stats = null;
+    if (db) {
+      try {
+        const row = await db.prepare("SELECT COUNT(*) AS total, MAX(created_at) AS latest FROM entries").first();
+        stats = {
+          entries: Number(row?.total || 0),
+          latestEntryAt: row?.latest || null
+        };
+      } catch {
+        stats = { entries: 0, latestEntryAt: null };
+      }
+    }
     return jsonResponse(request, {
       ok: true,
       remote: true,
       storage: bindingName ? "Cloudflare D1" : "unbound",
-      binding: bindingName || null
+      binding: bindingName || null,
+      schema: "project-universe-d1-v2",
+      stats
     });
   }
 
   const db = requireDb(env);
 
   if (url.pathname === "/api/entries" && request.method === "GET") {
-    const result = await db.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 500").all();
-    const entries = (result.results || []).map(row => JSON.parse(row.payload));
+    const limit = Math.min(1000, Math.max(1, Number(url.searchParams.get("limit") || 500)));
+    const type = url.searchParams.get("type");
+    const query = type
+      ? db.prepare("SELECT id, created_at, title, payload FROM entries WHERE type = ? ORDER BY created_at DESC LIMIT ?").bind(type, limit)
+      : db.prepare("SELECT id, created_at, title, payload FROM entries ORDER BY created_at DESC LIMIT ?").bind(limit);
+    const result = await query.all();
+    const entries = (result.results || []).map(parsePayload);
     return jsonResponse(request, { ok: true, entries });
   }
 
   if (url.pathname === "/api/ai-context" && request.method === "GET") {
-    const result = await db.prepare("SELECT payload FROM entries ORDER BY created_at DESC LIMIT 1000").all();
-    const entries = (result.results || []).map(row => JSON.parse(row.payload));
+    const result = await db.prepare("SELECT id, created_at, title, payload FROM entries ORDER BY created_at DESC LIMIT 1000").all();
+    const entries = (result.results || []).map(parsePayload);
     return jsonResponse(request, { ok: true, context: buildAiContext(entries) });
   }
 
@@ -479,7 +574,7 @@ async function handleApi(request, env, url) {
     const id = String(entry.id || crypto.randomUUID());
     const createdAt = String(entry.createdAt || new Date().toISOString());
     const updatedAt = new Date().toISOString();
-    const payload = { ...entry, id, createdAt, updatedAt, remoteSavedAt: updatedAt };
+    const payload = normalizeStoredEntry(entry, id, createdAt, updatedAt);
     await db.prepare(`INSERT OR REPLACE INTO entries
       (id, created_at, updated_at, title, type, subsystem, severity, payload)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)

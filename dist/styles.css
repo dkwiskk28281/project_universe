@@ -348,6 +348,7 @@ textarea:focus-visible {
 :root[data-theme="dark"] .flashcards,
 :root[data-theme="dark"] .library-command,
 :root[data-theme="dark"] .library-overview,
+:root[data-theme="dark"] .lifetime-ops-panel,
 :root[data-theme="dark"] .book-detail,
 :root[data-theme="dark"] .capture-panel,
 :root[data-theme="dark"] .english-test-console,
@@ -379,6 +380,8 @@ textarea:focus-visible {
 :root[data-theme="dark"] .book-spine,
 :root[data-theme="dark"] .library-book-card,
 :root[data-theme="dark"] .library-command-grid span,
+:root[data-theme="dark"] .lifetime-metric-grid article,
+:root[data-theme="dark"] .lifetime-invariants span,
 :root[data-theme="dark"] .book-health-grid span,
 :root[data-theme="dark"] .bookshelf-page-card,
 :root[data-theme="dark"] .book-review-queue span,
@@ -422,6 +425,7 @@ textarea:focus-visible {
 :root[data-theme="dark"] .book-health-panel,
 :root[data-theme="dark"] .book-flow-map span,
 :root[data-theme="dark"] .empty-note,
+:root[data-theme="dark"] .bookshelf-page-card .page-evidence,
 :root[data-theme="dark"] .sync-pill,
 :root[data-theme="dark"] .starter-strip button,
 :root[data-theme="dark"] .book-module-card,
@@ -2597,6 +2601,172 @@ main {
   line-height: 1;
 }
 
+.lifetime-ops-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(0, 127, 134, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(23, 44, 55, 0.04), rgba(0, 127, 134, 0.07)),
+    #fbfdfe;
+}
+
+.lifetime-ops-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 14px;
+  align-items: start;
+}
+
+.lifetime-ops-head h2,
+.lifetime-ops-head p {
+  margin: 0;
+}
+
+.lifetime-ops-head p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.65;
+  margin-top: 7px;
+}
+
+.lifetime-score {
+  display: grid;
+  gap: 4px;
+  min-height: 132px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #172c37;
+  color: #ffffff;
+}
+
+.lifetime-score span,
+.lifetime-metric-grid span {
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.lifetime-score strong {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.lifetime-score small {
+  color: rgba(255, 255, 255, 0.76);
+  line-height: 1.35;
+}
+
+.lifetime-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.lifetime-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lifetime-metric-grid article {
+  display: grid;
+  gap: 6px;
+  min-height: 124px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.lifetime-metric-grid span {
+  color: var(--accent-2);
+}
+
+.lifetime-metric-grid strong {
+  color: var(--ink);
+  font-size: 25px;
+  line-height: 1;
+}
+
+.lifetime-metric-grid i {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfe8ed;
+}
+
+.lifetime-metric-grid em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.lifetime-metric-grid small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.lifetime-invariants {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.lifetime-invariants > div {
+  display: grid;
+  gap: 3px;
+}
+
+.lifetime-invariants strong {
+  color: var(--ink);
+}
+
+.lifetime-invariants p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.lifetime-invariants span {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) minmax(110px, 0.34fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.lifetime-invariants span b {
+  display: inline-flex;
+  justify-content: center;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: rgba(0, 127, 134, 0.12);
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.lifetime-invariants span.warn b {
+  background: rgba(179, 90, 22, 0.12);
+  color: var(--warn);
+}
+
+.lifetime-invariants small {
+  color: var(--muted);
+  text-align: right;
+}
+
 .library-book-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3090,6 +3260,17 @@ main {
   display: block;
   margin-top: 8px;
   color: var(--ink);
+  line-height: 1.45;
+}
+
+.bookshelf-page-card .page-evidence {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid rgba(0, 127, 134, 0.35);
+  border-radius: 8px;
+  background: #eef8f8;
+  color: #155e63;
   line-height: 1.45;
 }
 
@@ -5826,6 +6007,7 @@ main {
   .learning-cockpit,
   .learning-science-panel,
   .library-command,
+  .lifetime-ops-head,
   .electrical-hero,
   .meter-lab,
   .vault-status,
@@ -5931,8 +6113,22 @@ main {
 
   .book-flow-map,
   .library-command-grid,
+  .lifetime-metric-grid,
   .bookshelf-schema {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lifetime-score {
+    min-height: auto;
+  }
+
+  .lifetime-invariants span {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .lifetime-invariants small {
+    grid-column: 2;
+    text-align: left;
   }
 
   .book-health-panel p {
@@ -6169,6 +6365,7 @@ main {
   .cockpit-steps,
   .science-grid,
   .electrical-hero-steps,
+  .lifetime-metric-grid,
   .bookshelf-schema {
     grid-template-columns: 1fr;
   }

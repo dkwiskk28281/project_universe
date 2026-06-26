@@ -4,6 +4,9 @@
   const CLIENT_PASS_KEY = "ceTrainerPass";
   const REMOTE_TOKEN_KEY = "epiThinkTankRemoteToken";
   const LOCAL_TOKEN_KEY = "epiThinkTankLocalToken";
+  const BOOKSHELF_SCHEMA_VERSION = "life-bookshelf-page-v2";
+  const BOOKSHELF_EXPORT_VERSION = "life-bookshelf-export-v2";
+  const BOOKSHELF_D1_LIMIT_GB = 10;
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
@@ -303,7 +306,7 @@
 
   let activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || BOOKSHELF_BOOKS[0].id;
   let pages = loadPages();
-  let remoteState = "local-first";
+  let remoteState = "로컬 우선";
   let latestAiPacketText = "";
 
   function escapeHtml(value = "") {
@@ -324,24 +327,126 @@
     return BOOKSHELF_BOOKS.find(book => book.id === activeBookId) || BOOKSHELF_BOOKS[0];
   }
 
+  function stableJson(value) {
+    if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+    if (value && typeof value === "object") {
+      return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+    }
+    return JSON.stringify(value ?? null);
+  }
+
+  function hashText(value = "") {
+    let hash = 2166136261;
+    const text = String(value);
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function cleanText(value = "", max = 5000) {
+    return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
+  }
+
+  function cleanLongText(value = "", max = 12000) {
+    return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, max);
+  }
+
+  function validIso(value, fallback = new Date().toISOString()) {
+    const date = new Date(value || "");
+    return Number.isNaN(date.getTime()) ? fallback : date.toISOString();
+  }
+
+  function knownBook(bookId) {
+    return BOOKSHELF_BOOKS.find(book => book.id === bookId) || BOOKSHELF_BOOKS[0];
+  }
+
+  function normalizeTags(tags) {
+    const list = Array.isArray(tags) ? tags : String(tags || "").split(",");
+    return [...new Set(list.map(tag => cleanText(tag, 24)).filter(Boolean))].slice(0, 12);
+  }
+
+  function pageCoreForHash(page) {
+    return {
+      bookId: page.bookId,
+      title: page.title,
+      pageType: page.pageType,
+      privacyLevel: page.privacyLevel,
+      summary: page.summary,
+      evidence: page.evidence,
+      nextAction: page.nextAction,
+      tags: page.tags,
+      aiExportOk: page.aiExportOk,
+      createdAt: page.createdAt
+    };
+  }
+
+  function normalizePage(raw = {}) {
+    const fallbackCreatedAt = new Date().toISOString();
+    const book = knownBook(raw.bookId || activeBookId);
+    const createdAt = validIso(raw.createdAt || raw.created_at, fallbackCreatedAt);
+    const updatedAt = validIso(raw.updatedAt || raw.remoteSavedAt || raw.updated_at || createdAt, createdAt);
+    const page = {
+      ...raw,
+      id: cleanText(raw.id || `bookshelf-${uid()}`, 140),
+      schemaVersion: BOOKSHELF_SCHEMA_VERSION,
+      type: "Personal Bookshelf Page",
+      subsystem: cleanText(raw.subsystem || book.title, 120),
+      severity: cleanText(raw.severity || raw.privacyLevel || "private-summary", 60),
+      title: cleanText(raw.title || "제목 없는 페이지", 120),
+      pageType: cleanText(raw.pageType || book.pageTypes?.[0] || "페이지", 80),
+      privacyLevel: cleanText(raw.privacyLevel || raw.severity || "private-summary", 80),
+      summary: cleanLongText(raw.summary || raw.context || "", 12000),
+      evidence: cleanLongText(raw.evidence || "", 8000),
+      nextAction: cleanLongText(raw.nextAction || raw.nextStudy || "", 4000),
+      tags: normalizeTags(raw.tags),
+      aiExportOk: Boolean(raw.aiExportOk),
+      bookId: book.id,
+      bookTitle: book.title,
+      source: cleanText(raw.source || "인생의 책장", 80),
+      createdAt,
+      updatedAt,
+      remoteSavedAt: raw.remoteSavedAt || "",
+      localSavedAt: raw.localSavedAt || fallbackCreatedAt,
+      syncStatus: raw.syncStatus || "local saved"
+    };
+    page.integrityHash = hashText(stableJson(pageCoreForHash(page)));
+    return page;
+  }
+
+  function pageSortValue(page) {
+    return String(page.updatedAt || page.remoteSavedAt || page.createdAt || "");
+  }
+
   function loadPages() {
     try {
-      return JSON.parse(localStorage.getItem(BOOKSHELF_PAGE_KEY) || "[]");
+      const loaded = JSON.parse(localStorage.getItem(BOOKSHELF_PAGE_KEY) || "[]");
+      return Array.isArray(loaded) ? loaded.map(normalizePage) : [];
     } catch {
       return [];
     }
   }
 
   function savePages() {
+    pages = pages.map(normalizePage);
     localStorage.setItem(BOOKSHELF_PAGE_KEY, JSON.stringify(pages));
   }
 
   function mergePages(nextPages) {
-    const byId = new Map(pages.map(page => [page.id, page]));
+    const byId = new Map(pages.map(page => {
+      const normalized = normalizePage(page);
+      return [normalized.id, normalized];
+    }));
     nextPages.forEach(page => {
-      if (page?.id) byId.set(page.id, { ...byId.get(page.id), ...page });
+      if (!page?.id) return;
+      const incoming = normalizePage(page);
+      const existing = byId.get(incoming.id);
+      if (!existing || pageSortValue(incoming) >= pageSortValue(existing)) {
+        byId.set(incoming.id, normalizePage({ ...existing, ...incoming }));
+      }
     });
-    pages = [...byId.values()].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+    pages = [...byId.values()].sort((a, b) => pageSortValue(b).localeCompare(pageSortValue(a)));
     savePages();
   }
 
@@ -385,35 +490,68 @@
       const data = await apiFetch("/api/entries");
       const remotePages = (data.entries || []).filter(entry => entry.type === "Personal Bookshelf Page");
       if (remotePages.length) mergePages(remotePages);
-      remoteState = "Cloudflare D1 sync ready";
+      remoteState = "Cloudflare D1 연결됨";
+      await retryUnsyncedPages({ silent: true });
     } catch {
-      remoteState = "local cache only until vault is reachable";
+      remoteState = "로컬 캐시 사용 중";
     }
     renderBookshelf();
   }
 
-  async function pushPageToVault(page) {
+  function needsCloudSync(page) {
+    const status = String(page.syncStatus || "");
+    return !page.remoteSavedAt || status.includes("local saved") || status.includes("D1 failed") || status.includes("DB 저장 실패");
+  }
+
+  async function pushPageToVault(page, options = {}) {
+    const cleanPage = normalizePage(page);
     try {
-      await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(page) });
-      page.syncStatus = "D1 saved";
-      remoteState = "Cloudflare D1 sync ready";
+      const result = await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(cleanPage) });
+      const saved = normalizePage({
+        ...cleanPage,
+        ...(result.entry || {}),
+        syncStatus: "D1 saved",
+        remoteSavedAt: result.entry?.remoteSavedAt || new Date().toISOString()
+      });
+      Object.assign(page, saved);
+      mergePages([saved]);
+      remoteState = "Cloudflare D1 연결됨";
     } catch {
       page.syncStatus = "local saved";
-      remoteState = "local cache only until vault is reachable";
+      remoteState = "로컬 캐시 사용 중";
+      mergePages([page]);
     }
     if (BOOKSHELF_API !== LOCAL_VAULT_API && tokenForApi(LOCAL_VAULT_API)) {
       try {
         await apiFetch("/api/entries", {
           method: "POST",
-          body: JSON.stringify({ ...page, localMirror: true })
+          body: JSON.stringify({ ...normalizePage(page), localMirror: true })
         }, LOCAL_VAULT_API);
         page.syncStatus = `${page.syncStatus} / D drive mirrored`;
       } catch {
         page.syncStatus = `${page.syncStatus} / D drive pending`;
       }
     }
-    savePages();
-    renderBookshelf();
+    mergePages([page]);
+    if (!options.silent) renderBookshelf();
+  }
+
+  async function retryUnsyncedPages(options = {}) {
+    const targets = pages.filter(needsCloudSync).slice(0, 20);
+    if (!targets.length) {
+      if (!options.silent) {
+        remoteState = "동기화 대기 없음";
+        renderBookshelf();
+      }
+      return;
+    }
+    remoteState = `${targets.length}개 페이지 DB 재시도 중`;
+    if (!options.silent) renderBookshelf();
+    for (const page of targets) {
+      await pushPageToVault(page, { silent: true });
+    }
+    remoteState = pages.some(needsCloudSync) ? "일부 페이지 동기화 대기" : "Cloudflare D1 연결됨";
+    if (!options.silent) renderBookshelf();
   }
 
   function renderRail() {
@@ -596,6 +734,144 @@
     };
   }
 
+  function percent(part, total) {
+    return total ? Math.round(part / total * 100) : 0;
+  }
+
+  function buildBookshelfAudit() {
+    const total = pages.length;
+    const cloudSaved = pages.filter(page => page.remoteSavedAt).length;
+    const localOnly = pages.filter(needsCloudSync).length;
+    const withNext = pages.filter(page => page.nextAction).length;
+    const withTags = pages.filter(page => page.tags?.length).length;
+    const withEvidence = pages.filter(page => page.evidence).length;
+    const exportReady = pages.filter(page => page.aiExportOk).length;
+    const validSchema = pages.filter(page =>
+      page.id &&
+      page.bookId &&
+      page.createdAt &&
+      page.schemaVersion &&
+      page.integrityHash === hashText(stableJson(pageCoreForHash(normalizePage(page))))
+    ).length;
+    const booksWithPages = new Set(pages.map(page => page.bookId)).size;
+    const latest = pages[0]?.createdAt || "";
+    const daysSinceLatest = latest ? Math.floor((Date.now() - new Date(latest).getTime()) / 86400000) : null;
+    const dimensions = [
+      ["무결성", percent(validSchema, total), `${validSchema}/${total || 0} 페이지가 표준 스키마와 해시를 통과`],
+      ["DB 동기화", percent(cloudSaved, total), `${cloudSaved}/${total || 0} 페이지가 Cloudflare D1 저장 확인`],
+      ["행동성", percent(withNext, total), `${withNext}/${total || 0} 페이지에 다음 행동 포함`],
+      ["검색성", percent(withTags, total), `${withTags}/${total || 0} 페이지에 태그 포함`],
+      ["근거성", percent(withEvidence, total), `${withEvidence}/${total || 0} 페이지에 근거/출처 포함`],
+      ["책장 확장", percent(booksWithPages, BOOKSHELF_BOOKS.length), `${booksWithPages}/${BOOKSHELF_BOOKS.length} 권이 실제 기록 보유`]
+    ];
+    const score = total ? Math.round(dimensions.reduce((sum, [, value]) => sum + value, 0) / dimensions.length) : 0;
+    return {
+      total,
+      cloudSaved,
+      localOnly,
+      withNext,
+      withTags,
+      withEvidence,
+      exportReady,
+      booksWithPages,
+      latest,
+      daysSinceLatest,
+      score,
+      dimensions,
+      invariants: [
+        ["모든 기록은 책 ID, 생성일, 스키마 버전, 무결성 해시를 가진다", validSchema === total, `${validSchema}/${total || 0}`],
+        ["DB 동기화 대기 항목을 눈에 보이게 남긴다", localOnly === 0, localOnly ? `${localOnly}개 재시도 필요` : "대기 없음"],
+        ["AI 반출은 체크한 비식별 요약만 포함한다", true, `${exportReady}개만 AI 패킷 후보`],
+        ["각 책은 원문 저장소가 아니라 판단 재료 저장소다", true, "요약·근거·다음 행동 중심"],
+        ["장기 파일은 D1이 아니라 R2/D드라이브 백업으로 분리한다", true, `D1은 DB당 ${BOOKSHELF_D1_LIMIT_GB}GB 운영 한도 기준`]
+      ]
+    };
+  }
+
+  function buildBookshelfExport() {
+    const audit = buildBookshelfAudit();
+    return {
+      schema: BOOKSHELF_EXPORT_VERSION,
+      generatedAt: new Date().toISOString(),
+      title: "인생의 책장 백업",
+      rules: {
+        primaryStore: "Cloudflare D1",
+        localCache: "browser localStorage",
+        filePolicy: "큰 원문 파일은 D1에 넣지 않고 R2 또는 D드라이브 백업으로 분리",
+        aiPolicy: "aiExportOk=true인 비식별 요약만 AI 분석 패킷 후보로 사용"
+      },
+      audit,
+      books: BOOKSHELF_BOOKS.map(book => ({
+        id: book.id,
+        title: book.title,
+        shelf: book.shelf,
+        privacyLevel: book.privacyLevel,
+        purpose: book.purpose,
+        pageCount: pagesForBook(book.id).length
+      })),
+      pages: pages.map(normalizePage)
+    };
+  }
+
+  function downloadBookshelfExport() {
+    const packet = buildBookshelfExport();
+    const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `life-bookshelf-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderLifetimeOpsPanel() {
+    const audit = buildBookshelfAudit();
+    const freshness = audit.daysSinceLatest === null ? "기록 없음" : audit.daysSinceLatest === 0 ? "오늘" : `${audit.daysSinceLatest}일 전`;
+    return `
+      <section class="lifetime-ops-panel" aria-label="평생 운영 패널">
+        <div class="lifetime-ops-head">
+          <div>
+            <p class="eyebrow">평생 운영 패널</p>
+            <h2>저장, 동기화, AI 반출을 한 번에 점검</h2>
+            <p>수집 → 정규화 → 근거 분리 → 다음 행동 → AI 요약 → 백업의 루프가 유지되는지 확인합니다. 이 패널은 책장이 커질수록 스스로 약한 부분을 드러내는 계기판입니다.</p>
+          </div>
+          <div class="lifetime-score">
+            <span>운영 점수</span>
+            <strong>${audit.score}</strong>
+            <small>최근 기록: ${escapeHtml(freshness)}</small>
+          </div>
+        </div>
+        <div class="lifetime-actions">
+          <button class="primary" type="button" id="bookshelf-retry-sync">DB 동기화 재시도</button>
+          <button class="secondary" type="button" id="bookshelf-download-export">책장 JSON 백업</button>
+          <button class="secondary" type="button" id="bookshelf-copy-export">AI/백업 패킷 복사</button>
+          <span class="copy-status" id="bookshelf-export-copy-status"></span>
+        </div>
+        <div class="lifetime-metric-grid">
+          ${audit.dimensions.map(([label, value, detail]) => `
+            <article>
+              <span>${escapeHtml(label)}</span>
+              <strong>${value}%</strong>
+              <i><em style="width:${value}%"></em></i>
+              <small>${escapeHtml(detail)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="lifetime-invariants">
+          <div>
+            <strong>수학적 운영 규칙</strong>
+            <p>완벽을 주장하지 않고, 검증 가능한 불변조건을 계속 만족시키는 방식으로 안정성을 올립니다.</p>
+          </div>
+          ${audit.invariants.map(([label, ok, detail]) => `
+            <span class="${ok ? "ok" : "warn"}"><b>${ok ? "OK" : "점검"}</b>${escapeHtml(label)}<small>${escapeHtml(detail)}</small></span>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderLibraryOverview(activeBook) {
     const stats = libraryStats();
     return `
@@ -612,6 +888,7 @@
           <span><strong>${stats.overallScore}</strong> 정리도</span>
         </div>
       </section>
+      ${renderLifetimeOpsPanel()}
       <section class="library-overview" aria-label="전체 책장">
         <div class="panel-title-row">
           <div>
@@ -732,6 +1009,11 @@
         if (summary && !summary.value) summary.value = button.dataset.starterQuestion;
       });
     });
+    detail.querySelector("#bookshelf-retry-sync")?.addEventListener("click", () => retryUnsyncedPages());
+    detail.querySelector("#bookshelf-download-export")?.addEventListener("click", downloadBookshelfExport);
+    detail.querySelector("#bookshelf-copy-export")?.addEventListener("click", () => {
+      copyText(JSON.stringify(buildBookshelfExport(), null, 2), "#bookshelf-export-copy-status");
+    });
   }
 
   function renderCapture() {
@@ -781,6 +1063,10 @@
             <label>
               요약
               <textarea id="bookshelf-summary" required placeholder="원문 전체가 아니라 핵심 상황, 배경, 판단 근거만 적습니다."></textarea>
+            </label>
+            <label>
+              근거/출처
+              <textarea id="bookshelf-evidence" placeholder="내가 직접 본 사실, 공개 링크, 측정값, 대화 요약, 판단을 뒷받침하는 근거를 분리해 적습니다."></textarea>
             </label>
             <label>
               다음 행동
@@ -860,6 +1146,7 @@
         countsByType: context.countsByType,
         english: context.english,
         bookshelf: context.bookshelf,
+        localBookshelfAudit: buildBookshelfAudit(),
         recentItemsPreview: (context.recentItems || []).slice(0, 8)
       };
       latestAiPacketText = JSON.stringify(packet, null, 2);
@@ -914,6 +1201,7 @@
           <span>${escapeHtml(syncLabel(page.syncStatus))}</span>
         </header>
         <p>${escapeHtml(page.summary || "")}</p>
+        ${page.evidence ? `<small class="page-evidence">근거: ${escapeHtml(page.evidence)}</small>` : ""}
         ${page.nextAction ? `<strong>다음: ${escapeHtml(page.nextAction)}</strong>` : ""}
         <div class="entry-tags">${(page.tags || []).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
       </article>
@@ -924,7 +1212,7 @@
     const exportPages = pages
       .filter(page => page.bookId === book.id && page.aiExportOk)
       .slice(0, 10)
-      .map((page, index) => `${index + 1}. ${page.title} | ${page.pageType} | ${page.summary}${page.nextAction ? ` | 다음: ${page.nextAction}` : ""}`);
+      .map((page, index) => `${index + 1}. ${page.title} | ${page.pageType} | ${page.summary}${page.evidence ? ` | 근거: ${page.evidence}` : ""}${page.nextAction ? ` | 다음: ${page.nextAction}` : ""}`);
 
     return [
       `책: ${book.title}`,
@@ -958,6 +1246,7 @@
       pageType: document.querySelector("#bookshelf-page-type").value,
       privacyLevel: document.querySelector("#bookshelf-privacy").value,
       summary: document.querySelector("#bookshelf-summary").value.trim(),
+      evidence: document.querySelector("#bookshelf-evidence").value.trim(),
       nextAction: document.querySelector("#bookshelf-next-action").value.trim(),
       tags,
       aiExportOk: document.querySelector("#bookshelf-ai-export").checked,
