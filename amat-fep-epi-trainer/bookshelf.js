@@ -8,131 +8,140 @@
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
   const BOOK_VIEW_LABELS = {
-    dashboard: "EPI Home",
-    roadmap: "Roadmap",
-    systems: "Tool/Process",
-    equipment: "Tool Families",
-    cluster: "Cluster Builder",
-    install: "Install",
-    facility: "Facility",
-    electrical: "Electrical/DVM",
-    gases: "Gas Safety",
-    safety: "Line Rules",
-    mastery: "Mastery",
-    readiness: "Readiness",
-    runbook: "Runbook",
-    thinktank: "Experience Vault",
-    deep: "Deep Dive",
-    fab101: "Fab 101",
-    papers: "Paper Notes",
-    "english-test": "English CBT",
-    english: "English Terms",
-    glossary: "Glossary",
-    diagnostics: "Diagnostics",
-    quiz: "Quiz"
+    dashboard: "EPI 홈",
+    roadmap: "학습 로드맵",
+    systems: "장비와 공정",
+    equipment: "장비군",
+    cluster: "구성 시뮬레이터",
+    install: "설치 절차",
+    facility: "시설 연결",
+    electrical: "전기와 DVM",
+    gases: "가스 안전",
+    safety: "라인 준수",
+    mastery: "마스터리",
+    readiness: "현장 투입",
+    runbook: "런북",
+    thinktank: "경험 금고",
+    deep: "심화 학습",
+    fab101: "팹 기초",
+    papers: "논문 노트",
+    "english-test": "영어 CBT",
+    english: "영어 용어",
+    glossary: "용어집",
+    diagnostics: "진단 훈련",
+    quiz: "퀴즈"
   };
 
   const FEP_EPI_BOOK_MODULES = [
     {
-      group: "Start Here",
+      group: "처음 펼칠 장",
       items: [
-        ["dashboard", "Orientation", "역할, 오늘의 루틴, 전체 학습 흐름"],
-        ["roadmap", "4-Week Roadmap", "입사 전 순서형 학습 계획"],
-        ["fab101", "Fab 101", "팹 현장 용어와 장비 구조 기초"],
-        ["glossary", "Glossary", "FEP/EPI/CE 용어 사전"]
+        ["dashboard", "방향 잡기", "역할, 오늘의 루틴, 전체 학습 흐름"],
+        ["roadmap", "4주 로드맵", "입사 전 순서형 학습 계획"],
+        ["fab101", "팹 기초", "팹 현장 용어와 장비 구조 기초"],
+        ["glossary", "용어집", "FEP/EPI/CE 용어 사전"]
       ]
     },
     {
-      group: "Equipment Mastery",
+      group: "장비 마스터리",
       items: [
-        ["systems", "Tool & Process", "RTP/EPI 공정과 서브시스템"],
-        ["equipment", "Applied Tool Families", "Centura/Vantage/EPI/RTP 공개 장비군"],
-        ["cluster", "Cluster Builder", "LL/TM/PM/CM 연결 구조 시뮬레이션"],
-        ["deep", "Deep Dive", "공개 논문/웹 기반 심화 학습"]
+        ["systems", "장비와 공정", "RTP/EPI 공정과 서브시스템"],
+        ["equipment", "어플라이드 장비군", "Centura/Vantage/EPI/RTP 공개 장비군"],
+        ["cluster", "구성 시뮬레이터", "LL/TM/PM/CM 연결 구조 시뮬레이션"],
+        ["deep", "심화 학습", "공개 논문/웹 기반 심화 학습"]
       ]
     },
     {
-      group: "Install & Field Execution",
+      group: "설치와 현장 수행",
       items: [
-        ["install", "Install Flow", "move-in, hook-up, power-on, qualification"],
-        ["facility", "Facility Hook-up", "전기, CDA, PCW, exhaust, abatement 연결"],
-        ["gases", "Gas Safety", "EPI/FEP 가스 위험성, purge, qualification"],
-        ["safety", "Line Rules", "평택/삼성 라인 투입 전 준수 사고방식"]
+        ["install", "설치 흐름", "move-in, hook-up, power-on, qualification"],
+        ["facility", "시설 연결", "전기, CDA, PCW, exhaust, abatement 연결"],
+        ["gases", "가스 안전", "EPI/FEP 가스 위험성, purge, qualification"],
+        ["safety", "라인 준수", "평택/삼성 라인 투입 전 준수 사고방식"]
       ]
     },
     {
-      group: "Troubleshooting & Growth",
+      group: "진단과 성장",
       items: [
-        ["electrical", "Electrical/DVM", "릴레이, DVM, interlock, 전기 기초"],
-        ["diagnostics", "Diagnostic Simulator", "현장 트러블슈팅 판단 훈련"],
-        ["mastery", "Mastery OS", "시니어 CE급 사고 루프"],
-        ["readiness", "Readiness Gate", "현장 투입 가능성 자가 평가"],
-        ["runbook", "Senior Runbook", "현장 보고, RACI, punch list, 인수인계"],
-        ["thinktank", "EPI Vault", "인스톨/트러블 경험 축적"]
+        ["electrical", "전기와 DVM", "릴레이, DVM, interlock, 전기 기초"],
+        ["diagnostics", "진단 훈련", "현장 트러블슈팅 판단 훈련"],
+        ["mastery", "사고 루프", "시니어 CE급 사고 루프"],
+        ["readiness", "현장 투입 점검", "현장 투입 가능성 자가 평가"],
+        ["runbook", "선임 런북", "현장 보고, RACI, punch list, 인수인계"],
+        ["thinktank", "경험 금고", "인스톨/트러블 경험 축적"]
       ]
     },
     {
-      group: "Interview & Language",
+      group: "면접과 영어",
       items: [
-        ["english-test", "English CBT", "Applied 공개 형식 기반 영어 CBT 훈련"],
-        ["english", "English Terms", "생소한 영어 단어와 현장 표현"],
-        ["papers", "Paper Notes", "논문/공개자료 학습 노트"],
-        ["quiz", "Quiz", "면접/현장 질문 회상 훈련"]
+        ["english-test", "영어 CBT", "Applied 공개 형식 기반 영어 CBT 훈련"],
+        ["english", "영어 용어", "생소한 영어 단어와 현장 표현"],
+        ["papers", "논문 노트", "논문/공개자료 학습 노트"],
+        ["quiz", "퀴즈", "면접/현장 질문 회상 훈련"]
       ]
     }
   ];
 
   const BOOK_BLUEPRINTS = {
     "family-health": [
-      ["Symptom Timeline", "증상, 날짜, 지속시간, 악화/완화 요인을 기록하는 내부 페이지"],
-      ["Checkup History", "건강검진 결과 업로드 요약, 이상 수치 변화, 추적검사 일정"],
-      ["Hospital Shortlist", "유명 병원, 전문센터, 진료과, 예약 메모를 비교하는 목록"],
-      ["Doctor Questions", "진료 전 질문, 검사 전 확인사항, 보호자 전달 메모"],
-      ["Medication & Lifestyle", "복약 여부, 수면, 식사, 운동, 생활 변화 추적"],
-      ["Care Briefing", "AI나 가족에게 보여줄 수 있는 비식별 요약 패킷"]
+      ["증상 타임라인", "증상, 날짜, 지속시간, 악화/완화 요인을 기록하는 내부 페이지"],
+      ["건강검진 기록", "건강검진 결과 업로드 요약, 이상 수치 변화, 추적검사 일정"],
+      ["병원 후보 목록", "유명 병원, 전문센터, 진료과, 예약 메모를 비교하는 목록"],
+      ["진료 전 질문", "진료 전 질문, 검사 전 확인사항, 보호자 전달 메모"],
+      ["복약과 생활 루틴", "복약 여부, 수면, 식사, 운동, 생활 변화 추적"],
+      ["가족 공유 요약", "AI나 가족에게 보여줄 수 있는 비식별 요약 패킷"]
     ],
     "assets-finance": [
-      ["Asset Snapshot", "자산군별 비중과 현금흐름을 원문 없이 요약"],
-      ["Risk Register", "집중도, 변동성, 만기, 고정비 리스크 추적"],
-      ["Decision Ledger", "투자/지출 의사결정의 근거와 사후 평가"],
-      ["Tax & Admin Questions", "세무사/은행/보험사에 물어볼 질문 목록"]
+      ["자산 스냅샷", "자산군별 비중과 현금흐름을 원문 없이 요약"],
+      ["리스크 장부", "집중도, 변동성, 만기, 고정비 리스크 추적"],
+      ["의사결정 기록", "투자/지출 의사결정의 근거와 사후 평가"],
+      ["세금과 행정 질문", "세무사/은행/보험사에 물어볼 질문 목록"]
     ],
     "business-foundry": [
-      ["Idea Seeds", "아이디어 원석을 문제, 고객, 가설로 분리"],
-      ["MVP Experiments", "가장 작은 검증 실험과 성공/실패 기준"],
-      ["Market Notes", "시장, 경쟁사, 고객 인터뷰 기록"],
-      ["Pitch Drafts", "설명, 가치제안, 수익모델 초안"]
+      ["아이디어 씨앗", "아이디어 원석을 문제, 고객, 가설로 분리"],
+      ["작은 실험", "가장 작은 검증 실험과 성공/실패 기준"],
+      ["시장 관찰", "시장, 경쟁사, 고객 인터뷰 기록"],
+      ["피치 초안", "설명, 가치제안, 수익모델 초안"]
     ],
     "learning-library": [
-      ["Wrong Answers", "영어/전기/반도체 오답과 약점 패턴"],
-      ["Concept Cards", "개념을 내 말로 다시 설명하는 카드"],
-      ["Paper Summaries", "논문 핵심, 장비 연결점, 현장 적용 질문"],
-      ["Spaced Review", "복습 주기와 회상 훈련 큐"]
+      ["오답 노트", "영어/전기/반도체 오답과 약점 패턴"],
+      ["개념 카드", "개념을 내 말로 다시 설명하는 카드"],
+      ["논문 요약", "논문 핵심, 장비 연결점, 현장 적용 질문"],
+      ["복습 큐", "복습 주기와 회상 훈련 큐"]
     ],
     "life-os": [
-      ["Decision Ledger", "중요 선택의 이유, 감정, 결과 기록"],
-      ["Weekly Review", "이번 주 에너지, 우선순위, 다음 행동"],
-      ["Goal Map", "3개월/1년 목표와 중간 지표"],
-      ["Habit Audit", "반복 습관, 방해 요인, 개선 실험"]
+      ["선택의 장부", "중요 선택의 이유, 감정, 결과 기록"],
+      ["주간 회고", "이번 주 에너지, 우선순위, 다음 행동"],
+      ["목표 지도", "3개월/1년 목표와 중간 지표"],
+      ["습관 점검", "반복 습관, 방해 요인, 개선 실험"]
     ],
     "people-network": [
-      ["Follow-ups", "약속, 안부, 다시 연락할 날짜"],
-      ["Family Schedule", "가족 일정과 챙길 일"],
-      ["Support Plans", "도움이 필요한 사람과 구체적 행동"],
-      ["Boundary Notes", "관계에서 지켜야 할 선과 배려"]
+      ["후속 연락", "약속, 안부, 다시 연락할 날짜"],
+      ["가족 일정", "가족 일정과 챙길 일"],
+      ["도움 계획", "도움이 필요한 사람과 구체적 행동"],
+      ["관계의 선", "관계에서 지켜야 할 선과 배려"]
     ],
     "admin-vault": [
-      ["Document Index", "원문이 아니라 위치, 만료일, 담당기관만 기록"],
-      ["Renewal Checklist", "갱신/납부/예약 일정"],
-      ["Home Maintenance", "집, 차량, 구독, 생활 관리 기록"],
-      ["Question List", "기관에 문의할 질문과 답변 요약"]
+      ["문서 위치 색인", "원문이 아니라 위치, 만료일, 담당기관만 기록"],
+      ["갱신 체크리스트", "갱신/납부/예약 일정"],
+      ["집과 생활 관리", "집, 차량, 구독, 생활 관리 기록"],
+      ["문의 목록", "기관에 문의할 질문과 답변 요약"]
     ],
     "ai-briefing-desk": [
-      ["Export Policy", "AI에게 보여줄 수 있는 범위와 금지 범위"],
-      ["Monthly Synthesis", "책장 전체 요약과 다음 달 제안"],
-      ["Cross-book Insight", "건강/일/자산/사업 사이의 충돌과 우선순위"],
-      ["Prompt Drafts", "AI 분석에 넣을 안전한 프롬프트"]
+      ["반출 규칙", "AI에게 보여줄 수 있는 범위와 금지 범위"],
+      ["월간 종합", "책장 전체 요약과 다음 달 제안"],
+      ["책 사이 통찰", "건강/일/자산/사업 사이의 충돌과 우선순위"],
+      ["프롬프트 초안", "AI 분석에 넣을 안전한 프롬프트"]
     ]
+  };
+
+  const PRIVACY_LABELS = {
+    "work-learning": "직무 학습",
+    "private-summary": "개인 요약",
+    "sensitive-summary": "민감 요약",
+    "sensitive-index": "민감 색인",
+    "sensitive-index only": "민감 색인",
+    "controlled-export": "AI 반출 관리"
   };
 
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
@@ -148,15 +157,15 @@
   const BOOKSHELF_BOOKS = [
     {
       id: "career-fep-epi",
-      code: "CE",
-      shelf: "Career",
-      title: "FEP/EPI Customer Engineer Mastery",
-      subtitle: "Applied Materials CE 직무, EPI/RTP, 설치, 트러블슈팅, 영어 시험을 한 권의 전문서로 관리",
+      code: "직무",
+      shelf: "커리어",
+      title: "FEP/EPI 현장 엔지니어",
+      subtitle: "어플라이드 CE 직무, EPI/RTP, 설치, 진단, 영어 시험을 한 권의 전문서로 관리",
       privacyLevel: "work-learning",
       purpose: "현장 투입 전후의 학습, 설치 경험, 장비 구조, 고객 커뮤니케이션, qualification 증거를 축적한다.",
       allowed: ["공개 자료 기반 학습노트", "현장 경험의 비식별 요약", "증상-근거-조치-예방 구조", "면접/영어/직무 성장 기록"],
       neverStore: ["고객사 비공개 도면", "장비 serial 전체", "내부 절차서 원문", "계정/출입/보안 정보", "NDA 문서"],
-      pageTypes: ["Install note", "Troubleshooting case", "Paper summary", "English drill", "Senior question", "Daily review"],
+      pageTypes: ["설치 노트", "트러블슈팅 사례", "논문 요약", "영어 훈련", "선임 질문", "하루 회고"],
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
@@ -164,15 +173,15 @@
     },
     {
       id: "life-os",
-      code: "OS",
-      shelf: "Life",
-      title: "Life OS and Decision Ledger",
-      subtitle: "가치관, 목표, 습관, 의사결정을 관리하는 인생 운영 장부",
+      code: "삶",
+      shelf: "인생",
+      title: "인생 운영 기록",
+      subtitle: "가치관, 목표, 습관, 의사결정을 관리하는 삶의 장부",
       privacyLevel: "private-summary",
       purpose: "내가 왜 그 선택을 했는지, 무엇을 반복하고 싶은지, 어떤 삶의 방향으로 움직이는지 기록한다.",
       allowed: ["가치관 요약", "목표와 우선순위", "의사결정 이유", "회고", "반복 습관 점검"],
       neverStore: ["주민등록번호", "계정 비밀번호", "개인 인증정보", "타인의 민감한 사생활 원문"],
-      pageTypes: ["Decision memo", "Weekly review", "Goal map", "Habit audit", "Risk note", "AI briefing"],
+      pageTypes: ["결정 메모", "주간 회고", "목표 지도", "습관 점검", "위험 메모", "AI 요약"],
       aiUse: ["내 선택 패턴 분석", "월간 목표 조정", "과부하 신호와 회복 루틴 제안"],
       starterQuestions: ["이 결정을 하게 된 핵심 이유는?", "3개월 뒤의 내가 확인해야 할 가정은?", "지금 줄여야 할 일은 무엇인가?"],
       reviewCadence: "주간 30분, 월간 1회 방향 점검",
@@ -180,15 +189,15 @@
     },
     {
       id: "family-health",
-      code: "FH",
-      shelf: "Care",
-      title: "Family Health and Care Index",
-      subtitle: "가족 건강을 직접 진단하지 않고, 진료 준비와 생활 관리 요약으로 정리",
+      code: "건강",
+      shelf: "돌봄",
+      title: "가족 건강 수첩",
+      subtitle: "진단이 아니라 진료 준비와 생활 관리 요약을 차분히 정리",
       privacyLevel: "sensitive-summary",
       purpose: "병원 상담을 더 잘 준비하고 가족 돌봄 기록을 놓치지 않기 위한 요약 책이다. 의료 판단은 반드시 의료진에게 확인한다.",
       allowed: ["증상 변화 요약", "병원 방문 전 질문", "생활 루틴", "복약 여부의 비식별 체크", "검사 결과의 큰 흐름 요약"],
       neverStore: ["진단서 원본", "처방전 사진", "주민등록번호", "보험증권/환자번호 전체", "의료 영상 원본", "정확한 주소와 연락처 묶음"],
-      pageTypes: ["Care summary", "Doctor question list", "Symptom timeline", "Lifestyle log", "Medication check summary", "Appointment note"],
+      pageTypes: ["돌봄 요약", "진료 질문", "증상 타임라인", "생활 기록", "복약 체크", "예약 메모"],
       aiUse: ["진료 전 질문 정리", "증상 타임라인 요약", "생활 루틴 점검"],
       starterQuestions: ["언제부터 무엇이 달라졌는가?", "의사에게 꼭 물어볼 질문은?", "위험 신호가 있으면 누구에게 바로 연락해야 하는가?"],
       reviewCadence: "필요 시, 병원 방문 전후",
@@ -196,15 +205,15 @@
     },
     {
       id: "assets-finance",
-      code: "AF",
-      shelf: "Capital",
-      title: "Assets and Finance Control Room",
+      code: "자산",
+      shelf: "자산",
+      title: "자산 관리실",
       subtitle: "자산 전체 그림, 현금흐름, 리스크, 공부 메모를 관리",
       privacyLevel: "sensitive-summary",
       purpose: "투자 조언을 대체하지 않고, 내가 가진 자산의 구조와 리스크를 이해하기 위한 요약 책이다.",
       allowed: ["자산군별 비율", "월별 현금흐름 요약", "투자 아이디어", "리스크 메모", "세금/계약 질문 목록"],
       neverStore: ["계좌번호 전체", "카드번호", "인증서/OTP/API key", "거래소 비밀번호", "주민등록번호", "대출계약서 원문"],
-      pageTypes: ["Portfolio snapshot", "Cash-flow note", "Risk review", "Investment thesis", "Tax question", "Decision memo"],
+      pageTypes: ["자산 스냅샷", "현금흐름 메모", "리스크 검토", "투자 가설", "세금 질문", "결정 메모"],
       aiUse: ["집중 리스크 확인", "현금흐름 개선 아이디어", "투자 가정 검토 질문 생성"],
       starterQuestions: ["이 자산은 어떤 위험에 노출되어 있는가?", "현금흐름을 악화시키는 반복 지출은?", "투자 가정이 틀리면 무엇이 먼저 보일까?"],
       reviewCadence: "월간 1회, 큰 의사결정 전",
@@ -212,15 +221,15 @@
     },
     {
       id: "business-foundry",
-      code: "BF",
-      shelf: "Build",
-      title: "Business and Startup Foundry",
+      code: "사업",
+      shelf: "창업",
+      title: "사업 아이디어 공방",
       subtitle: "미래 사업, 제품, 시장, 고객 문제를 실험 가능한 형태로 보관",
       privacyLevel: "private-summary",
       purpose: "막연한 아이디어를 문제, 고객, 가설, 실험, 결과로 쪼개서 언젠가 사업으로 연결한다.",
       allowed: ["아이디어 한 줄", "고객 문제", "시장 관찰", "MVP 가설", "실험 결과", "경쟁사 공개 분석"],
       neverStore: ["타사 영업비밀", "동의 없는 고객 개인정보", "비밀계약 원문", "결제정보"],
-      pageTypes: ["Idea seed", "Customer problem", "MVP experiment", "Market note", "Competitor map", "Pitch draft"],
+      pageTypes: ["아이디어 씨앗", "고객 문제", "작은 실험", "시장 메모", "경쟁 지도", "피치 초안"],
       aiUse: ["아이디어 우선순위 정리", "MVP 실험 설계", "고객 인터뷰 질문 생성"],
       starterQuestions: ["누가 이 문제로 돈이나 시간을 잃고 있는가?", "가장 작은 실험은 무엇인가?", "실패하면 무엇을 배울 수 있는가?"],
       reviewCadence: "아이디어 발생 시, 월 1회 선별",
@@ -228,15 +237,15 @@
     },
     {
       id: "learning-library",
-      code: "LL",
-      shelf: "Growth",
-      title: "Learning Library",
+      code: "학습",
+      shelf: "성장",
+      title: "학습 서재",
       subtitle: "영어, 전기, 반도체, 사업, 독서, 논문을 누적하는 학습 책장",
       privacyLevel: "private-summary",
       purpose: "공부한 내용을 시험 점수보다 오래 남는 개념, 예시, 적용 과제로 바꾼다.",
       allowed: ["강의/책 요약", "문제 오답", "개념 카드", "논문 요약", "실전 적용 과제"],
       neverStore: ["유료 교재 원문 대량 복사", "저작권 자료 전체", "시험 문제 원문 유출"],
-      pageTypes: ["Concept note", "Wrong answer", "Book note", "Paper note", "Practice log", "Teach-back"],
+      pageTypes: ["개념 노트", "오답 노트", "책 메모", "논문 노트", "훈련 기록", "설명 연습"],
       aiUse: ["약점 진단", "복습 스케줄 생성", "쉬운 설명으로 재구성"],
       starterQuestions: ["이 개념을 현장 예시로 바꾸면?", "내가 틀린 이유는 지식 부족인가, 문제 해석인가?", "내일 다시 떠올릴 단서는?"],
       reviewCadence: "격일 10분, 주간 누적 점검",
@@ -244,15 +253,15 @@
     },
     {
       id: "people-network",
-      code: "PN",
-      shelf: "People",
-      title: "People, Family, and Network",
+      code: "관계",
+      shelf: "관계",
+      title: "사람과 관계 노트",
       subtitle: "관계의 맥락, 감사, 약속, 대화 후속 조치를 관리",
       privacyLevel: "private-summary",
       purpose: "사람을 데이터화하는 것이 아니라, 내가 더 책임감 있게 기억하고 챙기기 위한 관계 메모다.",
       allowed: ["약속한 일", "고마웠던 일", "대화 후속 조치", "가족 일정 요약", "도움 요청/제공 기록"],
       neverStore: ["타인의 비밀 원문", "동의 없는 민감 건강/금융/위치 정보", "험담 기록", "연락처 목록 원문"],
-      pageTypes: ["Follow-up", "Family schedule", "Gratitude note", "Conversation summary", "Support plan", "Boundary note"],
+      pageTypes: ["후속 연락", "가족 일정", "감사 메모", "대화 요약", "도움 계획", "관계의 선"],
       aiUse: ["약속 누락 방지", "관계 회복 질문", "가족 일정 요약"],
       starterQuestions: ["내가 지키기로 한 약속은?", "상대에게 다시 확인해야 할 것은?", "내가 과하게 떠안은 것은 없는가?"],
       reviewCadence: "주 1회, 중요한 일정 전",
@@ -260,15 +269,15 @@
     },
     {
       id: "admin-vault",
-      code: "AV",
-      shelf: "Admin",
-      title: "Home, Admin, and Document Map",
+      code: "관리",
+      shelf: "관리",
+      title: "생활 행정 지도",
       subtitle: "집, 계약, 보험, 구독, 서류 위치를 원문이 아닌 색인으로 관리",
       privacyLevel: "sensitive-index",
       purpose: "서류 원문을 넣지 않고 어디에 무엇이 있는지, 언제 갱신해야 하는지, 어떤 질문이 남았는지 관리한다.",
       allowed: ["문서 위치 힌트", "만료일", "문의할 기관", "해야 할 행정 작업", "체크리스트"],
       neverStore: ["계약서 원문", "보험증권 번호 전체", "등본/가족관계증명서", "신분증 사진", "인감/서명 이미지"],
-      pageTypes: ["Document index", "Renewal checklist", "Subscription audit", "Home maintenance", "Insurance question", "Admin task"],
+      pageTypes: ["문서 색인", "갱신 체크", "구독 점검", "집 관리", "보험 질문", "행정 할 일"],
       aiUse: ["만료/갱신 일정 정리", "질문 목록 생성", "서류 준비 체크리스트"],
       starterQuestions: ["원문은 어디에 안전하게 보관되어 있는가?", "언제 갱신하거나 확인해야 하는가?", "다음 행정 행동은?"],
       reviewCadence: "월 1회, 계약/갱신 전",
@@ -277,14 +286,14 @@
     {
       id: "ai-briefing-desk",
       code: "AI",
-      shelf: "Synthesis",
-      title: "AI Briefing and Export Desk",
+      shelf: "통합",
+      title: "AI 통합 브리핑",
       subtitle: "책장 전체를 AI에게 보여줄 때의 반출 규칙, 요약 패킷, 분석 프롬프트",
       privacyLevel: "controlled-export",
       purpose: "나중에 AI에게 데이터를 보여줄 때 무엇을 포함하고 제외할지 통제한다.",
       allowed: ["비식별 요약", "책별 목표", "최근 결정", "다음 액션", "AI 반출 허용 체크된 페이지"],
       neverStore: ["원문 민감정보 묶음", "인증정보", "타인의 동의 없는 세부 개인정보", "의료/금융 식별자"],
-      pageTypes: ["AI briefing", "Export policy", "Monthly synthesis", "Risk review", "Cross-book insight", "Prompt draft"],
+      pageTypes: ["AI 브리핑", "반출 규칙", "월간 종합", "위험 검토", "책 사이 통찰", "프롬프트 초안"],
       aiUse: ["책장 전체 패턴 분석", "나의 다음 30일 운영 제안", "분야별 충돌과 우선순위 정리"],
       starterQuestions: ["AI에게 보여줘도 되는 범위인가?", "이 요약만으로도 판단이 가능한가?", "삭제해야 할 식별자는 없는가?"],
       reviewCadence: "AI 분석 전 매번",
@@ -420,7 +429,7 @@
             <button class="book-spine ${book.id === activeBookId ? "active" : ""}" type="button" data-book-id="${escapeHtml(book.id)}">
               <span>${escapeHtml(book.code)}</span>
               <strong>${escapeHtml(book.title)}</strong>
-              <small>${escapeHtml(book.privacyLevel)}</small>
+              <small>${escapeHtml(privacyLabel(book.privacyLevel))}</small>
             </button>
           `).join("")}
         </div>
@@ -440,16 +449,30 @@
     return `<ul>${items.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`;
   }
 
+  function privacyLabel(value = "") {
+    return PRIVACY_LABELS[value] || value || "개인 요약";
+  }
+
+  function syncLabel(value = "") {
+    const text = String(value || "saved");
+    return text
+      .replace("D1 saved", "D1 저장")
+      .replace("local saved", "로컬 저장")
+      .replace("D drive mirrored", "D 드라이브 백업")
+      .replace("D drive pending", "D 드라이브 대기")
+      .replace("saved", "저장됨");
+  }
+
   function renderFepEpiBookInterior() {
     return `
       <section class="book-interior" aria-label="FEP/EPI Mastery book modules">
         <div class="book-interior-head">
           <div>
-            <p class="eyebrow">Inside This Book</p>
-            <h3>FEP/EPI Mastery 목차</h3>
-            <p>기존 오른쪽 상단에 흩어져 있던 모든 EPI 학습 탭을 이 책 내부 목차로 옮겼습니다. 책장에서 이 책을 펼치고, 필요한 장을 골라 들어가는 구조입니다.</p>
+            <p class="eyebrow">책 안의 목차</p>
+            <h3>FEP/EPI 현장 엔지니어 목차</h3>
+            <p>흩어져 있던 EPI 학습 탭을 이 책 내부 목차로 모았습니다. 책장에서 이 책을 펼치고 필요한 장을 골라 들어가는 구조입니다.</p>
           </div>
-          <span class="sync-pill">${FEP_EPI_BOOK_MODULES.reduce((sum, group) => sum + group.items.length, 0)} modules</span>
+          <span class="sync-pill">${FEP_EPI_BOOK_MODULES.reduce((sum, group) => sum + group.items.length, 0)}장</span>
         </div>
         ${FEP_EPI_BOOK_MODULES.map(group => `
           <div class="book-module-group">
@@ -475,16 +498,16 @@
       <section class="book-interior" aria-label="Book expansion blueprint">
         <div class="book-interior-head">
           <div>
-            <p class="eyebrow">Book Blueprint</p>
+            <p class="eyebrow">확장 설계</p>
             <h3>이 책 안에 앞으로 생길 공간</h3>
             <p>각 책은 독립 앱처럼 커질 수 있습니다. 지금은 저장 구조와 내부 페이지 설계부터 세워두고, 실제 기능은 책별로 하나씩 확장합니다.</p>
           </div>
-          <span class="sync-pill">${blueprint.length} rooms</span>
+          <span class="sync-pill">${blueprint.length}개 공간</span>
         </div>
         <div class="book-blueprint-grid">
           ${blueprint.map(([title, desc]) => `
             <article class="book-blueprint-card">
-              <span>Planned</span>
+              <span>예정</span>
               <strong>${escapeHtml(title)}</strong>
               <small>${escapeHtml(desc)}</small>
             </article>
@@ -578,24 +601,24 @@
     return `
       <section class="library-command">
         <div class="library-command-copy">
-          <p class="eyebrow">Bookshelf Home</p>
-          <h2>책장은 입구, 각 책은 하나의 전문 시스템입니다</h2>
+          <p class="eyebrow">인생의 책장</p>
+          <h2>필요한 삶의 영역을 책처럼 꺼내 쓰는 공간</h2>
           <p>필요한 책을 먼저 고르고, 기록은 요약-근거-다음 행동-AI 공개 범위로 쌓습니다. 나중에 AI에게 보여줄 때도 원문이 아니라 구조화된 판단 재료만 넘기도록 설계했습니다.</p>
         </div>
         <div class="library-command-grid" aria-label="책장 현황">
-          <span><strong>${stats.books}</strong> books</span>
-          <span><strong>${stats.pages}</strong> pages</span>
-          <span><strong>${stats.exportReady}</strong> AI-ready</span>
-          <span><strong>${stats.overallScore}</strong> health</span>
+          <span><strong>${stats.books}</strong> 권의 책</span>
+          <span><strong>${stats.pages}</strong> 저장 페이지</span>
+          <span><strong>${stats.exportReady}</strong> AI 공개 가능</span>
+          <span><strong>${stats.overallScore}</strong> 정리도</span>
         </div>
       </section>
       <section class="library-overview" aria-label="전체 책장">
         <div class="panel-title-row">
           <div>
-            <p class="eyebrow">Choose a Book</p>
+            <p class="eyebrow">책 선택</p>
             <h2>오늘 다룰 책 선택</h2>
           </div>
-          <span class="sync-pill">${escapeHtml(activeBook.shelf)} shelf</span>
+          <span class="sync-pill">${escapeHtml(activeBook.shelf)} 책칸</span>
         </div>
         <div class="library-book-grid">
           ${BOOKSHELF_BOOKS.map(book => {
@@ -604,8 +627,8 @@
               <button class="library-book-card ${book.id === activeBook.id ? "active" : ""}" type="button" data-book-card="${escapeHtml(book.id)}">
                 <span class="book-card-code">${escapeHtml(book.code)}</span>
                 <strong>${escapeHtml(book.title)}</strong>
-                <small>${escapeHtml(book.shelf)} / ${escapeHtml(book.privacyLevel)}</small>
-                <em>${count} page${count === 1 ? "" : "s"}</em>
+                <small>${escapeHtml(book.shelf)} / ${escapeHtml(privacyLabel(book.privacyLevel))}</small>
+                <em>${count}쪽</em>
               </button>
             `;
           }).join("")}
@@ -625,7 +648,7 @@
         <div class="book-detail-head">
           <span class="book-code">${escapeHtml(book.code)}</span>
           <div>
-            <p class="eyebrow">${escapeHtml(book.shelf)} / ${escapeHtml(book.privacyLevel)}</p>
+            <p class="eyebrow">${escapeHtml(book.shelf)} / ${escapeHtml(privacyLabel(book.privacyLevel))}</p>
             <h2>${escapeHtml(book.title)}</h2>
             <p>${escapeHtml(book.subtitle)}</p>
           </div>
@@ -643,15 +666,15 @@
         </div>
         <section class="book-health-panel" aria-label="책 데이터 건강도">
           <div class="book-health-score">
-            <span>Data Health</span>
+            <span>정리도</span>
             <strong>${stats.score}</strong>
             <i><em style="width:${stats.score}%"></em></i>
           </div>
           <div class="book-health-grid">
-            <span><strong>${stats.pages.length}</strong> pages</span>
-            <span><strong>${stats.aiReady}</strong> AI-ready</span>
-            <span><strong>${stats.nextReady}</strong> next action</span>
-            <span><strong>${formatDateLabel(stats.latest?.createdAt)}</strong> latest</span>
+            <span><strong>${stats.pages.length}</strong>쪽</span>
+            <span><strong>${stats.aiReady}</strong> AI 공개</span>
+            <span><strong>${stats.nextReady}</strong> 다음 행동</span>
+            <span><strong>${formatDateLabel(stats.latest?.createdAt)}</strong> 최근 기록</span>
           </div>
           <p>${escapeHtml(stats.suggestion)}</p>
         </section>
@@ -681,7 +704,7 @@
         ${stats.missingNext.length ? `
           <div class="book-review-queue">
             <strong>닫아야 할 열린 루프</strong>
-            ${stats.missingNext.map(page => `<span>${escapeHtml(page.title || "Untitled page")} · 다음 행동 없음</span>`).join("")}
+            ${stats.missingNext.map(page => `<span>${escapeHtml(page.title || "제목 없는 페이지")} · 다음 행동 없음</span>`).join("")}
           </div>
         ` : ""}
       </article>
@@ -723,7 +746,7 @@
         <article class="capture-panel">
           <div class="panel-title-row">
             <div>
-              <p class="eyebrow">Capture Page</p>
+              <p class="eyebrow">새 페이지</p>
               <h2>새 페이지 저장</h2>
             </div>
             <span class="sync-pill">${escapeHtml(remoteState)}</span>
@@ -743,16 +766,16 @@
               <label>
                 민감도
                 <select id="bookshelf-privacy">
-                  <option value="private-summary">Private summary</option>
-                  <option value="sensitive-summary">Sensitive summary</option>
-                  <option value="sensitive-index">Sensitive index only</option>
-                  <option value="work-learning">Work learning</option>
-                  <option value="controlled-export">Controlled export</option>
+                  <option value="private-summary">개인 요약</option>
+                  <option value="sensitive-summary">민감 요약</option>
+                  <option value="sensitive-index">민감 색인만</option>
+                  <option value="work-learning">직무 학습</option>
+                  <option value="controlled-export">AI 반출 관리</option>
                 </select>
               </label>
               <label>
                 태그
-                <input id="bookshelf-tags" placeholder="comma, separated, tags" />
+                <input id="bookshelf-tags" placeholder="예: 설치, 영어, 건강" />
               </label>
             </div>
             <label>
@@ -777,10 +800,10 @@
         <article class="capture-panel">
           <div class="panel-title-row">
             <div>
-              <p class="eyebrow">Recent Pages</p>
+              <p class="eyebrow">최근 페이지</p>
               <h2>최근 저장된 페이지</h2>
             </div>
-            <span class="sync-pill">${bookPages.length} pages</span>
+            <span class="sync-pill">${bookPages.length}쪽</span>
           </div>
           <div class="bookshelf-page-list">
             ${bookPages.length ? bookPages.map(renderPageCard).join("") : `<p class="empty-note">아직 이 책에 저장된 페이지가 없습니다. 첫 페이지는 작게 시작하면 됩니다.</p>`}
@@ -790,7 +813,7 @@
         <article class="capture-panel ai-briefing-panel">
           <div class="panel-title-row">
             <div>
-              <p class="eyebrow">AI Briefing Packet</p>
+              <p class="eyebrow">AI 요약 패킷</p>
               <h2>나중에 AI에게 보여줄 요약 형태</h2>
             </div>
             <button class="secondary" id="bookshelf-copy-briefing" type="button">요약 복사</button>
@@ -802,7 +825,7 @@
         <article class="capture-panel ai-briefing-panel">
           <div class="panel-title-row">
             <div>
-              <p class="eyebrow">Global AI Context</p>
+              <p class="eyebrow">책장 전체 맥락</p>
               <h2>책장 전체 데이터 통합 패킷</h2>
             </div>
             <div class="thinktank-actions">
@@ -848,17 +871,17 @@
       target.innerHTML = `
         <div class="ai-context-readout">
           <article>
-            <span>Records</span>
+            <span>기록</span>
             <strong>${counts.reduce((sum, [, count]) => sum + Number(count || 0), 0)}</strong>
             <small>${counts.map(([type, count]) => `${escapeHtml(type)} ${count}`).join(" · ") || "아직 D1 기록 없음"}</small>
           </article>
           <article>
-            <span>Books</span>
+            <span>책</span>
             <strong>${books.length}</strong>
-            <small>${books.slice(0, 3).map(book => `${escapeHtml(book.bookTitle || book.bookId)} ${book.pages || 0}p`).join(" · ") || "책장 페이지 대기"}</small>
+            <small>${books.slice(0, 3).map(book => `${escapeHtml(book.bookTitle || book.bookId)} ${book.pages || 0}쪽`).join(" · ") || "책장 페이지 대기"}</small>
           </article>
           <article>
-            <span>English</span>
+            <span>영어</span>
             <strong>${english.accuracy ?? 0}%</strong>
             <small>${topWeakness ? `${escapeHtml(topWeakness.skill)} 우선 보강` : "영어 오답 데이터 대기"}</small>
           </article>
@@ -866,7 +889,7 @@
         <div class="ai-context-recent">
           <strong>최근 AI 재료</strong>
           ${recent.length ? recent.map(item => `
-            <span>${escapeHtml(item.type || "Record")} · ${escapeHtml(item.title || item.subsystem || "Untitled")}</span>
+            <span>${escapeHtml(item.type || "기록")} · ${escapeHtml(item.title || item.subsystem || "제목 없음")}</span>
           `).join("") : `<span>아직 최근 항목이 없습니다.</span>`}
         </div>
         <details class="ai-context-json">
@@ -885,13 +908,13 @@
       <article class="bookshelf-page-card">
         <header>
           <div>
-            <h3>${escapeHtml(page.title || "Untitled page")}</h3>
-            <small>${escapeHtml(page.pageType || "Page")} / ${escapeHtml(page.privacyLevel || "private-summary")}</small>
+            <h3>${escapeHtml(page.title || "제목 없는 페이지")}</h3>
+            <small>${escapeHtml(page.pageType || "페이지")} / ${escapeHtml(privacyLabel(page.privacyLevel || "private-summary"))}</small>
           </div>
-          <span>${escapeHtml(page.syncStatus || "saved")}</span>
+          <span>${escapeHtml(syncLabel(page.syncStatus))}</span>
         </header>
         <p>${escapeHtml(page.summary || "")}</p>
-        ${page.nextAction ? `<strong>Next: ${escapeHtml(page.nextAction)}</strong>` : ""}
+        ${page.nextAction ? `<strong>다음: ${escapeHtml(page.nextAction)}</strong>` : ""}
         <div class="entry-tags">${(page.tags || []).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
       </article>
     `;
@@ -901,19 +924,19 @@
     const exportPages = pages
       .filter(page => page.bookId === book.id && page.aiExportOk)
       .slice(0, 10)
-      .map((page, index) => `${index + 1}. ${page.title} | ${page.pageType} | ${page.summary}${page.nextAction ? ` | next: ${page.nextAction}` : ""}`);
+      .map((page, index) => `${index + 1}. ${page.title} | ${page.pageType} | ${page.summary}${page.nextAction ? ` | 다음: ${page.nextAction}` : ""}`);
 
     return [
-      `Book: ${book.title}`,
-      `Purpose: ${book.purpose}`,
-      `Privacy rule: Do not infer or request raw identifiers, passwords, account numbers, medical documents, or confidential third-party data.`,
-      `Allowed AI work: ${book.aiUse.join("; ")}`,
-      `Current review cadence: ${book.reviewCadence}`,
+      `책: ${book.title}`,
+      `목적: ${book.purpose}`,
+      `개인정보 규칙: 원시 식별자, 비밀번호, 계좌번호, 의료 원문, 제3자 기밀정보를 추론하거나 요구하지 말 것.`,
+      `AI에게 맡길 수 있는 일: ${book.aiUse.join("; ")}`,
+      `점검 주기: ${book.reviewCadence}`,
       "",
-      "Export-approved pages:",
-      exportPages.length ? exportPages.join("\n") : "No pages approved for AI export yet.",
+      "AI 공개 허용 페이지:",
+      exportPages.length ? exportPages.join("\n") : "아직 AI 공개 허용 페이지가 없습니다.",
       "",
-      "Ask the AI to return: patterns, risks, blind spots, next 7-day actions, and what data is still missing."
+      "AI에게 요청할 것: 반복 패턴, 위험, blind spot, 다음 7일 행동, 아직 부족한 데이터."
     ].join("\n");
   }
 
@@ -940,7 +963,7 @@
       aiExportOk: document.querySelector("#bookshelf-ai-export").checked,
       bookId: book.id,
       bookTitle: book.title,
-      source: "Project Universe Personal Think Tank Bookshelf",
+      source: "인생의 책장",
       createdAt: new Date().toISOString(),
       syncStatus: "local saved"
     };

@@ -375,6 +375,7 @@ textarea:focus-visible {
   background: #0b141c;
 }
 
+:root[data-theme="dark"] .bookshelf-rail,
 :root[data-theme="dark"] .book-spine,
 :root[data-theme="dark"] .library-book-card,
 :root[data-theme="dark"] .library-command-grid span,
@@ -2455,7 +2456,13 @@ main {
   gap: 14px;
   max-height: calc(100vh - 112px);
   overflow: auto;
-  padding-right: 4px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(0, 127, 134, 0.08) 0 1px, transparent 1px),
+    linear-gradient(180deg, rgba(23, 44, 55, 0.04), rgba(196, 107, 35, 0.04)),
+    var(--surface-2);
 }
 
 .bookshelf-group {
@@ -2485,7 +2492,9 @@ main {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #ffffff;
+  background:
+    linear-gradient(90deg, #172c37 0 5px, transparent 5px),
+    #ffffff;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
@@ -2495,7 +2504,9 @@ main {
 .book-spine:hover,
 .book-spine.active {
   border-color: rgba(0, 127, 134, 0.5);
-  background: #eef8f8;
+  background:
+    linear-gradient(90deg, var(--accent) 0 5px, transparent 5px),
+    #eef8f8;
 }
 
 .book-spine span {
@@ -2606,7 +2617,9 @@ main {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdfe;
+  background:
+    linear-gradient(90deg, rgba(23, 44, 55, 0.9) 0 5px, transparent 5px),
+    #fbfdfe;
   color: var(--ink);
   text-align: left;
 }
@@ -2614,7 +2627,9 @@ main {
 .library-book-card:hover,
 .library-book-card.active {
   border-color: rgba(0, 127, 134, 0.55);
-  background: #eef8f8;
+  background:
+    linear-gradient(90deg, var(--accent) 0 5px, transparent 5px),
+    #eef8f8;
   box-shadow: 0 12px 28px rgba(0, 127, 134, 0.1);
 }
 

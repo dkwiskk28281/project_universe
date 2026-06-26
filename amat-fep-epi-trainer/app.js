@@ -342,7 +342,7 @@ const scenarios = [
   },
   {
     title: "Exhaust/abatement ready signal이 들어오지 않는다",
-    status: "Facility interface",
+    status: "시설 인터페이스",
     facts: ["장비 power-on 전 interlock check 단계", "facility contractor 작업 직후", "tool alarm은 exhaust not ready"],
     good: "고객 facility owner와 함께 exhaust flow, damper, abatement status, signal wiring, interlock mapping을 승인 절차 안에서 확인한다.",
     choices: [
@@ -1012,7 +1012,7 @@ const installMissionStages = [
   },
   {
     badge: "M4",
-    title: "Facility Hook-up",
+    title: "시설 Hook-up",
     goal: "power, gas, exhaust, abatement, PCW/chiller, vacuum, CDA/N2, network를 scope별로 연결하고 증거화합니다.",
     evidence: ["power/ground check", "purge/leak record", "exhaust/abatement ready", "cooling flow", "as-built markup"],
     stop: "gas line release, interlock bypass, facility valve operation은 승인과 입회 없이 진행하지 않습니다.",
@@ -1344,13 +1344,13 @@ const glossaryTerms = [
 ];
 
 glossaryTerms.push(
-  ["Fab", "Fab기초", "Fabrication facility. 웨이퍼에 반도체 회로를 만드는 생산 공장입니다.", "CE는 fab 전체 생산 흐름 안에서 장비 uptime과 안전을 책임지는 역할입니다."],
-  ["Wafer", "Fab기초", "반도체 소자를 만들기 위한 얇은 원판 기판입니다.", "모든 handling, contamination, thermal stress 리스크의 대상입니다."],
-  ["Lot", "Fab기초", "여러 wafer를 묶어 관리하는 생산 단위입니다.", "장비 장애가 lot hold나 생산 영향으로 이어질 수 있습니다."],
-  ["Slot", "Fab기초", "FOUP 안에서 wafer가 들어가는 위치 번호입니다.", "mapping 오류나 특정 slot scrape 문제를 추적할 때 중요합니다."],
-  ["Route", "Fab기초", "wafer가 거치는 공정 순서입니다.", "CE는 해당 장비가 전체 route에서 어떤 역할인지 이해해야 고객 영향을 설명할 수 있습니다."],
-  ["Metrology", "Fab기초", "두께, CD, overlay, defect, 저항 등 결과를 측정하는 영역입니다.", "qualification과 troubleshooting에서 장비 조치 결과를 확인하는 근거입니다."],
-  ["Yield", "Fab기초", "최종적으로 정상 동작하는 chip 비율입니다.", "장비 안정성, contamination, uniformity가 yield와 연결됩니다."],
+  ["Fab", "팹 기초", "Fabrication facility. 웨이퍼에 반도체 회로를 만드는 생산 공장입니다.", "CE는 fab 전체 생산 흐름 안에서 장비 uptime과 안전을 책임지는 역할입니다."],
+  ["Wafer", "팹 기초", "반도체 소자를 만들기 위한 얇은 원판 기판입니다.", "모든 handling, contamination, thermal stress 리스크의 대상입니다."],
+  ["Lot", "팹 기초", "여러 wafer를 묶어 관리하는 생산 단위입니다.", "장비 장애가 lot hold나 생산 영향으로 이어질 수 있습니다."],
+  ["Slot", "팹 기초", "FOUP 안에서 wafer가 들어가는 위치 번호입니다.", "mapping 오류나 특정 slot scrape 문제를 추적할 때 중요합니다."],
+  ["Route", "팹 기초", "wafer가 거치는 공정 순서입니다.", "CE는 해당 장비가 전체 route에서 어떤 역할인지 이해해야 고객 영향을 설명할 수 있습니다."],
+  ["Metrology", "팹 기초", "두께, CD, overlay, defect, 저항 등 결과를 측정하는 영역입니다.", "qualification과 troubleshooting에서 장비 조치 결과를 확인하는 근거입니다."],
+  ["Yield", "팹 기초", "최종적으로 정상 동작하는 chip 비율입니다.", "장비 안정성, contamination, uniformity가 yield와 연결됩니다."],
   ["Uptime", "업무", "장비가 생산 가능한 상태로 유지되는 시간 비율입니다.", "CE 성과와 고객 만족의 핵심 지표입니다."],
   ["Availability", "업무", "장비가 요구 시점에 사용 가능한 정도입니다.", "PM, CM, parts, qualification 시간이 영향을 줍니다."],
   ["MTBF", "업무", "Mean Time Between Failures. 고장 사이 평균 시간입니다.", "반복 고장 개선과 reliability 판단에 쓰입니다."],
@@ -1376,9 +1376,9 @@ glossaryTerms.push(
   ["Point-of-use Abatement", "Facility", "배출 source 가까이에서 waste gas를 처리하는 abatement 방식입니다.", "tool과 abatement ready/interlock 연계를 이해해야 합니다."],
   ["Scrubber", "Facility", "배출 gas를 세정/처리하는 설비입니다.", "exhaust ready, pressure drop, maintenance alarm이 장비 상태와 연결됩니다."],
   ["UPW", "Facility", "Ultra Pure Water. 반도체 공정에 쓰이는 초순수입니다.", "오염 제어와 세정/utility 품질 이해에 필요합니다."],
-  ["AMC", "Fab기초", "Airborne Molecular Contamination. 공기 중 분자 오염입니다.", "particle뿐 아니라 분자 오염도 cleanroom 품질에 영향을 줍니다."],
+  ["AMC", "팹 기초", "Airborne Molecular Contamination. 공기 중 분자 오염입니다.", "particle뿐 아니라 분자 오염도 cleanroom 품질에 영향을 줍니다."],
   ["ESD", "안전", "Electrostatic Discharge. 정전기 방전입니다.", "전자부품 손상과 contamination control 관점에서 중요합니다."],
-  ["Gowning", "Fab기초", "cleanroom 보호복을 절차대로 착용하는 과정입니다.", "사람이 가장 큰 contamination source 중 하나라서 중요합니다."],
+  ["Gowning", "팹 기초", "cleanroom 보호복을 절차대로 착용하는 과정입니다.", "사람이 가장 큰 contamination source 중 하나라서 중요합니다."],
   ["Tool Down", "업무", "장비가 생산 불가능한 상태입니다.", "고객 보고에서 영향, 원인 가설, 다음 액션, ETA를 명확히 해야 합니다."],
   ["Lot Hold", "업무", "문제가 의심되어 lot 진행을 멈추는 조치입니다.", "장비 이상과 제품 영향 판단이 연결됩니다."],
   ["Release", "업무", "장비나 lot을 다시 사용 가능 상태로 승인하는 것입니다.", "qualification data와 고객 승인 기준이 필요합니다."],
@@ -1605,7 +1605,7 @@ const fieldRunbookStages = [
   {
     id: "hookup",
     badge: "04",
-    title: "Facility Hook-up",
+    title: "시설 Hook-up",
     plain: "fab utility와 장비를 연결하는 단계입니다. 전기, gas, 배기, 냉각, 네트워크가 모두 scope별로 갈라집니다.",
     owner: "CE + 고객 facility owner + contractor + EHS",
     objective: "각 utility를 공식 승인, 입회, 측정값, as-built 기록으로 연결합니다.",
@@ -1724,29 +1724,29 @@ let activeRunbookStage = fieldRunbookStages[0].id;
 const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
-  bookshelf: "Bookshelf",
-  dashboard: "EPI Home",
-  roadmap: "Roadmap",
-  systems: "Tool/Process",
-  equipment: "Tool Families",
-  cluster: "Cluster Builder",
-  install: "Install",
-  facility: "Facility",
-  electrical: "Electrical/DVM",
-  gases: "Gas Safety",
-  safety: "Line Rules",
-  mastery: "Mastery",
-  readiness: "Readiness",
-  runbook: "Runbook",
-  thinktank: "Think Tank",
-  deep: "Deep Dive",
-  fab101: "Fab 101",
-  papers: "Paper Notes",
-  "english-test": "English CBT",
-  english: "English Terms",
-  glossary: "Glossary",
-  diagnostics: "Diagnostics",
-  quiz: "Quiz"
+  bookshelf: "책장",
+  dashboard: "EPI 홈",
+  roadmap: "로드맵",
+  systems: "장비/공정",
+  equipment: "장비군",
+  cluster: "구성게임",
+  install: "설치",
+  facility: "시설 연결",
+  electrical: "전기/DVM",
+  gases: "가스안전",
+  safety: "라인준수",
+  mastery: "마스터리",
+  readiness: "현장투입",
+  runbook: "런북",
+  thinktank: "싱크탱크",
+  deep: "심화",
+  fab101: "팹 기초",
+  papers: "논문노트",
+  "english-test": "영어시험",
+  english: "영어풀이",
+  glossary: "용어집",
+  diagnostics: "진단훈련",
+  quiz: "퀴즈"
 };
 
 const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => id !== "bookshelf");
@@ -1777,28 +1777,28 @@ const BOOK_VIEW_SEQUENCE = [
 ];
 
 const VIEW_CHAPTERS = {
-  dashboard: "Orientation",
-  roadmap: "Start Here",
-  fab101: "Start Here",
-  glossary: "Start Here",
-  systems: "Equipment Mastery",
-  equipment: "Equipment Mastery",
-  cluster: "Equipment Mastery",
-  deep: "Equipment Mastery",
-  install: "Install & Field Execution",
-  facility: "Install & Field Execution",
-  gases: "Install & Field Execution",
-  safety: "Install & Field Execution",
-  electrical: "Troubleshooting & Growth",
-  diagnostics: "Troubleshooting & Growth",
-  mastery: "Troubleshooting & Growth",
-  readiness: "Troubleshooting & Growth",
-  runbook: "Troubleshooting & Growth",
-  thinktank: "Troubleshooting & Growth",
-  papers: "Interview & Language",
-  "english-test": "Interview & Language",
-  english: "Interview & Language",
-  quiz: "Interview & Language"
+  dashboard: "방향 잡기",
+  roadmap: "처음 펼칠 장",
+  fab101: "처음 펼칠 장",
+  glossary: "처음 펼칠 장",
+  systems: "장비 마스터리",
+  equipment: "장비 마스터리",
+  cluster: "장비 마스터리",
+  deep: "장비 마스터리",
+  install: "설치와 현장 수행",
+  facility: "설치와 현장 수행",
+  gases: "설치와 현장 수행",
+  safety: "설치와 현장 수행",
+  electrical: "진단과 성장",
+  diagnostics: "진단과 성장",
+  mastery: "진단과 성장",
+  readiness: "진단과 성장",
+  runbook: "진단과 성장",
+  thinktank: "진단과 성장",
+  papers: "면접과 영어",
+  "english-test": "면접과 영어",
+  english: "면접과 영어",
+  quiz: "면접과 영어"
 };
 
 const uxHotViews = [
@@ -1849,12 +1849,12 @@ function renderBookContextBar(id) {
     return;
   }
   const nextView = getNextBookView(id);
-  const chapter = VIEW_CHAPTERS[id] || "Book Module";
+  const chapter = VIEW_CHAPTERS[id] || "책 안의 장";
   const visits = state.viewVisits?.[id] || 0;
   bar.classList.remove("hidden");
   bar.innerHTML = `
     <div class="book-context-copy">
-      <span class="book-context-kicker">FEP/EPI Customer Engineer Mastery</span>
+      <span class="book-context-kicker">FEP/EPI 현장 엔지니어</span>
       <strong>${chapter} / ${getNavLabel(id)}</strong>
       <small>이 화면은 책장 속 FEP/EPI 책의 한 장입니다. 방문 ${visits}회</small>
     </div>
@@ -1879,7 +1879,7 @@ function showView(id, options = {}) {
   closeCommandPalette();
   renderBookContextBar(id);
   renderLearningHud();
-  document.title = `${getNavLabel(id)} | FEP/EPI CE Trainer`;
+  document.title = `${getNavLabel(id)} | 인생의 책장`;
   window.scrollTo({ top: 0, behavior: options.instant ? "auto" : "smooth" });
 }
 
@@ -1924,8 +1924,8 @@ function getQuizProgress() {
 function getUxSearchItems() {
   const navItems = Object.entries(VIEW_LABELS).map(([view, title]) => ({
     title,
-    meta: view === "bookshelf" ? "Bookshelf" : VIEW_CHAPTERS[view] || "Book module",
-    body: view === "bookshelf" ? "책장으로 이동" : `FEP/EPI Mastery 책의 ${title} 장으로 이동`,
+    meta: view === "bookshelf" ? "인생의 책장" : VIEW_CHAPTERS[view] || "책 안의 장",
+    body: view === "bookshelf" ? "책장으로 이동" : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
     view
   }));
   const commandItems = commandCenterActions.map(item => ({
@@ -2119,9 +2119,9 @@ function applyTheme(theme, options = {}) {
   if (options.persist !== false) persistThemePreference(nextTheme);
   const toggle = document.querySelector("#theme-toggle");
   if (toggle) {
-    toggle.textContent = nextTheme === "dark" ? "Light" : "Dark";
+    toggle.textContent = nextTheme === "dark" ? "라이트" : "다크";
     toggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
-    toggle.setAttribute("aria-label", nextTheme === "dark" ? "Switch to light mode" : "Switch to dark mode");
+    toggle.setAttribute("aria-label", nextTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환");
   }
 }
 
@@ -2137,7 +2137,10 @@ function bindGlobalUx() {
       applyTheme(event.newValue, { persist: false });
     }
   });
-  document.querySelector("#open-active-book")?.addEventListener("click", () => showView("bookshelf"));
+  document.querySelector("#open-active-book")?.addEventListener("click", () => {
+    const recentBookView = (state.recentViews || []).find(view => BOOK_VIEW_IDS.includes(view));
+    showView(recentBookView || "dashboard");
+  });
   document.querySelector("#open-command-search")?.addEventListener("click", () => openCommandPalette());
   document.querySelector("#command-palette-input")?.addEventListener("input", renderCommandPalette);
   document.querySelector("#command-palette-close")?.addEventListener("click", closeCommandPalette);
