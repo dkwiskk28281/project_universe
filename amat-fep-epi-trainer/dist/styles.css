@@ -7920,3 +7920,385 @@ textarea:focus,
     display: none;
   }
 }
+
+/* Readability calibration pass */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --ink: #f2fff7;
+  --muted: #c3dfd0;
+  --line: rgba(89, 255, 177, 0.34);
+  --accent: #32ffad;
+  --accent-2: #a7f7ff;
+  --console-cyan: #a7f7ff;
+  --console-amber: #ffd08a;
+  --console-red: #ff8c92;
+  --surface-1: rgba(3, 17, 12, 0.98);
+  --surface-2: rgba(5, 24, 17, 0.96);
+  --surface-3: rgba(6, 30, 21, 0.94);
+  --panel: rgba(3, 15, 11, 0.97);
+}
+
+body::before {
+  opacity: 0.34;
+}
+
+body::after {
+  border-color: rgba(50, 255, 173, 0.08);
+  box-shadow: inset 0 0 110px rgba(0, 0, 0, 0.72);
+}
+
+.app-header,
+.top-nav,
+.bookshelf-rail,
+.book-context-bar,
+.learning-hud-card,
+.command-palette-card,
+.source-note,
+.library-command,
+.library-overview,
+.book-detail,
+.capture-panel,
+.lifetime-ops-panel,
+.intel-briefing-panel,
+.dyor-intel-panel,
+.dyor-crypto-panel,
+.onchain-intel-panel,
+.tokenization-intel-panel,
+.english-test-console,
+.english-test-main,
+.english-test-brief,
+.english-section-band,
+.english-question,
+.english-speaking-card,
+.book-interior,
+.thinktank-panel,
+.runbook-panel,
+.runbook-detail,
+.mastery-panel,
+.equipment-card,
+.gas-card,
+.term-card,
+.install-card,
+.facility-card,
+.compliance,
+.deep-panel,
+.reference-band {
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.075), rgba(167, 247, 255, 0.028)),
+    rgba(3, 15, 11, 0.965) !important;
+}
+
+.book-spine,
+.library-book-card,
+.library-command-grid span,
+.lifetime-metric-grid article,
+.lifetime-invariants span,
+.intel-live-tile,
+.intel-status-card,
+.intel-mission-card,
+.intel-queue,
+.intel-queue span,
+.dyor-lane-grid article,
+.dyor-rule-grid article,
+.dyor-source-grid a,
+.dyor-crypto-grid article,
+.dyor-prompt-box,
+.onchain-provider-grid a,
+.onchain-macro-grid article,
+.onchain-rule-grid article,
+.onchain-threshold-grid span,
+.onchain-risk-feed,
+.tokenization-macro-grid article,
+.tokenization-asset-flow-grid article,
+.tokenization-category-grid article,
+.tokenization-token-grid article,
+.tokenization-rule-grid span,
+.tokenization-source-grid a,
+.tokenization-signal-feed,
+.book-health-grid span,
+.bookshelf-page-card,
+.book-module-card,
+.book-blueprint-card,
+.english-options label,
+.english-passage,
+.english-audio-box,
+.english-instant-hint,
+.english-instant-feedback,
+.english-similarity-grid article,
+.english-quality-grid article,
+.english-weakness-grid article,
+.science-grid article,
+.storage-flow article,
+.briefing-list article,
+.vault-entry,
+.hazard,
+.tag,
+.runbook-step,
+.gate-row,
+.raci-row,
+.template-block,
+.book-purpose,
+.bookshelf-page-card .page-evidence,
+.ai-context-readout,
+.ai-context-recent,
+.ai-context-json,
+.palette-result,
+.palette-empty {
+  border-color: rgba(89, 255, 177, 0.31) !important;
+  background:
+    linear-gradient(180deg, rgba(50, 255, 173, 0.075), rgba(0, 0, 0, 0.08)),
+    rgba(5, 24, 17, 0.96) !important;
+  color: var(--ink) !important;
+}
+
+.brand span:last-child,
+.book-context-copy small,
+.source-note p,
+.library-command p:not(.eyebrow),
+.book-detail p,
+.capture-panel p,
+.book-purpose,
+.book-meta-grid li,
+.bookshelf-page-card p,
+.bookshelf-page-card small,
+.bookshelf-page-card span,
+.book-spine small,
+.library-book-card small,
+.library-book-card em,
+.book-module-card small,
+.book-blueprint-card small,
+.lifetime-score small,
+.lifetime-metric-grid small,
+.lifetime-invariants small,
+.intel-briefing-head p:not(.eyebrow),
+.intel-live-tile small,
+.intel-status-card small,
+.intel-mission-card strong,
+.intel-queue p,
+.intel-queue small,
+.dyor-intel-head p:not(.eyebrow),
+.dyor-source-grid p,
+.dyor-source-grid small,
+.dyor-prompt-box p,
+.onchain-provider-grid p,
+.onchain-rule-grid p,
+.onchain-macro-grid small,
+.onchain-risk-feed span,
+.tokenization-category-grid p,
+.tokenization-source-grid p,
+.tokenization-macro-grid small,
+.tokenization-asset-flow-grid small,
+.tokenization-rule-grid span,
+.tokenization-token-grid em,
+.tokenization-signal-feed span,
+.english-question p,
+.english-speaking-card p,
+.english-passage,
+.english-audio-box small,
+.english-instant-hint,
+.english-instant-feedback span,
+.english-instant-feedback p,
+.english-instant-feedback dt,
+.english-similarity-grid span,
+.english-quality-grid span,
+.english-weakness-grid span,
+.english-weakness-grid small,
+.runbook-panel p,
+.runbook-panel small,
+.install-card li,
+.facility-card li,
+.compliance li,
+.equipment-card p,
+.gas-card p,
+.term-card p,
+.flow-step-button small,
+.flow-step-detail > small,
+.module-token small,
+.cluster-coach p,
+.ai-context-readout small {
+  color: var(--muted) !important;
+}
+
+.page-title h1,
+.source-note h2,
+.library-command h2,
+.library-overview h2,
+.book-detail h2,
+.capture-panel h2,
+.intel-briefing-head h2,
+.book-interior-head h3,
+.book-meta-grid h3,
+.english-question-head strong,
+.english-stem,
+.english-instant-hint strong,
+.english-instant-feedback strong,
+.english-instant-feedback dd,
+.onchain-provider-grid strong,
+.onchain-rule-grid strong,
+.onchain-risk-feed strong,
+.tokenization-category-grid strong,
+.tokenization-source-grid strong,
+.tokenization-signal-feed strong,
+.intel-queue strong,
+.book-spine strong,
+.library-book-card strong,
+.book-module-card strong,
+.book-blueprint-card strong {
+  color: #f7fff9 !important;
+}
+
+.eyebrow,
+.page-title p,
+.section-heading p,
+.book-context-kicker,
+.bookshelf-group p,
+.intel-live-tile span,
+.intel-status-card span,
+.intel-mission-card span,
+.onchain-provider-grid span,
+.onchain-macro-grid span,
+.tokenization-macro-grid span,
+.tokenization-asset-flow-grid span,
+.tokenization-token-grid span,
+.tokenization-source-grid span,
+.dyor-rule-grid span,
+.dyor-source-grid span,
+.english-question-head span,
+.palette-result span {
+  color: var(--console-cyan) !important;
+}
+
+.nav-btn:not(.active):not(#logout-btn) {
+  color: #d8ffea !important;
+  background: rgba(50, 255, 173, 0.045) !important;
+}
+
+.nav-btn.active,
+.nav-btn:hover,
+.nav-btn[data-view="bookshelf"].active,
+.nav-btn[data-view="bookshelf"]:hover {
+  color: #00150d !important;
+  text-shadow: none !important;
+}
+
+.secondary,
+.hud-top,
+.hud-jumps button,
+.hud-recents button,
+.system-tab,
+.scenario-tab,
+.filter-btn,
+.mastery-tab,
+.case-choice,
+.starter-strip button,
+.flow-step-button,
+.meter-tab,
+.flow-mode {
+  color: #e8fff1 !important;
+}
+
+.secondary:hover,
+.primary:hover,
+.hud-top:hover,
+.hud-jumps button:hover,
+.hud-recents button:hover,
+.filter-btn.active,
+.mastery-tab.active,
+.system-tab.active,
+.scenario-tab.active,
+.flow-step-button.active,
+.meter-tab.active {
+  color: #00150d !important;
+  text-shadow: none !important;
+}
+
+input,
+select,
+textarea,
+.ai-briefing-text,
+#command-palette-input {
+  color: #f4fff8 !important;
+  background:
+    linear-gradient(180deg, rgba(50, 255, 173, 0.06), rgba(0, 0, 0, 0.13)),
+    rgba(1, 10, 7, 0.96) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgba(195, 223, 208, 0.82) !important;
+}
+
+.sync-pill,
+.tag,
+.module-token,
+.term-explain,
+.entry-tags span,
+.storage-flow span,
+.runbook-step span,
+.runbook-detail-head > span,
+.flow-step-button > span,
+.english-card .tag,
+.equipment-card .family,
+.intel-queue b {
+  color: #a9ffd2 !important;
+  background: rgba(50, 255, 173, 0.115) !important;
+}
+
+.copy-status,
+.tokenization-signal-feed span,
+.onchain-risk-feed span {
+  color: #ffe7bf !important;
+  background: rgba(255, 208, 138, 0.12) !important;
+}
+
+.dyor-crypto-grid small.up,
+.tokenization-token-grid small.up {
+  color: #8dffc7 !important;
+}
+
+.dyor-crypto-grid small.down,
+.tokenization-token-grid small.down {
+  color: #ffb1b5 !important;
+}
+
+.danger-block,
+.hold-section,
+.english-options label.wrong,
+.english-instant-feedback.bad,
+.english-timer-card,
+.english-live-score,
+.intel-status-card.hot {
+  color: #ffd6d9 !important;
+  background: rgba(255, 140, 146, 0.12) !important;
+}
+
+.english-options label.correct,
+.english-instant-feedback.good,
+.case-choice.good,
+.intel-status-card.ok {
+  color: #e8fff1 !important;
+  background: rgba(50, 255, 173, 0.13) !important;
+}
+
+.intel-status-card.warn {
+  background: rgba(255, 208, 138, 0.13) !important;
+}
+
+.intel-status-card.warn strong {
+  color: var(--console-amber) !important;
+}
+
+.intel-status-card.hot strong {
+  color: var(--console-red) !important;
+}
+
+.learning-hud-card {
+  background: rgba(3, 15, 11, 0.985) !important;
+}
+
+.hero::after {
+  background:
+    linear-gradient(90deg, rgba(2, 6, 4, 0.98), rgba(2, 6, 4, 0.76) 52%, rgba(2, 6, 4, 0.26)),
+    linear-gradient(rgba(50, 255, 173, 0.045) 1px, transparent 1px) !important;
+}
