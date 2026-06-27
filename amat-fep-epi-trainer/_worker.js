@@ -5,6 +5,7 @@ const SESSION_VERSION = "strict-v2";
 const PERSONAL_SERVER_PREFIX = "/personal-server";
 const DEFAULT_PERSONAL_SERVER_URL = "https://fep-epi-vault-9175.loca.lt";
 const ONCHAIN_COIN_IDS = ["bitcoin", "ethereum", "solana", "chainlink", "aave", "uniswap"];
+const TOKENIZATION_COIN_IDS = ["ondo-finance", "centrifuge", "maple", "pax-gold", "tether-gold", "ethena", "maker"];
 
 function jsonResponse(request, data, status = 200, headers = {}) {
   const origin = request.headers.get("Origin") || "*";
@@ -553,6 +554,31 @@ function providerStatus(env) {
   };
 }
 
+function tokenizationProviderStatus(env) {
+  return {
+    rwaxyz: {
+      configured: Boolean(env.RWA_API_KEY),
+      env: "RWA_API_KEY",
+      role: "tokenized treasuries, private credit, commodities, and fund market data"
+    },
+    defillama: {
+      configured: true,
+      env: "none",
+      role: "stablecoin supply by chain"
+    },
+    coingecko: {
+      configured: true,
+      env: "none",
+      role: "RWA theme token and tokenized gold price context"
+    },
+    etherscan: {
+      configured: Boolean(env.ETHERSCAN_API_KEY),
+      env: "ETHERSCAN_API_KEY",
+      role: "Ethereum ERC-20 holder and transfer-level verification"
+    }
+  };
+}
+
 function numberOrZero(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -621,6 +647,108 @@ async function buildOnchainIntel(env) {
       ]
     },
     riskSignals
+  };
+}
+
+function chainStableValue(asset, chain, period) {
+  const node = asset.chainCirculating?.[chain];
+  if (!node) return 0;
+  if (period === "current") return numberOrZero(node.current?.peggedUSD);
+  return numberOrZero(node[period]?.peggedUSD);
+}
+
+function pctChange(current, previous) {
+  if (!previous) return null;
+  return (current - previous) / previous * 100;
+}
+
+async function buildTokenizationIntel(env) {
+  const generatedAt = new Date().toISOString();
+  const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${TOKENIZATION_COIN_IDS.join(",")}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`;
+  const [stablecoinsResult, rwaPricesResult] = await Promise.allSettled([
+    fetchJson("https://stablecoins.llama.fi/stablecoins?includePrices=true"),
+    fetchJson(priceUrl)
+  ]);
+
+  const stableRaw = stablecoinsResult.status === "fulfilled" ? stablecoinsResult.value : null;
+  const assets = Array.isArray(stableRaw?.peggedAssets) ? stableRaw.peggedAssets : [];
+  const ethereumRows = assets.map(asset => ({
+    name: asset.name || asset.symbol || "unknown",
+    symbol: asset.symbol || "",
+    current: chainStableValue(asset, "Ethereum", "current"),
+    prevDay: chainStableValue(asset, "Ethereum", "circulatingPrevDay"),
+    prevWeek: chainStableValue(asset, "Ethereum", "circulatingPrevWeek"),
+    prevMonth: chainStableValue(asset, "Ethereum", "circulatingPrevMonth")
+  })).filter(asset => asset.current > 0);
+
+  const totals = ethereumRows.reduce((acc, row) => {
+    acc.current += row.current;
+    acc.prevDay += row.prevDay;
+    acc.prevWeek += row.prevWeek;
+    acc.prevMonth += row.prevMonth;
+    return acc;
+  }, { current: 0, prevDay: 0, prevWeek: 0, prevMonth: 0 });
+
+  const topEthereumAssets = ethereumRows
+    .sort((a, b) => b.current - a.current)
+    .slice(0, 10)
+    .map(row => ({
+      name: row.name,
+      symbol: row.symbol,
+      currentUsd: row.current,
+      change1dPct: pctChange(row.current, row.prevDay),
+      change7dPct: pctChange(row.current, row.prevWeek),
+      change30dPct: pctChange(row.current, row.prevMonth)
+    }));
+
+  const prices = rwaPricesResult.status === "fulfilled" ? rwaPricesResult.value : {};
+  const rwaTokenRows = Object.entries(prices || {}).map(([id, item]) => ({
+    id,
+    usd: numberOrZero(item.usd),
+    marketCapUsd: numberOrZero(item.usd_market_cap),
+    change24hPct: Number.isFinite(Number(item.usd_24h_change)) ? Number(item.usd_24h_change) : null
+  }));
+  const volatilityRows = rwaTokenRows.filter(row => row.change24hPct !== null);
+  const averageAbsMove24hPct = volatilityRows.length
+    ? volatilityRows.reduce((sum, row) => sum + Math.abs(row.change24hPct), 0) / volatilityRows.length
+    : null;
+  const maxMover = volatilityRows
+    .slice()
+    .sort((a, b) => Math.abs(b.change24hPct) - Math.abs(a.change24hPct))[0] || null;
+  const signals = [];
+  const change7d = pctChange(totals.current, totals.prevWeek);
+  const change30d = pctChange(totals.current, totals.prevMonth);
+  if (change7d !== null && Math.abs(change7d) >= 3) signals.push(`Ethereum stable asset supply 7일 변화 ${change7d.toFixed(2)}%: 유동성 이동 원인 확인`);
+  if (change30d !== null && Math.abs(change30d) >= 7) signals.push(`Ethereum stable asset supply 30일 변화 ${change30d.toFixed(2)}%: 체인 이동 또는 수요 변화 확인`);
+  rwaTokenRows.forEach(row => {
+    const change = numberOrZero(row.change24hPct);
+    if (Math.abs(change) >= 8) signals.push(`${row.id} 24h 가격 변화 ${change.toFixed(1)}%: RWA 테마 변동성 원인 분리 필요`);
+  });
+
+  return {
+    schema: "tokenization-market-intelligence-v1",
+    generatedAt,
+    note: "Tokenized asset intelligence is not investment advice. Verify issuer, custodian, redemption terms, audits, liquidity, and jurisdiction before forming a thesis.",
+    providers: tokenizationProviderStatus(env),
+    ethereumStablecoins: {
+      currentUsd: totals.current,
+      change1dPct: pctChange(totals.current, totals.prevDay),
+      change7dPct: change7d,
+      change30dPct: change30d,
+      assetCount: ethereumRows.length,
+      topAssets: topEthereumAssets
+    },
+    rwaTokenContext: prices,
+    rwaThemeVolatility: {
+      averageAbsMove24hPct,
+      maxMover,
+      tokenCount: volatilityRows.length
+    },
+    rwaApi: {
+      status: env.RWA_API_KEY ? "provider-ready" : "provider-key-required",
+      endpointHint: "RWA.xyz API can be connected through RWA_API_KEY for tokenized treasuries/private credit/commodities/funds."
+    },
+    signals
   };
 }
 
@@ -713,6 +841,11 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/onchain-intel" && request.method === "GET") {
     const intel = await buildOnchainIntel(env);
+    return jsonResponse(request, { ok: true, intel });
+  }
+
+  if (url.pathname === "/api/tokenization-intel" && request.method === "GET") {
+    const intel = await buildTokenizationIntel(env);
     return jsonResponse(request, { ok: true, intel });
   }
 

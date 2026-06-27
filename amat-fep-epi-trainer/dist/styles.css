@@ -352,6 +352,7 @@ textarea:focus-visible {
 :root[data-theme="dark"] .dyor-intel-panel,
 :root[data-theme="dark"] .dyor-crypto-panel,
 :root[data-theme="dark"] .onchain-intel-panel,
+:root[data-theme="dark"] .tokenization-intel-panel,
 :root[data-theme="dark"] .book-detail,
 :root[data-theme="dark"] .capture-panel,
 :root[data-theme="dark"] .english-test-console,
@@ -395,6 +396,13 @@ textarea:focus-visible {
 :root[data-theme="dark"] .onchain-rule-grid article,
 :root[data-theme="dark"] .onchain-threshold-grid span,
 :root[data-theme="dark"] .onchain-risk-feed,
+:root[data-theme="dark"] .tokenization-macro-grid article,
+:root[data-theme="dark"] .tokenization-asset-flow-grid article,
+:root[data-theme="dark"] .tokenization-category-grid article,
+:root[data-theme="dark"] .tokenization-token-grid article,
+:root[data-theme="dark"] .tokenization-rule-grid span,
+:root[data-theme="dark"] .tokenization-source-grid a,
+:root[data-theme="dark"] .tokenization-signal-feed,
 :root[data-theme="dark"] .book-health-grid span,
 :root[data-theme="dark"] .bookshelf-page-card,
 :root[data-theme="dark"] .book-review-queue span,
@@ -2996,6 +3004,140 @@ main {
   border-radius: 8px;
   background: #eef8f8;
   color: #155e63;
+  font-weight: 800;
+}
+
+.tokenization-intel-panel {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(0, 127, 134, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(196, 107, 35, 0.06), rgba(0, 127, 134, 0.06)),
+    #fbfdfe;
+}
+
+.tokenization-macro-grid,
+.tokenization-asset-flow-grid,
+.tokenization-category-grid,
+.tokenization-token-grid,
+.tokenization-rule-grid,
+.tokenization-source-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tokenization-category-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.tokenization-asset-flow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.tokenization-macro-grid article,
+.tokenization-asset-flow-grid article,
+.tokenization-category-grid article,
+.tokenization-token-grid article,
+.tokenization-rule-grid span,
+.tokenization-source-grid a,
+.tokenization-signal-feed {
+  display: grid;
+  gap: 6px;
+  min-height: 104px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.tokenization-macro-grid span,
+.tokenization-asset-flow-grid span,
+.tokenization-token-grid span,
+.tokenization-source-grid span {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.tokenization-macro-grid strong,
+.tokenization-asset-flow-grid strong,
+.tokenization-token-grid strong {
+  color: var(--ink);
+  font-size: 23px;
+  line-height: 1;
+}
+
+.tokenization-category-grid strong,
+.tokenization-source-grid strong,
+.tokenization-signal-feed strong {
+  color: var(--ink);
+  line-height: 1.28;
+}
+
+.tokenization-category-grid p,
+.tokenization-source-grid p,
+.tokenization-macro-grid small,
+.tokenization-asset-flow-grid small,
+.tokenization-rule-grid span,
+.tokenization-token-grid em,
+.tokenization-signal-feed span {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.48;
+}
+
+.tokenization-token-grid small {
+  font-weight: 900;
+}
+
+.tokenization-asset-flow-grid em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tokenization-token-grid small.up {
+  color: #147a55;
+}
+
+.tokenization-token-grid small.down {
+  color: #b23b3b;
+}
+
+.tokenization-token-grid em {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.tokenization-rule-grid span {
+  min-height: 72px;
+  font-size: 12px;
+}
+
+.tokenization-rule-grid b {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.tokenization-signal-feed {
+  min-height: auto;
+}
+
+.tokenization-signal-feed span {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #7b3e0f;
   font-weight: 800;
 }
 
@@ -6354,6 +6496,12 @@ main {
   .onchain-macro-grid,
   .onchain-rule-grid,
   .onchain-threshold-grid,
+  .tokenization-macro-grid,
+  .tokenization-asset-flow-grid,
+  .tokenization-category-grid,
+  .tokenization-token-grid,
+  .tokenization-rule-grid,
+  .tokenization-source-grid,
   .bookshelf-schema {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6614,6 +6762,12 @@ main {
   .onchain-macro-grid,
   .onchain-rule-grid,
   .onchain-threshold-grid,
+  .tokenization-macro-grid,
+  .tokenization-asset-flow-grid,
+  .tokenization-category-grid,
+  .tokenization-token-grid,
+  .tokenization-rule-grid,
+  .tokenization-source-grid,
   .bookshelf-schema {
     grid-template-columns: 1fr;
   }

@@ -229,6 +229,31 @@
     ["수익 변화", "fees/revenue 7일 ±20% 이상 변화는 사용량 변화 후보"]
   ];
 
+  const TOKENIZATION_MARKET_SOURCES = [
+    ["RWA.xyz", "토큰화 국채, 사모신용, 상품, 펀드, 스테이블코인 등 RWA 전문 데이터", "API key 필요", "https://docs.rwa.xyz/"],
+    ["DefiLlama Stablecoins", "체인별 스테이블코인 공급량과 변화율", "무료 API 가능", "https://stablecoins.llama.fi/stablecoins?includePrices=true"],
+    ["CoinGecko", "RWA 테마 토큰과 토큰화 금 가격/시총 컨텍스트", "무료 public API 가능", "https://docs.coingecko.com/docs/keyless-public-api"],
+    ["Ethereum", "이더리움 위 ERC-20 자산 공급량, 보유자, 전송 추적", "Etherscan API key 필요", "https://docs.etherscan.io/introduction"]
+  ];
+
+  const TOKENIZATION_CATEGORIES = [
+    ["스테이블코인", "달러 예금/현금성 자산의 온체인 표현. 이더리움 공급량 변화는 RWA 유동성의 핵심 온도계"],
+    ["토큰화 국채", "단기 미국채/머니마켓 수익률을 온체인으로 가져오는 영역. 금리 변화와 발행사 신뢰가 중요"],
+    ["토큰화 금", "PAXG/XAUT처럼 금 가격을 추종하는 토큰. 보관, 상환, 감사 구조 확인"],
+    ["사모신용/대출", "온체인 신용 상품. 수익률보다 연체, 담보, 회수 구조가 핵심"],
+    ["펀드/주식형", "규제·수탁·이전 제한이 강한 영역. 실제 유동성과 2차시장 가능성 확인"]
+  ];
+
+  const TOKENIZATION_SIGNAL_RULES = [
+    ["유동성 증가", "이더리움 스테이블 공급량과 RWA TVL이 함께 증가하면 온체인 자산 수요 증가 후보"],
+    ["금리 민감도", "토큰화 국채는 단기금리와 운용사 신뢰가 핵심. 단순 TVL 증가만으로 판단하지 않음"],
+    ["체인 이동", "Ethereum에서 Base/Solana/Arbitrum 등으로 공급량이 이동하면 사용처와 수수료 구조 확인"],
+    ["상환 리스크", "토큰화 자산은 발행사, 수탁기관, 감사, 상환 조건이 핵심 리스크"],
+    ["가격 괴리", "토큰 가격이 기초자산과 괴리되면 유동성 부족 또는 상환 신뢰 문제 후보"]
+  ];
+
+  const TOKENIZATION_COIN_IDS = ["ondo-finance", "centrifuge", "maple", "pax-gold", "tether-gold", "ethena", "maker"];
+
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
   const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
@@ -411,6 +436,8 @@
   let onchainIntel = null;
   let onchainIntelState = "아직 불러오지 않음";
   let onchainMonitorTimer = 0;
+  let tokenizationIntel = null;
+  let tokenizationIntelState = "아직 불러오지 않음";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -817,6 +844,19 @@
     renderBookshelf();
   }
 
+  async function loadTokenizationIntel() {
+    tokenizationIntelState = "자산 토큰화 레이더 불러오는 중";
+    renderBookshelf();
+    try {
+      const data = await apiFetch("/api/tokenization-intel");
+      tokenizationIntel = data.intel || data;
+      tokenizationIntelState = `업데이트 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+    } catch {
+      tokenizationIntelState = "자산 토큰화 API를 불러오지 못했습니다. 로그인/Worker 상태를 확인하세요.";
+    }
+    renderBookshelf();
+  }
+
   function renderCryptoSnapshot() {
     const rows = DYOR_COIN_IDS.map(id => {
       const item = cryptoSnapshot?.[id] || {};
@@ -922,6 +962,118 @@
     `;
   }
 
+  function formatPercent(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "-";
+    return `${number >= 0 ? "+" : ""}${number.toFixed(2)}%`;
+  }
+
+  function renderTokenizationIntelPanel() {
+    const ethereum = tokenizationIntel?.ethereumStablecoins || {};
+    const rwaTokens = tokenizationIntel?.rwaTokenContext || {};
+    const volatility = tokenizationIntel?.rwaThemeVolatility || {};
+    const providers = tokenizationIntel?.providers || {};
+    const signals = tokenizationIntel?.signals || [];
+    const topAssets = Array.isArray(ethereum.topAssets) ? ethereum.topAssets : [];
+    const rows = TOKENIZATION_COIN_IDS.map(id => {
+      const item = rwaTokens[id] || {};
+      const change = Number(item.usd_24h_change);
+      return `
+        <article>
+          <span>${escapeHtml(id)}</span>
+          <strong>${formatUsd(item.usd)}</strong>
+          <small class="${change >= 0 ? "up" : "down"}">${Number.isFinite(change) ? `${change.toFixed(2)}% / 24h` : "변화율 대기"}</small>
+          <em>mcap ${formatUsd(item.usd_market_cap)}</em>
+        </article>
+      `;
+    }).join("");
+    const topAssetRows = topAssets.length ? topAssets.slice(0, 8).map(asset => `
+      <article>
+        <span>${escapeHtml(asset.symbol || asset.name)}</span>
+        <strong>${formatUsd(asset.currentUsd)}</strong>
+        <small>1d ${formatPercent(asset.change1dPct)} · 7d ${formatPercent(asset.change7dPct)} · 30d ${formatPercent(asset.change30dPct)}</small>
+        <em>${escapeHtml(asset.name || "Ethereum asset")}</em>
+      </article>
+    `).join("") : `
+      <article>
+        <span>Ethereum asset flow</span>
+        <strong>대기</strong>
+        <small>새로고침하면 DefiLlama 체인별 공급량으로 채워집니다.</small>
+        <em>stablecoin supply</em>
+      </article>
+    `;
+    const maxMover = volatility.maxMover || {};
+    return `
+      <section class="tokenization-intel-panel">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">자산 토큰화 레이더</p>
+            <h3>이더리움 위로 올라오는 자산의 공급, 변동성, 신뢰 구조</h3>
+          </div>
+          <div class="thinktank-actions">
+            <button class="secondary" type="button" id="tokenization-refresh-intel">토큰화 레이더 새로고침</button>
+            <span class="sync-pill">${escapeHtml(tokenizationIntelState)}</span>
+          </div>
+        </div>
+        <div class="tokenization-macro-grid">
+          <article>
+            <span>Ethereum Stable Assets</span>
+            <strong>${formatUsd(ethereum.currentUsd)}</strong>
+            <small>1d ${formatPercent(ethereum.change1dPct)} · 7d ${formatPercent(ethereum.change7dPct)} · 30d ${formatPercent(ethereum.change30dPct)}</small>
+          </article>
+          <article>
+            <span>Tracked Assets</span>
+            <strong>${ethereum.assetCount || 0}</strong>
+            <small>DefiLlama 체인별 stablecoin supply 기준</small>
+          </article>
+          <article>
+            <span>RWA.xyz</span>
+            <strong>${providers.rwaxyz?.configured ? "ON" : "OFF"}</strong>
+            <small>${providers.rwaxyz?.configured ? "RWA_API_KEY 연결됨" : "토큰화 국채/신용 세부 데이터는 RWA_API_KEY 필요"}</small>
+          </article>
+          <article>
+            <span>Volatility Lens</span>
+            <strong>${formatPercent(volatility.averageAbsMove24hPct)}</strong>
+            <small>RWA 테마 토큰 평균 24h 절대 변동률 · 신호 ${signals.length}개</small>
+          </article>
+          <article>
+            <span>Max Mover</span>
+            <strong>${escapeHtml(maxMover.id || "-")}</strong>
+            <small>${formatPercent(maxMover.change24hPct)} / 24h · ${formatUsd(maxMover.marketCapUsd)}</small>
+          </article>
+        </div>
+        <div class="tokenization-asset-flow-grid">${topAssetRows}</div>
+        <div class="tokenization-category-grid">
+          ${TOKENIZATION_CATEGORIES.map(([title, desc]) => `
+            <article>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(desc)}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="tokenization-token-grid">${rows}</div>
+        <div class="tokenization-rule-grid">
+          ${TOKENIZATION_SIGNAL_RULES.map(([title, desc]) => `
+            <span><b>${escapeHtml(title)}</b>${escapeHtml(desc)}</span>
+          `).join("")}
+        </div>
+        <div class="tokenization-source-grid">
+          ${TOKENIZATION_MARKET_SOURCES.map(([name, desc, need, url]) => `
+            <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">
+              <span>${escapeHtml(need)}</span>
+              <strong>${escapeHtml(name)}</strong>
+              <p>${escapeHtml(desc)}</p>
+            </a>
+          `).join("")}
+        </div>
+        <div class="tokenization-signal-feed">
+          <strong>현재 토큰화 시장 메모</strong>
+          ${signals.length ? signals.map(signal => `<span>${escapeHtml(signal)}</span>`).join("") : `<span>아직 고신호로 분류된 토큰화 시장 변화가 없습니다. RWA.xyz API key를 연결하면 국채/신용/상품 세부 추이까지 확장됩니다.</span>`}
+        </div>
+      </section>
+    `;
+  }
+
   function renderInvestmentDyorInterior(book) {
     return `
       ${renderBookBlueprint(book)}
@@ -952,6 +1104,7 @@
         </div>
         ${renderCryptoSnapshot()}
         ${renderOnchainIntelPanel()}
+        ${renderTokenizationIntelPanel()}
         <div class="dyor-source-grid">
           ${DYOR_SOURCE_STACK.map(source => `
             <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">
@@ -1334,6 +1487,7 @@
     detail.querySelector("#dyor-refresh-crypto")?.addEventListener("click", loadCryptoSnapshot);
     detail.querySelector("#onchain-refresh-intel")?.addEventListener("click", () => loadOnchainIntel());
     detail.querySelector("#onchain-toggle-monitor")?.addEventListener("click", toggleOnchainMonitor);
+    detail.querySelector("#tokenization-refresh-intel")?.addEventListener("click", loadTokenizationIntel);
   }
 
   function renderCapture() {
