@@ -1274,6 +1274,130 @@
     };
   }
 
+  function daysSince(value) {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return Math.max(0, Math.floor((Date.now() - date.getTime()) / 86400000));
+  }
+
+  function freshnessText(value) {
+    const days = daysSince(value);
+    if (days === null) return "기록 없음";
+    if (days === 0) return "오늘";
+    if (days === 1) return "어제";
+    return `${days}일 전`;
+  }
+
+  function buildIntelBriefing(book, stats) {
+    const audit = buildBookshelfAudit();
+    const latest = [...pages].sort((a, b) => pageSortValue(b).localeCompare(pageSortValue(a)))[0];
+    const noEvidence = pages.filter(page => !page.evidence).slice(0, 3);
+    const noNext = pages.filter(page => !page.nextAction).slice(0, 3);
+    const weakBooks = BOOKSHELF_BOOKS
+      .map(item => ({ book: item, stats: getBookStats(item) }))
+      .filter(item => item.stats.pages.length)
+      .sort((a, b) => a.stats.score - b.stats.score)
+      .slice(0, 3);
+    const emptyBooks = BOOKSHELF_BOOKS.filter(item => !pagesForBook(item.id).length).slice(0, 3);
+    const status = [
+      {
+        state: audit.localOnly ? "warn" : "ok",
+        label: "DB SYNC",
+        value: audit.localOnly ? `${audit.localOnly} 대기` : "CLEAR",
+        detail: audit.localOnly ? "Cloudflare D1 재시도가 필요합니다." : remoteState
+      },
+      {
+        state: audit.score >= 80 ? "ok" : audit.score >= 55 ? "warn" : "hot",
+        label: "DATA QUALITY",
+        value: `${audit.score}`,
+        detail: audit.score >= 80 ? "AI에게 넘길 구조가 안정적입니다." : "근거, 태그, 다음 행동을 더 채우면 강해집니다."
+      },
+      {
+        state: stats.score >= 80 ? "ok" : stats.pages.length ? "warn" : "hot",
+        label: "ACTIVE BOOK",
+        value: `${stats.score}`,
+        detail: `${book.title} · ${stats.pages.length}쪽 · ${stats.suggestion}`
+      },
+      {
+        state: audit.exportReady ? "ok" : "warn",
+        label: "AI EXPORT",
+        value: `${audit.exportReady}`,
+        detail: audit.exportReady ? "비식별 요약 패킷 후보가 있습니다." : "AI 공개 가능한 요약을 최소 1개 체크하세요."
+      }
+    ];
+    const missions = [
+      audit.localOnly
+        ? ["D1 동기화", `${audit.localOnly}개 로컬 저장 페이지를 Cloudflare D1에 재시도`, "retry-sync"]
+        : ["상태 유지", "새 기록을 저장한 뒤 근거와 다음 행동을 바로 채우기", "focus-capture"],
+      noNext.length
+        ? ["열린 루프 닫기", `${noNext[0].title} 페이지에 다음 행동 추가`, "focus-capture"]
+        : ["새 관찰 기록", `${book.title}에 오늘의 관찰/결정 1개 저장`, "focus-capture"],
+      noEvidence.length
+        ? ["근거 보강", `${noEvidence[0].title} 페이지에 출처·측정값·사실을 분리`, "focus-capture"]
+        : ["AI 패킷 점검", "AI에게 보여줄 수 있는 요약 패킷을 복사해 검토", "copy-ai"]
+    ];
+    const queues = [
+      ...noNext.map(page => [`NEXT`, page.title, "다음 행동 없음"]),
+      ...noEvidence.map(page => [`EVID`, page.title, "근거/출처 없음"]),
+      ...weakBooks.map(item => [`BOOK`, item.book.title, `정리도 ${item.stats.score}`]),
+      ...emptyBooks.map(item => [`EMPTY`, item.title, "첫 페이지 필요"])
+    ].slice(0, 6);
+    return { audit, latest, status, missions, queues };
+  }
+
+  function renderIntelBriefingPanel(book, stats) {
+    const briefing = buildIntelBriefing(book, stats);
+    return `
+      <section class="intel-briefing-panel" aria-label="정보실 브리핑">
+        <div class="intel-briefing-head">
+          <div>
+            <p class="eyebrow">INTELLIGENCE BRIEFING</p>
+            <h2>지금 처리해야 할 신호만 위로 올림</h2>
+            <p>저장 상태, 데이터 품질, 활성 책, AI 반출 가능성을 한 화면에서 보고 바로 행동합니다.</p>
+          </div>
+          <div class="intel-live-tile">
+            <span>LAST EVENT</span>
+            <strong>${escapeHtml(freshnessText(briefing.latest?.createdAt || briefing.latest?.updatedAt))}</strong>
+            <small>${escapeHtml(briefing.latest?.title || "기록 대기")}</small>
+          </div>
+        </div>
+        <div class="intel-status-grid">
+          ${briefing.status.map(item => `
+            <article class="intel-status-card ${escapeHtml(item.state)}">
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.value)}</strong>
+              <small>${escapeHtml(item.detail)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="intel-mission-grid">
+          ${briefing.missions.map(([title, detail, action]) => `
+            <button class="intel-mission-card" type="button" data-command-action="${escapeHtml(action)}">
+              <span>${escapeHtml(title)}</span>
+              <strong>${escapeHtml(detail)}</strong>
+            </button>
+          `).join("")}
+        </div>
+        <div class="intel-queue">
+          <div>
+            <strong>분석 대기열</strong>
+            <p>방치하면 검색성과 AI 분석 품질을 떨어뜨리는 항목입니다.</p>
+          </div>
+          ${briefing.queues.length ? briefing.queues.map(([tag, title, detail]) => `
+            <span><b>${escapeHtml(tag)}</b>${escapeHtml(title)}<small>${escapeHtml(detail)}</small></span>
+          `).join("") : `<span><b>CLEAR</b>즉시 조치할 대기열 없음<small>새 기록을 추가하면 다시 점검합니다.</small></span>`}
+        </div>
+        <div class="intel-action-row">
+          <button class="primary" type="button" data-command-action="focus-capture">새 기록 입력</button>
+          <button class="secondary" type="button" data-command-action="retry-sync">DB 재시도</button>
+          <button class="secondary" type="button" data-command-action="copy-ai">AI 패킷 복사</button>
+          <button class="secondary" type="button" data-open-book-view="${escapeHtml(book.linkedViews[0] || "thinktank")}">활성 책 열기</button>
+        </div>
+      </section>
+    `;
+  }
+
   function buildBookshelfExport() {
     const audit = buildBookshelfAudit();
     return {
@@ -1360,6 +1484,7 @@
 
   function renderLibraryOverview(activeBook) {
     const stats = libraryStats();
+    const activeStats = getBookStats(activeBook);
     return `
       <section class="library-command">
         <div class="library-command-copy">
@@ -1374,6 +1499,7 @@
           <span><strong>${stats.overallScore}</strong> 정리도</span>
         </div>
       </section>
+      ${renderIntelBriefingPanel(activeBook, activeStats)}
       ${renderLifetimeOpsPanel()}
       <section class="library-overview" aria-label="전체 책장">
         <div class="panel-title-row">
@@ -1493,6 +1619,19 @@
         const summary = document.querySelector("#bookshelf-summary");
         if (title && !title.value) title.value = "질문에서 시작한 페이지";
         if (summary && !summary.value) summary.value = button.dataset.starterQuestion;
+      });
+    });
+    detail.querySelectorAll("[data-command-action]").forEach(button => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.commandAction;
+        if (action === "focus-capture") {
+          document.querySelector("#bookshelf-title")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          document.querySelector("#bookshelf-title")?.focus();
+        }
+        if (action === "retry-sync") retryUnsyncedPages();
+        if (action === "copy-ai") {
+          copyText(JSON.stringify(buildBookshelfExport(), null, 2), "#bookshelf-export-copy-status");
+        }
       });
     });
     detail.querySelector("#bookshelf-retry-sync")?.addEventListener("click", () => retryUnsyncedPages());
