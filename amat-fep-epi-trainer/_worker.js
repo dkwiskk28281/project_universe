@@ -4,6 +4,7 @@ const SESSION_SECONDS = 2 * 60 * 60;
 const SESSION_VERSION = "strict-v2";
 const PERSONAL_SERVER_PREFIX = "/personal-server";
 const DEFAULT_PERSONAL_SERVER_URL = "https://fep-epi-vault-9175.loca.lt";
+const ONCHAIN_COIN_IDS = ["bitcoin", "ethereum", "solana", "chainlink", "aave", "uniswap"];
 
 function jsonResponse(request, data, status = 200, headers = {}) {
   const origin = request.headers.get("Origin") || "*";
@@ -169,6 +170,25 @@ async function resolvePersonalServerUrl(env) {
   const configured = validTunnelUrl(env.PERSONAL_SERVER_URL || "");
   if (configured) return configured;
   return DEFAULT_PERSONAL_SERVER_URL;
+}
+
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), options.timeoutMs || 9000);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "User-Agent": "ProjectUniverseOnchainIntel/1.0",
+        ...(options.headers || {})
+      },
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function rewriteProxyLocation(value, targetBase, proxyBase) {
@@ -498,6 +518,112 @@ function buildAiContext(entries) {
   };
 }
 
+function providerStatus(env) {
+  return {
+    whalealert: {
+      configured: Boolean(env.WHALE_ALERT_API_KEY),
+      env: "WHALE_ALERT_API_KEY",
+      role: "large crypto transaction alerts"
+    },
+    etherscan: {
+      configured: Boolean(env.ETHERSCAN_API_KEY),
+      env: "ETHERSCAN_API_KEY",
+      role: "Ethereum address and token transfer intelligence"
+    },
+    glassnode: {
+      configured: Boolean(env.GLASSNODE_API_KEY),
+      env: "GLASSNODE_API_KEY",
+      role: "exchange flow, holder behavior, advanced on-chain metrics"
+    },
+    coinglass: {
+      configured: Boolean(env.COINGLASS_API_KEY),
+      env: "COINGLASS_API_KEY",
+      role: "derivatives and Hyperliquid whale position context"
+    },
+    defillama: {
+      configured: true,
+      env: "none",
+      role: "TVL, stablecoins, fees, chain-level DeFi data"
+    },
+    coingecko: {
+      configured: true,
+      env: "none",
+      role: "price and market cap context"
+    }
+  };
+}
+
+function numberOrZero(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+async function buildOnchainIntel(env) {
+  const generatedAt = new Date().toISOString();
+  const priceUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ONCHAIN_COIN_IDS.join(",")}&vs_currencies=usd&include_market_cap=true&include_24hr_change=true`;
+  const [pricesResult, chainsResult, stablecoinsResult] = await Promise.allSettled([
+    fetchJson(priceUrl),
+    fetchJson("https://api.llama.fi/v2/chains"),
+    fetchJson("https://stablecoins.llama.fi/stablecoins?includePrices=true")
+  ]);
+
+  const prices = pricesResult.status === "fulfilled" ? pricesResult.value : null;
+  const chainsRaw = chainsResult.status === "fulfilled" && Array.isArray(chainsResult.value) ? chainsResult.value : [];
+  const stableRaw = stablecoinsResult.status === "fulfilled" ? stablecoinsResult.value : null;
+  const topChains = chainsRaw
+    .map(chain => ({
+      name: chain.name || chain.gecko_id || "unknown",
+      tvl: numberOrZero(chain.tvl),
+      change_1d: numberOrZero(chain.change_1d),
+      change_7d: numberOrZero(chain.change_7d)
+    }))
+    .sort((a, b) => b.tvl - a.tvl)
+    .slice(0, 8);
+
+  const peggedAssets = Array.isArray(stableRaw?.peggedAssets) ? stableRaw.peggedAssets : [];
+  const stablecoinMcap = peggedAssets.reduce((sum, asset) => sum + numberOrZero(asset.circulating?.peggedUSD || asset.circulating?.peggedUsd), 0);
+  const riskSignals = [];
+
+  topChains.forEach(chain => {
+    if (Math.abs(chain.change_7d) >= 10) {
+      riskSignals.push(`${chain.name} TVL 7일 변화 ${chain.change_7d.toFixed(1)}%: 원인 확인 필요`);
+    }
+  });
+
+  Object.entries(prices || {}).forEach(([id, data]) => {
+    const change = numberOrZero(data.usd_24h_change);
+    if (Math.abs(change) >= 8) riskSignals.push(`${id} 24h 가격 변화 ${change.toFixed(1)}%: 온체인/뉴스 원인 분리 필요`);
+  });
+
+  return {
+    schema: "onchain-intelligence-v1",
+    generatedAt,
+    note: "This is research infrastructure, not investment advice. Whale interpretation requires wallet labels, exchange context, and false-positive checks.",
+    providers: providerStatus(env),
+    macro: {
+      prices,
+      topChains,
+      stablecoins: {
+        totalMcapUsd: stablecoinMcap,
+        trackedAssets: peggedAssets.length,
+        note: stablecoinMcap ? `${peggedAssets.length}개 stablecoin supply 집계` : "stablecoin 집계 대기"
+      }
+    },
+    whale: {
+      status: env.WHALE_ALERT_API_KEY ? "provider-ready" : "provider-key-required",
+      minUsdDefault: Number(env.WHALE_MIN_USD || 10000000),
+      watchAddressesConfigured: Boolean(env.WHALE_WATCH_ADDRESSES),
+      rules: [
+        "exchange inflow is potential sell-pressure, but label confirmation is mandatory",
+        "exchange outflow can indicate accumulation or custody movement",
+        "stablecoin mint/burn and bridge flow are liquidity context, not direct buy signals",
+        "large derivative positions are liquidation-risk context, not a standalone thesis"
+      ]
+    },
+    riskSignals
+  };
+}
+
 async function handleLogin(request, env, formMode = false) {
   const body = await readBody(request);
   const password = String(body.password || "");
@@ -583,6 +709,11 @@ async function handleApi(request, env, url) {
     const result = await db.prepare("SELECT id, created_at, title, payload FROM entries ORDER BY created_at DESC LIMIT 1000").all();
     const entries = (result.results || []).map(parsePayload);
     return jsonResponse(request, { ok: true, context: buildAiContext(entries) });
+  }
+
+  if (url.pathname === "/api/onchain-intel" && request.method === "GET") {
+    const intel = await buildOnchainIntel(env);
+    return jsonResponse(request, { ok: true, intel });
   }
 
   if (url.pathname === "/api/entries" && request.method === "POST") {

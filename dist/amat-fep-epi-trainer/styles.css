@@ -351,6 +351,7 @@ textarea:focus-visible {
 :root[data-theme="dark"] .lifetime-ops-panel,
 :root[data-theme="dark"] .dyor-intel-panel,
 :root[data-theme="dark"] .dyor-crypto-panel,
+:root[data-theme="dark"] .onchain-intel-panel,
 :root[data-theme="dark"] .book-detail,
 :root[data-theme="dark"] .capture-panel,
 :root[data-theme="dark"] .english-test-console,
@@ -389,6 +390,11 @@ textarea:focus-visible {
 :root[data-theme="dark"] .dyor-source-grid a,
 :root[data-theme="dark"] .dyor-crypto-grid article,
 :root[data-theme="dark"] .dyor-prompt-box,
+:root[data-theme="dark"] .onchain-provider-grid a,
+:root[data-theme="dark"] .onchain-macro-grid article,
+:root[data-theme="dark"] .onchain-rule-grid article,
+:root[data-theme="dark"] .onchain-threshold-grid span,
+:root[data-theme="dark"] .onchain-risk-feed,
 :root[data-theme="dark"] .book-health-grid span,
 :root[data-theme="dark"] .bookshelf-page-card,
 :root[data-theme="dark"] .book-review-queue span,
@@ -2890,6 +2896,107 @@ main {
   font-size: 12px;
   font-style: normal;
   font-weight: 850;
+}
+
+.onchain-intel-panel {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(0, 127, 134, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 127, 134, 0.06), rgba(23, 44, 55, 0.04)),
+    #fbfdfe;
+}
+
+.onchain-provider-grid,
+.onchain-macro-grid,
+.onchain-rule-grid,
+.onchain-threshold-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.onchain-provider-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.onchain-provider-grid a,
+.onchain-macro-grid article,
+.onchain-rule-grid article,
+.onchain-threshold-grid span,
+.onchain-risk-feed {
+  display: grid;
+  gap: 6px;
+  min-height: 102px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.onchain-provider-grid a.ready {
+  border-color: rgba(0, 127, 134, 0.42);
+  background: #effafa;
+}
+
+.onchain-provider-grid span,
+.onchain-macro-grid span {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.onchain-provider-grid strong,
+.onchain-rule-grid strong,
+.onchain-risk-feed strong {
+  color: var(--ink);
+  line-height: 1.28;
+}
+
+.onchain-provider-grid p,
+.onchain-rule-grid p,
+.onchain-macro-grid small,
+.onchain-risk-feed span {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.48;
+}
+
+.onchain-macro-grid strong {
+  color: var(--ink);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.onchain-threshold-grid span {
+  min-height: 72px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.onchain-threshold-grid b {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 3px;
+}
+
+.onchain-risk-feed {
+  min-height: auto;
+}
+
+.onchain-risk-feed span {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #eef8f8;
+  color: #155e63;
+  font-weight: 800;
 }
 
 .library-book-grid {
@@ -6243,6 +6350,10 @@ main {
   .dyor-rule-grid,
   .dyor-source-grid,
   .dyor-crypto-grid,
+  .onchain-provider-grid,
+  .onchain-macro-grid,
+  .onchain-rule-grid,
+  .onchain-threshold-grid,
   .bookshelf-schema {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6499,6 +6610,10 @@ main {
   .dyor-rule-grid,
   .dyor-source-grid,
   .dyor-crypto-grid,
+  .onchain-provider-grid,
+  .onchain-macro-grid,
+  .onchain-rule-grid,
+  .onchain-threshold-grid,
   .bookshelf-schema {
     grid-template-columns: 1fr;
   }

@@ -102,6 +102,7 @@
     ],
     "investment-dyor": [
       ["고신호 브리핑", "공식 공시, 온체인 지표, 실적, ETF 흐름, 보안 이슈처럼 가격에 의미 있는 정보만 선별"],
+      ["온체인 고래 감시", "거래소 유입/유출, 스테이블코인 민팅, 브릿지 이동, 대형 포지션을 고신호 룰로 판정"],
       ["크립토 프로토콜 분석", "토큰 유틸리티, 수익, TVL, 수수료, 토큰 언락, 거버넌스, 보안 리스크를 분리"],
       ["미국 주식/ETF 분석", "SEC 공시, 실적, 가이던스, 밸류에이션, 섹터 흐름, ETF 구성 변화를 점검"],
       ["한국 주식 분석", "DART 공시, 실적, 수주, 지분 변화, 자본 조달, 리스크 공시를 구조화"],
@@ -203,6 +204,31 @@
 
   const DYOR_COIN_IDS = ["bitcoin", "ethereum", "solana", "chainlink", "aave", "uniswap"];
 
+  const ONCHAIN_INTEL_SOURCES = [
+    ["Whale Alert", "실시간 대형 온체인 트랜잭션 알림", "API key 필요", "https://developer.whale-alert.io/api-account/documentation"],
+    ["Etherscan", "주소별 native/ERC-20/ERC-721/ERC-1155 전송, top holders, 포트폴리오", "API key 필요", "https://docs.etherscan.io/introduction"],
+    ["DefiLlama", "체인 TVL, stablecoin supply, fees/revenue, DEX volume", "무료 API 가능", "https://api-docs.defillama.com/"],
+    ["Glassnode", "거래소 순유입, 축적 주소, 장기보유자, SOPR 등 고급 지표", "Professional API 필요", "https://docs.glassnode.com/basic-api/api"],
+    ["CoinGlass", "Hyperliquid whale position alert, derivatives heatmap", "API key 필요", "https://docs.coinglass.com/reference/hyperliquid-whale-alert"]
+  ];
+
+  const ONCHAIN_WHALE_RULES = [
+    ["거래소 유입", "고래 지갑 → 거래소 대량 입금은 잠재 매도 압력으로 분류. 단, OTC/내부 이동 가능성 확인"],
+    ["거래소 유출", "거래소 → 콜드월렛/수탁 지갑 대량 출금은 축적 가능성으로 분류. 주소 라벨 확인 필수"],
+    ["스테이블코인 민팅/소각", "USDT/USDC 공급 변화와 체인별 이동은 유동성 온도계로 사용"],
+    ["브릿지 대량 이동", "체인 간 자금 이동은 특정 생태계 유동성 변화로 추적"],
+    ["프로토콜 수익/TVL 괴리", "TVL만 증가하고 fees/revenue가 따라오지 않으면 저품질 성장 가능성"],
+    ["파생 고래 포지션", "Hyperliquid 등 대형 레버리지 포지션은 단기 청산 리스크 신호로만 사용"]
+  ];
+
+  const ONCHAIN_SIGNAL_THRESHOLDS = [
+    ["BTC/ETH 단일 전송", "$10M 이상이면 관찰, $50M 이상이면 고신호 후보"],
+    ["알트코인 전송", "시가총액의 0.05% 이상 또는 $5M 이상이면 고래 후보"],
+    ["스테이블코인 이동", "$50M 이상 거래소 유입/유출은 유동성 신호 후보"],
+    ["TVL 변화", "7일 ±10% 이상 변화는 원인 확인"],
+    ["수익 변화", "fees/revenue 7일 ±20% 이상 변화는 사용량 변화 후보"]
+  ];
+
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
   const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
@@ -288,9 +314,9 @@
       purpose: "매수·매도 지시가 아니라, 투자 판단 전에 확인해야 할 공식 근거, 핵심 촉매, 리스크, 폐기 조건을 한곳에 모은다.",
       allowed: ["공식 공시와 공개 데이터 요약", "크립토 온체인/토큰 지표", "실적과 ETF 구성 변화", "투자 가설과 반증 조건", "관찰 목록과 리스크 메모"],
       neverStore: ["거래소 API key", "시드구문/개인키", "계좌번호 전체", "미공개 내부정보", "유료 리포트 원문 대량 복사", "타인 개인정보"],
-      pageTypes: ["고신호 브리핑", "크립토 DYOR", "미국 주식/ETF 분석", "한국 주식 분석", "투자 가설", "리스크 알림", "관찰 목록", "폐기 기록"],
-      aiUse: ["잔잔한 뉴스와 진짜 신호 분리", "투자 후보별 근거-리스크-반증 조건 요약", "공개 출처 기반 DYOR 체크리스트 생성", "관찰 목록 우선순위 정리"],
-      starterQuestions: ["이 정보는 공식 근거인가, 해석인가, 소문인가?", "가격보다 먼저 확인해야 할 실질 변화는 무엇인가?", "이 가설이 틀렸다고 판단할 폐기 조건은 무엇인가?"],
+      pageTypes: ["고신호 브리핑", "온체인 고래 감시", "크립토 DYOR", "미국 주식/ETF 분석", "한국 주식 분석", "투자 가설", "리스크 알림", "관찰 목록", "폐기 기록"],
+      aiUse: ["잔잔한 뉴스와 진짜 신호 분리", "고래 이동의 방향성과 주소 맥락 요약", "투자 후보별 근거-리스크-반증 조건 요약", "공개 출처 기반 DYOR 체크리스트 생성", "관찰 목록 우선순위 정리"],
+      starterQuestions: ["이 정보는 공식 근거인가, 해석인가, 소문인가?", "고래 이동이 거래소 유입인지, 콜드월렛 이동인지, 브릿지 이동인지 구분했는가?", "이 가설이 틀렸다고 판단할 폐기 조건은 무엇인가?"],
       reviewCadence: "주 2회 시장 점검, 큰 이슈 발생 시 즉시 업데이트",
       linkedViews: ["bookshelf", "thinktank"]
     },
@@ -382,6 +408,9 @@
   let latestAiPacketText = "";
   let cryptoSnapshot = null;
   let cryptoSnapshotState = "아직 불러오지 않음";
+  let onchainIntel = null;
+  let onchainIntelState = "아직 불러오지 않음";
+  let onchainMonitorTimer = 0;
 
   function escapeHtml(value = "") {
     return String(value)
@@ -761,6 +790,33 @@
     renderBookshelf();
   }
 
+  async function loadOnchainIntel(options = {}) {
+    onchainIntelState = options.monitor ? "자동 감시 업데이트 중" : "온체인 레이더 불러오는 중";
+    if (!options.silent) renderBookshelf();
+    try {
+      const data = await apiFetch("/api/onchain-intel");
+      onchainIntel = data.intel || data;
+      onchainIntelState = `업데이트 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+    } catch {
+      onchainIntelState = "온체인 API를 불러오지 못했습니다. 로그인, D1/Worker 상태, API key 설정을 확인하세요.";
+    }
+    renderBookshelf();
+  }
+
+  function toggleOnchainMonitor() {
+    if (onchainMonitorTimer) {
+      clearInterval(onchainMonitorTimer);
+      onchainMonitorTimer = 0;
+      onchainIntelState = "자동 감시 중지";
+      renderBookshelf();
+      return;
+    }
+    loadOnchainIntel({ monitor: true, silent: true });
+    onchainMonitorTimer = setInterval(() => loadOnchainIntel({ monitor: true, silent: true }), 5 * 60 * 1000);
+    onchainIntelState = "5분 간격 자동 감시 중";
+    renderBookshelf();
+  }
+
   function renderCryptoSnapshot() {
     const rows = DYOR_COIN_IDS.map(id => {
       const item = cryptoSnapshot?.[id] || {};
@@ -787,6 +843,81 @@
           </div>
         </div>
         <div class="dyor-crypto-grid">${rows}</div>
+      </section>
+    `;
+  }
+
+  function renderOnchainIntelPanel() {
+    const providers = onchainIntel?.providers || {};
+    const macro = onchainIntel?.macro || {};
+    const topChains = macro.topChains || [];
+    const stablecoins = macro.stablecoins || {};
+    const riskSignals = onchainIntel?.riskSignals || [];
+    return `
+      <section class="onchain-intel-panel">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">온체인 고래 레이더</p>
+            <h3>고래 이동은 방향, 주소 맥락, 유동성을 같이 봐야 한다</h3>
+          </div>
+          <div class="thinktank-actions">
+            <button class="secondary" type="button" id="onchain-refresh-intel">온체인 새로고침</button>
+            <button class="secondary" type="button" id="onchain-toggle-monitor">${onchainMonitorTimer ? "자동 감시 중지" : "자동 감시 시작"}</button>
+            <span class="sync-pill">${escapeHtml(onchainIntelState)}</span>
+          </div>
+        </div>
+        <div class="onchain-provider-grid">
+          ${ONCHAIN_INTEL_SOURCES.map(([name, desc, need, url]) => {
+            const key = name.toLowerCase().replace(/\s+/g, "");
+            const configured = providers[key]?.configured;
+            return `
+              <a href="${escapeHtml(url)}" target="_blank" rel="noreferrer" class="${configured ? "ready" : ""}">
+                <span>${configured ? "연결 가능" : need}</span>
+                <strong>${escapeHtml(name)}</strong>
+                <p>${escapeHtml(desc)}</p>
+              </a>
+            `;
+          }).join("")}
+        </div>
+        <div class="onchain-macro-grid">
+          <article>
+            <span>Stablecoins</span>
+            <strong>${formatUsd(stablecoins.totalMcapUsd)}</strong>
+            <small>${escapeHtml(stablecoins.note || "DefiLlama stablecoin supply 대기")}</small>
+          </article>
+          <article>
+            <span>Chains</span>
+            <strong>${topChains.length || 0}</strong>
+            <small>${topChains.slice(0, 4).map(chain => `${chain.name} ${formatUsd(chain.tvl)}`).join(" · ") || "체인 TVL 대기"}</small>
+          </article>
+          <article>
+            <span>Whale Feed</span>
+            <strong>${providers.whalealert?.configured ? "ON" : "OFF"}</strong>
+            <small>${providers.whalealert?.configured ? "Whale Alert API key 연결됨" : "Cloudflare 환경변수 WHALE_ALERT_API_KEY 필요"}</small>
+          </article>
+          <article>
+            <span>Exchange Flow</span>
+            <strong>${providers.glassnode?.configured ? "ON" : "준비"}</strong>
+            <small>${providers.glassnode?.configured ? "Glassnode API key 연결됨" : "거래소 순유입은 Glassnode/CryptoQuant류 소스 필요"}</small>
+          </article>
+        </div>
+        <div class="onchain-rule-grid">
+          ${ONCHAIN_WHALE_RULES.map(([title, desc]) => `
+            <article>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(desc)}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="onchain-threshold-grid">
+          ${ONCHAIN_SIGNAL_THRESHOLDS.map(([title, desc]) => `
+            <span><b>${escapeHtml(title)}</b>${escapeHtml(desc)}</span>
+          `).join("")}
+        </div>
+        <div class="onchain-risk-feed">
+          <strong>현재 레이더 메모</strong>
+          ${riskSignals.length ? riskSignals.map(signal => `<span>${escapeHtml(signal)}</span>`).join("") : `<span>아직 고신호로 분류된 온체인 이벤트가 없습니다. API key를 연결하면 고래 트랜잭션까지 확장됩니다.</span>`}
+        </div>
       </section>
     `;
   }
@@ -820,6 +951,7 @@
           `).join("")}
         </div>
         ${renderCryptoSnapshot()}
+        ${renderOnchainIntelPanel()}
         <div class="dyor-source-grid">
           ${DYOR_SOURCE_STACK.map(source => `
             <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">
@@ -1200,6 +1332,8 @@
       copyText(JSON.stringify(buildBookshelfExport(), null, 2), "#bookshelf-export-copy-status");
     });
     detail.querySelector("#dyor-refresh-crypto")?.addEventListener("click", loadCryptoSnapshot);
+    detail.querySelector("#onchain-refresh-intel")?.addEventListener("click", () => loadOnchainIntel());
+    detail.querySelector("#onchain-toggle-monitor")?.addEventListener("click", toggleOnchainMonitor);
   }
 
   function renderCapture() {
