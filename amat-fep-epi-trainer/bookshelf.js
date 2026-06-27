@@ -100,6 +100,14 @@
       ["의사결정 기록", "투자/지출 의사결정의 근거와 사후 평가"],
       ["세금과 행정 질문", "세무사/은행/보험사에 물어볼 질문 목록"]
     ],
+    "investment-dyor": [
+      ["고신호 브리핑", "공식 공시, 온체인 지표, 실적, ETF 흐름, 보안 이슈처럼 가격에 의미 있는 정보만 선별"],
+      ["크립토 프로토콜 분석", "토큰 유틸리티, 수익, TVL, 수수료, 토큰 언락, 거버넌스, 보안 리스크를 분리"],
+      ["미국 주식/ETF 분석", "SEC 공시, 실적, 가이던스, 밸류에이션, 섹터 흐름, ETF 구성 변화를 점검"],
+      ["한국 주식 분석", "DART 공시, 실적, 수주, 지분 변화, 자본 조달, 리스크 공시를 구조화"],
+      ["투자 가설 장부", "왜 관심을 가졌는지, 무엇이 틀리면 폐기할지, 어떤 가격/사건을 기다릴지 기록"],
+      ["관찰 목록", "지금 당장 매수 후보가 아니라 추적할 만한 자산과 확인해야 할 근거를 저장"]
+    ],
     "business-foundry": [
       ["아이디어 씨앗", "아이디어 원석을 문제, 고객, 가설로 분리"],
       ["작은 실험", "가장 작은 검증 실험과 성공/실패 기준"],
@@ -146,6 +154,54 @@
     "sensitive-index only": "민감 색인",
     "controlled-export": "AI 반출 관리"
   };
+
+  const DYOR_SOURCE_STACK = [
+    {
+      market: "크립토",
+      source: "CoinGecko Public API",
+      url: "https://docs.coingecko.com/docs/keyless-public-api",
+      use: "가격, 시가총액, 24시간 변화율, 코인 ID 확인",
+      trust: "시장 데이터 컨텍스트. 투자 근거 자체가 아니라 변동성과 규모 확인용"
+    },
+    {
+      market: "크립토",
+      source: "DefiLlama",
+      url: "https://api-docs.defillama.com/",
+      use: "TVL, fees, revenue, stablecoin supply, bridge/DEX activity",
+      trust: "프로토콜의 실제 사용량과 경제 활동을 확인하는 1차 대시보드"
+    },
+    {
+      market: "미국 주식/ETF",
+      source: "SEC EDGAR APIs",
+      url: "https://www.sec.gov/search-filings/edgar-application-programming-interfaces",
+      use: "10-K, 10-Q, 8-K, S-1, ETF/펀드 공시, XBRL 재무 데이터",
+      trust: "미국 상장사와 ETF 리서치의 공식 공시 원천"
+    },
+    {
+      market: "한국 주식",
+      source: "OpenDART",
+      url: "https://opendart.fss.or.kr/intro/main.do",
+      use: "사업보고서, 주요사항보고서, 지분공시, 증권신고서, 재무정보",
+      trust: "한국 상장사 리서치의 공식 공시 원천. API key 필요"
+    }
+  ];
+
+  const DYOR_ASSET_LANES = [
+    ["크립토", "가격보다 먼저 token unlock, revenue, TVL, stablecoin liquidity, exploit, governance, treasury를 확인"],
+    ["미국 주식", "SEC 공시, 실적, 현금흐름, 가이던스, 밸류에이션, 경쟁 우위 변화 확인"],
+    ["ETF", "기초지수, 보유 종목, expense ratio, tracking error, AUM/유동성, 섹터/국가 집중도 확인"],
+    ["한국 주식", "DART 공시, 수주/증자/CB/BW/자사주/지분 변화, 실적 추정 변화 확인"],
+    ["매크로", "금리, 달러, 유동성, 신용 스프레드, ETF 자금 흐름이 자산군 전체에 주는 압력 확인"]
+  ];
+
+  const DYOR_SIGNAL_RULES = [
+    ["고신호", "공식 공시, 실적 숫자, 온체인 사용량, 프로토콜 수익, 대형 보안 사고, ETF 자금 흐름, 공급량 변화"],
+    ["중신호", "창업자/재단 발표, 거버넌스 제안, 파트너십 세부 조건, 거래소 상장, 제품 출시 지표"],
+    ["저신호", "가격만 오른 차트, 익명 계정 루머, 단순 인플루언서 언급, 근거 없는 목표가, 맥락 없는 뉴스"],
+    ["폐기 조건", "근거가 공식 출처로 확인되지 않거나, 핵심 지표가 반대로 움직이거나, 리스크가 보상보다 커질 때"]
+  ];
+
+  const DYOR_COIN_IDS = ["bitcoin", "ethereum", "solana", "chainlink", "aave", "uniswap"];
 
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
@@ -221,6 +277,22 @@
       starterQuestions: ["이 자산은 어떤 위험에 노출되어 있는가?", "현금흐름을 악화시키는 반복 지출은?", "투자 가정이 틀리면 무엇이 먼저 보일까?"],
       reviewCadence: "월간 1회, 큰 의사결정 전",
       linkedViews: ["bookshelf"]
+    },
+    {
+      id: "investment-dyor",
+      code: "투자",
+      shelf: "자산",
+      title: "투자 DYOR 인텔리전스",
+      subtitle: "크립토, 미국 주식/ETF, 한국 주식의 진짜 신호만 걸러 보는 리서치 책",
+      privacyLevel: "private-summary",
+      purpose: "매수·매도 지시가 아니라, 투자 판단 전에 확인해야 할 공식 근거, 핵심 촉매, 리스크, 폐기 조건을 한곳에 모은다.",
+      allowed: ["공식 공시와 공개 데이터 요약", "크립토 온체인/토큰 지표", "실적과 ETF 구성 변화", "투자 가설과 반증 조건", "관찰 목록과 리스크 메모"],
+      neverStore: ["거래소 API key", "시드구문/개인키", "계좌번호 전체", "미공개 내부정보", "유료 리포트 원문 대량 복사", "타인 개인정보"],
+      pageTypes: ["고신호 브리핑", "크립토 DYOR", "미국 주식/ETF 분석", "한국 주식 분석", "투자 가설", "리스크 알림", "관찰 목록", "폐기 기록"],
+      aiUse: ["잔잔한 뉴스와 진짜 신호 분리", "투자 후보별 근거-리스크-반증 조건 요약", "공개 출처 기반 DYOR 체크리스트 생성", "관찰 목록 우선순위 정리"],
+      starterQuestions: ["이 정보는 공식 근거인가, 해석인가, 소문인가?", "가격보다 먼저 확인해야 할 실질 변화는 무엇인가?", "이 가설이 틀렸다고 판단할 폐기 조건은 무엇인가?"],
+      reviewCadence: "주 2회 시장 점검, 큰 이슈 발생 시 즉시 업데이트",
+      linkedViews: ["bookshelf", "thinktank"]
     },
     {
       id: "business-foundry",
@@ -308,6 +380,8 @@
   let pages = loadPages();
   let remoteState = "로컬 우선";
   let latestAiPacketText = "";
+  let cryptoSnapshot = null;
+  let cryptoSnapshotState = "아직 불러오지 않음";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -655,8 +729,119 @@
     `;
   }
 
+  function formatUsd(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "-";
+    if (number >= 1_000_000_000_000) return `$${(number / 1_000_000_000_000).toFixed(2)}T`;
+    if (number >= 1_000_000_000) return `$${(number / 1_000_000_000).toFixed(2)}B`;
+    if (number >= 1_000_000) return `$${(number / 1_000_000).toFixed(2)}M`;
+    if (number >= 1) return `$${number.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+    return `$${number.toLocaleString("en-US", { maximumSignificantDigits: 4 })}`;
+  }
+
+  async function loadCryptoSnapshot() {
+    cryptoSnapshotState = "CoinGecko에서 가격 컨텍스트 불러오는 중";
+    renderBookshelf();
+    try {
+      const query = new URLSearchParams({
+        ids: DYOR_COIN_IDS.join(","),
+        vs_currencies: "usd",
+        include_market_cap: "true",
+        include_24hr_change: "true"
+      });
+      const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?${query.toString()}`, {
+        headers: { accept: "application/json" }
+      });
+      if (!response.ok) throw new Error(`CoinGecko ${response.status}`);
+      cryptoSnapshot = await response.json();
+      cryptoSnapshotState = `업데이트 ${new Date().toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}`;
+    } catch {
+      cryptoSnapshotState = "가격 API를 불러오지 못했습니다. 공식 링크와 저장 템플릿은 계속 사용할 수 있습니다.";
+    }
+    renderBookshelf();
+  }
+
+  function renderCryptoSnapshot() {
+    const rows = DYOR_COIN_IDS.map(id => {
+      const item = cryptoSnapshot?.[id] || {};
+      const change = Number(item.usd_24h_change || 0);
+      return `
+        <article>
+          <span>${escapeHtml(id)}</span>
+          <strong>${formatUsd(item.usd)}</strong>
+          <small class="${change >= 0 ? "up" : "down"}">${Number.isFinite(change) ? `${change.toFixed(2)}% / 24h` : "변화율 대기"}</small>
+          <em>mcap ${formatUsd(item.usd_market_cap)}</em>
+        </article>
+      `;
+    }).join("");
+    return `
+      <section class="dyor-crypto-panel">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">크립토 가격 컨텍스트</p>
+            <h3>가격은 결론이 아니라 리스크 온도계</h3>
+          </div>
+          <div class="thinktank-actions">
+            <button class="secondary" type="button" id="dyor-refresh-crypto">가격 새로고침</button>
+            <span class="sync-pill">${escapeHtml(cryptoSnapshotState)}</span>
+          </div>
+        </div>
+        <div class="dyor-crypto-grid">${rows}</div>
+      </section>
+    `;
+  }
+
+  function renderInvestmentDyorInterior(book) {
+    return `
+      ${renderBookBlueprint(book)}
+      <section class="dyor-intel-panel" aria-label="투자 DYOR 인텔리전스">
+        <div class="dyor-intel-head">
+          <div>
+            <p class="eyebrow">DYOR Intelligence</p>
+            <h3>잔잔한 이슈를 버리고 진짜 신호만 남기는 필터</h3>
+            <p>이 책은 투자 조언이나 자동 매매가 아닙니다. 공식 근거, 숫자, 온체인 활동, 공시, 리스크와 반증 조건을 모아 AI가 읽기 좋은 판단 재료로 정리하는 공간입니다.</p>
+          </div>
+          <span class="sync-pill">공개 정보 기반</span>
+        </div>
+        <div class="dyor-lane-grid">
+          ${DYOR_ASSET_LANES.map(([title, desc]) => `
+            <article>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(desc)}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="dyor-rule-grid">
+          ${DYOR_SIGNAL_RULES.map(([title, desc]) => `
+            <article class="${title === "저신호" ? "muted" : title === "폐기 조건" ? "danger" : ""}">
+              <span>${escapeHtml(title)}</span>
+              <p>${escapeHtml(desc)}</p>
+            </article>
+          `).join("")}
+        </div>
+        ${renderCryptoSnapshot()}
+        <div class="dyor-source-grid">
+          ${DYOR_SOURCE_STACK.map(source => `
+            <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">
+              <span>${escapeHtml(source.market)}</span>
+              <strong>${escapeHtml(source.source)}</strong>
+              <p>${escapeHtml(source.use)}</p>
+              <small>${escapeHtml(source.trust)}</small>
+            </a>
+          `).join("")}
+        </div>
+        <div class="dyor-prompt-box">
+          <strong>AI에게 맡길 때의 기본 프롬프트</strong>
+          <p>이 자산을 매수 추천하지 말고 DYOR 관점으로 분석해라. 공식 근거, 숫자 변화, 촉매, 리스크, 반증 조건, 추적해야 할 다음 데이터, 소문/노이즈를 분리해라. 결론은 확률적 가설로만 표현하고, 투자 결정은 사용자가 한다.</p>
+        </div>
+      </section>
+    `;
+  }
+
   function renderBookInterior(book) {
-    return book.id === "career-fep-epi" ? renderFepEpiBookInterior() : renderBookBlueprint(book);
+    if (book.id === "career-fep-epi") return renderFepEpiBookInterior();
+    if (book.id === "investment-dyor") return renderInvestmentDyorInterior(book);
+    return renderBookBlueprint(book);
   }
 
   function viewLabel(view) {
@@ -1014,6 +1199,7 @@
     detail.querySelector("#bookshelf-copy-export")?.addEventListener("click", () => {
       copyText(JSON.stringify(buildBookshelfExport(), null, 2), "#bookshelf-export-copy-status");
     });
+    detail.querySelector("#dyor-refresh-crypto")?.addEventListener("click", loadCryptoSnapshot);
   }
 
   function renderCapture() {
@@ -1145,6 +1331,7 @@
         generatedAt: context.generatedAt,
         countsByType: context.countsByType,
         english: context.english,
+        investment: context.investment,
         bookshelf: context.bookshelf,
         localBookshelfAudit: buildBookshelfAudit(),
         recentItemsPreview: (context.recentItems || []).slice(0, 8)

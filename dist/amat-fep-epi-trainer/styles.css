@@ -349,6 +349,8 @@ textarea:focus-visible {
 :root[data-theme="dark"] .library-command,
 :root[data-theme="dark"] .library-overview,
 :root[data-theme="dark"] .lifetime-ops-panel,
+:root[data-theme="dark"] .dyor-intel-panel,
+:root[data-theme="dark"] .dyor-crypto-panel,
 :root[data-theme="dark"] .book-detail,
 :root[data-theme="dark"] .capture-panel,
 :root[data-theme="dark"] .english-test-console,
@@ -382,6 +384,11 @@ textarea:focus-visible {
 :root[data-theme="dark"] .library-command-grid span,
 :root[data-theme="dark"] .lifetime-metric-grid article,
 :root[data-theme="dark"] .lifetime-invariants span,
+:root[data-theme="dark"] .dyor-lane-grid article,
+:root[data-theme="dark"] .dyor-rule-grid article,
+:root[data-theme="dark"] .dyor-source-grid a,
+:root[data-theme="dark"] .dyor-crypto-grid article,
+:root[data-theme="dark"] .dyor-prompt-box,
 :root[data-theme="dark"] .book-health-grid span,
 :root[data-theme="dark"] .bookshelf-page-card,
 :root[data-theme="dark"] .book-review-queue span,
@@ -2765,6 +2772,124 @@ main {
 .lifetime-invariants small {
   color: var(--muted);
   text-align: right;
+}
+
+.dyor-intel-panel,
+.dyor-crypto-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(0, 127, 134, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(23, 44, 55, 0.05), rgba(196, 107, 35, 0.06)),
+    #fbfdfe;
+}
+
+.dyor-intel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.dyor-intel-head h3,
+.dyor-intel-head p,
+.dyor-prompt-box p,
+.dyor-lane-grid p,
+.dyor-rule-grid p,
+.dyor-source-grid p {
+  margin: 0;
+}
+
+.dyor-intel-head p:not(.eyebrow),
+.dyor-prompt-box p,
+.dyor-lane-grid p,
+.dyor-rule-grid p,
+.dyor-source-grid p,
+.dyor-source-grid small {
+  color: var(--muted);
+  line-height: 1.58;
+}
+
+.dyor-lane-grid,
+.dyor-rule-grid,
+.dyor-source-grid,
+.dyor-crypto-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dyor-lane-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.dyor-lane-grid article,
+.dyor-rule-grid article,
+.dyor-source-grid a,
+.dyor-crypto-grid article,
+.dyor-prompt-box {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.dyor-lane-grid strong,
+.dyor-source-grid strong,
+.dyor-prompt-box strong {
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.dyor-rule-grid span,
+.dyor-source-grid span,
+.dyor-crypto-grid span {
+  color: var(--accent-2);
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.dyor-rule-grid article.muted {
+  opacity: 0.78;
+}
+
+.dyor-rule-grid article.danger {
+  border-color: rgba(179, 90, 22, 0.3);
+  background: #fffaf4;
+}
+
+.dyor-crypto-grid strong {
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.dyor-crypto-grid small {
+  font-weight: 900;
+}
+
+.dyor-crypto-grid small.up {
+  color: #147a55;
+}
+
+.dyor-crypto-grid small.down {
+  color: #b23b3b;
+}
+
+.dyor-crypto-grid em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 850;
 }
 
 .library-book-grid {
@@ -6114,6 +6239,10 @@ main {
   .book-flow-map,
   .library-command-grid,
   .lifetime-metric-grid,
+  .dyor-lane-grid,
+  .dyor-rule-grid,
+  .dyor-source-grid,
+  .dyor-crypto-grid,
   .bookshelf-schema {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -6366,6 +6495,10 @@ main {
   .science-grid,
   .electrical-hero-steps,
   .lifetime-metric-grid,
+  .dyor-lane-grid,
+  .dyor-rule-grid,
+  .dyor-source-grid,
+  .dyor-crypto-grid,
   .bookshelf-schema {
     grid-template-columns: 1fr;
   }

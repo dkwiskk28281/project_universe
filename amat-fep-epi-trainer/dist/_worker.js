@@ -414,6 +414,7 @@ function buildEnglishWeakness(entries) {
 function buildAiContext(entries) {
   const visible = entries.filter(entry => !entry.hidden);
   const bookshelfPages = visible.filter(entry => entry.type === "Personal Bookshelf Page");
+  const investmentPages = bookshelfPages.filter(entry => entry.bookId === "investment-dyor");
   const byBook = {};
   bookshelfPages.forEach(page => {
     const key = page.bookId || page.subsystem || "unknown";
@@ -464,6 +465,21 @@ function buildAiContext(entries) {
       aiExportApproved: bookshelfPages.filter(page => page.aiExportOk).length,
       pagesWithEvidence: bookshelfPages.filter(page => page.evidence).length,
       pagesWithNextAction: bookshelfPages.filter(page => page.nextAction).length
+    },
+    investment: {
+      schema: "dyor-intelligence-v1",
+      rule: "Do not produce buy/sell instructions. Separate official facts, interpretation, risk, noise, and invalidation conditions.",
+      pages: investmentPages.length,
+      exportApproved: investmentPages.filter(page => page.aiExportOk).length,
+      latestResearch: investmentPages.slice(0, 20).map(page => ({
+        title: page.title || "",
+        pageType: page.pageType || "",
+        summary: page.summary || "",
+        evidence: page.evidence || "",
+        nextAction: page.nextAction || "",
+        tags: page.tags || [],
+        createdAt: page.createdAt || ""
+      }))
     },
     bookshelf: Object.values(byBook),
     english: buildEnglishWeakness(visible),
