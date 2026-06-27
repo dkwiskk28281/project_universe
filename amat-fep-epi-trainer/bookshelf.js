@@ -438,6 +438,7 @@
   let onchainMonitorTimer = 0;
   let tokenizationIntel = null;
   let tokenizationIntelState = "아직 불러오지 않음";
+  let tokenizationMonitorTimer = 0;
 
   function escapeHtml(value = "") {
     return String(value)
@@ -844,9 +845,9 @@
     renderBookshelf();
   }
 
-  async function loadTokenizationIntel() {
-    tokenizationIntelState = "자산 토큰화 레이더 불러오는 중";
-    renderBookshelf();
+  async function loadTokenizationIntel(options = {}) {
+    tokenizationIntelState = options.monitor ? "토큰화 자동 감시 업데이트 중" : "자산 토큰화 레이더 불러오는 중";
+    if (!options.silent) renderBookshelf();
     try {
       const data = await apiFetch("/api/tokenization-intel");
       tokenizationIntel = data.intel || data;
@@ -854,6 +855,20 @@
     } catch {
       tokenizationIntelState = "자산 토큰화 API를 불러오지 못했습니다. 로그인/Worker 상태를 확인하세요.";
     }
+    renderBookshelf();
+  }
+
+  function toggleTokenizationMonitor() {
+    if (tokenizationMonitorTimer) {
+      clearInterval(tokenizationMonitorTimer);
+      tokenizationMonitorTimer = 0;
+      tokenizationIntelState = "토큰화 자동 감시 중지";
+      renderBookshelf();
+      return;
+    }
+    loadTokenizationIntel({ monitor: true, silent: true });
+    tokenizationMonitorTimer = setInterval(() => loadTokenizationIntel({ monitor: true, silent: true }), 5 * 60 * 1000);
+    tokenizationIntelState = "5분 간격 토큰화 자동 감시 중";
     renderBookshelf();
   }
 
@@ -1012,6 +1027,7 @@
           </div>
           <div class="thinktank-actions">
             <button class="secondary" type="button" id="tokenization-refresh-intel">토큰화 레이더 새로고침</button>
+            <button class="secondary" type="button" id="tokenization-toggle-monitor">${tokenizationMonitorTimer ? "토큰화 감시 중지" : "토큰화 감시 시작"}</button>
             <span class="sync-pill">${escapeHtml(tokenizationIntelState)}</span>
           </div>
         </div>
@@ -1488,6 +1504,7 @@
     detail.querySelector("#onchain-refresh-intel")?.addEventListener("click", () => loadOnchainIntel());
     detail.querySelector("#onchain-toggle-monitor")?.addEventListener("click", toggleOnchainMonitor);
     detail.querySelector("#tokenization-refresh-intel")?.addEventListener("click", loadTokenizationIntel);
+    detail.querySelector("#tokenization-toggle-monitor")?.addEventListener("click", toggleTokenizationMonitor);
   }
 
   function renderCapture() {
