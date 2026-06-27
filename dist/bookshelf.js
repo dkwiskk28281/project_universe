@@ -535,7 +535,7 @@
       aiExportOk: Boolean(raw.aiExportOk),
       bookId: book.id,
       bookTitle: book.title,
-      source: cleanText(raw.source || "인생의 책장", 80),
+      source: cleanText(raw.source || "인생 정보실", 80),
       createdAt,
       updatedAt,
       remoteSavedAt: raw.remoteSavedAt || "",
@@ -1279,7 +1279,7 @@
     return {
       schema: BOOKSHELF_EXPORT_VERSION,
       generatedAt: new Date().toISOString(),
-      title: "인생의 책장 백업",
+      title: "인생 정보실 백업",
       rules: {
         primaryStore: "Cloudflare D1",
         localCache: "browser localStorage",
@@ -1363,7 +1363,7 @@
     return `
       <section class="library-command">
         <div class="library-command-copy">
-          <p class="eyebrow">인생의 책장</p>
+          <p class="eyebrow">인생 정보실</p>
           <h2>필요한 삶의 영역을 책처럼 꺼내 쓰는 공간</h2>
           <p>필요한 책을 먼저 고르고, 기록은 요약-근거-다음 행동-AI 공개 범위로 쌓습니다. 나중에 AI에게 보여줄 때도 원문이 아니라 구조화된 판단 재료만 넘기도록 설계했습니다.</p>
         </div>
@@ -1744,7 +1744,7 @@
       aiExportOk: document.querySelector("#bookshelf-ai-export").checked,
       bookId: book.id,
       bookTitle: book.title,
-      source: "인생의 책장",
+      source: "인생 정보실",
       createdAt: new Date().toISOString(),
       syncStatus: "local saved"
     };

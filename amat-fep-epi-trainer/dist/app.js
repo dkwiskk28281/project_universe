@@ -1879,7 +1879,7 @@ function showView(id, options = {}) {
   closeCommandPalette();
   renderBookContextBar(id);
   renderLearningHud();
-  document.title = `${getNavLabel(id)} | 인생의 책장`;
+  document.title = `${getNavLabel(id)} | 인생 정보실`;
   window.scrollTo({ top: 0, behavior: options.instant ? "auto" : "smooth" });
 }
 
@@ -1924,7 +1924,7 @@ function getQuizProgress() {
 function getUxSearchItems() {
   const navItems = Object.entries(VIEW_LABELS).map(([view, title]) => ({
     title,
-    meta: view === "bookshelf" ? "인생의 책장" : VIEW_CHAPTERS[view] || "책 안의 장",
+    meta: view === "bookshelf" ? "인생 정보실" : VIEW_CHAPTERS[view] || "책 안의 장",
     body: view === "bookshelf" ? "책장으로 이동" : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
     view
   }));
@@ -2095,7 +2095,7 @@ function normalizeTheme(theme) {
 function storedThemePreference() {
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === "dark" || stored === "light") return stored;
+    if (stored === "dark") return stored;
   } catch {
     // Storage can be blocked in strict browser modes; keep the UI usable.
   }
@@ -2119,9 +2119,9 @@ function applyTheme(theme, options = {}) {
   if (options.persist !== false) persistThemePreference(nextTheme);
   const toggle = document.querySelector("#theme-toggle");
   if (toggle) {
-    toggle.textContent = nextTheme === "dark" ? "라이트" : "다크";
+    toggle.textContent = nextTheme === "dark" ? "콘솔" : "야간";
     toggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
-    toggle.setAttribute("aria-label", nextTheme === "dark" ? "라이트 모드로 전환" : "다크 모드로 전환");
+    toggle.setAttribute("aria-label", nextTheme === "dark" ? "인텔리전스 콘솔 모드" : "야간 콘솔 모드");
   }
 }
 
