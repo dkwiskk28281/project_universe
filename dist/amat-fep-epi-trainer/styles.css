@@ -42,8 +42,13 @@
 
 * { box-sizing: border-box; }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: "Segoe UI", "Malgun Gothic", Arial, sans-serif;
   color: var(--ink);
   background: var(--page-bg);
@@ -102,6 +107,10 @@ textarea:focus-visible {
 body:not(.auth-unlocked) #open-active-book,
 body:not(.auth-unlocked) #open-command-search,
 body:not(.auth-unlocked) #logout-btn {
+  display: none !important;
+}
+
+body:not(.auth-unlocked) .global-nav .nav-btn[data-view]:not([data-view="bookshelf"]):not([data-view="cognitive"]) {
   display: none !important;
 }
 
@@ -7039,10 +7048,12 @@ main {
 
 html {
   background: #020604;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100vh;
+  overflow-x: hidden;
   color: var(--ink);
   background:
     linear-gradient(90deg, rgba(0, 255, 149, 0.055) 1px, transparent 1px),
@@ -8509,6 +8520,7 @@ body[data-current-view="cognitive"] .learning-hud {
 .cognitive-check-card,
 .cognitive-task-explain,
 .cognitive-sequence-card,
+.cognitive-plan-card,
 .cognitive-feedback {
   border: 1px solid rgba(50, 255, 173, 0.18);
   border-radius: 8px;
@@ -8539,7 +8551,7 @@ body[data-current-view="cognitive"] .learning-hud {
 }
 
 .cognitive-pillar-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .cognitive-pillar-grid article {
@@ -8776,8 +8788,31 @@ body[data-current-view="cognitive"] .learning-hud {
   font-weight: 900;
 }
 
-.cognitive-recall-box textarea {
+.cognitive-recall-box textarea,
+.cognitive-sequence-card input,
+.cognitive-plan-card input {
   min-height: 118px;
+  border: 1px solid rgba(50, 255, 173, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.36);
+  color: #f7fff9;
+  outline: none;
+}
+
+.cognitive-sequence-card input,
+.cognitive-plan-card input {
+  min-height: 42px;
+  padding: 0 11px;
+}
+
+.cognitive-recall-box textarea:focus,
+.cognitive-sequence-card input:focus,
+.cognitive-plan-card input:focus {
+  border-color: rgba(0, 255, 149, 0.72);
+  box-shadow: 0 0 0 3px rgba(0, 255, 149, 0.12);
+}
+
+.cognitive-recall-box textarea {
   resize: vertical;
 }
 
@@ -8790,6 +8825,128 @@ body[data-current-view="cognitive"] .learning-hud {
 .cognitive-sequence-card strong {
   color: #ffffff;
   font-size: 20px;
+}
+
+.cognitive-memory-coach {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px;
+  border: 1px dashed rgba(50, 255, 173, 0.28);
+  border-radius: 8px;
+  background: rgba(50, 255, 173, 0.065);
+}
+
+.cognitive-memory-coach span {
+  color: #72ffc0;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.cognitive-memory-coach b {
+  display: inline-grid;
+  place-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+}
+
+.cognitive-nback-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.cognitive-nback-grid button {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 82px;
+  border: 1px solid rgba(50, 255, 173, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #f7fff9;
+}
+
+.cognitive-nback-grid button:hover,
+.cognitive-nback-grid button.selected {
+  border-color: rgba(0, 255, 149, 0.68);
+  background: rgba(50, 255, 173, 0.12);
+}
+
+.cognitive-nback-grid button.correct {
+  border-color: rgba(0, 255, 149, 0.78);
+  background: rgba(0, 255, 149, 0.18);
+}
+
+.cognitive-nback-grid button.wrong {
+  border-color: rgba(255, 140, 146, 0.72);
+  background: rgba(255, 140, 146, 0.14);
+}
+
+.cognitive-nback-grid small {
+  color: #9fe9c5;
+  font-weight: 900;
+}
+
+.cognitive-nback-grid strong {
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.cognitive-route-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.cognitive-route-strip span {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid rgba(50, 255, 173, 0.22);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(50, 255, 173, 0.12), rgba(50, 255, 173, 0.035)),
+    rgba(0, 0, 0, 0.26);
+  color: #ffffff;
+  font-weight: 950;
+}
+
+.cognitive-route-strip b {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(0, 255, 149, 0.16);
+  color: #72ffc0;
+}
+
+.cognitive-plan-card {
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+}
+
+.cognitive-plan-card > strong {
+  color: #ffffff;
+  line-height: 1.45;
+}
+
+.cognitive-plan-card label {
+  display: grid;
+  gap: 6px;
+  color: #72ffc0;
+  font-weight: 900;
 }
 
 .cognitive-feedback {
@@ -8875,6 +9032,8 @@ body[data-current-view="cognitive"] .learning-hud {
   }
 
   .cognitive-stroop-grid,
+  .cognitive-nback-grid,
+  .cognitive-route-strip,
   .cognitive-check-grid,
   .cognitive-check-grid.lifestyle {
     grid-template-columns: 1fr;

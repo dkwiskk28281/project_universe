@@ -75,6 +75,13 @@ function clearClientAuthState() {
   sessionStorage.removeItem(LOCAL_VAULT_TOKEN);
 }
 
+function clearServerAuthState() {
+  fetch(`${THINK_TANK_API}/api/logout`, { credentials: "include" }).catch(() => {});
+  if (THINK_TANK_API !== LOCAL_VAULT_API) {
+    fetch(`${LOCAL_VAULT_API}/api/logout`, { credentials: "omit" }).catch(() => {});
+  }
+}
+
 async function purgeBrowserPrivacyCaches() {
   let changed = false;
   try {
@@ -604,7 +611,9 @@ function hidePasswordGate() {
 }
 
 function showEntryChoice() {
-  document.body.classList.remove("auth-locked");
+  clearClientAuthState();
+  clearServerAuthState();
+  document.body.classList.remove("auth-locked", "auth-unlocked");
   document.body.classList.add("auth-public", "entry-choice-open");
   document.body.classList.remove("entry-choice-closed");
   document.querySelector("#entry-choice-gate")?.classList.remove("hidden");
@@ -613,7 +622,9 @@ function showEntryChoice() {
 }
 
 function enterCognitivePublic() {
-  document.body.classList.remove("auth-locked", "entry-choice-open");
+  clearClientAuthState();
+  clearServerAuthState();
+  document.body.classList.remove("auth-locked", "auth-unlocked", "entry-choice-open");
   document.body.classList.add("auth-public", "entry-choice-closed");
   document.querySelector("#entry-choice-gate")?.classList.add("hidden");
   hidePasswordGate();
