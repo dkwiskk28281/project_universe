@@ -93,7 +93,7 @@
     {
       title: "Lancet Commission 2024",
       body: "14개 조절 가능 위험요인과 생애주기 접근을 제시합니다.",
-      url: "https://www.thelancet.com/commissions-do/dementia-prevention-intervention-and-care"
+      url: "https://www.ucl.ac.uk/news/2024/jul/nearly-half-dementia-cases-could-be-prevented-or-delayed-tackling-14-risk-factors"
     },
     {
       title: "WHO Risk Reduction Guideline",
