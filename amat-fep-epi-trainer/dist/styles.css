@@ -8302,3 +8302,534 @@ textarea::placeholder {
     linear-gradient(90deg, rgba(2, 6, 4, 0.98), rgba(2, 6, 4, 0.76) 52%, rgba(2, 6, 4, 0.26)),
     linear-gradient(rgba(50, 255, 173, 0.045) 1px, transparent 1px) !important;
 }
+
+/* Cognitive Resilience Project */
+.cognitive-disclaimer {
+  border-color: rgba(255, 208, 138, 0.34) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 208, 138, 0.12), rgba(50, 255, 173, 0.055)),
+    rgba(3, 15, 11, 0.96) !important;
+}
+
+.cognitive-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.cognitive-hero-panel,
+.cognitive-intro-card,
+.cognitive-session-panel,
+.cognitive-history-panel,
+.cognitive-medical-note {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(50, 255, 173, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.1), rgba(20, 35, 29, 0.92)),
+    rgba(2, 12, 8, 0.98);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.035);
+  color: #f4fff8;
+}
+
+.cognitive-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 280px);
+  gap: 18px;
+  align-items: stretch;
+  padding: 22px;
+}
+
+.cognitive-hero-panel h2,
+.cognitive-intro-card h2,
+.cognitive-session-panel h2,
+.cognitive-history-panel h2 {
+  margin: 0;
+  color: #f7fff9;
+  letter-spacing: 0;
+}
+
+.cognitive-hero-panel p,
+.cognitive-intro-card p,
+.cognitive-session-panel p,
+.cognitive-history-panel p,
+.cognitive-medical-note p,
+.cognitive-source-grid p,
+.cognitive-pillar-grid p,
+.cognitive-check-card small,
+.cognitive-task-explain p {
+  color: #c7f6df;
+  line-height: 1.65;
+}
+
+.cognitive-hero-actions,
+.cognitive-task-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cognitive-task-actions.compact {
+  margin-top: 10px;
+}
+
+.cognitive-score-card {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-height: 176px;
+  padding: 18px;
+  border: 1px solid rgba(50, 255, 173, 0.25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.cognitive-score-card span,
+.cognitive-metric-grid span,
+.cognitive-task-nav span,
+.cognitive-source-grid span,
+.cognitive-sequence-card span {
+  color: #72ffc0;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.cognitive-score-card strong {
+  color: #ffffff;
+  font-size: 56px;
+  line-height: 0.95;
+}
+
+.cognitive-score-card small,
+.cognitive-metric-grid small,
+.cognitive-history-list small {
+  color: #bcebd3;
+}
+
+.cognitive-score-card i,
+.cognitive-task-nav button::after {
+  display: block;
+  overflow: hidden;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cognitive-score-card em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00ff95, #ffd166);
+}
+
+.cognitive-metric-grid,
+.cognitive-pillar-grid,
+.cognitive-source-grid,
+.cognitive-history-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cognitive-metric-grid article,
+.cognitive-pillar-grid article,
+.cognitive-history-list article,
+.cognitive-source-grid a,
+.cognitive-check-card,
+.cognitive-task-explain,
+.cognitive-sequence-card,
+.cognitive-feedback {
+  border: 1px solid rgba(50, 255, 173, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #f4fff8;
+}
+
+.cognitive-metric-grid article {
+  display: grid;
+  gap: 5px;
+  min-height: 122px;
+  padding: 13px;
+}
+
+.cognitive-metric-grid strong {
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.cognitive-intro-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+}
+
+.cognitive-pillar-grid {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.cognitive-pillar-grid article {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  padding: 14px;
+}
+
+.cognitive-pillar-grid span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(50, 255, 173, 0.16);
+  color: #72ffc0;
+  font-weight: 950;
+}
+
+.cognitive-pillar-grid strong {
+  color: #ffffff;
+}
+
+.cognitive-task-nav {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cognitive-task-nav button {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid rgba(50, 255, 173, 0.18);
+  border-radius: 8px;
+  background: rgba(2, 12, 8, 0.92);
+  color: #f4fff8;
+  text-align: left;
+}
+
+.cognitive-task-nav button.active,
+.cognitive-task-nav button:hover {
+  border-color: rgba(0, 255, 149, 0.72);
+  background: rgba(18, 54, 38, 0.96);
+  box-shadow: 0 0 0 1px rgba(0, 255, 149, 0.18), 0 18px 35px rgba(0, 0, 0, 0.25);
+}
+
+.cognitive-task-nav strong {
+  color: #ffffff;
+  font-size: 19px;
+}
+
+.cognitive-session-panel {
+  padding: 18px;
+}
+
+.cognitive-session-panel header,
+.cognitive-history-panel > div:first-child {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.cognitive-session-panel header > span {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(50, 255, 173, 0.24);
+  border-radius: 8px;
+  color: #72ffc0;
+  background: rgba(50, 255, 173, 0.1);
+  font-weight: 950;
+}
+
+.cognitive-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cognitive-check-grid.lifestyle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cognitive-check-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 98px;
+  padding: 13px;
+}
+
+.cognitive-check-card input {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  accent-color: #00ff95;
+}
+
+.cognitive-check-card strong {
+  display: block;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.cognitive-safety {
+  margin: 12px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(255, 208, 138, 0.12);
+  color: #ffe7bf !important;
+}
+
+.cognitive-task-explain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+  padding: 12px;
+}
+
+.cognitive-task-explain strong {
+  color: #ffffff;
+}
+
+.cognitive-task-explain p {
+  flex: 1;
+  margin: 0;
+}
+
+.cognitive-task-explain span {
+  flex: 0 0 auto;
+  color: #ffd166;
+  font-weight: 950;
+}
+
+.cognitive-stroop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.cognitive-stroop-grid article {
+  display: grid;
+  gap: 10px;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid rgba(50, 255, 173, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.cognitive-stroop-grid article.correct {
+  border-color: rgba(0, 255, 149, 0.62);
+  background: rgba(0, 255, 149, 0.1);
+}
+
+.cognitive-stroop-grid article.wrong {
+  border-color: rgba(255, 140, 146, 0.6);
+  background: rgba(255, 140, 146, 0.11);
+}
+
+.cognitive-stroop-grid article > strong {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 23px;
+  font-weight: 950;
+}
+
+.cognitive-stroop-grid article > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cognitive-stroop-grid button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #f4fff8;
+}
+
+.cognitive-stroop-grid button:hover {
+  border-color: rgba(0, 255, 149, 0.55);
+  background: rgba(50, 255, 173, 0.12);
+}
+
+.cognitive-stroop-grid i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.cognitive-word-board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.cognitive-word-board span {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid rgba(50, 255, 173, 0.2);
+  border-radius: 8px;
+  background: rgba(50, 255, 173, 0.09);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.cognitive-recall-box,
+.cognitive-sequence-card label {
+  display: grid;
+  gap: 7px;
+  color: #72ffc0;
+  font-weight: 900;
+}
+
+.cognitive-recall-box textarea {
+  min-height: 118px;
+  resize: vertical;
+}
+
+.cognitive-sequence-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.cognitive-sequence-card strong {
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.cognitive-feedback {
+  padding: 12px;
+}
+
+.cognitive-feedback.good {
+  border-color: rgba(0, 255, 149, 0.55);
+  background: rgba(0, 255, 149, 0.11);
+}
+
+.cognitive-feedback.warn {
+  border-color: rgba(255, 208, 138, 0.55);
+  background: rgba(255, 208, 138, 0.1);
+}
+
+.cognitive-feedback strong {
+  color: #ffffff;
+}
+
+.cognitive-history-panel {
+  padding: 16px;
+}
+
+.cognitive-history-list {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.cognitive-history-list article {
+  display: grid;
+  gap: 5px;
+  min-height: 90px;
+  padding: 12px;
+}
+
+.cognitive-history-list strong {
+  color: #ffffff;
+}
+
+.cognitive-medical-note {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-color: rgba(255, 140, 146, 0.35);
+  background:
+    linear-gradient(135deg, rgba(255, 140, 146, 0.13), rgba(50, 255, 173, 0.055)),
+    rgba(2, 12, 8, 0.98);
+}
+
+.cognitive-medical-note strong {
+  color: #ffd6d9;
+}
+
+.cognitive-source-grid a {
+  display: grid;
+  gap: 7px;
+  min-height: 126px;
+  padding: 13px;
+  text-decoration: none;
+}
+
+.cognitive-source-grid a:hover {
+  border-color: rgba(0, 255, 149, 0.62);
+  background: rgba(50, 255, 173, 0.09);
+}
+
+@media (max-width: 980px) {
+  .cognitive-hero-panel,
+  .cognitive-intro-card,
+  .cognitive-medical-note {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .cognitive-metric-grid,
+  .cognitive-pillar-grid,
+  .cognitive-source-grid,
+  .cognitive-task-nav,
+  .cognitive-history-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cognitive-stroop-grid,
+  .cognitive-check-grid,
+  .cognitive-check-grid.lifestyle {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .cognitive-hero-panel,
+  .cognitive-session-panel,
+  .cognitive-history-panel {
+    padding: 14px;
+  }
+
+  .cognitive-metric-grid,
+  .cognitive-pillar-grid,
+  .cognitive-source-grid,
+  .cognitive-task-nav,
+  .cognitive-history-list,
+  .cognitive-word-board {
+    grid-template-columns: 1fr;
+  }
+
+  .cognitive-task-explain,
+  .cognitive-session-panel header {
+    display: grid;
+  }
+}

@@ -1725,6 +1725,7 @@ const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
   bookshelf: "책장",
+  cognitive: "인지능력",
   dashboard: "EPI 홈",
   roadmap: "로드맵",
   systems: "장비/공정",
@@ -1749,7 +1750,7 @@ const VIEW_LABELS = {
   quiz: "퀴즈"
 };
 
-const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => id !== "bookshelf");
+const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cognitive"].includes(id));
 
 const BOOK_VIEW_SEQUENCE = [
   "dashboard",
@@ -1777,6 +1778,7 @@ const BOOK_VIEW_SEQUENCE = [
 ];
 
 const VIEW_CHAPTERS = {
+  cognitive: "인지 건강",
   dashboard: "방향 잡기",
   roadmap: "처음 펼칠 장",
   fab101: "처음 펼칠 장",
@@ -1802,6 +1804,7 @@ const VIEW_CHAPTERS = {
 };
 
 const uxHotViews = [
+  ["cognitive", "인지"],
   ["runbook", "런북"],
   ["cluster", "구성"],
   ["electrical", "DVM"],
@@ -1872,6 +1875,7 @@ function renderBookContextBar(id) {
 
 function showView(id, options = {}) {
   if (!document.getElementById(id)) return;
+  document.body.dataset.currentView = id;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
   document.querySelector("#open-active-book")?.classList.toggle("active", BOOK_VIEW_IDS.includes(id));
@@ -1925,7 +1929,11 @@ function getUxSearchItems() {
   const navItems = Object.entries(VIEW_LABELS).map(([view, title]) => ({
     title,
     meta: view === "bookshelf" ? "인생 정보실" : VIEW_CHAPTERS[view] || "책 안의 장",
-    body: view === "bookshelf" ? "책장으로 이동" : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
+    body: view === "bookshelf"
+      ? "책장으로 이동"
+      : view === "cognitive"
+        ? "인지능력향상 프로젝트의 오늘 훈련으로 이동"
+        : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
     view
   }));
   const commandItems = commandCenterActions.map(item => ({

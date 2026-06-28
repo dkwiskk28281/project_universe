@@ -436,6 +436,7 @@ function buildAiContext(entries) {
   const visible = entries.filter(entry => !entry.hidden);
   const bookshelfPages = visible.filter(entry => entry.type === "Personal Bookshelf Page");
   const investmentPages = bookshelfPages.filter(entry => entry.bookId === "investment-dyor");
+  const cognitiveRecords = visible.filter(entry => entry.type === "Cognitive Resilience Practice");
   const byBook = {};
   bookshelfPages.forEach(page => {
     const key = page.bookId || page.subsystem || "unknown";
@@ -500,6 +501,20 @@ function buildAiContext(entries) {
         nextAction: page.nextAction || "",
         tags: page.tags || [],
         createdAt: page.createdAt || ""
+      }))
+    },
+    cognitive: {
+      schema: "cognitive-resilience-context-v1",
+      rule: "Not medical diagnosis or treatment. Use as habit and training history; advise clinical consultation for functional decline, sudden change, or safety concerns.",
+      records: cognitiveRecords.length,
+      latestSessions: cognitiveRecords.slice(0, 20).map(record => ({
+        title: record.title || "",
+        sessionDate: record.sessionDate || record.createdAt || "",
+        totalScore: record.totalScore || 0,
+        completedTasks: record.completedTasks || 0,
+        weakSpots: record.weakSpots || [],
+        protectors: record.protectors || [],
+        nextAction: record.nextAction || ""
       }))
     },
     bookshelf: Object.values(byBook),

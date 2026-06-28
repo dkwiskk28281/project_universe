@@ -14,6 +14,7 @@ const webFiles = [
   "mastery.js",
   "readiness.js",
   "term-helper.js",
+  "cognitive.js",
   "bookshelf.js",
   "think-tank.js",
   "_worker.js",

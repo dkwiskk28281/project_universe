@@ -18,7 +18,7 @@
       document.documentElement.style.colorScheme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260628-cyber-intel1" />
+  <link rel="stylesheet" href="styles.css?v=20260629-cognitive1" />
 </head>
 <body class="auth-locked">
   <div id="password-gate" class="password-gate" role="dialog" aria-modal="true" aria-labelledby="password-title">
@@ -46,6 +46,7 @@
     </div>
     <nav class="top-nav global-nav" aria-label="전체 책장 내비게이션">
       <button class="nav-btn active" data-view="bookshelf">책장</button>
+      <button class="nav-btn global-only" data-view="cognitive">인지능력향상 프로젝트</button>
       <button class="nav-btn global-only" id="open-active-book" type="button">현재 책</button>
       <button class="nav-btn global-only" id="open-command-search" type="button">검색</button>
       <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="true">콘솔</button>
@@ -421,6 +422,18 @@
       </section>
     </section>
 
+    <section id="cognitive" class="view no-term">
+      <div class="page-title">
+        <p>Cognitive Resilience Project</p>
+        <h1>인지능력향상 프로젝트</h1>
+      </div>
+      <article class="source-note cognitive-disclaimer">
+        <h2>2026년 현재 공개 근거 기반 운영 원칙</h2>
+        <p>이 화면은 치매를 진단하거나 치료하지 않습니다. Lancet Commission, WHO, FINGER/US POINTER 계열 다영역 생활중재 연구처럼 공개 근거에서 반복되는 축인 운동, 혈관위험 관리, 인지훈련, 사회적 연결, 수면/청각/생활 루틴을 매일 짧게 실행하도록 만든 개인 훈련 공간입니다. 기억력 저하가 일상 기능에 영향을 주거나 갑자기 악화되면 의료진 상담이 우선입니다.</p>
+      </article>
+      <div id="cognitive-root"></div>
+    </section>
+
     <section id="bookshelf" class="view active no-term">
       <div class="page-title">
         <p>PRIVATE OPERATIONS SHELF</p>
@@ -557,14 +570,15 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260628-cyber-intel1"></script>
+  <script src="app.js?v=20260629-cognitive1"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260620-flow5"></script>
   <script src="english-test-expansion.js?v=20260624-english2"></script>
   <script src="english-test.js?v=20260625-english-instant1"></script>
   <script src="term-helper.js?v=20260621-elec1"></script>
-  <script src="bookshelf.js?v=20260628-cyber-intel1"></script>
+  <script src="cognitive.js?v=20260629-cognitive1"></script>
+  <script src="bookshelf.js?v=20260629-cognitive1"></script>
   <script src="think-tank.js?v=20260625-commercial2"></script>
 </body>
 </html>
