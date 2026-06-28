@@ -99,6 +99,66 @@ textarea:focus-visible {
   display: none;
 }
 
+body:not(.auth-unlocked) #open-active-book,
+body:not(.auth-unlocked) #open-command-search,
+body:not(.auth-unlocked) #logout-btn {
+  display: none !important;
+}
+
+.entry-choice-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 101;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.06) 1px, transparent 1px),
+    linear-gradient(rgba(0, 255, 149, 0.05) 1px, transparent 1px),
+    radial-gradient(circle at 50% 20%, rgba(0, 255, 149, 0.18), transparent 30%),
+    rgba(2, 6, 4, 0.98);
+  background-size: 42px 42px, 42px 42px, auto, auto;
+}
+
+.entry-choice-closed .entry-choice-gate {
+  display: none;
+}
+
+.entry-choice-box {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 28px;
+  border: 1px solid rgba(0, 255, 149, 0.35);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(0, 255, 149, 0.08), rgba(0, 255, 149, 0.025)),
+    rgba(3, 13, 10, 0.96);
+  color: #f4fff8;
+  box-shadow: 0 0 0 1px rgba(94, 231, 255, 0.08), 0 34px 90px rgba(0, 0, 0, 0.7), var(--console-glow);
+}
+
+.entry-choice-box h1,
+.entry-choice-box p {
+  margin: 0;
+}
+
+.entry-choice-box h1 {
+  color: #f7fff9;
+}
+
+.entry-choice-box p:not(.eyebrow),
+.entry-choice-box small {
+  color: #c7f6df;
+  line-height: 1.65;
+}
+
+.entry-choice-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .password-box {
   width: min(420px, 100%);
   display: grid;
@@ -8822,6 +8882,10 @@ body[data-current-view="cognitive"] .learning-hud {
 }
 
 @media (max-width: 620px) {
+  .entry-choice-actions {
+    grid-template-columns: 1fr;
+  }
+
   .cognitive-hero-panel,
   .cognitive-session-panel,
   .cognitive-history-panel {

@@ -1811,6 +1811,7 @@ const uxHotViews = [
   ["english-test", "영어"],
   ["thinktank", "기록"]
 ];
+const PUBLIC_VIEW_IDS = ["cognitive"];
 
 function save() {
   persistState();
@@ -1827,6 +1828,25 @@ function persistState() {
 function getNavLabel(id) {
   const button = document.querySelector(`.nav-btn[data-view="${id}"]`);
   return VIEW_LABELS[id] || button?.textContent?.trim() || id;
+}
+
+function isPublicView(id) {
+  return PUBLIC_VIEW_IDS.includes(id);
+}
+
+function isPrivateUnlocked() {
+  return document.body.classList.contains("auth-unlocked");
+}
+
+function requestPrivateAccess(targetView = "bookshelf") {
+  if (window.ProjectUniverseAuth?.requestAccess) {
+    window.ProjectUniverseAuth.requestAccess(targetView);
+    return;
+  }
+  document.body.dataset.pendingPrivateView = targetView;
+  document.querySelector("#entry-choice-gate")?.classList.add("hidden");
+  document.querySelector("#password-gate")?.classList.remove("hidden");
+  document.querySelector("#password-input")?.focus();
 }
 
 function updateViewMemory(id) {
@@ -1875,6 +1895,10 @@ function renderBookContextBar(id) {
 
 function showView(id, options = {}) {
   if (!document.getElementById(id)) return;
+  if (!isPublicView(id) && !isPrivateUnlocked()) {
+    requestPrivateAccess(id);
+    return;
+  }
   document.body.dataset.currentView = id;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
@@ -2080,6 +2104,10 @@ function renderCommandPalette() {
 }
 
 function openCommandPalette(seed = "") {
+  if (!isPrivateUnlocked()) {
+    requestPrivateAccess("bookshelf");
+    return;
+  }
   const palette = document.querySelector("#command-palette");
   const input = document.querySelector("#command-palette-input");
   if (!palette || !input) return;
@@ -2147,6 +2175,10 @@ function bindGlobalUx() {
   });
   document.querySelector("#open-active-book")?.addEventListener("click", () => {
     const recentBookView = (state.recentViews || []).find(view => BOOK_VIEW_IDS.includes(view));
+    if (!isPrivateUnlocked()) {
+      requestPrivateAccess(recentBookView || "dashboard");
+      return;
+    }
     showView(recentBookView || "dashboard");
   });
   document.querySelector("#open-command-search")?.addEventListener("click", () => openCommandPalette());
@@ -2917,7 +2949,7 @@ renderFab101();
 renderPaperNotes();
 renderMetrics();
 bindGlobalUx();
-showView("bookshelf", { instant: true, skipMemory: true });
+showView("cognitive", { instant: true, skipMemory: true });
 renderLearningHud();
 
 document.querySelector("#glossary-search").addEventListener("input", renderGlossary);

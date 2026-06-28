@@ -789,24 +789,33 @@ async function handleLogin(request, env, formMode = false) {
   return jsonResponse(request, { ok: true, token }, 200, { "Set-Cookie": cookie });
 }
 
-function handleLogout() {
+function logoutHeaders(contentType = "application/json; charset=utf-8") {
   const headers = new Headers({
-    "Content-Type": "text/html; charset=utf-8",
+    "Content-Type": contentType,
     "Cache-Control": "no-store",
     "Set-Cookie": expiredCookie(COOKIE_NAME)
   });
   appendClearLegacyCookies(headers);
-  return new Response(loginPage("다시 열려면 비밀번호를 입력하세요."), {
-    status: 200,
-    headers
-  });
+  return headers;
+}
+
+function handleLogout(request, jsonMode = false) {
+  if (jsonMode) {
+    const headers = logoutHeaders();
+    headers.set("Access-Control-Allow-Origin", request.headers.get("Origin") || "*");
+    headers.set("Access-Control-Allow-Credentials", "true");
+    return new Response(JSON.stringify({ ok: true, loggedOut: true }, null, 2), { status: 200, headers });
+  }
+  const headers = logoutHeaders("text/plain; charset=utf-8");
+  headers.set("Location", "/");
+  return new Response(null, { status: 302, headers });
 }
 
 async function handleApi(request, env, url) {
   if (request.method === "OPTIONS") return jsonResponse(request, { ok: true });
   if (url.pathname === "/api/login" && request.method === "POST") return handleLogin(request, env);
   if (url.pathname === "/api/login-form" && request.method === "POST") return handleLogin(request, env, true);
-  if (url.pathname === "/api/logout") return handleLogout();
+  if (url.pathname === "/api/logout") return handleLogout(request, true);
   if (!(await isAuthenticated(request, env))) return jsonResponse(request, { ok: false, error: "unauthorized" }, 401);
 
   await ensureSchema(env);
@@ -911,9 +920,8 @@ export default {
       if (url.pathname.startsWith(`${PERSONAL_SERVER_PREFIX}/`)) {
         return handlePersonalServerProxy(request, env, url);
       }
-      if (url.pathname === "/logout") return handleLogout();
+      if (url.pathname === "/logout") return handleLogout(request);
       if (url.pathname.startsWith("/api/")) return handleApi(request, env, url);
-      if (!(await isAuthenticated(request, env))) return htmlResponse(loginPage());
       const assetResponse = await env.ASSETS.fetch(request);
       const headers = new Headers(assetResponse.headers);
       headers.set("Cache-Control", "private, no-store, max-age=0");

@@ -263,6 +263,14 @@ function serveStatic(req, res, pathname) {
   });
 }
 
+function clearSessionHeaders(req) {
+  return {
+    "Set-Cookie": `${COOKIE_NAME}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+    "Cache-Control": "no-store",
+    ...corsHeaders(req)
+  };
+}
+
 async function handleApi(req, res, pathname) {
   if (req.method === "OPTIONS") {
     sendJson(res, 200, { ok: true });
@@ -297,6 +305,14 @@ async function handleApi(req, res, pathname) {
       "Cache-Control": "no-store"
     });
     res.end();
+    return;
+  }
+  if (pathname === "/api/logout") {
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      ...clearSessionHeaders(req)
+    });
+    res.end(JSON.stringify({ ok: true, loggedOut: true }, null, 2));
     return;
   }
   if (!isAuthorized(req)) {
@@ -334,12 +350,13 @@ ensureVault();
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   try {
-    if (url.pathname.startsWith("/api/")) {
-      await handleApi(req, res, url.pathname);
+    if (url.pathname === "/logout") {
+      res.writeHead(302, { Location: "/", ...clearSessionHeaders(req) });
+      res.end();
       return;
     }
-    if (!isAuthorized(req)) {
-      sendHtml(res, 401, loginPage());
+    if (url.pathname.startsWith("/api/")) {
+      await handleApi(req, res, url.pathname);
       return;
     }
     serveStatic(req, res, url.pathname);

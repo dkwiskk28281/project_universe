@@ -15,6 +15,8 @@ const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
 const LOCAL_VAULT_TOKEN = "epiThinkTankLocalToken";
 const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
+let pendingPrivateView = "bookshelf";
+let privateSyncStarted = false;
 
 const masteryDomains = [
   ["EPI Process Physics", ["surface preparation", "nucleation", "growth rate", "mass transport", "reaction kinetics", "selectivity"]],
@@ -595,27 +597,84 @@ async function refreshVaultStatus() {
   renderVaultStatus({ primary, local });
 }
 
-function unlockApp() {
+function hidePasswordGate() {
+  document.querySelector("#password-gate")?.classList.add("hidden");
+  const error = document.querySelector("#password-error");
+  if (error) error.textContent = "";
+}
+
+function showEntryChoice() {
   document.body.classList.remove("auth-locked");
+  document.body.classList.add("auth-public", "entry-choice-open");
+  document.body.classList.remove("entry-choice-closed");
+  document.querySelector("#entry-choice-gate")?.classList.remove("hidden");
+  hidePasswordGate();
+  if (window.showView) window.showView("cognitive", { instant: true, skipMemory: true });
+}
+
+function enterCognitivePublic() {
+  document.body.classList.remove("auth-locked", "entry-choice-open");
+  document.body.classList.add("auth-public", "entry-choice-closed");
+  document.querySelector("#entry-choice-gate")?.classList.add("hidden");
+  hidePasswordGate();
+  if (window.showView) window.showView("cognitive", { instant: true, skipMemory: true });
+}
+
+function showPasswordGate(targetView = "bookshelf") {
+  pendingPrivateView = targetView || "bookshelf";
+  document.body.dataset.pendingPrivateView = pendingPrivateView;
+  document.body.classList.remove("entry-choice-open");
+  document.body.classList.add("entry-choice-closed");
+  document.querySelector("#entry-choice-gate")?.classList.add("hidden");
+  document.querySelector("#password-gate")?.classList.remove("hidden");
+  const input = document.querySelector("#password-input");
+  if (input) {
+    input.value = "";
+    input.focus();
+  }
+}
+
+function unlockApp(targetView = pendingPrivateView || "bookshelf") {
+  document.body.classList.remove("auth-locked", "auth-public", "entry-choice-open");
   document.body.classList.add("auth-unlocked");
+  document.body.classList.add("entry-choice-closed");
+  document.querySelector("#entry-choice-gate")?.classList.add("hidden");
+  hidePasswordGate();
   renderThinkTank();
-  refreshVaultStatus().then(async () => {
-    await pullRemoteEntries();
-    await retryPendingEntries();
-    await syncUnsavedLocalEntries("unlock");
-    if (window.refreshEnglishFromVault) await window.refreshEnglishFromVault();
-  });
-  syncAppStateV2("unlock");
-  setInterval(() => {
-    syncAppStateV2("interval");
-    retryPendingEntries();
-  }, 30000);
+  if (window.showView) window.showView(targetView || "bookshelf", { instant: true });
+  if (!privateSyncStarted) {
+    privateSyncStarted = true;
+    refreshVaultStatus().then(async () => {
+      await pullRemoteEntries();
+      await retryPendingEntries();
+      await syncUnsavedLocalEntries("unlock");
+      if (window.refreshEnglishFromVault) await window.refreshEnglishFromVault();
+    });
+    syncAppStateV2("unlock");
+    setInterval(() => {
+      syncAppStateV2("interval");
+      retryPendingEntries();
+    }, 30000);
+  }
 }
 
 async function initPasswordGate() {
+  window.ProjectUniverseAuth = {
+    requestAccess: showPasswordGate,
+    enterCognitive: enterCognitivePublic,
+    showEntryChoice,
+    isUnlocked: () => document.body.classList.contains("auth-unlocked")
+  };
+  window.requestBookshelfAccess = showPasswordGate;
+
   const form = document.querySelector("#password-form");
   const input = document.querySelector("#password-input");
   const error = document.querySelector("#password-error");
+  document.querySelector("#entry-open-cognitive")?.addEventListener("click", enterCognitivePublic);
+  document.querySelector("#entry-open-bookshelf")?.addEventListener("click", () => {
+    if (document.body.classList.contains("auth-unlocked")) unlockApp("bookshelf");
+    else showPasswordGate("bookshelf");
+  });
   document.querySelector("#logout-btn")?.addEventListener("click", async () => {
     clearClientAuthState();
     try {
@@ -625,28 +684,28 @@ async function initPasswordGate() {
         headers: { "Content-Type": "application/json" }
       });
     } catch {
-      // Navigating to /logout below clears the server cookie when online.
+      // Server logout is best-effort; local gate state is cleared below.
     }
-    location.href = "/logout";
+    document.body.classList.remove("auth-unlocked");
+    showEntryChoice();
   });
   if (vaultToken() && vaultPassword()) {
     try {
       await apiFetch("/api/health");
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
-      unlockApp();
-      return;
+      document.body.classList.add("auth-unlocked");
     } catch {
       clearClientAuthState();
     }
   }
-  input?.focus();
+  showEntryChoice();
   form?.addEventListener("submit", async event => {
     event.preventDefault();
     const password = input.value.trim();
     error.textContent = "";
     if (password === "9175") {
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, password);
-      unlockApp();
+      unlockApp(pendingPrivateView);
       remoteLogin(password).then(remoteOk => {
         if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       });
@@ -655,7 +714,7 @@ async function initPasswordGate() {
     const remoteOk = await remoteLogin(password);
     if (remoteOk) {
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
-      unlockApp();
+      unlockApp(pendingPrivateView);
     } else {
       error.textContent = "비밀번호가 맞지 않습니다.";
       input.value = "";
