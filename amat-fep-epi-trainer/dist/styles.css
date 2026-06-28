@@ -222,6 +222,11 @@ textarea:focus-visible {
   align-items: center;
 }
 
+.global-nav .nav-btn.global-only[data-view] {
+  display: inline-flex;
+  align-items: center;
+}
+
 .top-nav::-webkit-scrollbar {
   height: 6px;
 }
@@ -8314,6 +8319,10 @@ textarea::placeholder {
 .cognitive-shell {
   display: grid;
   gap: 16px;
+}
+
+body[data-current-view="cognitive"] .learning-hud {
+  display: none;
 }
 
 .cognitive-hero-panel,

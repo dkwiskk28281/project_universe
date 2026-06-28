@@ -1875,6 +1875,7 @@ function renderBookContextBar(id) {
 
 function showView(id, options = {}) {
   if (!document.getElementById(id)) return;
+  document.body.dataset.currentView = id;
   document.querySelectorAll(".view").forEach(view => view.classList.toggle("active", view.id === id));
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.toggle("active", btn.dataset.view === id));
   document.querySelector("#open-active-book")?.classList.toggle("active", BOOK_VIEW_IDS.includes(id));

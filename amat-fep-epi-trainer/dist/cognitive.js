@@ -93,7 +93,7 @@
     {
       title: "Lancet Commission 2024",
       body: "14개 조절 가능 위험요인과 생애주기 접근을 제시합니다.",
-      url: "https://www.thelancet.com/commissions/dementia-prevention-intervention-care"
+      url: "https://www.thelancet.com/commissions-do/dementia-prevention-intervention-and-care"
     },
     {
       title: "WHO Risk Reduction Guideline",
@@ -103,7 +103,7 @@
     {
       title: "FINGER Multidomain Trial",
       body: "식사, 운동, 인지훈련, 혈관위험 모니터링을 묶은 다영역 접근의 대표 연구입니다.",
-      url: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(15)60461-5/fulltext"
+      url: "https://pubmed.ncbi.nlm.nih.gov/25771249/"
     },
     {
       title: "U.S. POINTER / Alzheimer's Association",
