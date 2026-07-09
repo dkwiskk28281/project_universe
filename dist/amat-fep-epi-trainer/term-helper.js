@@ -236,6 +236,26 @@ englishTermGuide.push(
   ["Dopant Gas", "도핑 가스", "Gas", "dopant 원소를 공급하기 위한 gas입니다.", "농도, safety class, MFC range, abatement 상태를 확인합니다."]
 );
 
+englishTermGuide.push(
+  ["Susceptor", "웨이퍼 받침/가열체", "EPI/RTP", "공정 중 wafer를 받치고 열을 전달하는 부품입니다.", "오염, 위치, 열 균일도, particle source와 연결됩니다."],
+  ["Native Oxide", "자연 산화막", "EPI", "공기 중에서 silicon 표면에 자연스럽게 생기는 얇은 산화막입니다.", "EPI 전 pre-clean으로 줄여야 interface defect를 줄일 수 있습니다."],
+  ["Pre-clean", "공정 전 표면 세정", "EPI", "main growth 전에 표면 산화막과 오염을 줄이는 단계입니다.", "vacuum break, queue time, contamination 관리와 연결됩니다."],
+  ["Byproduct", "부산물", "Process", "공정 반응 뒤 남거나 새로 생기는 gas/물질입니다.", "pump, exhaust, abatement, corrosion risk를 함께 봐야 합니다."],
+  ["In-situ", "장비 안에서 연속 수행", "Process", "wafer를 꺼내지 않고 같은 vacuum/platform 안에서 이어서 처리하는 뜻입니다.", "오염과 queue time을 줄이는 장점이 있습니다."],
+  ["Queue Time", "대기 시간", "Process", "한 공정 후 다음 공정까지 wafer가 기다리는 시간입니다.", "표면 재산화와 contamination risk에 영향을 줄 수 있습니다."],
+  ["Trench", "패턴 홈", "Device", "wafer 구조 안에 파인 좁고 깊은 공간입니다.", "selective EPI에서는 trench 안을 균일하게 채우는 것이 중요합니다."],
+  ["Void", "빈 공간 결함", "Quality", "막이 채워져야 할 곳에 남은 빈 공간입니다.", "deep trench fill에서 gas delivery와 growth balance가 나쁘면 생길 수 있습니다."],
+  ["Interface", "계면", "Quality", "서로 다른 막이나 재료가 만나는 경계면입니다.", "EPI 품질은 epi-substrate interface 오염과 결함에 민감합니다."],
+  ["Dopant Activation", "도펀트 활성화", "RTP", "넣어둔 dopant가 전기적으로 작동하도록 열처리하는 과정입니다.", "RTP temperature trace와 thermal budget이 핵심입니다."],
+  ["Oxidation", "산화", "RTP", "산소 계열 분위기에서 silicon 또는 표면에 oxide를 만드는 과정입니다.", "oxidizer gas, ambient control, film thickness를 함께 봅니다."],
+  ["Nitridation", "질화", "RTP", "질소 계열 chemistry로 표면이나 oxide/interface에 nitrogen 성분을 넣는 과정입니다.", "NH3/NO/N2O 같은 gas와 exhaust compatibility를 확인합니다."],
+  ["RadOx", "라디컬 산화", "RTP", "radical oxygen chemistry를 이용하는 산화 공정 계열을 뜻합니다.", "low thermal budget과 interface engineering 문맥에서 봅니다."],
+  ["Process Volume", "공정 공간 부피", "EPI", "chamber 안에서 gas가 반응하는 유효 공간 크기입니다.", "작을수록 gas 전환과 replenishment 제어가 유리할 수 있습니다."],
+  ["Precursor Replenishment", "원료가스 보충", "EPI", "반응으로 소모된 precursor가 표면 근처에 다시 공급되는 과정입니다.", "deep trench나 selective growth uniformity와 연결됩니다."],
+  ["Chamber Seasoning", "챔버 상태 길들이기", "EPI", "반복 공정으로 chamber wall/surface 상태가 안정화되는 현상 또는 준비 작업입니다.", "PM 후 첫 wafer 결과와 residual/memory effect를 볼 때 중요합니다."],
+  ["Memory Effect", "잔류 영향", "Process", "이전 gas나 공정이 chamber/line에 남아 다음 결과에 영향을 주는 현상입니다.", "dopant gas나 Ge 계열 공정 후 trend를 볼 때 주의합니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }
@@ -276,7 +296,7 @@ function shouldSkipTextNode(node) {
     return true;
   }
   termRegex.lastIndex = 0;
-  return !!parent.closest("script, style, input, textarea, select, option, button, .no-term, .term-explain, .english-card, .glossary-grid, #source-list, .runbook-step, .runbook-detail-head, .flow-step-button, .cluster-board, .cluster-palette, .cluster-controls, .cluster-feedback");
+  return !!parent.closest("script, style, input, textarea, select, option, button, .no-term, .term-explain, .english-card, .glossary-grid, #source-list, .runbook-step, .runbook-detail-head, .flow-step-button, .cluster-board, .cluster-palette, .cluster-controls, .cluster-feedback, .process-rail, .process-timeline, .process-chamber, .process-state-grid, .wafer-layer-view, .process-source-strip, .process-stage-actions");
 }
 
 function enhanceEnglishTerms(root = document.querySelector("main")) {

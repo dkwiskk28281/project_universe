@@ -67,6 +67,7 @@
       <button class="nav-btn" data-view="dashboard">EPI 홈</button>
       <button class="nav-btn" data-view="roadmap">로드맵</button>
       <button class="nav-btn" data-view="systems">장비/공정</button>
+      <button class="nav-btn" data-view="process-visual">공정 시각화</button>
       <button class="nav-btn" data-view="equipment">장비군</button>
       <button class="nav-btn" data-view="cluster">구성게임</button>
       <button class="nav-btn" data-view="install">설치</button>
@@ -201,6 +202,46 @@
         <a href="https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html" target="_blank" rel="noreferrer">Centura Prime Epi 공개 페이지</a>
         <a href="https://www.appliedmaterials.com/us/en/glossary.html" target="_blank" rel="noreferrer">Applied Glossary</a>
       </div>
+    </section>
+
+    <section id="process-visual" class="view">
+      <div class="page-title">
+        <p>Wafer Process Visualizer</p>
+        <h1>EPI/RTP가 웨이퍼에 실제로 하는 일을 눈으로 보기</h1>
+      </div>
+      <article class="source-note">
+        <h2>대표 공개자료 기반의 개념 애니메이션</h2>
+        <p>이 페이지는 Applied 공식 제품 페이지, 공개 장비 운영 자료, 공개 CVD/Epitaxy 원리 자료를 바탕으로 만든 학습용 시각화입니다. 실제 고객 라인의 gas matrix, pressure, temperature, flow, purge cycle, valve sequence, detector setpoint, recipe limit, acceptance 기준은 공개자료로 확정할 수 없으며 반드시 회사 교육, 고객 site spec, SDS, install manual, senior witness를 따라야 합니다.</p>
+      </article>
+      <section class="process-visual-shell">
+        <aside class="process-rail" id="process-flow-tabs" aria-label="공정 흐름 선택"></aside>
+        <article class="process-visual-stage">
+          <div class="process-stage-head">
+            <div>
+              <p class="eyebrow" id="process-flow-kicker"></p>
+              <h2 id="process-flow-title"></h2>
+              <p id="process-flow-summary"></p>
+            </div>
+            <div class="process-stage-actions">
+              <button class="secondary" type="button" id="process-prev-step">이전</button>
+              <button class="primary" type="button" id="process-next-step">다음 단계</button>
+            </div>
+          </div>
+          <div class="process-timeline" id="process-step-list" aria-label="공정 단계 선택"></div>
+          <div class="process-animation-grid">
+            <section class="process-chamber-panel">
+              <div class="process-chamber" id="process-chamber-visual"></div>
+              <div class="process-state-grid" id="process-state-grid"></div>
+            </section>
+            <section class="wafer-layer-panel">
+              <div class="wafer-layer-view" id="wafer-layer-view"></div>
+              <div class="process-step-detail" id="process-step-detail"></div>
+            </section>
+          </div>
+          <div class="process-gas-matrix" id="process-gas-matrix"></div>
+          <div class="process-source-strip" id="process-source-strip"></div>
+        </article>
+      </section>
     </section>
 
     <section id="equipment" class="view">

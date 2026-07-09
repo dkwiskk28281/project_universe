@@ -15,6 +15,7 @@
     dashboard: "EPI 홈",
     roadmap: "학습 로드맵",
     systems: "장비와 공정",
+    "process-visual": "공정 시각화",
     equipment: "장비군",
     cluster: "구성 시뮬레이터",
     install: "설치 절차",
@@ -50,6 +51,7 @@
       group: "장비 마스터리",
       items: [
         ["systems", "장비와 공정", "RTP/EPI 공정과 서브시스템"],
+        ["process-visual", "공정 시각화", "가스, pump, purge, exhaust, layer 성장 애니메이션"],
         ["equipment", "어플라이드 장비군", "Centura/Vantage/EPI/RTP 공개 장비군"],
         ["cluster", "구성 시뮬레이터", "LL/TM/PM/CM 연결 구조 시뮬레이션"],
         ["deep", "심화 학습", "공개 논문/웹 기반 심화 학습"]

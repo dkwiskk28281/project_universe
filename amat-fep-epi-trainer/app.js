@@ -716,6 +716,493 @@ const gasQualificationChecks = [
   "고객 보고는 gas name을 숨기지 말고 hazard, 현재 안전 상태, 확인된 계측값, 다음 승인 필요 항목을 분명히 말한다."
 ];
 
+const processVisualFlows = [
+  {
+    id: "epi-sige",
+    kicker: "EPI / CVD Growth",
+    title: "EPI: Si / SiGe 결정성 막이 한 층씩 자라는 흐름",
+    summary: "대표 공개자료 기반으로 H2 carrier, silicon precursor, Ge precursor, dopant gas, HCl selectivity가 어떤 역할을 하는지 보여줍니다. 실제 recipe가 아니라 장비 안에서 무슨 일이 일어나는지 이해하는 mental model입니다.",
+    publicBasis: "Applied Centura Prime/Xtera/Epi 200mm, Stanford Centura Epi public tool page, 공개 CVD/Epitaxy 원리 자료",
+    sources: [
+      ["Centura Prime Epi", "https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html"],
+      ["Centura Epi 200mm", "https://www.appliedmaterials.com/us/en/product-library/centura-epi-200mm.html"],
+      ["Stanford AMAT Centura Epi", "https://snfguide.stanford.edu/guide/equipment/amat-centurion-epitaxial-system-epi2"],
+      ["Epitaxy mechanism", "https://en.wikipedia.org/wiki/Epitaxy"]
+    ],
+    gasMatrix: [
+      ["H2", "carrier/reducing ambient", "precursor를 실어 보내고 표면 반응 분위기를 만듭니다. 가연성이라 ignition/exhaust/ventilation이 핵심입니다."],
+      ["DCS / SiH4 / TCS", "Si source", "Si 원자를 wafer 표면에 공급해 crystal layer의 재료가 됩니다. 실제 사용 gas는 장비 option과 고객 recipe로 확인합니다."],
+      ["GeH4", "Ge source", "SiGe 또는 Ge layer option에서 Ge를 공급하는 후보입니다. toxic/flammable hydride로 다룹니다."],
+      ["PH3 / AsH3 / B2H6", "dopant source", "n-type/p-type 전기 특성을 만들기 위한 dopant 후보입니다. 독성 gas 관리가 먼저입니다."],
+      ["HCl", "selectivity / etch balance", "원치 않는 위치의 증착을 억제하거나 표면/부산물 균형에 관여하는 공개 EPI 문헌상의 핵심 gas입니다."],
+      ["N2 / Ar", "purge / inert support", "공정 전후 line과 chamber를 안정화하는 support gas입니다. 산소결핍 위험을 함께 봅니다."]
+    ],
+    steps: [
+      {
+        title: "1. Wafer Load / Pumpdown",
+        subtitle: "FOUP에서 EFEM, Load Lock을 지나 vacuum boundary로 들어갑니다.",
+        area: "loadlock",
+        action: "대기압 쪽 wafer가 load lock에서 pumpdown되고 transfer module로 넘어갈 준비를 합니다.",
+        gas: "N2 purge/vent support, vacuum pump",
+        pressure: "대기압 -> 저압/vacuum 전환",
+        pump: "ON: LL pumpdown curve 확인",
+        purge: "N2 purge/vent path ready",
+        exhaust: "Pump exhaust / abatement standby",
+        temp: "process 전 상온 또는 안정화",
+        waferEffect: "막은 아직 쌓이지 않고, 오염 없이 chamber로 들어갈 준비를 합니다.",
+        ceWatch: "door seal, pumpdown time, pressure gauge, slit valve open 조건, wafer mapping을 봅니다.",
+        gasTags: ["N2", "Vacuum"],
+        layers: [
+          ["Si wafer", "결정성 기판", "#748091", 46],
+          ["Native oxide / contamination", "공정 전 제거 대상", "#c6d7df", 8]
+        ]
+      },
+      {
+        title: "2. Pre-clean / Surface Reset",
+        subtitle: "EPI 전 계면을 깨끗하게 만들어 crystal growth가 시작될 표면을 준비합니다.",
+        area: "preclean",
+        action: "공개 Applied 자료는 integrated pre-clean이 vacuum break와 interface contamination을 줄이는 방향을 강조합니다.",
+        gas: "H2 bake 또는 option별 radical/pre-clean chemistry",
+        pressure: "저압 또는 chamber별 안정 압력",
+        pump: "ON: byproduct와 residual을 계속 제거",
+        purge: "전후 N2/H2 purge로 residual 관리",
+        exhaust: "Corrosive/reactive byproduct는 exhaust/abatement로 이동",
+        temp: "surface cleaning에 맞춘 thermal condition",
+        waferEffect: "native oxide와 carbon/oxygen contamination을 줄여 epi-substrate interface를 준비합니다.",
+        ceWatch: "pre-clean chamber health, queue time, vacuum transfer, detector/exhaust ready를 봅니다.",
+        gasTags: ["H2", "Pre-clean", "Purge"],
+        layers: [
+          ["Si wafer", "결정성 기판", "#748091", 46],
+          ["Clean Si surface", "성장 준비 표면", "#9ff6d0", 8]
+        ]
+      },
+      {
+        title: "3. Heat / Stabilize",
+        subtitle: "Susceptor와 wafer가 성장 가능한 thermal 상태로 안정화됩니다.",
+        area: "pm",
+        action: "lamp/heater와 temperature control이 wafer 표면 반응 속도와 uniformity를 좌우합니다.",
+        gas: "H2 carrier 또는 inert stabilization",
+        pressure: "공정 압력 안정화",
+        pump: "ON: pressure controller와 pump balance",
+        purge: "line purge 완료 상태 유지",
+        exhaust: "carrier gas와 잔류 gas가 exhaust로 배출",
+        temp: "ramp/settle 후 안정화",
+        waferEffect: "아직 주요 막 성장 전입니다. 표면이 반응 준비 상태로 갑니다.",
+        ceWatch: "temperature trace, pyrometry/window, rotation, pressure stability, MFC zero/response를 봅니다.",
+        gasTags: ["H2", "Heat", "Stabilize"],
+        layers: [
+          ["Si wafer", "결정성 기판", "#748091", 46],
+          ["Clean Si surface", "활성 표면", "#9ff6d0", 8]
+        ]
+      },
+      {
+        title: "4. Si Seed / Buffer Growth",
+        subtitle: "Si precursor가 표면에서 반응하며 결정 방향을 따라 얇은 Si layer가 자랍니다.",
+        area: "pm",
+        action: "volatile precursor가 wafer 표면에서 분해/반응하고, byproduct는 gas flow와 pump/exhaust로 빠집니다.",
+        gas: "DCS / SiH4 / TCS + H2 carrier",
+        pressure: "reaction + exhaust balance",
+        pump: "ON: byproduct removal",
+        purge: "전환 구간 purge/flow stabilization",
+        exhaust: "HCl/H2/byproduct가 exhaust/abatement로 이동 가능",
+        temp: "growth temperature window",
+        waferEffect: "Si atom이 결정 격자를 따라 붙으며 seed/buffer layer가 쌓입니다.",
+        ceWatch: "MFC setpoint vs actual, pressure response, growth rate trend, thickness uniformity를 봅니다.",
+        gasTags: ["DCS", "SiH4", "H2"],
+        layers: [
+          ["Si wafer", "결정성 기판", "#748091", 46],
+          ["Si seed layer", "결정 방향을 이어받은 첫 성장층", "#5ee7ff", 14]
+        ]
+      },
+      {
+        title: "5. SiGe / Dopant Incorporation",
+        subtitle: "Ge precursor나 dopant gas가 함께 들어오면 material과 전기 특성이 바뀝니다.",
+        area: "pm",
+        action: "Si와 Ge, dopant가 표면 반응에 참여해 strain/electrical property를 가진 layer를 만듭니다.",
+        gas: "GeH4 + Si precursor + PH3/AsH3/B2H6 후보",
+        pressure: "composition과 uniformity에 민감",
+        pump: "ON: residual/memory 관리",
+        purge: "dopant line purge와 residual 관리 중요",
+        exhaust: "toxic hydride/byproduct는 detector/abatement 전제",
+        temp: "composition과 defect에 영향",
+        waferEffect: "SiGe 또는 doped Si/SiGe layer가 wafer 위에 추가됩니다.",
+        ceWatch: "dopant response, residual memory, chamber seasoning, metrology와 gas trace correlation을 봅니다.",
+        gasTags: ["GeH4", "PH3", "B2H6"],
+        layers: [
+          ["Si wafer", "결정성 기판", "#748091", 46],
+          ["Si seed layer", "완충 성장층", "#5ee7ff", 12],
+          ["SiGe / doped layer", "strain 또는 전기특성 layer", "#b98cff", 16]
+        ]
+      },
+      {
+        title: "6. HCl Selectivity / Shape Control",
+        subtitle: "선택 성장에서는 증착과 etch balance가 pattern 위 결과를 좌우합니다.",
+        area: "pm",
+        action: "HCl은 공개 EPI 문헌에서 selectivity와 etch balance에 자주 등장합니다. 원치 않는 영역의 증착 억제와 표면 균형을 이해합니다.",
+        gas: "HCl + carrier + precursor balance",
+        pressure: "etch/deposition competition",
+        pump: "ON: corrosive byproduct removal",
+        purge: "HCl 전후 purge와 material compatibility 중요",
+        exhaust: "corrosive exhaust / scrubber ready",
+        temp: "selectivity와 defect에 영향",
+        waferEffect: "원하는 trench/region 위 layer는 자라고, 원치 않는 표면 증착은 억제되는 개념입니다.",
+        ceWatch: "HCl line integrity, exhaust/scrubber, defect map, pattern loading, chamber wall condition을 봅니다.",
+        gasTags: ["HCl", "H2", "Selectivity"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 46],
+          ["Si seed layer", "완충층", "#5ee7ff", 12],
+          ["Selective SiGe shape", "선택 성장 형상", "#b98cff", 18],
+          ["Doped cap", "접촉/저항 최적화 후보층", "#00ff95", 9]
+        ]
+      },
+      {
+        title: "7. Purge / Cool / Transfer Out",
+        subtitle: "공정 gas를 밀어내고 byproduct를 exhaust로 보내며 wafer를 다음 module로 넘깁니다.",
+        area: "transfer",
+        action: "process 종료 후 purge, cool, pressure match, transfer sequence로 다음 chamber 또는 unload로 이동합니다.",
+        gas: "N2 / H2 / Ar purge, residual byproduct",
+        pressure: "pressure match 후 transfer",
+        pump: "ON then controlled state",
+        purge: "ON: residual gas removal",
+        exhaust: "abatement/exhaust trend 확인",
+        temp: "cooldown / thermal stability",
+        waferEffect: "성장된 layer stack을 보존한 채 transfer합니다.",
+        ceWatch: "purge complete, cooldown, slit valve, transfer count, particle/scratch check, post-process trace를 저장합니다.",
+        gasTags: ["N2", "Purge", "Exhaust"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 46],
+          ["Si seed layer", "완충층", "#5ee7ff", 12],
+          ["Selective SiGe shape", "성장층", "#b98cff", 18],
+          ["Doped cap", "전기특성 후보층", "#00ff95", 9]
+        ]
+      }
+    ]
+  },
+  {
+    id: "selective-sd",
+    kicker: "Selective EPI / GAA Source-Drain",
+    title: "선택 EPI: 깊은 trench 안에 source/drain 구조를 채우는 그림",
+    summary: "Applied Xtera 공개 자료가 강조하는 selective epitaxy, integrated pre-clean/etch, low-volume chamber, chemistry delivery를 초보자가 볼 수 있게 단순화한 흐름입니다.",
+    publicBasis: "Applied Centura Xtera Epi 공개 페이지와 GAA source/drain selective epitaxy 공개 설명",
+    sources: [
+      ["Centura Xtera Epi", "https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html"],
+      ["Applied Xtera launch", "https://ir.appliedmaterials.com/news-releases/news-release-details/applied-materials-unveils-next-gen-chipmaking-products"],
+      ["Selective Epitaxy of Group IV Materials", "https://www.intechopen.com/chapters/60757"]
+    ],
+    gasMatrix: [
+      ["Pre-clean chemistry", "interface reset", "native oxide와 contamination을 줄여 빈틈 없는 성장의 시작 조건을 만듭니다."],
+      ["Si/Ge precursor", "trench fill material", "source/drain trench에 원하는 material을 성장시키는 공급원입니다."],
+      ["Dopant gas", "resistance / device property", "P/B/As 계열 dopant가 electrical property를 바꿀 수 있습니다."],
+      ["HCl / etch chemistry", "selective shape control", "원치 않는 표면 증착을 억제하고 trench 안 성장 균형을 맞추는 개념입니다."],
+      ["H2 / N2", "carrier/purge", "reaction ambient와 purge 안정화를 담당합니다."]
+    ],
+    steps: [
+      {
+        title: "1. Patterned Wafer Arrives",
+        subtitle: "이미 pattern과 trench가 있는 wafer가 들어옵니다.",
+        area: "loadlock",
+        action: "blanket film이 아니라 특정 구조 위에 선택적으로 layer를 키우는 준비 단계입니다.",
+        gas: "N2 / vacuum support",
+        pressure: "load lock pumpdown",
+        pump: "ON",
+        purge: "N2 ready",
+        exhaust: "standby",
+        temp: "stable",
+        waferEffect: "trench와 mask/spacer 표면이 있는 patterned wafer 상태입니다.",
+        ceWatch: "wafer route, carrier ID, pattern lot, chamber recipe permission을 확인합니다.",
+        gasTags: ["Pattern", "N2"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "원치 않는 성장 억제 영역", "#d8e3e8", 12],
+          ["Open trench", "성장될 빈 공간", "#101c1a", 18]
+        ]
+      },
+      {
+        title: "2. Integrated Pre-clean",
+        subtitle: "trench 바닥 interface를 깨끗하게 만들어 defect와 void 위험을 줄입니다.",
+        area: "preclean",
+        action: "vacuum break 없이 pre-clean과 EPI를 연결하면 queue time과 계면 오염을 줄이는 방향입니다.",
+        gas: "H2 / radical pre-clean option",
+        pressure: "pre-clean chamber condition",
+        pump: "ON",
+        purge: "전후 purge",
+        exhaust: "byproduct removal",
+        temp: "low thermal budget 중심",
+        waferEffect: "trench bottom이 growth-ready surface로 바뀝니다.",
+        ceWatch: "pre-clean chamber pass evidence와 transfer delay를 봅니다.",
+        gasTags: ["Pre-clean", "H2"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["Clean trench bottom", "성장 시작점", "#9ff6d0", 8]
+        ]
+      },
+      {
+        title: "3. Chemistry Delivery",
+        subtitle: "작은 process volume과 gas delivery가 trench 안 공급 균일도에 영향을 줍니다.",
+        area: "pm",
+        action: "precursor replenishment가 잘 되어야 깊은 구조 안쪽까지 균일한 growth front가 갑니다.",
+        gas: "Si precursor / GeH4 / H2",
+        pressure: "delivery uniformity sensitive",
+        pump: "ON",
+        purge: "line stabilization",
+        exhaust: "continuous",
+        temp: "surface reaction window",
+        waferEffect: "trench 바닥에서 layer가 자라기 시작합니다.",
+        ceWatch: "MFC response, pressure transient, chamber volume, temperature trace를 같이 봅니다.",
+        gasTags: ["DCS", "GeH4", "H2"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["Seed in trench", "trench 바닥 성장 시작", "#5ee7ff", 12]
+        ]
+      },
+      {
+        title: "4. Bottom-up Fill",
+        subtitle: "trench 안을 아래에서 위로 채우는 이미지로 이해합니다.",
+        area: "pm",
+        action: "deposition rate, gas replenishment, etch balance가 맞아야 void 없이 차오르는 방향으로 갑니다.",
+        gas: "Si/Ge precursor + carrier",
+        pressure: "growth balance",
+        pump: "ON",
+        purge: "transition managed",
+        exhaust: "byproduct removal",
+        temp: "uniformity critical",
+        waferEffect: "trench 안 layer가 더 두꺼워지고 source/drain 형상에 가까워집니다.",
+        ceWatch: "film profile, void risk, pattern loading effect, chamber matching 질문을 준비합니다.",
+        gasTags: ["Growth", "SiGe"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["SiGe fill", "trench fill layer", "#b98cff", 26]
+        ]
+      },
+      {
+        title: "5. In-situ Doping / Cap",
+        subtitle: "dopant가 들어가면 단순 막이 아니라 전기 특성을 가진 구조가 됩니다.",
+        area: "pm",
+        action: "dopant gas timing과 residual 관리가 layer electrical property와 repeatability에 연결됩니다.",
+        gas: "PH3 / AsH3 / B2H6 후보",
+        pressure: "dopant response sensitive",
+        pump: "ON",
+        purge: "toxic hydride purge discipline",
+        exhaust: "detector + abatement critical",
+        temp: "incorporation에 영향",
+        waferEffect: "source/drain resistance와 device 성능에 연결되는 doped layer가 추가됩니다.",
+        ceWatch: "gas safety release, dopant MFC, residual memory, metrology trend를 봅니다.",
+        gasTags: ["PH3", "B2H6", "Dopant"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["SiGe fill", "주 성장층", "#b98cff", 24],
+          ["Doped cap", "저항/접촉 최적화 후보", "#00ff95", 10]
+        ]
+      },
+      {
+        title: "6. Etch / Selectivity Trim",
+        subtitle: "HCl 같은 chemistry가 원치 않는 위치의 막을 억제하는 개념을 봅니다.",
+        area: "pm",
+        action: "선택 성장은 deposition만 보는 것이 아니라 etch balance와 mask/spacer 위 nucleation 억제를 함께 봅니다.",
+        gas: "HCl / carrier",
+        pressure: "etch-deposition balance",
+        pump: "ON",
+        purge: "HCl boundary strict",
+        exhaust: "corrosive exhaust / scrubber",
+        temp: "shape and defect sensitive",
+        waferEffect: "trench 밖 unwanted deposition을 억제하고 필요한 형상을 남기는 개념입니다.",
+        ceWatch: "HCl leak risk, exhaust compatibility, selectivity defect, particle source를 봅니다.",
+        gasTags: ["HCl", "Selectivity"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["Selective fill", "선택적으로 남은 성장층", "#b98cff", 24],
+          ["Doped cap", "마감층", "#00ff95", 10]
+        ]
+      },
+      {
+        title: "7. Stabilize / Exit",
+        subtitle: "purge와 cooldown 후 다음 공정이나 metrology로 넘어갑니다.",
+        area: "transfer",
+        action: "완성된 structure는 particle, scratch, defect, thickness/resistivity metrology로 확인됩니다.",
+        gas: "N2 / H2 / Ar purge",
+        pressure: "transfer match",
+        pump: "controlled",
+        purge: "ON",
+        exhaust: "residual removal",
+        temp: "cooldown",
+        waferEffect: "void-free 여부, cell-to-cell uniformity, defect가 핵심 결과로 이어집니다.",
+        ceWatch: "post-run log, MFC/pressure/temperature trace, metrology handoff, open punch를 저장합니다.",
+        gasTags: ["Purge", "Metrology"],
+        layers: [
+          ["Si substrate", "기판", "#748091", 42],
+          ["Spacer / mask", "비성장 영역", "#d8e3e8", 12],
+          ["Selective fill", "source/drain 후보 구조", "#b98cff", 24],
+          ["Doped cap", "마감층", "#00ff95", 10]
+        ]
+      }
+    ]
+  },
+  {
+    id: "rtp-ambient",
+    kicker: "RTP / Thermal Ambient",
+    title: "RTP: 막을 쌓기보다 빠르게 가열해 물성을 바꾸는 흐름",
+    summary: "RTP는 EPI처럼 항상 두꺼운 layer를 쌓는 장비가 아닙니다. 빠른 ramp/soak/spike와 gas ambient를 통해 dopant activation, oxidation, nitridation, interface engineering을 수행할 수 있습니다.",
+    publicBasis: "Applied RTP/Radiance/Vulcan/RadOx 공개자료와 일반 RTP 공개 설명",
+    sources: [
+      ["Applied Thermal Processing", "https://www.appliedmaterials.com/us/en/semiconductor/products/processes/rapid-thermal-processing-treatments.html"],
+      ["Vantage Radiance Plus RTP", "https://www.appliedmaterials.com/us/en/product-library/vantage-radiance-plus-rtp.html"],
+      ["Vantage RadOx RTP", "https://www.appliedmaterials.com/us/en/product-library/vantage-radox-rtp.html"],
+      ["Rapid thermal processing", "https://en.wikipedia.org/wiki/Rapid_thermal_processing"]
+    ],
+    gasMatrix: [
+      ["N2 / Ar", "inert ambient / purge", "산화나 오염을 억제하며 thermal step을 안정화합니다."],
+      ["O2 / O3 / radical oxygen", "oxidation", "얇은 oxide 또는 interface engineering에 연결될 수 있습니다."],
+      ["NH3 / NO / N2O", "nitridation/oxynitride 후보", "질소를 interface에 넣는 thermal chemistry 후보로 공개 자료에 등장합니다."],
+      ["H2", "reducing/passivation 후보", "특정 thermal step에서 표면/결함 passivation 맥락으로 언급됩니다. 가연성 관리가 핵심입니다."],
+      ["Exhaust", "ambient switching", "빠른 gas 전환과 부산물 제거가 repeatability와 safety에 중요합니다."]
+    ],
+    steps: [
+      {
+        title: "1. Load / Purge",
+        subtitle: "single wafer가 RTP chamber에 들어가고 ambient가 정리됩니다.",
+        area: "pm",
+        action: "막을 쌓기보다 열처리 조건을 만들기 위한 purge와 안정화가 먼저입니다.",
+        gas: "N2 / Ar purge",
+        pressure: "atmospheric 또는 reduced pressure option",
+        pump: "option별 exhaust/pump ready",
+        purge: "ON",
+        exhaust: "ambient exhaust ready",
+        temp: "room -> preheat",
+        waferEffect: "기존 film stack이 thermal step을 받을 준비를 합니다.",
+        ceWatch: "chamber clean, wafer seating, rotation, purge flow, exhaust ready를 봅니다.",
+        gasTags: ["N2", "Ar", "Purge"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Existing device film", "이미 형성된 막", "#5ee7ff", 14]
+        ]
+      },
+      {
+        title: "2. Rapid Ramp",
+        subtitle: "lamp가 wafer를 빠르게 올리고 temperature trace가 핵심 증거가 됩니다.",
+        area: "pm",
+        action: "짧은 시간 고온으로 이동하면서 thermal budget을 제한합니다.",
+        gas: "N2 / Ar / recipe ambient",
+        pressure: "stable ambient",
+        pump: "exhaust balanced",
+        purge: "ambient maintained",
+        exhaust: "thermal byproduct removal",
+        temp: "rapid ramp",
+        waferEffect: "implant damage 회복, dopant activation 준비, film densification 준비 상태가 됩니다.",
+        ceWatch: "lamp zone, pyrometer, emissivity, rotation, ramp rate trace를 봅니다.",
+        gasTags: ["Lamp", "Ramp"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Implanted / existing layer", "열처리 대상", "#ffcf7a", 16]
+        ]
+      },
+      {
+        title: "3. Spike / Soak Anneal",
+        subtitle: "짧은 고온 유지 또는 피크로 전기적/물리적 특성을 바꿉니다.",
+        area: "pm",
+        action: "dopant activation, interface change, densification 같은 목적을 위해 temperature-time profile이 제어됩니다.",
+        gas: "N2 / Ar / H2 후보 ambient",
+        pressure: "repeatability critical",
+        pump: "exhaust controlled",
+        purge: "ambient purity maintained",
+        exhaust: "continuous",
+        temp: "spike or soak",
+        waferEffect: "새 layer가 두껍게 쌓이기보다 기존 layer의 electrical/physical property가 바뀝니다.",
+        ceWatch: "temperature overshoot, uniformity, wafer slip/break risk, recipe change control을 봅니다.",
+        gasTags: ["Spike", "Soak", "Anneal"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Activated layer", "전기특성 변화", "#00ff95", 16]
+        ]
+      },
+      {
+        title: "4. Oxidation Option",
+        subtitle: "O2/O3/radical oxygen 계열이 들어오면 얇은 oxide가 자랄 수 있습니다.",
+        area: "pm",
+        action: "RTP/RadOx 계열은 low thermal budget으로 oxide/interface를 만드는 응용이 공개 자료에 언급됩니다.",
+        gas: "O2 / O3 / radical oxygen candidate",
+        pressure: "ambient control",
+        pump: "exhaust ready",
+        purge: "oxidizer boundary strict",
+        exhaust: "oxidizer exhaust path",
+        temp: "oxidation window",
+        waferEffect: "wafer 표면에 얇은 oxide layer가 추가되는 개념입니다.",
+        ceWatch: "oxidizer segregation, analyzer, exhaust, chamber material, oxide thickness metrology를 봅니다.",
+        gasTags: ["O2", "O3", "RadOx"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Activated layer", "열처리층", "#00ff95", 14],
+          ["Thin oxide", "산화막", "#d8f6ff", 9]
+        ]
+      },
+      {
+        title: "5. Nitridation / Interface Option",
+        subtitle: "NH3/NO/N2O 같은 nitrogen chemistry는 interface 성질을 바꿀 수 있습니다.",
+        area: "pm",
+        action: "공정 option에 따라 oxide/interface에 nitrogen을 넣는 thermal chemistry가 쓰일 수 있습니다.",
+        gas: "NH3 / NO / N2O candidate",
+        pressure: "ambient switching",
+        pump: "exhaust/abatement ready",
+        purge: "toxic/corrosive boundary 확인",
+        exhaust: "reactive gas exhaust",
+        temp: "interface engineering window",
+        waferEffect: "oxide/interface가 nitrogen-containing layer 성격을 갖는 개념입니다.",
+        ceWatch: "NH3 safety, exhaust compatibility, ambient switch timing, metrology correlation을 봅니다.",
+        gasTags: ["NH3", "NO", "N2O"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Activated layer", "열처리층", "#00ff95", 14],
+          ["Oxynitride interface", "계면 조정층", "#9f8cff", 10]
+        ]
+      },
+      {
+        title: "6. Controlled Cooldown",
+        subtitle: "급격한 열충격과 slip을 피하면서 wafer를 내립니다.",
+        area: "pm",
+        action: "cooldown은 공정 결과와 wafer damage risk 모두에 영향을 줍니다.",
+        gas: "N2 / Ar purge",
+        pressure: "stable exhaust",
+        pump: "controlled",
+        purge: "ON",
+        exhaust: "heat/byproduct removal",
+        temp: "ramp down",
+        waferEffect: "열처리된 layer stack이 안정화됩니다.",
+        ceWatch: "cooling rate, rotation stop, lift pin, wafer seating, breakage/scratch risk를 봅니다.",
+        gasTags: ["Cooldown", "N2"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Modified layer", "변화된 물성", "#00ff95", 14],
+          ["Interface film", "산화/질화 후보층", "#d8f6ff", 10]
+        ]
+      },
+      {
+        title: "7. Exhaust / Unload",
+        subtitle: "ambient를 제거하고 wafer를 unload 또는 다음 공정으로 넘깁니다.",
+        area: "transfer",
+        action: "post-run trace와 metrology가 RTP 성공 여부를 판단하는 evidence가 됩니다.",
+        gas: "N2 purge / residual exhaust",
+        pressure: "safe transfer state",
+        pump: "standby/ready",
+        purge: "complete",
+        exhaust: "trend checked",
+        temp: "safe unload",
+        waferEffect: "막 성장보다 thermal history가 결과입니다. trace가 핵심 산출물입니다.",
+        ceWatch: "temperature trace, alarm history, exhaust trend, wafer handling count, metrology request를 저장합니다.",
+        gasTags: ["Unload", "Trace"],
+        layers: [
+          ["Si wafer", "기판", "#748091", 42],
+          ["Modified layer", "열처리 결과층", "#00ff95", 14],
+          ["Interface film", "얇은 계면막", "#d8f6ff", 10]
+        ]
+      }
+    ]
+  }
+];
+
 const electricalHero = [
   ["1", "전기 안전", "LOTO, stored energy, arc flash, CAT rating, PPE, 권한 경계를 먼저 확인합니다."],
   ["2", "도면 읽기", "power path, 0V/common, fuse, relay coil, contact, sensor input, actuator output을 색으로 나눕니다."],
@@ -928,6 +1415,7 @@ sources.push(
   ["Applied Centura Xtera Epi", "https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html"],
   ["Applied Centura Prime Epi", "https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html"],
   ["Applied Centura Epi 200mm", "https://www.appliedmaterials.com/us/en/product-library/centura-epi-200mm.html"],
+  ["Stanford AMAT Centura Epi public tool page", "https://snfguide.stanford.edu/guide/equipment/amat-centurion-epitaxial-system-epi2"],
   ["Applied Vantage Radiance Plus RTP", "https://www.appliedmaterials.com/us/en/product-library/vantage-radiance-plus-rtp.html"],
   ["Applied Vantage Vulcan RTP", "https://www.appliedmaterials.com/us/en/product-library/vantage-vulcan-rtp.html"],
   ["Applied Vantage Astra DSA", "https://www.appliedmaterials.com/us/en/product-library/vantage-astra-dsa.html"],
@@ -1672,6 +2160,13 @@ const commandCenterActions = [
     chips: ["wafer path", "module docking", "robot"]
   },
   {
+    view: "process-visual",
+    label: "공정 시각화",
+    title: "Gas가 layer로 바뀌는 장면 보기",
+    text: "EPI/RTP 단계별로 gas, pump, purge, exhaust, wafer layer 상태가 어떻게 바뀌는지 애니메이션으로 확인합니다.",
+    chips: ["EPI gas", "layer stack", "purge/exhaust"]
+  },
+  {
     view: "electrical",
     label: "전기/DVM",
     title: "측정 전에 expected value 말하기",
@@ -1884,6 +2379,8 @@ let qIndex = 0;
 let activeMeterCase = "prove";
 let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
+let activeProcessFlow = processVisualFlows[0].id;
+let activeProcessStep = 0;
 const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
@@ -1892,6 +2389,7 @@ const VIEW_LABELS = {
   dashboard: "EPI 홈",
   roadmap: "로드맵",
   systems: "장비/공정",
+  "process-visual": "공정 시각화",
   equipment: "장비군",
   cluster: "구성게임",
   install: "설치",
@@ -1921,6 +2419,7 @@ const BOOK_VIEW_SEQUENCE = [
   "fab101",
   "glossary",
   "systems",
+  "process-visual",
   "equipment",
   "cluster",
   "install",
@@ -1947,6 +2446,7 @@ const VIEW_CHAPTERS = {
   fab101: "처음 펼칠 장",
   glossary: "처음 펼칠 장",
   systems: "장비 마스터리",
+  "process-visual": "장비 마스터리",
   equipment: "장비 마스터리",
   cluster: "장비 마스터리",
   deep: "장비 마스터리",
@@ -1969,10 +2469,10 @@ const VIEW_CHAPTERS = {
 const uxHotViews = [
   ["cognitive", "인지"],
   ["runbook", "런북"],
+  ["process-visual", "공정"],
   ["cluster", "구성"],
   ["electrical", "DVM"],
-  ["english-test", "영어"],
-  ["thinktank", "기록"]
+  ["english-test", "영어"]
 ];
 const PUBLIC_VIEW_IDS = ["cognitive"];
 
@@ -2157,6 +2657,30 @@ function getUxSearchItems() {
     body: `${item.use} ${item.hazards.join(" ")} ${item.ce.join(" ")}`,
     view: "gases"
   }));
+  const processItems = processVisualFlows.flatMap(flow => [
+    {
+      title: flow.title,
+      meta: "공정 시각화",
+      body: `${flow.summary} ${flow.gasMatrix.map(item => item.join(" ")).join(" ")}`,
+      view: "process-visual",
+      onOpen: () => {
+        activeProcessFlow = flow.id;
+        activeProcessStep = 0;
+        renderProcessVisual();
+      }
+    },
+    ...flow.steps.map((step, index) => ({
+      title: step.title,
+      meta: `${flow.kicker} / 단계 ${index + 1}`,
+      body: `${step.subtitle} ${step.gas} ${step.pressure} ${step.pump} ${step.purge} ${step.exhaust} ${step.waferEffect}`,
+      view: "process-visual",
+      onOpen: () => {
+        activeProcessFlow = flow.id;
+        activeProcessStep = index;
+        renderProcessVisual();
+      }
+    }))
+  ]);
   const runbookItems = fieldRunbookStages.map(item => ({
     title: item.title,
     meta: "현장 런북",
@@ -2167,7 +2691,7 @@ function getUxSearchItems() {
       renderRunbook();
     }
   }));
-  return [...navItems, ...commandItems, ...roadmapItems, ...systemItems, ...equipmentItems, ...gasItems, ...runbookItems];
+  return [...navItems, ...commandItems, ...roadmapItems, ...systemItems, ...processItems, ...equipmentItems, ...gasItems, ...runbookItems];
 }
 
 function scoreUxSearchItem(item, query) {
@@ -2858,6 +3382,172 @@ function renderFacility() {
   `).join("");
 }
 
+function getActiveProcessVisual() {
+  const flow = processVisualFlows.find(item => item.id === activeProcessFlow) || processVisualFlows[0];
+  if (activeProcessStep >= flow.steps.length) activeProcessStep = 0;
+  if (activeProcessStep < 0) activeProcessStep = flow.steps.length - 1;
+  return { flow, step: flow.steps[activeProcessStep] };
+}
+
+function renderProcessVisual() {
+  const flowTabs = document.querySelector("#process-flow-tabs");
+  const stepList = document.querySelector("#process-step-list");
+  const chamber = document.querySelector("#process-chamber-visual");
+  const stateGrid = document.querySelector("#process-state-grid");
+  const waferView = document.querySelector("#wafer-layer-view");
+  const detail = document.querySelector("#process-step-detail");
+  const gasMatrix = document.querySelector("#process-gas-matrix");
+  const sourceStrip = document.querySelector("#process-source-strip");
+  if (!flowTabs || !stepList || !chamber || !stateGrid || !waferView || !detail || !gasMatrix || !sourceStrip) return;
+
+  const { flow, step } = getActiveProcessVisual();
+  document.querySelector("#process-flow-kicker").textContent = flow.kicker;
+  document.querySelector("#process-flow-title").textContent = flow.title;
+  document.querySelector("#process-flow-summary").textContent = flow.summary;
+
+  flowTabs.innerHTML = `
+    <p class="eyebrow">Process Book Page</p>
+    <h2>흐름 선택</h2>
+    ${processVisualFlows.map(item => `
+      <button class="process-flow-tab ${item.id === flow.id ? "active" : ""}" type="button" data-process-flow="${item.id}">
+        <strong>${item.title}</strong>
+        <span>${item.kicker}</span>
+      </button>
+    `).join("")}
+    <div class="process-basis">
+      <strong>공개 근거</strong>
+      <p>${flow.publicBasis}</p>
+    </div>
+  `;
+
+  stepList.innerHTML = flow.steps.map((item, index) => `
+    <button class="process-step-chip ${index === activeProcessStep ? "active" : ""}" type="button" data-process-step="${index}">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+      <strong>${item.title.replace(/^\d+\.\s*/, "")}</strong>
+    </button>
+  `).join("");
+
+  const modules = [
+    ["loadlock", "LL", "Load Lock"],
+    ["transfer", "TM", "Transfer"],
+    ["preclean", "PC", "Pre-clean"],
+    ["pm", "PM", "Process Chamber"],
+    ["exhaust", "EXH", "Exhaust / Abatement"]
+  ];
+  chamber.innerHTML = `
+    <div class="process-tool-map" data-area="${step.area}">
+      ${modules.map(([area, short, label]) => `
+        <div class="process-module ${step.area === area ? "active" : ""}" data-module="${area}">
+          <b>${short}</b>
+          <span>${label}</span>
+        </div>
+      `).join("")}
+    </div>
+    <div class="process-chamber-cutaway">
+      <div class="gas-inlet ${step.gasTags.length ? "active" : ""}">
+        <span>GAS IN</span>
+        <div class="gas-pulse-cloud">
+          ${step.gasTags.map((tag, index) => `<i style="--i:${index}">${tag}</i>`).join("")}
+        </div>
+      </div>
+      <div class="mini-wafer">
+        <span></span>
+        <b>${step.area === "pm" ? "wafer on susceptor" : "wafer transfer state"}</b>
+      </div>
+      <div class="pump-duct ${step.pump.toLowerCase().includes("on") ? "active" : ""}">
+        <span>PUMP</span>
+      </div>
+      <div class="exhaust-duct ${step.exhaust.toLowerCase().includes("exhaust") || step.exhaust.toLowerCase().includes("abatement") ? "active" : ""}">
+        <span>EXHAUST</span>
+      </div>
+    </div>
+  `;
+
+  const stateCards = [
+    ["Gas", step.gas],
+    ["Pressure", step.pressure],
+    ["Pump", step.pump],
+    ["Purge", step.purge],
+    ["Exhaust", step.exhaust],
+    ["Thermal", step.temp]
+  ];
+  stateGrid.innerHTML = stateCards.map(([label, value]) => `
+    <article>
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </article>
+  `).join("");
+
+  waferView.innerHTML = `
+    <div class="wafer-cross-section">
+      <div class="wafer-surface-scan"></div>
+      <div class="wafer-layer-stack">
+        ${step.layers.map(([name, note, color, height], index) => `
+          <div class="wafer-layer ${index === step.layers.length - 1 ? "top-layer" : ""}" style="--layer-color:${color}; --layer-height:${height}px;">
+            <strong>${name}</strong>
+            <span>${note}</span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="wafer-substrate-label">300 mm wafer cross-section concept</div>
+    </div>
+  `;
+
+  detail.innerHTML = `
+    <p class="eyebrow">${step.title}</p>
+    <h2>${step.subtitle}</h2>
+    <div class="detail-grid">
+      <section class="info-block">
+        <h3>장비가 하는 행위</h3>
+        <p>${step.action}</p>
+      </section>
+      <section class="info-block">
+        <h3>웨이퍼 위 변화</h3>
+        <p>${step.waferEffect}</p>
+      </section>
+      <section class="info-block danger-block">
+        <h3>CE가 봐야 할 증거</h3>
+        <p>${step.ceWatch}</p>
+      </section>
+    </div>
+  `;
+
+  gasMatrix.innerHTML = `
+    <div class="section-heading">
+      <p>Gas role map</p>
+      <h2>이 흐름에서 gas가 맡는 역할</h2>
+    </div>
+    <div class="process-gas-grid">
+      ${flow.gasMatrix.map(([name, role, text]) => `
+        <article>
+          <span>${role}</span>
+          <strong>${name}</strong>
+          <p>${text}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  sourceStrip.innerHTML = `
+    <strong>공개 근거 링크</strong>
+    ${flow.sources.map(([label, url]) => `<a href="${url}" target="_blank" rel="noreferrer">${label}</a>`).join("")}
+  `;
+
+  flowTabs.querySelectorAll("[data-process-flow]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeProcessFlow = button.dataset.processFlow;
+      activeProcessStep = 0;
+      renderProcessVisual();
+    });
+  });
+  stepList.querySelectorAll("[data-process-step]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeProcessStep = Number(button.dataset.processStep);
+      renderProcessVisual();
+    });
+  });
+}
+
 function renderElectrical() {
   document.querySelector("#electrical-hero").innerHTML = `
     <div>
@@ -3105,12 +3795,23 @@ document.querySelector("#next-question").addEventListener("click", () => {
   qIndex = (qIndex + 1) % questions.length;
   renderQuiz();
 });
+document.querySelector("#process-prev-step")?.addEventListener("click", () => {
+  const { flow } = getActiveProcessVisual();
+  activeProcessStep = (activeProcessStep + flow.steps.length - 1) % flow.steps.length;
+  renderProcessVisual();
+});
+document.querySelector("#process-next-step")?.addEventListener("click", () => {
+  const { flow } = getActiveProcessVisual();
+  activeProcessStep = (activeProcessStep + 1) % flow.steps.length;
+  renderProcessVisual();
+});
 
 renderRoleFit();
 renderLearningUX();
 renderCommandCenter();
 renderRoadmap();
 renderSystems();
+renderProcessVisual();
 renderEquipmentFamilies();
 renderScenarios();
 renderQuiz();
