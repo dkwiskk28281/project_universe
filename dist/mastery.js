@@ -126,7 +126,13 @@ const masteryMissions = [
   ["m-021", "install phase별 pass evidence와 stop condition을 각각 3개 이상 말한다."],
   ["m-022", "LL-TM-PM/CM wafer path에서 pressure boundary, gate valve, robot handoff를 순서대로 설명한다."],
   ["m-023", "SAT/qualification package에 들어갈 trace, metrology, safety, open punch evidence를 분리해 작성한다."],
-  ["m-024", "facility ready signal과 실제 physical state가 다를 때 hold/escalation 메시지를 작성한다."]
+  ["m-024", "facility ready signal과 실제 physical state가 다를 때 hold/escalation 메시지를 작성한다."],
+  ["m-025", "GeH4, STC, O2/O3/N2O, NH3를 hazard family별로 추가 분류하고 실제 사용 여부는 official gas matrix로만 확정한다고 설명한다."],
+  ["m-026", "host/SECS-GEM, recipe permission, time sync, data export, change control을 CE가 임의 조작하면 안 되는 이유로 설명한다."],
+  ["m-027", "subfab pump/abatement/chiller/gas cabinet owner와 tool CE의 책임 경계를 witness/evidence 관점으로 정리한다."],
+  ["m-028", "public 자료로 배울 수 있는 것과 customer/site/OEM 비공개 절차로만 확인 가능한 것을 표로 나눈다."],
+  ["m-029", "qualification fail 후 process engineer에게 물어볼 metrology, chamber matching, golden trace, retest 범위 질문을 작성한다."],
+  ["m-030", "deviation, waiver, rollback, MOC/change control, punch item의 차이를 install 사례로 설명한다."]
 ];
 
 const failureAtlas = [
@@ -137,7 +143,9 @@ const failureAtlas = [
   ["Interlock not ready", "Safety/facility", "exhaust, abatement, cooling, gas box, cover, EMO loop, facility signal", "interlock 우회"],
   ["Robot mis-pick/scrape", "Automation", "teach, leveling, end-effector, sensor timing, cassette seating, vibration", "wafer를 계속 투입해 평균 확인"],
   ["Host recipe permission error", "Controls/data", "user permission, recipe version, host communication, time sync, change control", "local에서 몰래 recipe 수정"],
-  ["PM 후 반복 alarm", "Maintenance", "작업 전후 변경점, connector, cable strain, seal, calibration, part lot history", "증상만 reset 후 종료"]
+  ["PM 후 반복 alarm", "Maintenance", "작업 전후 변경점, connector, cable strain, seal, calibration, part lot history", "증상만 reset 후 종료"],
+  ["Subfab abatement alarm", "Facility/subfab", "abatement ready, exhaust flow, foreline pressure, customer owner, signal mapping, gas introduction status", "tool alarm만 reset"],
+  ["Toxic gas option 확인 불가", "Gas/security", "official gas matrix, SDS, tool option, POC label, permit owner, senior CE witness", "검색 결과만 보고 gas 사용 확정"]
 ];
 
 const masteryTemplates = [

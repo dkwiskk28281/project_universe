@@ -581,6 +581,26 @@ const gasProfiles = [
     ]
   },
   {
+    name: "Silicon Tetrachloride / STC (SiCl4)",
+    use: "Chlorosilane/silicon precursor family. 공개 화학 안전 자료에서는 물과 반응해 HCl을 만들고, 전자재료/실리콘 화학 원료로 언급됩니다.",
+    hazards: ["Corrosive", "Moisture reactive", "Toxic/irritant byproducts"],
+    ce: [
+      "수분 노출 시 부식성 byproduct와 fume risk를 전제로 dry purge, leak integrity, exhaust path를 봅니다.",
+      "line material, regulator/MFC compatibility, scrubber chemistry, downstream corrosion risk를 SDS/site spec과 대조합니다.",
+      "실제 EPI option에서 사용되는지, 어떤 농도/공급 방식인지는 고객 gas matrix와 장비 BOM 없이는 단정하지 않습니다."
+    ]
+  },
+  {
+    name: "Germane (GeH4)",
+    use: "SiGe/Ge epitaxy 또는 germanium-containing film precursor 후보입니다. 공개 안전 자료는 germane을 전자재료 용도와 연결하고 독성/가연성을 설명합니다.",
+    hazards: ["Highly toxic", "Flammable", "Reactive hydride"],
+    ce: [
+      "PH3/AsH3/B2H6처럼 toxic hydride mindset으로 detector, cabinet exhaust, purge, abatement, emergency response를 확인합니다.",
+      "SiGe/Ge option이 있으면 gas panel, residual memory, MFC range, chamber seasoning, metrology 기준이 달라질 수 있습니다.",
+      "실제 사용 여부와 농도는 고객 recipe, 장비 option, site SDS 없이는 단정하지 않습니다."
+    ]
+  },
+  {
     name: "Hydrogen (H2)",
     use: "Carrier/reducing/purge gas. EPI 문헌에서 hydrogen carrier gas가 흔히 언급됩니다.",
     hazards: ["Flammable", "Explosion risk", "Asphyxiation risk"],
@@ -598,6 +618,26 @@ const gasProfiles = [
       "OSHA semiconductor 자료는 hydrogen chloride 같은 corrosive exhaust gas가 눈, 피부, 점막, 호흡기에 자극/손상을 줄 수 있다고 설명합니다.",
       "duct/scrubber compatibility, leak alarm, local exhaust, PPE/site permit를 확인합니다.",
       "부식성 gas는 leak뿐 아니라 downstream corrosion과 sensor/valve reliability에도 영향을 줍니다."
+    ]
+  },
+  {
+    name: "Oxygen / Ozone / N2O",
+    use: "RTP oxidation, RadOx, ambient control, oxynitride chemistry 등 chamber option에 따라 산화/질화 chemistry로 연결될 수 있습니다.",
+    hazards: ["Oxidizer", "Reactive", "Respiratory irritant for ozone"],
+    ce: [
+      "fuel gas와 oxidizer를 같은 사고로 보지 않고 segregation, purge, exhaust, interlock, analyzer/ambient control을 분리해 확인합니다.",
+      "O2 ppm/ambient control은 RTP repeatability와 safety 모두에 연결됩니다.",
+      "ozone/radical oxidation option은 leak response, destructor/scrubber, seal/material compatibility를 site spec으로 확인합니다."
+    ]
+  },
+  {
+    name: "Ammonia (NH3)",
+    use: "nitridation 또는 thermal/process chemistry option에서 nitrogen-containing process gas로 연결될 수 있습니다.",
+    hazards: ["Toxic", "Corrosive/Irritant", "Pressure energy"],
+    ce: [
+      "NH3는 냄새에 의존하지 않고 detector, ventilation, scrubber compatibility, PPE/permit boundary를 확인합니다.",
+      "RTP/thermal chemistry option에서는 gas line release와 chamber exhaust compatibility가 qualification 전제입니다.",
+      "actual line use는 장비 option과 customer recipe에 따라 달라지므로 official gas matrix로만 확정합니다."
     ]
   },
   {
@@ -655,8 +695,10 @@ const gasProfiles = [
 const gasInstallChecks = [
   "Gas matrix를 먼저 만든다: gas name, hazard class, cabinet/source, POC, detector, exhaust, abatement, interlock, owner.",
   "SDS와 site gas specification을 읽고, 독성/가연성/부식성/산소결핍/압력 에너지 위험을 분리한다.",
+  "toxic hydride, chlorosilane, fuel gas, oxidizer, inert gas를 한 묶음으로 보지 말고 incompatible gas segregation을 확인한다.",
   "hook-up 전에는 drawing revision, P&ID, line label, flow direction, compatible materials, regulator/MFC range를 확인한다.",
   "gas line release는 customer facility owner, site EHS, OEM senior CE의 승인 체계 안에서 진행한다.",
+  "source-to-abatement walkdown을 한다: cylinder/cabinet -> VMB/VMP -> tool gas panel -> chamber/foreline/exhaust -> abatement -> monitor.",
   "leak check와 purge 완료 증거는 말이 아니라 기록으로 남긴다.",
   "abatement ready, exhaust flow, gas detector health, emergency shutoff, interlock response를 gas introduction 전에 확인한다.",
   "실제 valve sequence, purge cycle, detector setpoint, pressure/flow limit는 앱이 아니라 현장 공식 문서만 따른다."
@@ -668,6 +710,8 @@ const gasQualificationChecks = [
   "dopant gas는 residual/memory effect와 chamber seasoning 가능성을 이해하고, 공정 엔지니어/선임 CE와 기준 data를 비교한다.",
   "HCl/chlorosilane 계열은 corrosion, exhaust compatibility, downstream abatement condition을 함께 본다.",
   "silane/hydrogen 계열은 ignition source, ventilation, emergency shutdown path, gas detection alarm response를 반드시 고려한다.",
+  "process gas 문제가 아닌 support utility(CDA/N2/PCW/exhaust/abatement) 문제가 gas symptom처럼 보일 수 있음을 분리한다.",
+  "first gas introduction 이후 alarm history, detector health, exhaust/abatement trend, tool event log를 같은 시간축으로 맞춘다.",
   "qualification 실패 시 임의 recipe 보정이 아니라 변경점, gas delivery, vacuum, temperature, sensor, metrology를 분리해 보고한다.",
   "고객 보고는 gas name을 숨기지 말고 hazard, 현재 안전 상태, 확인된 계측값, 다음 승인 필요 항목을 분명히 말한다."
 ];
@@ -946,6 +990,15 @@ sources.push(
   ["NIOSH Hazardous Energy Control", "https://www.cdc.gov/niosh/manufacturing/hazardous-energy-control/index.html"],
   ["NFPA 70E safe electrical work practices overview", "https://www.nfpa.org/product/70e-safe-electrical-work-practices-training-series/ols70esewp"],
   ["Omron General-purpose Relay Technical Guide", "https://edata.omron.com.au/eData/Relays/GeneralRelay_TG.pdf"]
+);
+
+sources.push(
+  ["NOAA CAMEO Germane", "https://cameochemicals.noaa.gov/chemical/809"],
+  ["NOAA CAMEO Silicon Tetrachloride", "https://cameochemicals.noaa.gov/chemical/4437"],
+  ["NOAA CAMEO Ozone", "https://cameochemicals.noaa.gov/chemical/5102"],
+  ["NIOSH Pocket Guide Ammonia", "https://www.cdc.gov/niosh/npg/npgd0028.html"],
+  ["SIA Environment, Health & Safety Practices Fact Sheet", "https://www.semiconductors.org/wp-content/uploads/2024/12/SIA_Environment-Health-Safety-Practices_Fact-Sheet-12-9-24.pdf"],
+  ["Applied Materials Field Service Engineer role reference", "https://jobs.appliedmaterials.com/job/austin/field-service-engineer/95/93828167312"]
 );
 
 const publicFacts = [
