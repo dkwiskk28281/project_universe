@@ -4380,22 +4380,77 @@ main {
 }
 
 .term-explain {
-  display: inline;
+  position: relative;
+  display: inline !important;
+  padding: 1px 4px;
+  border-radius: 5px;
   color: #123842;
   font-weight: 750;
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .term-explain::after {
-  content: " (" attr(data-short) ")";
-  color: var(--accent);
-  font-size: 0.88em;
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  width: min(340px, calc(100vw - 36px));
+  padding: 11px 13px;
+  border: 1px solid rgba(0, 255, 149, 0.36);
+  border-radius: 8px;
+  background: #06130f;
+  color: #eafff3;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.55;
+  white-space: normal;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 6px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 5000;
+}
+
+.term-explain::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid rgba(0, 255, 149, 0.36);
+  border-bottom: 1px solid rgba(0, 255, 149, 0.36);
+  background: #06130f;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 6px) rotate(45deg);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 5001;
 }
 
 .term-explain:hover,
 .term-explain:focus {
   outline: 2px solid rgba(0, 127, 134, 0.25);
   border-radius: 4px;
+}
+
+.term-explain:hover::after,
+.term-explain:focus::after,
+.term-explain:hover::before,
+.term-explain:focus::before {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.term-explain:hover::before,
+.term-explain:focus::before {
+  transform: translate(-50%, 0) rotate(45deg);
 }
 
 .english-tools {
@@ -6006,15 +6061,6 @@ main {
   background: #f8fbfc;
   color: var(--muted);
   line-height: 1.55;
-}
-
-.cluster-flow-panel .term-explain {
-  color: inherit;
-  font-weight: inherit;
-}
-
-.cluster-flow-panel .term-explain::after {
-  content: "";
 }
 
 .flow-panel-head {
