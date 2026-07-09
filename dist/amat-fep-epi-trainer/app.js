@@ -1001,14 +1001,80 @@ sources.push(
   ["Applied Materials Field Service Engineer role reference", "https://jobs.appliedmaterials.com/job/austin/field-service-engineer/95/93828167312"]
 );
 
+sources.push(
+  ["Applied Materials Next-Gen Xtera launch", "https://ir.appliedmaterials.com/news-releases/news-release-details/applied-materials-unveils-next-gen-chipmaking-products"],
+  ["Applied Vantage RadOx RTP", "https://www.appliedmaterials.com/us/en/product-library/vantage-radox-rtp.html"],
+  ["Applied Vantage platform shipment / install-time context", "https://ir.appliedmaterials.com/news-releases/news-release-details/applied-materials-ships-250th-vantage-system-most-productive-rtp"],
+  ["Fortrend Vacuum Transfer Module basics", "https://www.fortrend.com/technical-blog/what-are-the-basic-components-of-a-vacuum-transfer-module-vtm-.html"],
+  ["Hine Automation EFEM systems", "https://hineautomation.com/products/efem-systems/"],
+  ["Kurt J. Lesker load lock FAQ", "https://www.lesker.com/newweb/faqs/question.cfm?id=28"],
+  ["NIOSH Pocket Guide Hydrogen Chloride", "https://www.cdc.gov/niosh/npg/npgd0332.html"],
+  ["NIOSH Pocket Guide Phosphine", "https://www.cdc.gov/niosh/npg/npgd0505.html"],
+  ["NIOSH Pocket Guide Diborane", "https://www.cdc.gov/niosh/npg/npgd0183.html"],
+  ["NOAA CAMEO Silane", "https://cameochemicals.noaa.gov/chemical/4434"],
+  ["NOAA CAMEO Dichlorosilane", "https://cameochemicals.noaa.gov/chemical/3167"],
+  ["NOAA CAMEO Arsine", "https://cameochemicals.noaa.gov/chemical/178"],
+  ["NOAA CAMEO Phosphine", "https://cameochemicals.noaa.gov/chemical/1322"],
+  ["Selective SiGe epitaxy patent context", "https://patents.google.com/patent/US11018003B2/en"],
+  ["RTP wafer temperature uniformity patent context", "https://patents.google.com/patent/US20080025368A1/en"],
+  ["Group IV selective epitaxy overview", "https://www.intechopen.com/chapters/60757"],
+  ["RTP temperature uniformity design paper", "https://www.mdpi.com/2079-9292/7/10/213"]
+);
+
+const sourceQualityMap = [
+  ["A급: 공식 제품/채용/EHS", "Applied 공식 제품 페이지, Applied IR/news, Applied 채용공고, Samsung 공식 페이지, OSHA/NIOSH/SEMI/SIA처럼 원 출처가 명확한 자료입니다. 웹에는 이 내용을 가장 굵은 사실로 넣습니다."],
+  ["B급: 표준/특허/논문", "SEMI 표준 목록, Google Patents, peer-reviewed/open lecture 자료는 구조와 원리를 이해하는 데 강합니다. 단, 실제 고객 tool configuration으로 단정하지 않습니다."],
+  ["C급: 산업 공급사/교육 자료", "EFEM, load-lock, gas detection, vacuum supplier 자료는 개념 설명에 유용하지만 특정 Applied/Samsung 절차로 쓰지 않습니다."],
+  ["D급: 중고장비/블로그/커뮤니티", "사진, chamber 수, 옵션 감각을 얻는 보조자료입니다. 정답으로 쓰지 않고 '가능한 configuration 예시'로만 취급합니다."],
+  ["금지: 비공개 절차 대체", "구글에 있다고 해도 valve sequence, detector setpoint, interlock bypass, purge recipe, 고객 acceptance limit는 현장 공식 문서와 승인 없이는 절대 실행 지식으로 쓰지 않습니다."]
+];
+
+const publicEvidenceDossier = [
+  ["직무 정체성", "Applied CE/FSE 공개 채용공고는 install, maintain, upgrade, digital analytics troubleshooting, electrical/vacuum/mechanical/plasma/hydraulic/gas systems PM/CM을 언급합니다. 즉 FEP/EPI는 단일 장비명이 아니라 front-end 장비군 담당 업무로 보는 것이 안전합니다."],
+  ["Centura Prime Epi", "Applied 공식 페이지는 Centura RP Epi 경험을 기반으로 Prime Epi가 구성성과 process capability를 개선했고, source-drain/channel/contact, FinFET/GAA, memory/power/analog/MEMS 응용과 Centura platform integrated pre-clean을 설명합니다."],
+  ["Centura Xtera Epi", "Applied 공식 제품/IR 자료는 Xtera를 GAA source-drain 고종횡비 구조의 selective epitaxy 문제를 겨냥한 장비로 설명하고, low-volume chamber, integrated pre-clean/etch, 50% lower gas usage, 40%+ cell-to-cell uniformity improvement를 공개합니다."],
+  ["Centura Epi 200mm", "Applied 공식 페이지는 200mm Centura Epi를 single-wafer multi-chamber silicon epitaxy 제품으로 설명하고, thick epi, Rs, defect density, thickness uniformity, particle performance, flexible gas panel, SiGe/Ge capability, Siconi pre-clean 옵션을 언급합니다."],
+  ["Vantage Radiance Plus RTP", "Applied 공식 자료는 high-volume atmospheric RTP, single-unit shipment, honeycomb lamp source, seven-point temperature measurement, 100 Hz closed-loop control, 240 rpm wafer rotation을 공개합니다."],
+  ["Vantage Vulcan RTP", "Applied 공식 페이지는 pattern loading effect 대응, bottom-side lamp heating, 150-1300C process range, sub-second/low-temperature/metal anneal, transmission-based multi-point temperature measurement를 설명합니다."],
+  ["Vantage RadOx RTP", "Applied 공식 페이지는 radical oxidation chemistry, low thermal budget, gate oxide/STI liner/sacrificial oxide/flash tunnel oxide/ONO stack, in-process monitoring을 공개합니다."],
+  ["Cluster 구조", "Applied Centura platform 공개 글과 patent 자료는 Centura를 high-vacuum capability와 advanced robotics를 갖춘 multi-chamber platform으로 설명합니다. public cluster tool 자료는 load lock, central transfer chamber, process chamber, robot handoff를 공통 구성으로 설명합니다."],
+  ["EFEM / Load Lock", "EFEM 공급사 자료는 EFEM이 FOUP 같은 ultra-clean carrier와 parent tool 사이 wafer를 운반한다고 설명합니다. Load lock 자료는 process chamber vacuum을 깨지 않고 대기-진공 사이 transfer를 가능하게 해 contamination과 cycle time을 줄인다고 설명합니다."],
+  ["EPI gas chemistry", "OSHA와 silicon precursor 자료는 CVD/EPI 맥락에서 silane, silicon tetrachloride, ammonia, nitrous oxide, arsine, phosphine, diborane 등을 언급합니다. Selective SiGe 공개 특허/논문은 silane/DCS/germane precursor와 HCl etchant/selectivity 맥락을 보여줍니다."],
+  ["RTP 진단 원리", "RTP 공개 논문/특허는 wafer emissivity/pattern loading, pyrometry, lamp power feedback, wafer rotation, multi-point temperature measurement가 uniformity와 repeatability에 연결됨을 보여줍니다."],
+  ["EHS 큰 축", "SEMI는 S2, S6, S8, S18, S19, S22, S24 등 equipment safety, exhaust ventilation, ergonomics, flammable silicon compounds, training, electrical design, multi-employer work area를 공개 목록으로 제시합니다."],
+  ["LOTO / Stored Energy", "NIOSH/OSHA는 servicing/maintenance 중 unexpected energization, start-up, stored energy release를 막기 위해 hazardous energy control/LOTO 체계가 필요하다고 설명합니다. 전기뿐 아니라 pneumatic, hydraulic, chemical, thermal, mechanical energy 사고로 확장해 봐야 합니다."],
+  ["삼성 평택 공개 범위", "Samsung 공개 자료는 평택 campus/fab 규모, cleanroom, EHS 조직과 화학물질 관리 의지를 설명하지만, 실제 라인별 POC, escort, permit, photo, emergency route, gas response rule은 공개자료로 확인할 수 없습니다."]
+];
+
+const fieldTranslationRules = [
+  ["공식 제품 문구 -> CE 질문", "예: 'integrated pre-clean'은 '어떤 chamber가 vacuum break 없이 연결되는가, pre-clean 후 queue time과 interface contamination을 어떻게 확인하는가'라는 질문으로 바꿉니다."],
+  ["숫자 스펙 -> 증거 요구", "예: 100 Hz closed-loop, 240 rpm rotation, 7-point measurement는 외우는 숫자가 아니라 temperature trace, rotation status, sensor health, chamber matching evidence로 바꿉니다."],
+  ["gas 이름 -> hazard family", "gas name을 외우기보다 toxic hydride, chlorosilane, fuel gas, oxidizer, inert/asphyxiant, corrosive exhaust로 분류합니다."],
+  ["cluster 그림 -> pressure boundary", "LL/TM/PM/CM 배치는 그림 암기가 아니라 대기압 EFEM, pump/vent되는 LL, high-vacuum TM, process chamber 사이 boundary와 gate valve 조건을 말할 수 있어야 합니다."],
+  ["논문 변수 -> troubleshooting 변수", "emissivity, pattern loading, HCl selectivity, Ge incorporation 같은 논문 용어는 현장에서는 sensor, temperature uniformity, gas delivery, defect map, metrology 질문으로 번역합니다."],
+  ["standards 이름 -> stop condition", "SEMI/OSHA/NIOSH 이름을 외우는 데서 끝내지 말고 '어떤 작업을 멈춰야 하는가, 누가 승인해야 하는가, 어떤 evidence가 있어야 하는가'로 바꿉니다."]
+];
+
+const publicBoundaryRules = [
+  ["공개자료로 확정 가능", "장비 family 이름, 공개 제품 포트폴리오, 공정 목적, 일반 cluster 구조, 일반 gas hazard, 일반 EHS/LOTO 원칙, 논문 수준 공정 변수"],
+  ["공개자료로 추정만 가능", "chamber count, process module combination, pre-clean/etch option, gas panel option, customer node/application, site-specific qualification flow"],
+  ["공개자료로 확정 금지", "정확한 valve sequence, purge cycle, interlock logic, detector setpoint, gas concentration/pressure, customer recipe, acceptance limit, pass/fail value"],
+  ["현장에서만 확인", "Applied install manual, customer site spec, SDS binder, gas matrix, P&ID/as-built, permit, senior witness, EHS approval, process owner sign-off"],
+  ["AI/웹 학습의 올바른 사용", "작업 지시서가 아니라 질문 생성기, checklist 초안, 위험 분류 훈련, 보고 문장 연습, 공식 문서 확인 전 gap finder로 사용합니다."]
+];
+
 const publicFacts = [
   ["RTP 공정 목적", "Applied 공개 자료는 RTP/anneal을 wafer를 짧은 시간 특정 온도로 가열해 conductivity, permittivity, densification, contamination reduction 등 물성 변화를 만드는 영역으로 설명합니다."],
   ["RTP 방식", "공개 자료에서 soak, spike, millisecond anneal과 thermal-radical oxidation이 응용별로 언급됩니다. CE는 방식 이름보다 시간-온도 budget, repeatability, uniformity가 왜 중요한지 이해해야 합니다."],
   ["Vantage Radiance Plus", "공개 제품 설명에는 honeycomb lamp source, seven-point temperature measurement, 100 Hz closed-loop control, 240 rpm wafer rotation이 언급됩니다. 설치/진단 관점에서는 lamp zone, sensor 신뢰도, rotation, cooling, trace data가 연결됩니다."],
   ["Vantage Vulcan", "공개 설명은 lamp-based RTP, transmission-based multi-point temperature measurement, low-temperature closed-loop capability, wafer-to-wafer repeatability를 강조합니다."],
+  ["Vantage RadOx", "공개 설명은 radical oxidation chemistry와 low thermal budget, gate oxide/STI liner/sacrificial oxide/flash tunnel oxide/ONO stack 응용을 강조합니다."],
   ["Epitaxy 공정 목적", "Epitaxy는 결정성 foundation layer를 만들거나 engineered electrical properties를 가진 crystalline film을 증착하고 underlayer mechanical/electrical attribute를 바꾸는 공정으로 소개됩니다."],
   ["Centura Prime Epi", "공개 제품 설명은 source-drain, channel, contact, FinFET, GAA, memory/power/analog/MEMS 응용과 integrated pre-clean을 언급합니다."],
   ["Centura Xtera Epi", "공개 발표/제품 설명은 GAA source-drain 구조, selective epitaxy, low-volume chamber architecture, integrated pre-clean/etch, gas usage reduction 같은 방향을 설명합니다."],
+  ["Centura Epi 200mm", "공개 제품 설명은 single-wafer multi-chamber EPI, thick epi, SiGe/Ge, flexible gas panel, Siconi pre-clean, ATM/RP epi chamber 방향을 언급합니다."],
+  ["Load Lock / EFEM", "public vacuum/automation 자료는 load lock을 대기와 vacuum mainframe 사이 gateway로 설명하고, EFEM은 FOUP와 parent tool 사이 wafer handling module로 설명합니다."],
+  ["SEMI/OSHA/NIOSH", "공개 안전 자료들은 EHS guideline, exhaust ventilation, electrical design, installation/maintenance personnel training, multi-employer work area, hazardous energy control을 CE가 반드시 언어로 이해해야 하는 축으로 보여줍니다."],
   ["Customer Engineer 역할", "Applied 채용공고는 고객 onsite에서 install, maintain, upgrade를 수행하고 digital analytics로 troubleshooting하며 electrical, vacuum, mechanical, plasma, hydraulic, gas system을 다룬다고 설명합니다."]
 ];
 
@@ -1019,7 +1085,11 @@ const diagnosticMatrix = [
   ["Particle/defect jump", "EPI", "PM disturbance, chamber clean, wafer handling contact, pre-clean effectiveness, gas purity, exhaust/backstreaming, recipe drift"],
   ["Robot transfer alarm", "Mechanical", "teach position, leveling, end-effector, sensor timing, slit valve motion, cassette seating, vibration"],
   ["Interlock not ready", "Safety/facility", "exhaust/abatement status, cooling flow, door/cover, gas box, EMO loop, facility signal wiring, customer permit state"],
-  ["Host/data issue", "Controls", "network, time sync, recipe permission, alarm history, data access policy, software revision, customer security approval"]
+  ["Host/data issue", "Controls", "network, time sync, recipe permission, alarm history, data access policy, software revision, customer security approval"],
+  ["Load lock 반복 vent/pump issue", "Vacuum/automation", "LL door seal, roughing path, vent N2 path, pressure gauge, slit valve state, EFEM handoff timing, wafer mapping state"],
+  ["Pre-clean 이후 EPI defect", "Interface/process", "vacuum break history, pre-clean chamber health, queue time, surface oxide removal, transfer contamination, chamber seasoning, metrology correlation"],
+  ["RadOx/oxidation repeatability issue", "RTP/chemistry", "oxygen/ozone/N2O/NH3 option, radical source/destructor, temperature trace, in-process monitor, exhaust/abatement readiness, seal/material compatibility"],
+  ["Subfab fault가 tool fault처럼 보임", "Facility/subfab", "abatement ready, pump health, foreline pressure, exhaust flow, PCW/chiller trend, signal mapping, owner handoff"]
 ];
 
 const installDeliverables = [
@@ -1192,6 +1262,46 @@ const fabBasics = [
 ];
 
 const paperNotes = [
+  {
+    title: "Applied 공식 장비 페이지를 읽는 법",
+    source: "Applied Centura Prime/Xtera/Epi 200mm, Vantage Radiance/Vulcan/RadOx official pages",
+    notes: [
+      "제품 페이지의 'platform', 'chamber', 'integrated pre-clean', 'low-volume chamber', 'multi-point temperature measurement'는 마케팅 문장이 아니라 install CE가 owner, utility, qualification evidence로 번역해야 할 단서입니다.",
+      "Prime Epi는 integrated pre-clean과 interface contamination/queue time 맥락이 핵심입니다. Xtera는 GAA source-drain selective epitaxy, low-volume chamber, deposition-etch, gas usage/uniformity 맥락이 핵심입니다.",
+      "Vantage RTP 계열은 lamp/laser/heater-based anneal family 안에서 Radiance Plus, Vulcan, RadOx, Astra로 option이 갈라질 수 있으므로 'RTP 장비 하나'로 뭉뚱그리면 안 됩니다.",
+      "훈련: 장비 페이지 하나를 읽고 public fact, CE 질문, 확인해야 할 official 문서, qualification evidence를 4칸 표로 정리합니다."
+    ]
+  },
+  {
+    title: "Cluster Tool / EFEM / Load Lock 구조",
+    source: "Applied Centura platform blog, public cluster patents, EFEM/load-lock supplier materials",
+    notes: [
+      "공개 cluster tool 자료는 FOUP/EFEM에서 시작한 wafer가 load lock을 통해 vacuum transfer module로 들어가고, transfer robot이 process chambers로 분배하는 구조를 반복적으로 설명합니다.",
+      "Load lock은 main process vacuum을 매번 깨지 않기 위한 대기-진공 경계입니다. 그래서 pump/vent, door/slit valve, pressure gauge, wafer handoff timing이 install과 troubleshooting의 핵심이 됩니다.",
+      "EFEM은 FOUP와 parent tool 사이 atmospheric wafer handling입니다. mapping, aligner, robot end-effector, FOUP seating 문제가 vacuum/process alarm처럼 보일 수 있습니다.",
+      "훈련: wafer path를 압력 상태별로 색칠합니다. Atmosphere: FOUP/EFEM, transition: LL pump/vent, vacuum: TM/PM, return: LL vent/EFEM/FOUP."
+    ]
+  },
+  {
+    title: "EPI gas chemistry 공개 근거",
+    source: "OSHA semiconductor fabrication, silicon precursor gas references, selective SiGe epitaxy patents/papers, NOAA/NIOSH chemical references",
+    notes: [
+      "공개자료는 silicon source로 silane/DCS/TCS/STC, Ge source로 germane, selectivity/etch/pre-clean 맥락으로 HCl, dopant로 PH3/AsH3/B2H6 계열을 반복적으로 보여줍니다.",
+      "하지만 'public source에서 언급됨'은 '내 현장 tool에 연결되어 있음'과 다릅니다. 실제 gas 사용 여부는 장비 option, customer recipe, gas matrix, SDS, P&ID로만 확정합니다.",
+      "chlorosilane은 moisture reactive/corrosive byproduct, toxic hydride는 detector/exhaust/abatement/emergency response, oxidizer는 fuel gas separation, inert는 asphyxiation/pressure energy로 나눕니다.",
+      "훈련: gas 이름을 보면 먼저 용도보다 hazard family, incompatible gas, detector/exhaust/abatement owner, first gas introduction stop condition을 말합니다."
+    ]
+  },
+  {
+    title: "SEMI / OSHA / NIOSH / SIA EHS 자료",
+    source: "SEMI safety standards, OSHA semiconductor pages, NIOSH hazardous energy, SIA EHS practices fact sheet",
+    notes: [
+      "SEMI S2/S6/S22/S24는 장비 안전, exhaust ventilation, electrical design, multi-employer work area를 이해하는 공개 표준 축입니다. CE는 표준 번호를 외우는 것보다 어떤 stop condition으로 이어지는지 알아야 합니다.",
+      "NIOSH/OSHA hazardous energy 자료는 electrical뿐 아니라 mechanical, hydraulic, pneumatic, chemical, thermal stored energy까지 사고 범위를 확장하게 해줍니다.",
+      "SIA EHS fact sheet는 현대 반도체 장비가 SEMI S2/S6 같은 guideline을 고려해 설계된다는 산업 관점을 제공합니다. 단, 이 자료도 site-specific permit나 detector setpoint를 대신하지 않습니다.",
+      "훈련: 오늘 할 작업 하나를 골라 EHS hazard, required owner, required evidence, stop condition, rollback condition으로 쪼갭니다."
+    ]
+  },
   {
     title: "Retrieval practice / Testing effect",
     source: "Roediger & Karpicke 2006; retrieval-practice reviews",
@@ -2901,6 +3011,22 @@ function renderSources() {
 }
 
 function renderDeepDive() {
+  document.querySelector("#source-quality-map").innerHTML = `
+    <h2>공개자료 출처 등급</h2>
+    ${sourceQualityMap.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#public-evidence-dossier").innerHTML = `
+    <h2>구글링 공개 근거 Dossier</h2>
+    ${publicEvidenceDossier.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#field-translation-rules").innerHTML = `
+    <h2>자료를 현장 질문으로 바꾸는 법</h2>
+    ${fieldTranslationRules.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
+  document.querySelector("#public-boundary-rules").innerHTML = `
+    <h2>공개자료 경계선</h2>
+    ${publicBoundaryRules.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+  `;
   document.querySelector("#public-facts").innerHTML = `
     <h2>장비/공정 공개 팩트</h2>
     ${publicFacts.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
