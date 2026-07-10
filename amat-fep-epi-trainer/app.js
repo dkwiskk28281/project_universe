@@ -1200,7 +1200,227 @@ const processVisualFlows = [
         ]
       }
     ]
+  },
+  {
+    id: "epi-recovery",
+    kicker: "Install / PM Recovery",
+    title: "설치·PM 후 EPI 챔버를 다시 기준 상태로 만드는 흐름",
+    summary: "장비를 설치하거나 chamber PM을 한 뒤 바로 product wafer를 넣지 않습니다. vacuum integrity, gas release, purge, bake/conditioning, seasoning, baseline wafer, metrology sign-off로 정상 상태를 증명하는 흐름을 봅니다.",
+    publicBasis: "Applied EPI 공개 장비 설명, OSHA/NIOSH gas safety, 일반 SAT/qualification 및 반도체 장비 PM 공개 원칙",
+    sources: [
+      ["Centura Epi 200mm", "https://www.appliedmaterials.com/us/en/product-library/centura-epi-200mm.html"],
+      ["OSHA Semiconductor Device Fabrication", "https://www.osha.gov/semiconductors/silicon/device-fabrication"],
+      ["NIOSH Hazardous Energy Control", "https://www.cdc.gov/niosh/manufacturing/hazardous-energy-control/index.html"],
+      ["Site Acceptance Test overview", "https://operations1.com/en/glossary/site-acceptance-test"]
+    ],
+    gasMatrix: [
+      ["N2 / Ar", "purge / inerting", "chamber와 line의 residual을 밀어내고 safe state를 만들 때 쓰는 대표 support gas입니다."],
+      ["H2", "bake / reducing ambient", "EPI 문맥에서 carrier 또는 anneal/bake ambient로 등장합니다. 가연성 관리와 exhaust ready가 먼저입니다."],
+      ["Si precursor", "seasoning / test deposition", "dummy/test wafer에서 chamber 상태와 growth response를 보는 용도입니다. 실제 gas는 gas matrix로 확정합니다."],
+      ["Dopant gas", "response verification", "dopant option이 있으면 MFC response와 residual/memory 관리가 중요합니다. 독성 gas release가 선행됩니다."],
+      ["HCl", "clean/selectivity boundary", "corrosive exhaust와 scrubber 상태를 확인해야 하는 gas family입니다."],
+      ["Metrology", "release evidence", "gas가 아니라 thickness, resistivity, defect, particle data가 production release를 설득합니다."]
+    ],
+    steps: [
+      {
+        title: "1. Chamber Closed / LOTO Release Review",
+        subtitle: "PM이나 install 작업 후 chamber를 닫고 에너지/작업 경계를 정리합니다.",
+        area: "pm",
+        action: "작업 중 열었던 cover, door, gas box, chamber hardware, connector, sensor, water line, exhaust line 상태를 walkdown합니다.",
+        gas: "No process gas, N2 standby",
+        pressure: "대기압 또는 safe idle",
+        pump: "OFF or standby until release",
+        purge: "standby",
+        exhaust: "exhaust path verified before gas work",
+        temp: "safe touch / cooldown",
+        waferEffect: "product wafer는 아직 사용하지 않습니다. 장비 상태를 다시 닫는 단계입니다.",
+        ceWatch: "LOTO 해제 조건, tool clean-up, missing tool/part, connector seating, O-ring, door seal, water leak evidence를 봅니다.",
+        gasTags: ["LOTO", "N2"],
+        layers: [
+          ["Dummy wafer only", "product 투입 전 준비", "#748091", 42],
+          ["No qualified film yet", "아직 release 전", "#ffcf7a", 12]
+        ]
+      },
+      {
+        title: "2. Leak Check / Pumpdown Baseline",
+        subtitle: "vacuum integrity가 회복됐는지 pumpdown curve와 base pressure로 확인합니다.",
+        area: "pm",
+        action: "chamber, foreline, valve, pump path를 통해 압력이 정상적으로 내려가는지 확인합니다.",
+        gas: "Vacuum pump, N2 vent/purge support",
+        pressure: "pumpdown -> base pressure trend",
+        pump: "ON: curve와 안정 압력 확인",
+        purge: "N2 vent/purge path ready",
+        exhaust: "pump exhaust path ready",
+        temp: "stable",
+        waferEffect: "막 형성 전입니다. vacuum boundary가 product wafer를 받을 수 있는지 확인합니다.",
+        ceWatch: "pumpdown time, leak suspicion, door seal/O-ring, throttle/gate/slit valve state, gauge credibility를 봅니다.",
+        gasTags: ["Vacuum", "N2"],
+        layers: [
+          ["Dummy wafer", "시험용 wafer", "#748091", 42],
+          ["Vacuum integrity check", "누설 확인", "#5ee7ff", 10]
+        ]
+      },
+      {
+        title: "3. Gas Line Release / First Safe Purge",
+        subtitle: "process gas보다 먼저 purge와 detector/exhaust/abatement readiness를 닫습니다.",
+        area: "exhaust",
+        action: "gas cabinet, VMB/VMP, gas panel, detector, exhaust, abatement, EHS release를 하나의 chain으로 봅니다.",
+        gas: "N2 / Ar purge first, process gas still gated",
+        pressure: "line pressure under approved boundary",
+        pump: "ready",
+        purge: "ON: purge completion evidence",
+        exhaust: "abatement and detector normal",
+        temp: "stable",
+        waferEffect: "wafer 결과가 아니라 gas safety envelope를 먼저 만듭니다.",
+        ceWatch: "line label, P&ID, SDS, detector normal, scrubber ready, gas owner sign-off, first gas introduction owner를 봅니다.",
+        gasTags: ["Purge", "Detector", "Abatement"],
+        layers: [
+          ["Dummy wafer", "시험용 wafer", "#748091", 42],
+          ["Safe gas envelope", "gas release 조건", "#9ff6d0", 12]
+        ]
+      },
+      {
+        title: "4. Bake / Chamber Conditioning",
+        subtitle: "잔류 수분과 contamination을 줄이고 chamber thermal 상태를 안정화합니다.",
+        area: "pm",
+        action: "공개 EPI 문맥에서 H2 anneal/bake 또는 chamber conditioning은 surface와 chamber state 안정화 사고로 연결됩니다.",
+        gas: "H2 or inert conditioning ambient candidate",
+        pressure: "controlled process pressure",
+        pump: "ON",
+        purge: "pre/post purge strict",
+        exhaust: "flammable gas exhaust readiness",
+        temp: "bake / conditioning thermal state",
+        waferEffect: "dummy wafer 또는 chamber surface가 안정화되고 product 전 오염 리스크를 낮춥니다.",
+        ceWatch: "H2 safety, temperature trace, pressure stability, exhaust/abatement trend, particle trend를 봅니다.",
+        gasTags: ["H2", "Bake", "Purge"],
+        layers: [
+          ["Dummy wafer", "시험용 wafer", "#748091", 42],
+          ["Conditioned surface", "잔류 오염 감소", "#5ee7ff", 14]
+        ]
+      },
+      {
+        title: "5. Seasoning / Dummy Deposition",
+        subtitle: "chamber wall과 process response를 안정화하는 시험 공정을 수행합니다.",
+        area: "pm",
+        action: "Si/SiGe/dopant option에 맞는 dummy/test 공정으로 growth response와 residual/memory effect를 봅니다.",
+        gas: "Si precursor / H2 / option gas under approved recipe",
+        pressure: "process response baseline",
+        pump: "ON",
+        purge: "transition purge",
+        exhaust: "byproduct removal",
+        temp: "growth window",
+        waferEffect: "dummy wafer 위에 시험 layer가 쌓이고 chamber 상태가 반복성 쪽으로 이동합니다.",
+        ceWatch: "MFC response, pressure transient, temperature trace, particle jump, chamber matching, dummy wafer count를 봅니다.",
+        gasTags: ["DCS", "H2", "Seasoning"],
+        layers: [
+          ["Dummy wafer", "시험용 wafer", "#748091", 42],
+          ["Seasoning film", "챔버 상태 확인용 성장층", "#b98cff", 18]
+        ]
+      },
+      {
+        title: "6. Baseline Wafer / Metrology Correlation",
+        subtitle: "기준 wafer 결과와 장비 trace를 같은 시간축으로 묶습니다.",
+        area: "pm",
+        action: "thickness, resistivity, defect, particle 같은 결과를 gas/pressure/temperature trace와 연결합니다.",
+        gas: "Approved process gas set",
+        pressure: "baseline target trend",
+        pump: "ON",
+        purge: "recipe transition verified",
+        exhaust: "normal trend",
+        temp: "repeatable trace",
+        waferEffect: "test wafer 위 결과가 정상 baseline과 비교됩니다.",
+        ceWatch: "film thickness uniformity, Rs/resistivity, defect map, particle count, temperature trace, MFC actual을 한 packet으로 묶습니다.",
+        gasTags: ["Metrology", "Baseline"],
+        layers: [
+          ["Test wafer", "기준 wafer", "#748091", 42],
+          ["Baseline EPI film", "비교 가능한 기준막", "#00ff95", 18],
+          ["Metrology data", "두께/저항/결함 data", "#d8f6ff", 8]
+        ]
+      },
+      {
+        title: "7. Handover / Early-Life Monitoring",
+        subtitle: "release 후에도 초반 drift와 반복 alarm을 감시합니다.",
+        area: "transfer",
+        action: "생산 투입은 끝이 아니라 early-life monitoring 시작입니다. open item, retest scope, owner를 분명히 남깁니다.",
+        gas: "Normal production-ready state",
+        pressure: "monitored trend",
+        pump: "ready/normal",
+        purge: "verified",
+        exhaust: "normal + alarm path known",
+        temp: "baseline trace stored",
+        waferEffect: "product wafer 투입 전후 기준 data와 drift 감시가 이어집니다.",
+        ceWatch: "handover note, alarm history, first lot watch, customer update cadence, rollback condition을 정리합니다.",
+        gasTags: ["Handover", "Trend"],
+        layers: [
+          ["Production wafer", "생산 투입 후보", "#748091", 42],
+          ["Qualified film", "release 기준 만족층", "#00ff95", 18],
+          ["Monitoring envelope", "초반 감시 범위", "#5ee7ff", 8]
+        ]
+      }
+    ]
   }
+];
+
+const epiEvidenceLadder = [
+  {
+    title: "Interface Cleanliness",
+    process: "native oxide, carbon/oxygen contamination, queue time은 EPI interface defect로 이어질 수 있습니다.",
+    evidence: "pre-clean status, vacuum transfer, queue time, residual O2/H2O 추정, defect/metrology 결과",
+    ce: "pre-clean chamber와 main EPI chamber를 따로 보지 말고 하나의 interface chain으로 보고합니다."
+  },
+  {
+    title: "Gas Delivery",
+    process: "precursor와 dopant가 표면까지 안정적으로 도달해야 growth rate, composition, resistivity가 반복됩니다.",
+    evidence: "MFC setpoint/actual, supply pressure, valve state, purge completion, gas cabinet ready, pressure transient",
+    ce: "공정 결과 이상을 바로 recipe 문제로 넘기지 말고 delivery evidence부터 묶습니다."
+  },
+  {
+    title: "Thermal Uniformity",
+    process: "EPI/RTP 모두 wafer 온도장과 ramp/soak/spike profile이 uniformity와 defect에 영향을 줍니다.",
+    evidence: "temperature trace, pyrometer/window condition, lamp/heater zone, rotation, cooling stability",
+    ce: "한 장의 wafer map을 temperature trace와 같은 시간축으로 붙여 생각합니다."
+  },
+  {
+    title: "Vacuum / Pressure Boundary",
+    process: "pumpdown, base pressure, pressure control은 residual gas와 reaction stability의 바닥입니다.",
+    evidence: "pumpdown curve, base pressure, throttle/gate/slit valve state, foreline, pump/exhaust readiness",
+    ce: "base pressure 한 값보다 curve shape와 최근 PM 변경점을 같이 봅니다."
+  },
+  {
+    title: "Selectivity / HCl Balance",
+    process: "selective EPI에서는 원하는 위치는 자라고 원치 않는 표면은 억제되는 균형이 중요합니다.",
+    evidence: "HCl line integrity, MFC response, corrosive exhaust/scrubber, defect map, unwanted deposition observation",
+    ce: "HCl은 공정 변수이면서 corrosive safety 변수입니다. 결과와 EHS를 함께 보고합니다."
+  },
+  {
+    title: "Dopant Memory",
+    process: "PH3, AsH3, B2H6 같은 dopant는 전기 특성과 residual/memory effect로 이어질 수 있습니다.",
+    evidence: "dopant MFC response, purge history, chamber seasoning, resistivity/Rs, previous recipe history",
+    ce: "독성 gas release가 선행되고, 결과 이상은 residual과 chamber condition까지 함께 의심합니다."
+  },
+  {
+    title: "Wafer Handling",
+    process: "좋은 공정도 wafer scratch, transfer miss, particle contact가 있으면 실패합니다.",
+    evidence: "mapping, aligner, robot handoff, slit valve timing, transfer count, scratch/particle check",
+    ce: "공정 data와 handling data를 분리하지 말고 wafer path 단위로 묶습니다."
+  },
+  {
+    title: "Exhaust / Abatement",
+    process: "byproduct, toxic hydride, corrosive gas, flammable gas는 exhaust와 abatement가 process readiness 조건입니다.",
+    evidence: "exhaust flow, scrubber ready, detector normal, pressure drop, abatement alarm history, EHS sign-off",
+    ce: "first gas introduction 전에는 process보다 gas safety envelope가 먼저입니다."
+  }
+];
+
+const epiRiskTranslator = [
+  ["Pre-clean 약함", "interface contamination", "초기 defect, non-uniform nucleation, metrology drift", "pre-clean 상태와 queue time을 어떻게 증명했는가?"],
+  ["Precursor replenishment 불안정", "growth rate/composition drift", "thickness non-uniformity, chamber-to-chamber mismatch", "MFC actual과 chamber pressure transient가 정상 baseline과 같은가?"],
+  ["HCl balance 과/부족", "selectivity collapse 또는 etch 과다", "unwanted deposition, pattern defect, low growth response", "HCl delivery와 corrosive exhaust readiness가 같이 확인됐는가?"],
+  ["Temperature field 흔들림", "reaction rate와 dopant incorporation 변화", "wafer map radial/edge signature, repeatability loss", "temperature trace, pyrometer, rotation, cooling을 같이 봤는가?"],
+  ["Purge incomplete", "residual gas / memory effect", "first wafer drift, dopant carryover, alarm after transition", "purge completion evidence와 gas switch timing이 남아 있는가?"],
+  ["Vacuum leak / pressure instability", "oxygen/moisture ingress 또는 pressure control 불안정", "pumpdown delay, base pressure drift, defect/particle rise", "PM 이후 O-ring, door seal, valve state를 다시 확인했는가?"],
+  ["Dopant response abnormal", "electrical property shift", "resistivity/Rs outlier, chamber memory suspicion", "toxic gas release와 dopant MFC trend, previous recipe history를 묶었는가?"],
+  ["Exhaust/abatement margin 부족", "safety interlock 또는 byproduct removal 약화", "gas alarm, process hold, corrosion/odor concern", "abatement ready와 detector path가 first gas 전에 닫혔는가?"]
 ];
 
 const electricalHero = [
@@ -3532,6 +3752,45 @@ function renderProcessVisual() {
     <strong>공개 근거 링크</strong>
     ${flow.sources.map(([label, url]) => `<a href="${url}" target="_blank" rel="noreferrer">${label}</a>`).join("")}
   `;
+
+  const evidenceLadder = document.querySelector("#process-evidence-ladder");
+  const riskTranslator = document.querySelector("#process-risk-translator");
+  if (evidenceLadder) {
+    evidenceLadder.innerHTML = `
+      <div class="section-heading">
+        <p>Process to Evidence</p>
+        <h2>공정 현상을 CE 증거로 번역하기</h2>
+      </div>
+      <div class="process-evidence-stack">
+        ${epiEvidenceLadder.map(item => `
+          <article>
+            <strong>${item.title}</strong>
+            <p>${item.process}</p>
+            <small>${item.evidence}</small>
+            <b>${item.ce}</b>
+          </article>
+        `).join("")}
+      </div>
+    `;
+  }
+  if (riskTranslator) {
+    riskTranslator.innerHTML = `
+      <div class="section-heading">
+        <p>Senior Question Map</p>
+        <h2>이상 징후를 질문으로 바꾸기</h2>
+      </div>
+      <div class="process-risk-table">
+        <div class="process-risk-row head">
+          <span>변수</span><span>공정 의미</span><span>현장 증상</span><span>선임 질문</span>
+        </div>
+        ${epiRiskTranslator.map(row => `
+          <div class="process-risk-row">
+            ${row.map((cell, index) => `<span data-label="${["변수", "공정 의미", "현장 증상", "선임 질문"][index]}">${cell}</span>`).join("")}
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
 
   flowTabs.querySelectorAll("[data-process-flow]").forEach(button => {
     button.addEventListener("click", () => {

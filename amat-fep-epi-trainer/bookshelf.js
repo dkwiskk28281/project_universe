@@ -306,7 +306,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["dashboard", "roadmap", "systems", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
+      linkedViews: ["dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "life-os",

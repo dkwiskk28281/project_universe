@@ -256,6 +256,18 @@ englishTermGuide.push(
   ["Memory Effect", "잔류 영향", "Process", "이전 gas나 공정이 chamber/line에 남아 다음 결과에 영향을 주는 현상입니다.", "dopant gas나 Ge 계열 공정 후 trend를 볼 때 주의합니다."]
 );
 
+englishTermGuide.push(
+  ["Seasoning", "챔버 길들이기", "EPI", "PM이나 chamber open 후 chamber 상태를 안정화하기 위해 dummy/test 공정을 반복하는 개념입니다.", "첫 product wafer 전 baseline 회복을 증명하는 evidence가 됩니다."],
+  ["Dummy Wafer", "시험용 웨이퍼", "Quality", "제품 생산용이 아니라 장비 상태 확인이나 seasoning에 쓰는 wafer입니다.", "product risk를 줄이고 chamber response를 확인하는 데 씁니다."],
+  ["Baseline Wafer", "기준 확인 웨이퍼", "Quality", "장비가 정상 기준에 돌아왔는지 확인하기 위해 쓰는 test wafer입니다.", "metrology 결과와 장비 trace를 한 묶음으로 저장해야 합니다."],
+  ["Test Wafer", "시험 웨이퍼", "Quality", "공정 결과나 장비 상태를 확인하기 위해 사용하는 wafer입니다.", "제품 wafer 투입 전 안전한 검증 단계로 이해합니다."],
+  ["Early-Life Monitoring", "초기 안정성 감시", "Install", "설치/PM/수리 후 초반 운전에서 drift와 반복 alarm을 집중 감시하는 것입니다.", "release 후 끝이 아니라 첫 lot과 초반 trend를 봐야 합니다."],
+  ["First Lot", "첫 생산 묶음", "Quality", "장비 release 후 처음 투입되는 생산 lot입니다.", "장비 변경 후 첫 lot은 고객 영향이 커서 monitoring과 보고가 중요합니다."],
+  ["Release", "생산 투입 승인", "Quality", "장비나 공정을 사용할 수 있다고 승인하는 상태입니다.", "pass evidence, open item, owner, rollback 조건과 함께 관리합니다."],
+  ["Rs", "시트저항", "Quality", "박막이나 doped layer의 전기적 저항 특성을 보는 지표입니다.", "dopant activation, EPI doping, RTP 결과와 연결됩니다."],
+  ["Slip", "결정 미끄럼 결함", "Quality", "열 stress 등으로 crystal lattice에 생기는 결함입니다.", "EPI/RTP 온도 조건과 wafer handling 안정성에 연결됩니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }
