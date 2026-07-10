@@ -268,6 +268,19 @@ englishTermGuide.push(
   ["Slip", "결정 미끄럼 결함", "Quality", "열 stress 등으로 crystal lattice에 생기는 결함입니다.", "EPI/RTP 온도 조건과 wafer handling 안정성에 연결됩니다."]
 );
 
+englishTermGuide.push(
+  ["Hold", "진행 보류", "Work", "안전, 품질, 고객 영향이 명확해질 때까지 다음 wafer나 다음 step으로 넘어가지 않는 판단입니다.", "좋은 CE는 멈출 조건을 미리 말할 수 있어야 합니다."],
+  ["Stop Condition", "멈출 조건", "Safety", "작업을 계속하면 위험이나 품질 손상이 커질 수 있어 즉시 멈춰야 하는 기준입니다.", "toxic gas, exhaust, vacuum, live power, wafer break, 반복 particle burst는 항상 보수적으로 봅니다."],
+  ["First Gas Introduction", "첫 공정가스 투입", "Gas", "install 또는 line work 후 처음으로 공정 gas를 tool 쪽에 넣는 고위험 확인 단계입니다.", "detector, exhaust, abatement, purge, permit, owner witness가 준비되지 않으면 진행하지 않습니다."],
+  ["Ready Signal", "준비 완료 신호", "Controls", "facility나 subsystem이 동작 가능한 상태라고 tool에 알려주는 전기/통신 신호입니다.", "signal만 믿지 말고 실제 exhaust, abatement, coolant, pressure 상태와 대조해야 합니다."],
+  ["Chamber-to-Chamber", "챔버 간 비교", "Quality", "같은 조건에서 여러 chamber의 결과와 trace를 비교해 matching 상태를 보는 방식입니다.", "metrology 조건과 wafer type을 고정하지 않으면 잘못된 결론을 낼 수 있습니다."],
+  ["Path Split", "경로 분리 시험", "Troubleshooting", "wafer가 지나가는 chamber 조합을 나눠 어느 path에서 문제가 생기는지 좁히는 방법입니다.", "pre-clean only, EPI only, combined path처럼 분리하면 defect 원인 후보가 크게 줄어듭니다."],
+  ["Trace Overlay", "트렌드 겹쳐보기", "Troubleshooting", "정상 run과 문제 run의 pressure, flow, temperature 같은 trace를 같은 시간축에 겹쳐 보는 방법입니다.", "wafer 결과와 tool 상태를 연결하는 가장 강한 evidence 중 하나입니다."],
+  ["Customer Owner", "고객 담당 책임자", "Work", "site에서 facility, gas, process, safety 등 특정 영역을 승인하거나 판단하는 고객 측 책임자입니다.", "CE가 혼자 판단하면 안 되는 범위는 owner witness와 sign-off로 분리합니다."],
+  ["Acceptance Limit", "인수 기준값", "Quality", "tool이 pass인지 판단하는 고객/OEM 기준입니다.", "공개 학습 웹에는 개념만 넣고 실제 수치와 조건은 현장 문서와 승인 절차로만 다룹니다."],
+  ["Evidence Ladder", "증거 사다리", "Troubleshooting", "추정에서 출발해 log, trend, wafer map, metrology, witness record로 신뢰도를 높이는 사고 순서입니다.", "senior CE는 주장보다 evidence ladder로 고객을 설득합니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }

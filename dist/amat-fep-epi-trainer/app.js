@@ -364,6 +364,266 @@ const scenarios = [
   }
 ];
 
+const seniorScenarioFallback = {
+  phase: "Field diagnostic / evidence first",
+  suspects: [
+    "최근 PM 또는 install 변경점",
+    "센서, 게이지, 로그의 실제 trend",
+    "facility ready 신호와 실제 utility 상태",
+    "wafer handling, seal, connector, calibration 상태"
+  ],
+  evidence: [
+    "알람 발생 시각, lot, wafer, chamber, recipe 범위",
+    "정상 chamber 또는 이전 baseline과의 비교",
+    "PM 전후 변경 이력, 작업 witness 기록, 사진",
+    "고객/선임 CE에게 공유 가능한 trend capture"
+  ],
+  stop: "toxic gas, vacuum integrity, exhaust/abatement, electrical hazard, wafer break/particle risk가 의심되면 recipe 진행보다 hold, LOTO/site rule, 선임 CE escalation을 우선한다.",
+  report: "현재 증상은 특정 조건에서 재현되며, 확인된 사실과 추정 원인을 분리해 보고드립니다. 안전 관련 interlock 또는 facility 상태는 우회하지 않고 고객 owner 및 선임 CE와 함께 확인하겠습니다.",
+  next: [
+    "scope를 좁힌다: chamber, recipe, wafer type, 시간대, PM 이후 여부",
+    "증거를 모은다: trend, alarm, gauge, I/O, wafer map, 사진",
+    "안전 경계를 확인한다: gas/exhaust/vacuum/electrical/site rule",
+    "고객에게 사실, 영향, 다음 확인, 예상 시간을 짧게 공유한다"
+  ],
+  publicBasis: "공개자료는 EPI/RTP의 공정 목적, gas/vacuum/temperature control, SEMI/OSHA/NIOSH 안전 원칙 수준까지 설명한다. 고객 recipe, valve sequence, detector setpoint, bypass 절차는 포함하지 않는다."
+};
+
+scenarios.forEach(scenario => {
+  scenario.phase = scenario.phase || seniorScenarioFallback.phase;
+  scenario.suspects = scenario.suspects || seniorScenarioFallback.suspects;
+  scenario.evidence = scenario.evidence || seniorScenarioFallback.evidence;
+  scenario.stop = scenario.stop || seniorScenarioFallback.stop;
+  scenario.report = scenario.report || seniorScenarioFallback.report;
+  scenario.next = scenario.next || seniorScenarioFallback.next;
+  scenario.publicBasis = scenario.publicBasis || seniorScenarioFallback.publicBasis;
+});
+
+scenarios.push(
+  {
+    title: "Pre-clean 이후 첫 EPI wafer에서 defect가 증가한다",
+    status: "Interface / baseline wafer",
+    phase: "EPI qualification after PM or install",
+    facts: [
+      "pumpdown과 robot transfer는 pass인데 첫 baseline wafer defect map이 edge-heavy이다.",
+      "pre-clean chamber와 EPI chamber를 연속으로 사용한 wafer에서만 강하게 보인다.",
+      "동일 incoming wafer를 다른 chamber path로 보낼 때 defect 수준이 달라진다."
+    ],
+    suspects: [
+      "pre-clean 이후 queue time 또는 vacuum break 영향",
+      "chamber wall, edge ring, wafer support의 particle source",
+      "purge/exhaust 안정화 부족 또는 residual chemistry 영향",
+      "handling contact, robot teach, backside contact mark"
+    ],
+    evidence: [
+      "pre-clean only, EPI only, combined path baseline wafer를 분리해 wafer map을 비교한다.",
+      "PM 교체 부품, wipe/clean 영역, chamber open 이력과 defect 위치를 겹쳐본다.",
+      "transfer path별 scrape/contact 흔적과 backside inspection을 확인한다.",
+      "Applied 공개자료의 integrated pre-clean 목적을 interface contamination과 queue time 관리로 연결해 이해한다."
+    ],
+    stop: "toxic/corrosive gas 사용 chamber, exhaust abnormal, wafer break, 반복 particle burst가 보이면 recipe 반복으로 평균을 내지 말고 hold한다.",
+    report: "현재 defect 증가는 전체 tool 문제가 아니라 pre-clean 포함 path에서 집중됩니다. pre-clean only/EPI only/combined baseline으로 scope를 분리하고, PM 변경 부위와 wafer map correlation을 확인하겠습니다.",
+    next: [
+      "baseline split plan을 고객과 합의한다: chamber path, wafer count, metrology 항목",
+      "PM 후 cleaning/seasoning 완료 여부를 공개 가능한 checklist 수준으로 확인한다.",
+      "defect, thickness, Rs, haze/inspection data를 같은 wafer ID로 묶어 evidence pack을 만든다.",
+      "원인 확정 전에는 고객 lot 진행 가능 여부를 customer owner 판단으로 분리한다."
+    ],
+    publicBasis: "Applied 공개자료는 integrated pre-clean과 EPI platform이 interface contamination과 process matching을 줄이는 방향으로 설계된다고 설명한다. 구체 recipe, clean sequence, acceptance limit은 site/OEM 비공개 범위다.",
+    good: "좋습니다. 결함을 '공정 불량'으로 단정하지 않고 path split과 baseline wafer로 scope를 좁히는 접근이 senior CE식 사고입니다.",
+    choices: [
+      ["같은 recipe를 여러 번 더 돌려 평균 defect가 내려가는지 본다.", false],
+      ["pre-clean only/EPI only/combined path로 split하여 wafer map과 PM 변경점을 연결한다.", true],
+      ["incoming wafer 문제로 보고하고 tool 확인을 멈춘다.", false]
+    ]
+  },
+  {
+    title: "EPI thickness 또는 Rs가 chamber별로 다르게 drift한다",
+    status: "Chamber matching / metrology",
+    phase: "Multi-chamber qualification",
+    facts: [
+      "같은 product-like baseline에서 chamber A와 B의 thickness trend가 벌어진다.",
+      "MFC setpoint alarm은 없지만 실제 trend와 metrology가 함께 움직인다.",
+      "PM 또는 season run 이후 편차가 커졌다."
+    ],
+    suspects: [
+      "temperature uniformity 또는 pyrometer/window 상태 차이",
+      "gas delivery response, MFC health, line purge history",
+      "chamber seasoning/memory effect, wall condition 차이",
+      "metrology recipe, wafer type, sampling position mismatch"
+    ],
+    evidence: [
+      "동일 wafer type, 동일 metrology recipe, 동일 sampling map으로 chamber-to-chamber 비교한다.",
+      "temperature trace, pressure trend, MFC actual trend를 wafer result와 시간축으로 맞춘다.",
+      "seasoning 전후 baseline wafer를 구분하고 chamber open 이력을 비교한다.",
+      "Rs는 dopant 활성/농도와 연결되므로 EPI dopant gas 계열은 toxic gas safety와 함께 다룬다."
+    ],
+    stop: "spec 밖 trend가 반복되거나 dopant/toxic gas delivery 이상이 의심되면 customer wafer 진행을 hold하고 선임 CE와 gas owner를 포함한다.",
+    report: "Chamber별 matching drift가 확인되었습니다. metrology 조건을 고정한 baseline 결과와 tool trend를 시간축으로 맞춰 temperature, gas response, seasoning 상태를 분리해 보겠습니다.",
+    next: [
+      "metrology repeatability를 먼저 배제한다.",
+      "정상 chamber를 reference로 잡고 trace overlay를 만든다.",
+      "gas cabinet/cylinder 교체 이력은 customer gas owner와 확인한다.",
+      "recipe number나 hidden parameter를 임의 변경하지 않는다."
+    ],
+    publicBasis: "Applied 공개 EPI 자료는 single-wafer multi-chamber EPI에서 thickness/resistivity uniformity, repeatability, low defect가 중요하다고 설명한다. chamber별 acceptance 수치와 recipe tuning은 비공개 영역이다.",
+    good: "정답입니다. chamber matching은 wafer result만 보지 않고 metrology 조건, thermal/gas/vacuum trend, chamber history를 같은 시간축으로 맞춰야 합니다.",
+    choices: [
+      ["drift한 chamber recipe 온도만 임의로 보정한다.", false],
+      ["metrology 조건을 고정하고 chamber별 trace와 wafer result를 overlay한다.", true],
+      ["MFC alarm이 없으므로 gas 쪽은 확인하지 않는다.", false]
+    ]
+  },
+  {
+    title: "First gas introduction 전 exhaust/abatement ready가 불안정하다",
+    status: "Gas safety / facility",
+    phase: "Install hook-up before process gas",
+    facts: [
+      "tool은 gas enable 전 ready check에서 intermittent fail을 띄운다.",
+      "facility contractor 작업 직후이며 exhaust damper status 설명이 사람마다 다르다.",
+      "process gas에는 pyrophoric/toxic/corrosive 계열이 포함될 수 있다."
+    ],
+    suspects: [
+      "facility exhaust flow 또는 damper 상태 불안정",
+      "abatement ready contact, wiring, mapping mismatch",
+      "tool-side interlock input과 actual facility 상태 불일치",
+      "site permit, gas release readiness, emergency response 준비 미확인"
+    ],
+    evidence: [
+      "tool screen만 보지 말고 facility owner가 보는 actual exhaust/abatement 상태와 대조한다.",
+      "POC label, drawing revision, signal name, contact type을 고객 owner와 witness로 확인한다.",
+      "gas SDS, NIOSH/OSHA hazard class, SEMI exhaust ventilation 원칙을 beginner도 읽게 연결한다.",
+      "interlock bypass, detector setpoint, actual trip value는 학습 웹에 넣지 않고 현장 승인 절차로만 다룬다."
+    ],
+    stop: "exhaust/abatement ready가 안정적으로 확인되지 않으면 first gas introduction을 진행하지 않는다. interlock 우회, 임의 jumper, detector setpoint 변경은 금지 영역이다.",
+    report: "First gas 전 ready 신호가 간헐적으로 불안정합니다. tool alarm만이 아니라 facility actual state, POC wiring, abatement ready를 고객 facility owner와 witness로 확인한 뒤 진행하겠습니다.",
+    next: [
+      "customer facility owner, gas owner, senior CE를 같은 확인 테이블에 올린다.",
+      "ready 신호와 실제 exhaust/abatement 상태의 time correlation을 기록한다.",
+      "gas introduction 전 emergency response, PPE, permit, area control을 site rule로 확인한다.",
+      "승인 없는 bypass 정보는 만들지도 공유하지도 않는다."
+    ],
+    publicBasis: "OSHA/NIOSH 공공자료는 semiconductor fab의 toxic/corrosive/pyrophoric gas와 exhaust control의 위험성을 설명한다. 실제 detector 설정값, gas release sequence는 공개 학습 범위가 아니다.",
+    good: "맞습니다. gas 전 단계에서는 일정 압박보다 exhaust/abatement와 interlock integrity가 우선입니다.",
+    choices: [
+      ["ready가 가끔 들어오므로 들어오는 순간 gas를 열어본다.", false],
+      ["facility actual state와 tool ready input을 customer owner witness로 대조한다.", true],
+      ["interlock 입력을 임시로 우회해 process를 먼저 끝낸다.", false]
+    ]
+  },
+  {
+    title: "RTP wafer temperature trace가 overshoot/undershoot를 보인다",
+    status: "RTP thermal control",
+    phase: "RTP qualification and recovery",
+    facts: [
+      "wafer-to-wafer repeatability가 나빠지고 특정 zone command가 평소보다 커졌다.",
+      "lamp/pyrometer/window 관련 PM 이후 처음 보는 형태다.",
+      "metrology 결과는 anneal 또는 oxidation target에서 벗어난다."
+    ],
+    suspects: [
+      "pyrometer view path, quartz/window contamination, calibration 상태",
+      "lamp zone health, power supply, cooling water stability",
+      "wafer rotation/slip, backside emissivity/wafer type mismatch",
+      "chamber ambient, pressure, O2/N2/H2O chemistry stability"
+    ],
+    evidence: [
+      "정상 run trace와 suspect run trace를 같은 scale로 overlay한다.",
+      "lamp command, measured temperature, pressure/ambient trend를 같이 본다.",
+      "blank/baseline wafer와 metrology 결과를 연결해 공정 영향 여부를 분리한다.",
+      "Applied RTP 공개자료의 multi-point temperature measurement와 closed-loop control 개념을 beginner 설명으로 붙인다."
+    ],
+    stop: "temperature runaway, wafer slip/break, cooling abnormal, electrical hazard, oxygen/hydrogen 관련 위험이 의심되면 즉시 hold하고 site/OEM escalation으로 전환한다.",
+    report: "RTP trace 이상은 특정 chamber/zone에서 재현되며, lamp command와 measured temperature 간 차이가 커졌습니다. optical path, lamp/cooling health, wafer type, ambient trend를 순서대로 확인하겠습니다.",
+    next: [
+      "정상 chamber 또는 PM 전 trace와 overlay한다.",
+      "wafer type과 metrology recipe가 동일한지 확인한다.",
+      "lamp/pyrometer 관련 PM 변경 이력과 window condition을 확인한다.",
+      "recipe target을 임의로 바꾸지 않고 root cause evidence를 먼저 만든다."
+    ],
+    publicBasis: "Applied RTP 공개자료는 빠른 열처리에서 temperature measurement, closed-loop control, uniformity/repeatability가 핵심임을 설명한다. zone별 control parameter와 recipe tuning은 비공개다.",
+    good: "정확합니다. RTP는 wafer result와 thermal trace를 분리해서 보지 말고 한 화면에 묶어야 원인 후보가 줄어듭니다.",
+    choices: [
+      ["목표 온도를 낮춰 overshoot만 없애본다.", false],
+      ["정상 trace와 overlay하고 optical path, lamp/cooling, wafer/ambient 조건을 분리한다.", true],
+      ["metrology가 나쁘면 RTP가 아니라 metrology 문제로만 본다.", false]
+    ]
+  },
+  {
+    title: "Selective EPI에서 원치 않는 영역에 deposition이 보인다",
+    status: "Selective growth / surface condition",
+    phase: "Advanced EPI process understanding",
+    facts: [
+      "pattern wafer의 특정 oxide/nitride 영역에 unwanted deposition이 보인다.",
+      "HCl 계열 chemistry와 silicon precursor balance가 공정 개념상 중요하다.",
+      "pre-clean, native oxide, surface termination에 민감한 현상이다."
+    ],
+    suspects: [
+      "surface preparation 또는 pre-clean 불충분",
+      "selectivity chemistry balance 변화",
+      "temperature/pressure/gas flow uniformity 변화",
+      "pattern loading, incoming wafer surface 상태"
+    ],
+    evidence: [
+      "blank wafer와 pattern wafer 결과를 분리해 tool issue와 pattern/loading issue를 구분한다.",
+      "pre-clean path, queue time, chamber history, baseline wafer 결과를 함께 본다.",
+      "SEM/defect/metrology 이미지와 tool trend를 같은 wafer ID로 묶는다.",
+      "HCl은 corrosive/toxic hazard로 취급되며 안전자료와 facility exhaust 원칙을 같이 학습한다."
+    ],
+    stop: "corrosive gas handling 이상, exhaust abnormal, unexpected deposition이 chamber contamination으로 이어질 위험이 있으면 hold하고 engineering/customer owner와 판단한다.",
+    report: "Selective EPI에서 unwanted deposition이 관찰되어 blank/pattern wafer와 pre-clean path를 분리해 보겠습니다. 표면 준비, selectivity chemistry, chamber history, incoming condition을 evidence로 좁히겠습니다.",
+    next: [
+      "blank baseline이 정상인지 먼저 확인한다.",
+      "pattern wafer loading과 pre-clean/queue time 영향을 분리한다.",
+      "공정 recipe 조정은 process owner 권한으로 분리하고 CE는 evidence package를 만든다.",
+      "HCl 등 corrosive gas 위험은 SDS/EHS/site rule을 먼저 적용한다."
+    ],
+    publicBasis: "공개 논문과 대학/장비 소개자료는 selective epitaxy가 surface preparation, precursor/etchant chemistry, temperature/pressure에 민감함을 설명한다. 고객 pattern recipe와 sequence는 비공개다.",
+    good: "좋습니다. selective defect는 단순 tool fault가 아니라 surface, chemistry, pattern, chamber history를 분리해야 합니다.",
+    choices: [
+      ["pattern wafer 결과만 보고 chamber를 바로 fault 처리한다.", false],
+      ["blank/pattern split과 pre-clean/queue/chamber history를 같이 본다.", true],
+      ["HCl이 들어가도 defect 이슈이므로 safety owner는 부르지 않는다.", false]
+    ]
+  },
+  {
+    title: "Install handover 직전 customer가 '왜 pass인지'를 묻는다",
+    status: "Handover / customer communication",
+    phase: "Acceptance evidence package",
+    facts: [
+      "기계적으로는 install check가 끝났지만 customer는 wafer result와 risk 설명을 원한다.",
+      "CE가 각 test의 의미를 설명하지 못하면 고객 신뢰가 약해진다.",
+      "공개 가능한 자료와 site-specific acceptance limit을 분리해야 한다."
+    ],
+    suspects: [
+      "acceptance criterion과 evidence가 연결되지 않음",
+      "safety, facility, automation, process data가 따로 흩어져 있음",
+      "baseline wafer/metrology 결과의 의미 설명 부족",
+      "remaining open item과 owner가 불명확함"
+    ],
+    evidence: [
+      "utility ready, leak/pumpdown, robot dry run, gas ready, baseline wafer, metrology, alarm review를 한 packet으로 묶는다.",
+      "각 항목마다 '무엇을 증명하는 test인지'를 한 문장으로 붙인다.",
+      "open item은 impact, owner, next action, due date로 분리한다.",
+      "recipe, password, internal manual, 고객 spec 값은 화면 학습자료가 아니라 현장 승인 문서로만 다룬다."
+    ],
+    stop: "unresolved safety/facility/process risk가 있는데 일정상 handover만 하자는 압박이 있으면 sign-off 범위를 명확히 분리하고 escalation한다.",
+    report: "Handover evidence를 safety, facility, automation, process, metrology 순서로 정리했습니다. 각 항목은 pass 근거와 남은 open item, owner, next action으로 분리해 설명드리겠습니다.",
+    next: [
+      "handover packet 목차를 먼저 보여주고 고객 질문을 받는다.",
+      "pass/fail이 아니라 risk retired 여부로 설명한다.",
+      "불확실한 내용은 추정으로 말하지 않고 확인 action과 owner를 남긴다.",
+      "고객 보고 문장은 짧고 factual하게 유지한다."
+    ],
+    publicBasis: "공개자료로는 install/qualification의 일반 evidence logic을 학습할 수 있다. 실제 customer acceptance limit, signed checklist, recipe 조건은 비공개이며 현장 문서 우선이다.",
+    good: "정답입니다. handover는 서류가 아니라 risk가 하나씩 제거되었다는 설명 능력입니다.",
+    choices: [
+      ["checklist에 pass가 있으니 세부 설명 없이 서명만 요청한다.", false],
+      ["각 test가 제거한 risk와 남은 open item을 packet으로 설명한다.", true],
+      ["비공개 acceptance 값과 recipe 조건을 교육 웹에 모두 넣는다.", false]
+    ]
+  }
+);
+
 const questions = [
   {
     q: "RTP의 가장 가까운 설명은?",
@@ -414,6 +674,45 @@ const questions = [
     e: "Applied의 Centura Prime Epi 공개 설명은 pre-clean 통합이 vacuum break를 줄이고 interfacial contamination을 낮추는 방향이라고 소개합니다."
   }
 ];
+
+questions.push(
+  {
+    q: "First gas introduction 전 exhaust/abatement ready가 간헐적으로 fail한다. CE의 우선 행동은?",
+    a: ["ready가 들어오는 순간을 기다려 gas를 열어본다", "facility actual state와 tool input을 고객 owner witness로 대조하고 hold한다", "software alarm 이름만 기록하고 다음 단계로 진행한다"],
+    c: 1,
+    e: "gas safety에서는 signal 하나보다 실제 exhaust/abatement 상태, owner witness, site rule이 우선입니다. interlock 우회나 임의 진행은 금지 영역입니다."
+  },
+  {
+    q: "EPI chamber matching drift를 설명할 때 가장 좋은 evidence package는?",
+    a: ["wafer result 캡처만 모은 파일", "metrology 조건, wafer ID, chamber path, temperature/pressure/MFC trend를 시간축으로 묶은 자료", "선임 CE가 그럴 것 같다고 말한 추정"],
+    c: 1,
+    e: "matching 문제는 결과와 원인 후보를 같은 시간축에 올려야 합니다. metrology 조건이 다르면 tool drift처럼 보일 수 있으므로 먼저 고정해야 합니다."
+  },
+  {
+    q: "Selective EPI에서 unwanted deposition이 보일 때 초보자가 가장 자주 놓치는 관점은?",
+    a: ["surface preparation, pre-clean, pattern loading을 tool fault와 분리하는 것", "장비 이름을 외우는 것", "문제 wafer를 많이 돌려 평균을 내는 것"],
+    c: 0,
+    e: "selective growth는 표면 상태와 chemistry balance에 민감합니다. blank/pattern split, pre-clean path, queue time, chamber history를 분리해야 합니다."
+  },
+  {
+    q: "RTP trace overshoot가 보일 때 가장 위험한 대응은?",
+    a: ["정상 trace와 overlay한다", "lamp command와 measured temperature를 같이 본다", "recipe target이나 control parameter를 임의 변경해 alarm만 없앤다"],
+    c: 2,
+    e: "RTP는 thermal budget이 공정 결과에 직접 연결됩니다. 임의 조정은 root cause를 가리고 wafer risk를 키울 수 있습니다."
+  },
+  {
+    q: "handover에서 고객에게 '왜 pass인지' 설명하는 좋은 방식은?",
+    a: ["checklist pass만 보여준다", "각 test가 제거한 risk, 남은 open item, owner, next action을 설명한다", "비공개 recipe와 acceptance limit을 교육 웹에 모두 공개한다"],
+    c: 1,
+    e: "handover는 단순 서명이 아니라 risk retirement 설명입니다. 공개 학습 범위와 site-specific 문서를 분리해야 합니다."
+  },
+  {
+    q: "공개 학습 웹에 넣지 말아야 하는 정보는?",
+    a: ["EPI가 silicon precursor와 dopant chemistry를 쓴다는 개념", "OSHA/NIOSH 수준의 gas hazard 설명", "고객 recipe, valve sequence, detector setpoint, interlock bypass 절차"],
+    c: 2,
+    e: "공개자료 기반 학습은 원리와 사고 프레임까지가 적절합니다. 실제 sequence, setpoint, bypass, 고객 spec은 안전과 보안을 위해 제외해야 합니다."
+  }
+);
 
 const flashcards = [
   ["PM / CM", "Preventive Maintenance는 예방 정비, Corrective Maintenance는 장애/이상 발생 후 복구 정비입니다."],
@@ -3315,6 +3614,106 @@ function renderScenarios() {
         document.querySelector("#scenario-feedback").textContent = "이 선택은 성급합니다. 안전, 변경점, 로그, 계측값 순서로 원인을 좁히는 편이 좋습니다.";
       }
     });
+  });
+}
+
+function renderScenarios() {
+  document.querySelector("#scenario-list").innerHTML = scenarios.map((scenario, index) => `
+    <button class="scenario-tab ${index === activeScenario ? "active" : ""}" data-scenario="${index}">
+      <strong>${scenario.title}</strong>
+      <span>${scenario.status}</span>
+    </button>
+  `).join("");
+
+  const scenario = scenarios[activeScenario];
+  const safeList = items => (items || []).map(item => `<li>${item}</li>`).join("");
+
+  document.querySelector("#scenario-panel").innerHTML = `
+    <div class="case-board-head">
+      <div>
+        <span class="scenario-status">${scenario.status}</span>
+        <h2>${scenario.title}</h2>
+        <p>${scenario.phase}</p>
+      </div>
+      <span class="case-board-badge">Senior CE case board</span>
+    </div>
+    <div class="case-flow-strip" aria-label="CE 사고 순서">
+      <span>증상</span>
+      <span>원인 후보</span>
+      <span>증거 확인</span>
+      <span>중지 조건</span>
+      <span>보고</span>
+    </div>
+    <div class="case-learning-grid">
+      <section class="case-card">
+        <h3>1. 관찰된 사실</h3>
+        <ul>${safeList(scenario.facts)}</ul>
+      </section>
+      <section class="case-card">
+        <h3>2. 원인 후보</h3>
+        <ul>${safeList(scenario.suspects)}</ul>
+      </section>
+      <section class="case-card wide">
+        <h3>3. 확인할 evidence</h3>
+        <ul>${safeList(scenario.evidence)}</ul>
+      </section>
+      <section class="case-card stop-card">
+        <h3>4. 멈출 조건</h3>
+        <p>${scenario.stop}</p>
+      </section>
+      <section class="case-card">
+        <h3>5. 다음 action</h3>
+        <ul>${safeList(scenario.next)}</ul>
+      </section>
+    </div>
+    <section class="case-report">
+      <div>
+        <h3>고객 보고 문장</h3>
+        <p>${scenario.report}</p>
+      </div>
+      <button class="copy-report" type="button">문장 복사</button>
+    </section>
+    <section class="case-boundary">
+      <strong>공개자료 기반 / 안전 경계</strong>
+      <span>${scenario.publicBasis}</span>
+    </section>
+    <h3 class="case-decision-title">가장 먼저 취할 행동은?</h3>
+    <div class="decision-grid">
+      ${scenario.choices.map(([text, isGood]) => `
+        <button class="decision" data-good="${isGood}">${text}</button>
+      `).join("")}
+    </div>
+    <p class="explain" id="scenario-feedback">답을 고르면 왜 맞는지 바로 설명합니다. 핵심은 빠른 결론보다 안전한 증거 수집입니다.</p>
+  `;
+
+  document.querySelectorAll(".scenario-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeScenario = Number(btn.dataset.scenario);
+      renderScenarios();
+    });
+  });
+
+  document.querySelectorAll(".decision").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".decision").forEach(item => item.classList.remove("good"));
+      if (btn.dataset.good === "true") {
+        btn.classList.add("good");
+        document.querySelector("#scenario-feedback").textContent = scenario.good;
+      } else {
+        document.querySelector("#scenario-feedback").textContent = "이 선택은 성급합니다. senior CE는 안전 경계, 변경점, 로그, 계측값, wafer evidence 순서로 원인을 좁힙니다.";
+      }
+    });
+  });
+
+  const copyButton = document.querySelector(".copy-report");
+  copyButton?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(scenario.report);
+      copyButton.textContent = "복사됨";
+      setTimeout(() => { copyButton.textContent = "문장 복사"; }, 1200);
+    } catch (error) {
+      document.querySelector("#scenario-feedback").textContent = "브라우저 권한 때문에 자동 복사는 실패했지만, 보고 문장을 직접 선택해 사용할 수 있습니다.";
+    }
   });
 }
 

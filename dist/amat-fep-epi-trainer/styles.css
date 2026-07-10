@@ -9821,3 +9821,182 @@ body[data-current-view="cognitive"] .learning-hud {
     display: grid;
   }
 }
+
+.scenario-tab {
+  display: grid;
+  gap: 6px;
+}
+
+.scenario-tab span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.scenario-tab.active span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.case-board-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.case-board-head h2 {
+  margin: 10px 0 8px;
+}
+
+.case-board-head p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.case-board-badge,
+.copy-report {
+  border: 1px solid rgba(50, 255, 173, 0.36);
+  background: rgba(50, 255, 173, 0.08);
+  color: var(--accent);
+  border-radius: 8px;
+  padding: 9px 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.case-flow-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 18px;
+}
+
+.case-flow-strip > span {
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(50, 255, 173, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.08), rgba(125, 92, 255, 0.06)),
+    var(--soft);
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.case-learning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.case-card,
+.case-report,
+.case-boundary {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.055), rgba(255, 255, 255, 0.02)),
+    var(--panel);
+  padding: 15px;
+  min-width: 0;
+}
+
+.case-card.wide,
+.case-report,
+.case-boundary {
+  grid-column: 1 / -1;
+}
+
+.case-card h3,
+.case-report h3,
+.case-decision-title {
+  margin: 0 0 10px;
+}
+
+.case-card ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.68;
+}
+
+.case-card p,
+.case-report p,
+.case-boundary span {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.stop-card {
+  border-color: rgba(255, 140, 146, 0.45);
+  background:
+    linear-gradient(135deg, rgba(255, 140, 146, 0.12), rgba(50, 255, 173, 0.04)),
+    var(--panel);
+}
+
+.stop-card h3 {
+  color: var(--danger);
+}
+
+.case-report {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.copy-report {
+  cursor: pointer;
+}
+
+.copy-report:hover {
+  border-color: var(--accent);
+  background: rgba(50, 255, 173, 0.16);
+}
+
+.case-boundary {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+  border-color: rgba(255, 211, 106, 0.42);
+}
+
+.case-boundary strong {
+  color: var(--warn);
+}
+
+.case-decision-title {
+  margin-top: 18px;
+}
+
+@media (max-width: 980px) {
+  .case-flow-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .case-learning-grid,
+  .case-report {
+    grid-template-columns: 1fr;
+  }
+
+  .copy-report,
+  .case-board-badge {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 620px) {
+  .case-board-head {
+    display: grid;
+  }
+
+  .case-flow-strip {
+    grid-template-columns: 1fr;
+  }
+}
