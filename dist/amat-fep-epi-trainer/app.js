@@ -53,6 +53,298 @@ const learningScienceCards = [
   ["Worked Examples", "초보자는 완전한 예시를 먼저 보면 cognitive load가 줄어듭니다.", "install mission board가 선임의 사고 순서와 pass evidence를 먼저 보여줍니다."]
 ];
 
+const curriculumAuditFindings = [
+  ["학습 순서", "기존에는 장비, 공정, 설치, 진단 페이지가 풍부하지만 초보자가 어떤 순서로 열어야 하는지 약했습니다.", "새 커리큘럼 장을 첫 학습 진입점으로 두고 14개 핵심 챕터와 Think Tank 루프를 순서형으로 연결했습니다."],
+  ["용어 장벽", "EFEM, load lock, abatement, seasoning, baseline wafer처럼 영어/현장 용어가 초보자를 막을 수 있습니다.", "각 챕터에 terms chip과 tooltip 대상 용어를 노출하고 glossary/시뮬레이터로 연결했습니다."],
+  ["현장 사고 흐름", "설명은 많아도 '증상 -> evidence -> stop -> report'를 매 챕터에 반복하는 구조가 부족했습니다.", "모든 챕터를 같은 사고 프레임으로 통일했습니다."],
+  ["시각화 연결", "process visual, cluster sim, runbook, DVM 훈련이 따로 있어 학습 흐름이 끊길 수 있었습니다.", "각 챕터의 practice 버튼이 관련 실습실로 이동하게 만들었습니다."],
+  ["Think Tank 재사용", "경험 저장은 가능했지만 senior CE용 symptom/evidence/action/result/prevention/report 구조가 더 명확해야 했습니다.", "커리큘럼과 Think Tank 양식을 같은 evidence packet 언어로 맞춥니다."],
+  ["안전 경계", "공개자료와 비공개 manual 수준 정보의 경계가 모든 학습 단계에 반복 노출될 필요가 있었습니다.", "각 챕터에 public boundary와 stop condition을 고정 항목으로 넣었습니다."]
+];
+
+const curriculumChapters = [
+  {
+    id: "fab-intro",
+    level: "초보자",
+    title: "Fab 입문",
+    subtitle: "wafer가 제품이 되는 공장 흐름부터 잡기",
+    minute: "Fab은 wafer가 FOUP에 담겨 장비 사이를 이동하며 수백 개 공정을 통과하는 생산 시스템입니다. CE는 장비만 보는 사람이 아니라 안전, 오염, uptime, 고객 communication을 함께 보는 사람입니다.",
+    beginner: "처음에는 fab을 거대한 수술실처럼 생각하면 쉽습니다. 깨끗해야 하고, 순서가 중요하고, 잘못 만지면 다음 공정 전체가 영향을 받습니다.",
+    location: "Cleanroom, sub-fab, FOUP, load port, host, customer control room.",
+    wafer: "wafer는 FOUP에서 장비로 들어가고, 공정 후 metrology 결과로 pass/fail 또는 trend 변화를 확인합니다.",
+    evidence: ["lot/wafer/chamber ID", "작업 전후 사진", "alarm/event log", "고객 hold/release 상태", "cleanroom protocol 준수 기록"],
+    stop: "PPE, gowning, permit, escort, gas alarm, wafer break, unknown chemical exposure가 불명확하면 작업을 멈추고 site rule을 확인합니다.",
+    report: "현재 확인된 범위는 tool 단독 문제가 아니라 fab flow와 lot 영향까지 연결될 수 있습니다. lot, wafer ID, 영향 범위, 다음 확인 owner를 분리해 보고드리겠습니다.",
+    practiceView: "fab101",
+    practice: "Fab 기초 카드 열기",
+    terms: ["Fab", "FOUP", "Lot", "Cleanroom", "Sub-fab", "Host"],
+    source: "Applied CE 채용공고, OSHA semiconductor hazard pages, SEMI safety standards list",
+    quiz: { q: "Fab 입문 단계에서 CE가 가장 먼저 분리해야 하는 것은?", options: ["장비 이름과 색상", "확인된 사실, 고객 영향, 안전 조건", "선임 CE의 추정만 기록"], correct: 1, explain: "CE는 장비 증상만 보지 않고 safety, lot impact, customer owner를 함께 분리해야 합니다." }
+  },
+  {
+    id: "applied-platforms",
+    level: "초보자",
+    title: "Applied 장비군과 platform",
+    subtitle: "FEP/EPI/RTP가 단일 장비명이 아니라 업무 영역임을 이해",
+    minute: "Applied의 EPI는 Centura 계열, RTP는 Vantage 계열처럼 platform 위에 chamber option이 붙는 구조로 이해하는 것이 안전합니다.",
+    beginner: "자동차 플랫폼 위에 엔진과 옵션이 달라지는 것처럼, 같은 platform이라도 chamber와 gas panel, pre-clean option에 따라 현장 일이 달라집니다.",
+    location: "Centura Prime/Xtera/Epi 200mm, Centura RP Epi, Vantage Radiance Plus/Vulcan/RadOx/Astra.",
+    wafer: "EPI는 wafer 표면에 결정성 막을 성장시키고, RTP는 짧은 시간 열을 가해 dopant activation, oxidation, anneal 같은 변화를 만듭니다.",
+    evidence: ["model/platform name", "chamber configuration", "wafer size", "process module count", "pre-clean/thermal/gas option"],
+    stop: "공개 제품명만 보고 실제 고객 tool configuration을 단정하지 않습니다. 실제 option과 acceptance는 현장 문서와 선임 CE witness로 확인합니다.",
+    report: "이 tool은 platform명과 chamber option을 분리해서 확인하겠습니다. 공개 제품군 설명은 큰 그림이고, 실제 site configuration은 customer/OEM 문서 기준으로 대조하겠습니다.",
+    practiceView: "equipment",
+    practice: "장비군 보기",
+    terms: ["Platform", "Centura Platform", "Vantage Platform", "Process Module", "Option"],
+    source: "Applied Centura Prime Epi, Xtera Epi, Centura Epi 200mm, Vantage RTP official pages",
+    quiz: { q: "FEP/EPI/RTP 직무에서 장비명을 볼 때 가장 안전한 사고는?", options: ["FEP/EPI가 정확한 단일 장비명이라고 외운다", "platform, chamber, process, option으로 분리한다", "모든 Centura는 같은 gas를 쓴다고 본다"], correct: 1, explain: "장비명보다 platform/chamber/process/option을 분리해야 설치와 qualification 질문이 정확해집니다." }
+  },
+  {
+    id: "centura-vantage",
+    level: "초보자",
+    title: "Centura/Vantage 구조",
+    subtitle: "cluster tool과 factory interface의 큰 그림",
+    minute: "Centura는 load lock, transfer chamber, process chamber가 붙는 cluster 구조로 이해하고, Vantage RTP는 factory interface와 thermal process chamber 구성으로 이해합니다.",
+    beginner: "wafer가 대기압에서 바로 진공 공정으로 들어갈 수 없기 때문에 load lock이 중간 문 역할을 합니다. 중앙 transfer robot은 wafer를 각 chamber로 옮깁니다.",
+    location: "EFEM/FI, load lock, transfer module, process module, cooldown/clean/pre-clean chamber.",
+    wafer: "wafer는 FOUP -> EFEM -> load lock -> transfer module -> process chamber -> load lock -> FOUP 순서로 이동합니다.",
+    evidence: ["layout drawing", "module map", "slot map", "robot teach record", "load lock pump/vent trace"],
+    stop: "wafer scrape, slot mismatch, pressure mismatch, door/slit valve sensor mismatch가 있으면 dry run을 반복하기 전에 원인을 좁힙니다.",
+    report: "현재 wafer path를 module 단위로 분리해 확인하고 있습니다. load lock pressure, robot handoff, chamber door/slit valve 상태를 evidence로 묶어 공유하겠습니다.",
+    practiceView: "cluster",
+    practice: "구성 시뮬레이션",
+    terms: ["Cluster Tool", "EFEM", "Load Lock", "Transfer Module", "Process Module", "Slit Valve"],
+    source: "Applied Centura platform blog, public cluster tool patents, Vantage architecture public release",
+    quiz: { q: "Load lock이 필요한 가장 쉬운 이유는?", options: ["wafer 색상을 바꾸기 위해", "대기압 FOUP과 진공 transfer module 사이 압력 경계를 만들기 위해", "고객 보고서를 저장하기 위해"], correct: 1, explain: "Load lock은 대기압과 진공 영역 사이의 안전한 전환 공간입니다." }
+  },
+  {
+    id: "wafer-path",
+    level: "초보자",
+    title: "EFEM/FI, Load Lock, TM, PM/CM, wafer path",
+    subtitle: "모듈 이름과 실제 wafer 이동을 연결",
+    minute: "장비 구조 용어는 위치와 기능으로 외워야 합니다. FI/EFEM은 앞쪽 대기압 이송부, load lock은 압력 경계, TM은 중앙 진공 이송부, PM은 실제 공정 chamber입니다.",
+    beginner: "wafer가 어느 방을 지나갔는지 기록하면 defect나 transfer error의 원인 후보가 줄어듭니다.",
+    location: "front end, load lock pair, central transfer chamber, chamber facets, process/cool/clean modules.",
+    wafer: "path가 바뀌면 공정 결과와 particle source도 달라질 수 있어 baseline split이 중요합니다.",
+    evidence: ["route history", "wafer map", "slot mapping", "handoff position", "robot I/O log"],
+    stop: "같은 step에서 반복 scrape, wafer not present, double wafer, pressure not equalized가 보이면 진행을 멈춥니다.",
+    report: "문제를 chamber fault로 단정하지 않고 wafer path split으로 분리하겠습니다. FI, load lock, TM, PM handoff evidence를 같은 wafer ID로 정리하겠습니다.",
+    practiceView: "cluster",
+    practice: "wafer path 게임",
+    terms: ["FI", "EFEM", "LL", "TM", "PM", "CM", "Handoff", "Mapping"],
+    source: "Public cluster tool architecture references and Applied platform materials",
+    quiz: { q: "Defect가 특정 path에서만 증가할 때 좋은 첫 접근은?", options: ["모든 chamber를 동시에 열어본다", "path split으로 FI/LL/TM/PM 경로를 나눠 본다", "incoming wafer 문제로 확정한다"], correct: 1, explain: "path split은 원인 후보를 줄이는 안전한 evidence-first 방법입니다." }
+  },
+  {
+    id: "epi-physics",
+    level: "현장 투입",
+    title: "EPI 공정 원리",
+    subtitle: "gas가 wafer 표면에서 결정성 layer가 되는 흐름",
+    minute: "Epitaxy는 substrate 결정 구조를 따라 Si, SiGe 같은 막이 성장하는 공정입니다. 표면 준비, precursor 공급, 온도, 압력, byproduct removal이 함께 맞아야 합니다.",
+    beginner: "벽돌을 쌓듯 막이 올라가는 것이 아니라, wafer 표면의 결정 방향을 따라 원자가 정렬되어 자라는 그림입니다.",
+    location: "EPI process chamber, gas box/panel, susceptor, exhaust, pre-clean chamber.",
+    wafer: "native oxide 제거 후 silicon/germanium/dopant precursor가 표면 반응을 거쳐 layer thickness, Rs, defect 결과로 나타납니다.",
+    evidence: ["temperature trace", "pressure trend", "MFC actual", "thickness/Rs/defect metrology", "pre-clean path and queue time"],
+    stop: "toxic/pyrophoric/corrosive gas, exhaust abnormal, particle burst, wafer slip/break가 의심되면 recipe 반복보다 hold가 우선입니다.",
+    report: "EPI 결과는 surface preparation, gas delivery, thermal/vacuum trend, metrology를 같은 wafer ID로 묶어 보겠습니다. recipe 조건은 process owner 승인 없이 변경하지 않겠습니다.",
+    practiceView: "process-visual",
+    practice: "EPI layer animation",
+    terms: ["Epitaxy", "Precursor", "Dopant", "Native Oxide", "Susceptor", "Rs"],
+    source: "Applied Epitaxy/Centura pages, Stanford AMAT Centura Epi public tool page, public epitaxy papers",
+    quiz: { q: "EPI defect를 볼 때 wafer result와 같이 묶어야 하는 tool evidence는?", options: ["temperature/pressure/MFC/pre-clean path", "장비 외관 색상", "근무 교대 시간만"], correct: 0, explain: "EPI는 surface, gas, thermal, vacuum, metrology가 연결된 공정입니다." }
+  },
+  {
+    id: "rtp-physics",
+    level: "현장 투입",
+    title: "RTP 공정 원리",
+    subtitle: "짧은 시간 열이 wafer 물성을 바꾸는 방식",
+    minute: "RTP는 wafer를 빠르게 가열/냉각해 anneal, dopant activation, oxidation, interface engineering 같은 변화를 만드는 공정입니다.",
+    beginner: "오븐처럼 오래 굽는 것이 아니라, wafer에 필요한 만큼만 매우 정밀하게 열 예산을 주는 공정으로 생각하면 됩니다.",
+    location: "RTP chamber, lamp zone, pyrometer/emissometer, wafer rotation, cooling, ambient gas control.",
+    wafer: "thermal budget이 dopant activation, film densification, oxide/nitride formation, stress/slip risk에 영향을 줍니다.",
+    evidence: ["temperature trace overlay", "lamp command", "pyrometer signal", "wafer rotation status", "metrology result"],
+    stop: "temperature runaway, cooling abnormal, wafer slip/break, oxygen/hydrogen hazard, electrical hazard는 즉시 hold와 escalation 대상입니다.",
+    report: "RTP trace 이상은 정상 trace와 overlay해 lamp command, measured temperature, ambient, wafer type, metrology를 분리해 확인하겠습니다.",
+    practiceView: "process-visual",
+    practice: "RTP ambient animation",
+    terms: ["RTP", "Ramp", "Soak", "Spike", "Pyrometer", "Thermal Budget"],
+    source: "Applied Vantage Radiance Plus, Vulcan, RadOx official/public pages",
+    quiz: { q: "RTP trace overshoot에서 가장 위험한 대응은?", options: ["정상 trace와 overlay", "lamp command와 measured temperature 비교", "recipe target을 임의 변경해 alarm만 제거"], correct: 2, explain: "임의 recipe/control 변경은 root cause를 가리고 wafer risk를 키울 수 있습니다." }
+  },
+  {
+    id: "gas-vacuum",
+    level: "현장 투입",
+    title: "Gas delivery / purge / pumpdown / exhaust / abatement",
+    subtitle: "gas가 들어오고 나가고 안전하게 처리되는 전체 흐름",
+    minute: "process gas는 supply에서 MFC/valve를 거쳐 chamber로 들어가고, 반응 후 byproduct는 pump/exhaust/abatement로 이동합니다. purge와 pumpdown은 안전과 repeatability의 기본입니다.",
+    beginner: "가스는 넣는 것보다 안전하게 빼고 치환하고 처리하는 것이 더 중요할 때가 많습니다.",
+    location: "gas cabinet, VMB/VMP, gas box, MFC, chamber, foreline, dry pump, scrubber/abatement.",
+    wafer: "gas flow와 pressure가 불안정하면 thickness, composition, defect, selectivity, repeatability가 흔들립니다.",
+    evidence: ["MFC setpoint vs actual", "supply pressure", "valve state", "pumpdown curve", "exhaust/abatement ready"],
+    stop: "toxic/flammable/pyrophoric/corrosive gas, detector alarm, exhaust not ready, unknown purge completion은 진행 금지입니다.",
+    report: "Gas 관련 이슈는 supply, gas box, chamber, exhaust/abatement를 분리해 확인하겠습니다. 안전 interlock이나 detector 조건은 우회하지 않습니다.",
+    practiceView: "gases",
+    practice: "가스 안전 매트릭스",
+    terms: ["MFC", "Purge", "Pumpdown", "Exhaust", "Abatement", "Toxic", "Pyrophoric"],
+    source: "OSHA semiconductor toxic exhaust gases, NIOSH pocket guides, SEMI S6/S18 public descriptions",
+    quiz: { q: "First gas 전 ready가 불안정할 때 우선순위는?", options: ["ready가 순간적으로 들어오면 진행", "facility actual state와 tool ready input을 owner witness로 대조", "interlock 임시 우회"], correct: 1, explain: "gas safety에서는 실제 exhaust/abatement 상태와 승인된 owner witness가 우선입니다." }
+  },
+  {
+    id: "facility-hookup",
+    level: "현장 투입",
+    title: "Facility hook-up",
+    subtitle: "tool과 fab utility가 만나는 POC 이해",
+    minute: "hook-up은 power, gas, CDA, PCW, exhaust, network, drain 같은 facility를 tool의 POC와 연결하는 단계입니다.",
+    beginner: "장비가 아무리 좋아도 전기, 냉각, 배기, 가스가 맞지 않으면 안전하게 켤 수 없습니다.",
+    location: "POC, hook-up drawing, P&ID, gas line, exhaust duct, PCW/CDA, power cabinet, network.",
+    wafer: "facility instability는 pumpdown, temperature control, gas flow, robot timing, wafer defect로 간접적으로 보일 수 있습니다.",
+    evidence: ["POC label", "drawing revision", "as-built/redline", "owner sign-off", "ready signal correlation"],
+    stop: "drawing mismatch, unapproved line release, exhaust not ready, wrong gas label, energized panel uncertainty는 hold합니다.",
+    report: "Facility hook-up은 drawing revision, POC label, actual state, owner sign-off를 대조해 진행하겠습니다. 불일치 항목은 punch list로 분리하겠습니다.",
+    practiceView: "facility",
+    practice: "facility 연결 지도",
+    terms: ["POC", "Hook-up", "P&ID", "As-built", "Redline", "Line Release"],
+    source: "SEMI safety standards, OSHA/NIOSH hazardous energy, public semiconductor facility safety practices",
+    quiz: { q: "hook-up에서 drawing과 실제 line label이 다르면?", options: ["일정상 연결 후 나중에 수정", "hold하고 owner/witness와 drawing revision을 확인", "사진 없이 기억으로 보고"], correct: 1, explain: "facility mismatch는 안전과 품질 모두에 영향을 주므로 증거와 owner 확인이 필요합니다." }
+  },
+  {
+    id: "electrical-dvm",
+    level: "현장 투입",
+    title: "Electrical / DVM 현장 기초",
+    subtitle: "찍어보는 DVM이 아니라 가설 검증 도구로 쓰기",
+    minute: "DVM/DMM은 voltage, resistance, continuity를 안전하게 확인해 sensor, relay, interlock, power supply 문제를 좁히는 evidence 도구입니다.",
+    beginner: "측정 전에 반드시 expected value를 말해야 합니다. 값을 모르면 찍어도 해석할 수 없습니다.",
+    location: "24V control circuit, relay coil/contact, PLC I/O, sensor, SMPS, interlock chain.",
+    wafer: "전기/controls 이상은 valve delay, sensor mismatch, robot error, pump/thermal enable fail로 이어져 wafer handling과 process stability에 영향을 줍니다.",
+    evidence: ["expected value", "meter mode", "lead location", "measured value", "energy state/LOTO boundary"],
+    stop: "live panel, CAT rating 불일치, stored energy, arc flash risk, 승인 없는 energized work는 즉시 stop합니다.",
+    report: "전기 확인은 expected value와 실제 측정값을 분리해 보고하겠습니다. 안전 경계가 불명확한 energized measurement는 진행하지 않겠습니다.",
+    practiceView: "electrical",
+    practice: "DVM 현장 기초",
+    terms: ["DVM", "DMM", "Voltage", "Continuity", "Relay", "Coil", "Contact", "LOTO"],
+    source: "NIOSH/OSHA hazardous energy control, public electrical measurement safety materials",
+    quiz: { q: "DVM 측정 전 가장 먼저 말해야 할 것은?", options: ["측정 후 느낌", "expected value와 안전 경계", "고객에게 바로 root cause"], correct: 1, explain: "expected value, meter mode, lead 위치, energy state가 없으면 측정값은 evidence가 되기 어렵습니다." }
+  },
+  {
+    id: "install-sequence",
+    level: "현장 투입",
+    title: "Install sequence",
+    subtitle: "move-in부터 first baseline까지",
+    minute: "install은 site readiness, rigging/move-in, set in place, hook-up, power-on, subsystem checks, dry run, first gas, baseline wafer, handover로 이어집니다.",
+    beginner: "설치는 '장비를 놓는 일'이 아니라 risk를 하나씩 제거하며 증거를 쌓는 일입니다.",
+    location: "cleanroom route, tool footprint, service clearance, utility POC, tool controller, chamber modules.",
+    wafer: "install 후 첫 wafer는 장비가 정상 baseline으로 돌아왔는지 증명하는 test vehicle입니다.",
+    evidence: ["damage report", "leveling", "utility sign-off", "interlock check", "dry run log", "first baseline wafer"],
+    stop: "rigging route, floor load, tool damage, utility mismatch, interlock/facility not ready가 불명확하면 일정보다 hold가 우선입니다.",
+    report: "Install은 완료 선언보다 pass evidence가 중요합니다. 각 단계별 risk retired evidence와 open item owner를 정리해 공유하겠습니다.",
+    practiceView: "install",
+    practice: "설치 미션",
+    terms: ["Rigging", "Move-in", "Set in Place", "Commissioning", "Dry Run", "SAT"],
+    source: "Applied CE role description, SEMI S19/S24 safety axes, public install/commissioning principles",
+    quiz: { q: "install handover 전에 가장 중요한 것은?", options: ["사진 없이 구두 완료", "pass evidence와 open item owner", "일단 생산 lot 투입"], correct: 1, explain: "handover는 risk가 제거됐다는 증거와 남은 open item의 owner를 설명하는 단계입니다." }
+  },
+  {
+    id: "qualification",
+    level: "현장 투입",
+    title: "Qualification / metrology / baseline wafer",
+    subtitle: "pass를 수치와 trend로 증명",
+    minute: "qualification은 tool이 site 조건에서 요구 성능을 만족하는지 baseline wafer, metrology, trend, alarm review로 증명하는 단계입니다.",
+    beginner: "pass는 '문제가 없어 보인다'가 아니라, 기준이 있고 측정값이 있고 고객이 이해할 수 있는 evidence가 있다는 뜻입니다.",
+    location: "baseline recipe, test wafer, metrology tool, FDC/trend viewer, customer acceptance packet.",
+    wafer: "baseline wafer는 thickness, Rs, defect, particle, slip, uniformity 같은 결과로 tool health를 보여줍니다.",
+    evidence: ["baseline wafer ID", "metrology map", "golden trace", "chamber matching", "alarm history", "owner sign-off"],
+    stop: "spec out, repeated drift, chamber mismatch, metrology inconsistency, unresolved safety/facility open item이면 release를 분리합니다.",
+    report: "Qualification 결과는 wafer metrology와 tool trace를 같은 시간축으로 묶어 설명하겠습니다. pass/fail뿐 아니라 남은 risk와 monitoring plan을 공유하겠습니다.",
+    practiceView: "readiness",
+    practice: "현장투입 체크",
+    terms: ["Qualification", "Baseline Wafer", "Metrology", "Golden Trace", "Chamber Matching", "Release"],
+    source: "Applied product pages on uniformity/repeatability, general SAT/OQ/PQ public principles",
+    quiz: { q: "baseline wafer 결과만 있고 tool trace가 없으면 어떤 문제가 생기나?", options: ["원인 후보를 연결하기 어렵다", "항상 충분하다", "metrology가 불필요해진다"], correct: 0, explain: "wafer result와 tool trace가 함께 있어야 root cause와 handover 설명이 강해집니다." }
+  },
+  {
+    id: "maintenance",
+    level: "시니어 사고",
+    title: "Maintenance / PM recovery / seasoning",
+    subtitle: "PM 후 첫 wafer가 왜 중요할까",
+    minute: "PM 후에는 chamber 상태, seal, connector, cleaning, seasoning, memory effect가 바뀔 수 있습니다. recovery는 작업 전 baseline으로 돌아왔는지 증명하는 과정입니다.",
+    beginner: "정비가 끝났다는 말과 공정이 원래처럼 나온다는 말은 다릅니다. 첫 wafer와 trend가 그 차이를 보여줍니다.",
+    location: "opened chamber, replaced part, seal/O-ring, gas line, wafer support, seasoning dummy/test wafer.",
+    wafer: "PM 후 첫 wafer는 defect, thickness, Rs, particle, haze, slip 변화로 chamber recovery 상태를 보여줍니다.",
+    evidence: ["PM change list", "before/after photo", "seasoning record", "baseline split", "metrology trend", "particle map"],
+    stop: "particle burst, gas/exhaust abnormal, leak suspicion, repeated baseline fail, unknown replaced part condition은 customer wafer 전 hold합니다.",
+    report: "PM recovery는 변경점과 baseline trend를 연결해 확인하겠습니다. seasoning 전후 결과와 defect map correlation을 evidence packet으로 만들겠습니다.",
+    practiceView: "process-visual",
+    practice: "PM recovery flow",
+    terms: ["PM", "Seasoning", "Memory Effect", "Dummy Wafer", "Particle", "O-ring"],
+    source: "Applied EPI pre-clean/integrated platform context, public maintenance/evidence principles",
+    quiz: { q: "PM 직후 문제에서 가장 먼저 보는 축은?", options: ["PM 변경점과 baseline 차이", "무작위 부품 교체", "recipe 임의 변경"], correct: 0, explain: "PM 이후에는 변경점 기반 사고가 가장 강합니다." }
+  },
+  {
+    id: "failure-mode",
+    level: "시니어 사고",
+    title: "Failure mode troubleshooting",
+    subtitle: "증상에서 evidence까지 사고하기",
+    minute: "troubleshooting은 빠른 추정이 아니라 scope, safety, change point, log, trend, wafer evidence를 순서대로 좁히는 작업입니다.",
+    beginner: "좋은 CE는 답을 빨리 말하는 사람이 아니라, 틀릴 수 있는 추정을 안전하게 제거하는 사람입니다.",
+    location: "alarm history, trend viewer, I/O log, metrology, wafer path, facility owner interface.",
+    wafer: "tool fault는 wafer map, path split, chamber matching, baseline drift로 나타날 수 있습니다.",
+    evidence: ["symptom scope", "candidate causes", "evidence ladder", "stop condition", "customer report", "next action owner"],
+    stop: "안전 interlock, gas, exhaust, live power, wafer break, unknown customer impact가 포함되면 escalation과 hold를 먼저 판단합니다.",
+    report: "현재 확인된 사실과 추정 원인을 분리해 보고드립니다. 다음 확인은 evidence 우선순위에 따라 진행하고, 안전 관련 조건은 우회하지 않겠습니다.",
+    practiceView: "diagnostics",
+    practice: "시니어 케이스 보드",
+    terms: ["Evidence Ladder", "Stop Condition", "Root Cause", "Escalation", "FDC", "Wafer Map"],
+    source: "Applied CE role troubleshooting language, OSHA/NIOSH safety controls, public equipment diagnostic principles",
+    quiz: { q: "troubleshooting에서 고객에게 가장 신뢰를 주는 말은?", options: ["아마 이겁니다", "확인된 사실, 영향 범위, 다음 evidence와 ETA를 분리해 말한다", "우회해서 진행하겠습니다"], correct: 1, explain: "고객 communication은 사실/추정/action/ETA를 분리할 때 신뢰가 생깁니다." }
+  },
+  {
+    id: "handover",
+    level: "시니어 사고",
+    title: "Customer communication / handover",
+    subtitle: "고객이 믿을 수 있게 설명하기",
+    minute: "handover는 checklist를 넘기는 일이 아니라 tool risk가 어떤 evidence로 제거되었는지 고객이 이해하도록 설명하는 과정입니다.",
+    beginner: "고객은 '했다'보다 '무엇으로 확인했는가'를 원합니다.",
+    location: "handover meeting, SAT packet, open item list, customer owner sign-off, shift handover note.",
+    wafer: "wafer 결과는 handover의 핵심 증거지만, facility/safety/automation open item과 함께 설명해야 합니다.",
+    evidence: ["risk retired list", "pass data", "open item owner", "monitoring plan", "rollback/escalation path"],
+    stop: "unresolved safety/facility/process risk가 있는데 release 압박이 있으면 sign-off 범위를 명확히 분리하고 escalation합니다.",
+    report: "현재 handover packet은 safety, facility, automation, process, metrology 순서로 정리했습니다. 각 항목의 pass 근거와 남은 open item, owner, next action을 설명드리겠습니다.",
+    practiceView: "runbook",
+    practice: "handover runbook",
+    terms: ["Handover", "Open Item", "Owner", "RACI", "Punch List", "Sign-off"],
+    source: "SEMI multi-employer work area/training safety axes, public project handover principles",
+    quiz: { q: "handover에서 open item은 어떻게 말해야 하나?", options: ["숨긴다", "impact, owner, next action, due date로 분리한다", "모두 CE 책임으로만 둔다"], correct: 1, explain: "open item은 owner와 impact를 분리해야 재작업과 오해를 줄입니다." }
+  },
+  {
+    id: "thinktank-loop",
+    level: "시니어 사고",
+    title: "Think Tank 경험 축적",
+    subtitle: "현장 경험을 AI가 읽을 수 있는 packet으로 저장",
+    minute: "경험은 그냥 일기가 아니라 symptom, evidence, suspected cause, action, result, prevention, customer report 구조로 쌓아야 나중에 AI와 본인이 재사용할 수 있습니다.",
+    beginner: "기억은 흐려지지만 구조화된 기록은 남습니다. 매 현장 경험을 한 장의 evidence packet으로 바꾸세요.",
+    location: "Think Tank 기록장, D1 DB, local D drive mirror, AI summary packet.",
+    wafer: "wafer issue 경험은 wafer ID, path, metrology, tool trace와 함께 저장할수록 다음 troubleshooting이 빨라집니다.",
+    evidence: ["symptom", "evidence", "suspected cause", "action", "result", "prevention", "customer report"],
+    stop: "민감한 고객 정보, recipe, password, site-specific setpoint, bypass 방법은 기록하지 않거나 비공개 승인 문서에만 둡니다.",
+    report: "이번 경험은 symptom/evidence/action/result/prevention/customer report 구조로 저장해 재발 시 바로 AI summary packet으로 꺼낼 수 있게 하겠습니다.",
+    practiceView: "thinktank",
+    practice: "경험 기록하기",
+    terms: ["Evidence Pack", "AI Packet", "Prevention", "Customer Report", "D1"],
+    source: "Existing D1-backed Think Tank structure and public-safe documentation boundary",
+    quiz: { q: "Think Tank에 넣지 말아야 하는 것은?", options: ["증상과 evidence", "재발 방지 아이디어", "고객 recipe, setpoint, bypass 방법"], correct: 2, explain: "개인 학습 기록도 공개/보안 경계를 지켜야 장기적으로 안전합니다." }
+  }
+];
+
+const curriculumPublicSourceLinks = [
+  { label: "Applied Centura Prime Epi", url: "https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html" },
+  { label: "Applied Vantage Vulcan RTP", url: "https://www.appliedmaterials.com/us/en/product-library/vantage-vulcan-rtp.html" },
+  { label: "Applied Vantage Radiance Plus RTP", url: "https://www.appliedmaterials.com/us/en/product-library/vantage-radiance-plus-rtp.html" },
+  { label: "OSHA Semiconductor Fabrication Hazards", url: "https://www.osha.gov/semiconductors/silicon/device-fabrication" },
+  { label: "NIOSH Hazardous Energy Control", url: "https://www.cdc.gov/niosh/manufacturing/hazardous-energy-control/index.html" },
+  { label: "SEMI Safety Standards", url: "https://www.semi.org/en/products-services/standards/safety" },
+  { label: "Public Cluster Tool Patent", url: "https://patents.google.com/patent/US20070196011A1/en" }
+];
+
 const roadmap = [
   {
     week: "1주차",
@@ -2900,12 +3192,14 @@ let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
 let activeProcessFlow = processVisualFlows[0].id;
 let activeProcessStep = 0;
+let activeCurriculumChapter = state.activeCurriculumChapter || curriculumChapters[0].id;
 const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
   bookshelf: "책장",
   cognitive: "인지능력",
   dashboard: "EPI 홈",
+  curriculum: "커리큘럼",
   roadmap: "로드맵",
   systems: "장비/공정",
   "process-visual": "공정 시각화",
@@ -2934,6 +3228,7 @@ const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cogn
 
 const BOOK_VIEW_SEQUENCE = [
   "dashboard",
+  "curriculum",
   "roadmap",
   "fab101",
   "glossary",
@@ -2961,6 +3256,7 @@ const BOOK_VIEW_SEQUENCE = [
 const VIEW_CHAPTERS = {
   cognitive: "인지 건강",
   dashboard: "방향 잡기",
+  curriculum: "성장 커리큘럼",
   roadmap: "처음 펼칠 장",
   fab101: "처음 펼칠 장",
   glossary: "처음 펼칠 장",
@@ -3131,6 +3427,31 @@ function getQuizProgress() {
   };
 }
 
+function getCurriculumProgress() {
+  const completed = curriculumChapters.filter(chapter => state.curriculumDone?.[chapter.id]).length;
+  const answered = curriculumChapters.filter(chapter => state.curriculumQuiz?.[chapter.id]).length;
+  const correct = curriculumChapters.filter(chapter => state.curriculumQuiz?.[chapter.id] === "correct").length;
+  const weak = curriculumChapters.filter(chapter =>
+    !state.curriculumDone?.[chapter.id] || state.curriculumQuiz?.[chapter.id] === "wrong"
+  );
+  const readinessScore = Math.round(((completed / curriculumChapters.length) * 0.55 + (correct / curriculumChapters.length) * 0.45) * 100);
+  const seniorScore = Math.round((
+    (["failure-mode", "handover", "thinktank-loop", "maintenance"].filter(id => state.curriculumDone?.[id]).length / 4) * 0.55 +
+    (["failure-mode", "handover", "thinktank-loop", "maintenance"].filter(id => state.curriculumQuiz?.[id] === "correct").length / 4) * 0.45
+  ) * 100);
+  return {
+    completed,
+    answered,
+    correct,
+    total: curriculumChapters.length,
+    percent: Math.round(completed / curriculumChapters.length * 100),
+    quizPercent: answered ? Math.round(correct / answered * 100) : 0,
+    readinessScore,
+    seniorScore,
+    weak
+  };
+}
+
 function getUxSearchItems() {
   const navItems = Object.entries(VIEW_LABELS).map(([view, title]) => ({
     title,
@@ -3210,7 +3531,19 @@ function getUxSearchItems() {
       renderRunbook();
     }
   }));
-  return [...navItems, ...commandItems, ...roadmapItems, ...systemItems, ...processItems, ...equipmentItems, ...gasItems, ...runbookItems];
+  const curriculumItems = curriculumChapters.map(item => ({
+    title: item.title,
+    meta: `커리큘럼 / ${item.level}`,
+    body: `${item.subtitle} ${item.minute} ${item.evidence.join(" ")} ${item.terms.join(" ")}`,
+    view: "curriculum",
+    onOpen: () => {
+      activeCurriculumChapter = item.id;
+      state.activeCurriculumChapter = item.id;
+      persistState();
+      renderCurriculum();
+    }
+  }));
+  return [...navItems, ...commandItems, ...curriculumItems, ...roadmapItems, ...systemItems, ...processItems, ...equipmentItems, ...gasItems, ...runbookItems];
 }
 
 function scoreUxSearchItem(item, query) {
@@ -3508,6 +3841,214 @@ function renderLearningUX() {
       showView(button.currentTarget.dataset.scienceView);
     });
   }
+}
+
+function renderCurriculum() {
+  const dashboard = document.querySelector("#curriculum-dashboard");
+  const rail = document.querySelector("#curriculum-rail");
+  const detail = document.querySelector("#curriculum-detail");
+  const audit = document.querySelector("#curriculum-audit");
+  if (!dashboard || !rail || !detail || !audit) return;
+
+  const progress = getCurriculumProgress();
+  const active = curriculumChapters.find(chapter => chapter.id === activeCurriculumChapter) || curriculumChapters[0];
+  const activeIndex = curriculumChapters.findIndex(chapter => chapter.id === active.id);
+  const today = progress.weak[0] || curriculumChapters.find(chapter => !state.curriculumDone?.[chapter.id]) || active;
+  const weakList = progress.weak.slice(0, 4);
+  const selectedAnswer = state.curriculumQuizAnswer?.[active.id];
+  const answerState = state.curriculumQuiz?.[active.id];
+
+  dashboard.innerHTML = `
+    <div class="curriculum-score-card">
+      <span>전체 진행률</span>
+      <strong>${progress.percent}%</strong>
+      <i><em style="width:${progress.percent}%"></em></i>
+      <small>${progress.completed}/${progress.total} chapters complete</small>
+    </div>
+    <div class="curriculum-score-card">
+      <span>퀴즈 정답률</span>
+      <strong>${progress.quizPercent}%</strong>
+      <i><em style="width:${progress.quizPercent}%"></em></i>
+      <small>${progress.correct}/${progress.answered || 0} answered</small>
+    </div>
+    <div class="curriculum-score-card">
+      <span>현장 투입 readiness</span>
+      <strong>${progress.readinessScore}</strong>
+      <i><em style="width:${progress.readinessScore}%"></em></i>
+      <small>체크 + 즉시 퀴즈 기반</small>
+    </div>
+    <div class="curriculum-score-card">
+      <span>Senior CE 사고력</span>
+      <strong>${progress.seniorScore}</strong>
+      <i><em style="width:${progress.seniorScore}%"></em></i>
+      <small>PM, failure, handover, Think Tank 축</small>
+    </div>
+    <article class="curriculum-today">
+      <span>오늘 해야 할 학습</span>
+      <strong>${today.title}</strong>
+      <small>${today.subtitle}</small>
+      <button class="secondary" type="button" data-curriculum-open="${today.id}">오늘 챕터 열기</button>
+    </article>
+    <article class="curriculum-weak">
+      <span>약한 챕터</span>
+      ${weakList.length ? weakList.map(chapter => `<button type="button" data-curriculum-open="${chapter.id}">${chapter.title}</button>`).join("") : "<strong>현재 약점 없음</strong>"}
+    </article>
+  `;
+
+  rail.innerHTML = curriculumChapters.map((chapter, index) => {
+    const done = state.curriculumDone?.[chapter.id];
+    const quizState = state.curriculumQuiz?.[chapter.id];
+    return `
+      <button class="curriculum-chapter-tab ${chapter.id === active.id ? "active" : ""}" type="button" data-curriculum-open="${chapter.id}">
+        <span>${String(index + 1).padStart(2, "0")} · ${chapter.level}</span>
+        <strong>${chapter.title}</strong>
+        <small>${done ? "완료" : "진행 전"}${quizState ? ` · ${quizState === "correct" ? "퀴즈 정답" : "퀴즈 재학습"}` : ""}</small>
+      </button>
+    `;
+  }).join("");
+
+  detail.innerHTML = `
+    <header class="curriculum-detail-head">
+      <div>
+        <span class="scenario-status">${active.level} · Chapter ${activeIndex + 1}</span>
+        <h2>${active.title}</h2>
+        <p>${active.subtitle}</p>
+      </div>
+      <label class="curriculum-done-toggle">
+        <input type="checkbox" data-curriculum-done="${active.id}" ${state.curriculumDone?.[active.id] ? "checked" : ""} />
+        <span>이 챕터 완료</span>
+      </label>
+    </header>
+    <div class="curriculum-path-strip">
+      <span>개념</span>
+      <span>장비 위치</span>
+      <span>wafer 변화</span>
+      <span>evidence</span>
+      <span>stop</span>
+      <span>report</span>
+    </div>
+    <div class="curriculum-card-grid">
+      <section class="curriculum-card wide">
+        <h3>1분 요약</h3>
+        <p>${active.minute}</p>
+      </section>
+      <section class="curriculum-card">
+        <h3>초보자용 쉬운 설명</h3>
+        <p>${active.beginner}</p>
+      </section>
+      <section class="curriculum-card">
+        <h3>실제 장비에서 어디인가</h3>
+        <p>${active.location}</p>
+      </section>
+      <section class="curriculum-card wide">
+        <h3>wafer에 실제로 일어나는 일</h3>
+        <p>${active.wafer}</p>
+      </section>
+      <section class="curriculum-card">
+        <h3>CE가 확인할 evidence</h3>
+        <ul>${active.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+      </section>
+      <section class="curriculum-card stop-card">
+        <h3>여기서 멈춰야 하는 조건</h3>
+        <p>${active.stop}</p>
+      </section>
+    </div>
+    <section class="case-report curriculum-report">
+      <div>
+        <h3>고객 보고 문장</h3>
+        <p>${active.report}</p>
+      </div>
+      <button class="copy-report" type="button" data-curriculum-copy-report>문장 복사</button>
+    </section>
+    <section class="case-boundary">
+      <strong>공개자료 기반 / 안전 경계</strong>
+      <span>${active.source}. 공개자료는 원리와 사고 프레임 학습용입니다. recipe, valve sequence, detector setpoint, interlock bypass, 고객 site-specific 절차는 넣지 않고 현장 승인 문서를 우선합니다.</span>
+      <div class="curriculum-source-links">
+        ${curriculumPublicSourceLinks.map(source => `<a href="${source.url}" target="_blank" rel="noreferrer">${source.label}</a>`).join("")}
+      </div>
+    </section>
+    <div class="curriculum-term-row">
+      ${active.terms.map(term => `<span>${term}</span>`).join("")}
+    </div>
+    <section class="curriculum-practice">
+      <button class="primary" type="button" data-curriculum-practice="${active.practiceView}">${active.practice}</button>
+      <button class="secondary" type="button" data-curriculum-practice="thinktank">이 챕터 경험 기록하기</button>
+    </section>
+    <section class="curriculum-quiz-card">
+      <p class="eyebrow">Judgement Drill</p>
+      <h3>${active.quiz.q}</h3>
+      <div class="decision-grid">
+        ${active.quiz.options.map((option, index) => `
+          <button class="decision ${answerState && index === active.quiz.correct ? "good" : ""} ${answerState === "wrong" && index === selectedAnswer ? "bad" : ""} ${selectedAnswer === index ? "picked" : ""}" type="button" data-curriculum-answer="${index}">${option}</button>
+        `).join("")}
+      </div>
+      <p class="explain" id="curriculum-quiz-feedback">${answerState ? active.quiz.explain : "답을 하나 고르면 바로 해설이 뜹니다."}</p>
+    </section>
+  `;
+
+  audit.innerHTML = `
+    <div class="section-heading">
+      <p>Audit Result</p>
+      <h2>이번 재구성에서 발견한 병목과 해결</h2>
+    </div>
+    <div class="curriculum-audit-grid">
+      ${curriculumAuditFindings.map(([title, gap, fix]) => `
+        <article>
+          <strong>${title}</strong>
+          <span>${gap}</span>
+          <small>${fix}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+
+  document.querySelectorAll("[data-curriculum-open]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeCurriculumChapter = button.dataset.curriculumOpen;
+      state.activeCurriculumChapter = activeCurriculumChapter;
+      persistState();
+      renderCurriculum();
+    });
+  });
+
+  document.querySelector("[data-curriculum-done]")?.addEventListener("change", event => {
+    state.curriculumDone = state.curriculumDone || {};
+    state.curriculumDone[event.currentTarget.dataset.curriculumDone] = event.currentTarget.checked;
+    save();
+    renderCurriculum();
+  });
+
+  document.querySelectorAll("[data-curriculum-answer]").forEach(button => {
+    button.addEventListener("click", () => {
+      const selected = Number(button.dataset.curriculumAnswer);
+      const correct = selected === active.quiz.correct;
+      state.curriculumQuiz = state.curriculumQuiz || {};
+      state.curriculumQuizAnswer = state.curriculumQuizAnswer || {};
+      state.curriculumQuiz[active.id] = correct ? "correct" : "wrong";
+      state.curriculumQuizAnswer[active.id] = selected;
+      document.querySelectorAll("[data-curriculum-answer]").forEach((item, index) => {
+        item.classList.toggle("good", index === active.quiz.correct);
+        item.classList.toggle("bad", index === selected && !correct);
+      });
+      document.querySelector("#curriculum-quiz-feedback").textContent = active.quiz.explain;
+      save();
+      renderCurriculum();
+    });
+  });
+
+  document.querySelectorAll("[data-curriculum-practice]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.curriculumPractice));
+  });
+
+  document.querySelector("[data-curriculum-copy-report]")?.addEventListener("click", async event => {
+    try {
+      await navigator.clipboard.writeText(active.report);
+      event.currentTarget.textContent = "복사됨";
+      setTimeout(() => { event.currentTarget.textContent = "문장 복사"; }, 1200);
+    } catch {
+      document.querySelector("#curriculum-quiz-feedback").textContent = "브라우저 권한 때문에 자동 복사는 실패했지만 보고 문장을 직접 선택할 수 있습니다.";
+    }
+  });
 }
 
 function renderMetrics() {
@@ -4467,6 +5008,7 @@ document.querySelector("#process-next-step")?.addEventListener("click", () => {
 renderRoleFit();
 renderLearningUX();
 renderCommandCenter();
+renderCurriculum();
 renderRoadmap();
 renderSystems();
 renderProcessVisual();

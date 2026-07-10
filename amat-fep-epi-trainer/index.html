@@ -18,7 +18,7 @@
       document.documentElement.style.colorScheme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260711-senior-audit1" />
+  <link rel="stylesheet" href="styles.css?v=20260711-curriculum1" />
 </head>
 <body class="auth-public entry-choice-open">
   <div id="entry-choice-gate" class="entry-choice-gate" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
@@ -65,6 +65,7 @@
       <button class="nav-btn global-only" id="open-command-search" type="button">검색</button>
       <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="true">콘솔</button>
       <button class="nav-btn" data-view="dashboard">EPI 홈</button>
+      <button class="nav-btn" data-view="curriculum">커리큘럼</button>
       <button class="nav-btn" data-view="roadmap">로드맵</button>
       <button class="nav-btn" data-view="systems">장비/공정</button>
       <button class="nav-btn" data-view="process-visual">공정 시각화</button>
@@ -118,7 +119,7 @@
           <h1>현장에서 질문을 잘 던지는 CE가 되기 위한 학습 공간</h1>
           <p>공정 원리, 장비 서브시스템, 설치 플로우, 안전, 고객 커뮤니케이션을 한 화면에서 반복 학습합니다.</p>
           <div class="hero-actions">
-            <button class="primary" data-view-jump="roadmap">오늘 학습 시작</button>
+            <button class="primary" data-view-jump="curriculum">오늘 학습 시작</button>
             <button class="secondary" data-view-jump="diagnostics">고장 시나리오 풀기</button>
           </div>
         </div>
@@ -176,6 +177,23 @@
           </ol>
         </article>
       </section>
+    </section>
+
+    <section id="curriculum" class="view">
+      <div class="page-title">
+        <p>CE Growth Curriculum</p>
+        <h1>초보자에서 시니어 CE 사고력까지 이어지는 FEP/EPI/RTP 책</h1>
+      </div>
+      <article class="source-note">
+        <h2>이 장의 사용법</h2>
+        <p>각 챕터를 위에서 아래로 따라가면 개념, 실제 장비 위치, wafer 변화, CE evidence, 중지 조건, 고객 보고 문장이 하나의 사고 흐름으로 연결됩니다. 공개자료로 확인 가능한 원리만 넣고, recipe, valve sequence, detector setpoint, interlock bypass, 고객 site-specific acceptance limit은 현장 승인 문서 우선으로 분리합니다.</p>
+      </article>
+      <section id="curriculum-dashboard" class="curriculum-dashboard no-term"></section>
+      <section class="curriculum-layout">
+        <aside id="curriculum-rail" class="curriculum-rail no-term" aria-label="커리큘럼 챕터"></aside>
+        <article id="curriculum-detail" class="curriculum-detail"></article>
+      </section>
+      <section id="curriculum-audit" class="curriculum-audit no-term"></section>
     </section>
 
     <section id="roadmap" class="view">
@@ -633,15 +651,15 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260711-senior-audit1"></script>
+  <script src="app.js?v=20260711-curriculum1"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260620-flow5"></script>
   <script src="english-test-expansion.js?v=20260624-english2"></script>
   <script src="english-test.js?v=20260625-english-instant1"></script>
-  <script src="term-helper.js?v=20260711-senior-audit1"></script>
+  <script src="term-helper.js?v=20260711-curriculum1"></script>
   <script src="cognitive.js?v=20260629-cognitive2"></script>
-  <script src="bookshelf.js?v=20260710-epi-revision1"></script>
-  <script src="think-tank.js?v=20260629-cognitive2"></script>
+  <script src="bookshelf.js?v=20260711-curriculum1"></script>
+  <script src="think-tank.js?v=20260711-curriculum1"></script>
 </body>
 </html>

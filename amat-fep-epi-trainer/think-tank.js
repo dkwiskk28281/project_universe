@@ -466,10 +466,14 @@ function renderEntries() {
       <p>${escapeHtml(entry.context || "").slice(0, 260)}</p>
       <ul>
         <li><strong>증상:</strong> ${escapeHtml(entry.symptom || "")}</li>
-        <li><strong>측정/증거:</strong> ${escapeHtml(entry.evidence || "")}</li>
-        <li><strong>원인/가설:</strong> ${escapeHtml(entry.rootCause || "")}</li>
-        <li><strong>다음 학습:</strong> ${escapeHtml(entry.nextStudy || "")}</li>
+        <li><strong>Evidence:</strong> ${escapeHtml(entry.evidence || "")}</li>
+        <li><strong>의심 원인:</strong> ${escapeHtml(entry.suspectedCause || entry.rootCause || "")}</li>
+        <li><strong>Action:</strong> ${escapeHtml(entry.action || "")}</li>
+        <li><strong>Result:</strong> ${escapeHtml(entry.result || "")}</li>
+        <li><strong>Prevention:</strong> ${escapeHtml(entry.prevention || "")}</li>
+        <li><strong>고객 보고:</strong> ${escapeHtml(entry.customerReport || "")}</li>
       </ul>
+      ${entry.summaryPacket ? `<details class="ai-summary-packet"><summary>AI summary packet</summary><pre>${escapeHtml(entry.summaryPacket)}</pre></details>` : ""}
       <div class="entry-tags">${entryTags(entry).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
     </article>
   `).join("") : `
@@ -478,6 +482,29 @@ function renderEntries() {
       <p>첫 install/troubleshooting 경험을 구조화해서 저장하면 이 공간이 개인 EPI 지식 엔진으로 자라기 시작합니다.</p>
     </article>
   `;
+}
+
+function buildSummaryPacket(data) {
+  const rows = [
+    ["Title", data.title],
+    ["Type", data.type],
+    ["Tool", data.tool],
+    ["Subsystem", data.subsystem],
+    ["Severity", data.severity],
+    ["Context", data.context],
+    ["Symptom", data.symptom],
+    ["Evidence", data.evidence],
+    ["Suspected Cause", data.suspectedCause || data.rootCause],
+    ["Action", data.action],
+    ["Result", data.result],
+    ["Prevention", data.prevention],
+    ["Customer Report", data.customerReport],
+    ["Next Study", data.nextStudy],
+    ["Tags", data.tags]
+  ];
+  return rows
+    .map(([label, value]) => `${label}: ${String(value || "").trim()}`)
+    .join("\n");
 }
 
 async function saveThinkTankEntry(event) {
@@ -489,6 +516,9 @@ async function saveThinkTankEntry(event) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     syncStatus: "syncing to D1",
+    schemaVersion: "ce-experience-v2",
+    rootCause: data.suspectedCause || data.rootCause || "",
+    summaryPacket: buildSummaryPacket(data),
     ...data
   };
   const entries = loadEntries();
@@ -543,7 +573,7 @@ function renderThinkTank() {
       <article class="thinktank-panel">
         <p class="eyebrow">Structured Experience Capture</p>
         <h2>경험 입력</h2>
-        <p>문제 경험을 “상황 -> 증상 -> 계측 -> 원인/가설 -> 조치 -> 배운 점”으로 저장합니다.</p>
+        <p>문제 경험을 “symptom -> evidence -> suspected cause -> action -> result -> prevention -> customer report” 구조로 저장합니다.</p>
         <form class="thinktank-form" id="thinktank-form">
           <label>제목<input name="title" required placeholder="예: PM 후 load lock pumpdown time 증가" /></label>
           <label>유형<select name="type">${experienceTypes.map(type => `<option>${type}</option>`).join("")}</select></label>
@@ -552,9 +582,12 @@ function renderThinkTank() {
           <label>심각도<select name="severity"><option>Learning</option><option>Tool Down</option><option>Safety Stop</option><option>Qualification Risk</option><option>Customer Escalation</option></select></label>
           <label>상황 / 배경<textarea name="context" placeholder="언제, 어떤 작업 후, 어떤 조건에서 발생했는지"></textarea></label>
           <label>증상<textarea name="symptom" placeholder="alarm, trend, wafer result, customer observation"></textarea></label>
-          <label>계측 / 증거<textarea name="evidence" placeholder="DVM 값, log, trace, pressure, MFC response, metrology"></textarea></label>
-          <label>원인 / 가설<textarea name="rootCause" placeholder="확인된 root cause 또는 현재 hypothesis"></textarea></label>
-          <label>조치 / 결과<textarea name="action" placeholder="무엇을 했고 어떤 결과가 나왔는지"></textarea></label>
+          <label>Evidence / 증거<textarea name="evidence" placeholder="DVM 값, log, trace, pressure, MFC response, metrology, witness"></textarea></label>
+          <label>Suspected cause / 의심 원인<textarea name="suspectedCause" placeholder="아직 확정 전이면 hypothesis로 기록. 확정 전에는 단정하지 않기"></textarea></label>
+          <label>Action / 조치<textarea name="action" placeholder="무엇을 확인했고, 누구 승인/입회로 어떤 조치를 했는지"></textarea></label>
+          <label>Result / 결과<textarea name="result" placeholder="alarm 변화, trace 변화, wafer/metrology 변화, 재현 여부"></textarea></label>
+          <label>Prevention / 재발 방지<textarea name="prevention" placeholder="checklist, baseline, PM 후 확인, training, handover에 추가할 항목"></textarea></label>
+          <label>Customer report / 고객 보고 문장<textarea name="customerReport" placeholder="확인된 사실, 영향 범위, 다음 action, ETA를 분리한 보고 문장"></textarea></label>
           <label>다음 학습<textarea name="nextStudy" placeholder="더 공부할 논문, 도면, 이론, 질문"></textarea></label>
           <label>태그<input name="tags" placeholder="pumpdown, relay, MFC, GAA, defect..." /></label>
           <div class="thinktank-actions">

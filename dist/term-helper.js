@@ -281,6 +281,16 @@ englishTermGuide.push(
   ["Evidence Ladder", "증거 사다리", "Troubleshooting", "추정에서 출발해 log, trend, wafer map, metrology, witness record로 신뢰도를 높이는 사고 순서입니다.", "senior CE는 주장보다 evidence ladder로 고객을 설득합니다."]
 );
 
+englishTermGuide.push(
+  ["Symptom", "관찰된 증상", "Troubleshooting", "root cause를 알기 전 현장에서 실제로 보인 alarm, trend, wafer 결과, 고객 관찰입니다.", "증상과 원인을 섞어 말하면 troubleshooting이 흔들립니다."],
+  ["Suspected Cause", "의심 원인", "Troubleshooting", "아직 확정되지 않았지만 evidence로 확인해야 하는 원인 후보입니다.", "확정 전에는 hypothesis라고 말하고, 다음 evidence를 함께 제시합니다."],
+  ["Action", "조치", "Work", "확인, 측정, 교체, 재시도, hold, escalation처럼 실제 수행한 일을 말합니다.", "누구 승인으로 무엇을 했는지 남겨야 handover가 가능합니다."],
+  ["Result", "결과", "Work", "조치 후 alarm, trace, metrology, 재현 여부가 어떻게 바뀌었는지입니다.", "조치와 결과를 분리해야 효과가 있었는지 판단할 수 있습니다."],
+  ["Prevention", "재발 방지", "Work", "같은 문제가 다시 생기지 않게 checklist, training, baseline, monitoring에 추가하는 항목입니다.", "시니어 CE 사고는 복구에서 끝나지 않고 재발 방지로 닫힙니다."],
+  ["Customer Report", "고객 보고 문장", "Communication", "확인된 사실, 영향 범위, 진행 중인 확인, ETA, 필요한 owner를 고객이 이해할 수 있게 정리한 문장입니다.", "추정과 확정 사실을 분리하면 신뢰가 올라갑니다."],
+  ["Summary Packet", "AI 요약 패킷", "Think Tank", "나중에 AI나 본인이 빠르게 읽을 수 있도록 symptom/evidence/action/result/prevention/report를 한 묶음으로 정리한 기록입니다.", "경험을 축적할수록 개인 지식 엔진의 검색성과 분석력이 좋아집니다."]
+);
+
 const englishTermMap = new Map(englishTermGuide.map(([term, short, category, plain, ce]) => [
   term.toLowerCase(),
   { term, short, category, plain, ce }

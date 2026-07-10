@@ -13,6 +13,7 @@
   const BOOK_VIEW_LABELS = {
     cognitive: "인지능력향상 프로젝트",
     dashboard: "EPI 홈",
+    curriculum: "성장 커리큘럼",
     roadmap: "학습 로드맵",
     systems: "장비와 공정",
     "process-visual": "공정 시각화",
@@ -42,6 +43,7 @@
       group: "처음 펼칠 장",
       items: [
         ["dashboard", "방향 잡기", "역할, 오늘의 루틴, 전체 학습 흐름"],
+        ["curriculum", "성장 커리큘럼", "초보자에서 시니어 CE 사고력까지 순서형 훈련"],
         ["roadmap", "4주 로드맵", "입사 전 순서형 학습 계획"],
         ["fab101", "팹 기초", "팹 현장 용어와 장비 구조 기초"],
         ["glossary", "용어집", "FEP/EPI/CE 용어 사전"]
@@ -306,7 +308,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
+      linkedViews: ["curriculum", "dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "life-os",
@@ -1175,6 +1177,7 @@
   function viewLabel(view) {
     const labels = {
       dashboard: "EPI 홈",
+      curriculum: "성장 커리큘럼",
       cluster: "구성게임",
       install: "설치",
       electrical: "전기/DVM",
