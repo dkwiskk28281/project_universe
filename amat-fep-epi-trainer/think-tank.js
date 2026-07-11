@@ -5,10 +5,11 @@ const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
 const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
 const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
+const isLocalWorkerPreview = isLocalBrowserHost && Boolean(location.port) && location.port !== "4180";
 const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";
 const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
-  (isCloudflareWorkerHost ? location.origin : "") ||
+  (isCloudflareWorkerHost || isLocalWorkerPreview ? location.origin : "") ||
   (location.port === "4180" ? location.origin : REMOTE_VAULT_API);
 const THINK_TANK_CLIENT_PASS = "ceTrainerPass";
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
@@ -69,6 +70,10 @@ function localVaultToken() {
   return sessionStorage.getItem(LOCAL_VAULT_TOKEN) || "";
 }
 
+function shouldUseLocalVault() {
+  return THINK_TANK_API === LOCAL_VAULT_API || Boolean(localVaultToken()) || EPI_VAULT_CONFIG.enableLocalMirror === true;
+}
+
 function clearClientAuthState() {
   sessionStorage.removeItem(THINK_TANK_CLIENT_PASS);
   sessionStorage.removeItem(THINK_TANK_REMOTE_TOKEN);
@@ -77,7 +82,7 @@ function clearClientAuthState() {
 
 function clearServerAuthState() {
   fetch(`${THINK_TANK_API}/api/logout`, { credentials: "include" }).catch(() => {});
-  if (THINK_TANK_API !== LOCAL_VAULT_API) {
+  if (THINK_TANK_API !== LOCAL_VAULT_API && shouldUseLocalVault()) {
     fetch(`${LOCAL_VAULT_API}/api/logout`, { credentials: "omit" }).catch(() => {});
   }
 }
@@ -263,7 +268,7 @@ async function loginToApi(base, password, tokenKey, timeoutMs = 2500) {
 
 async function remoteLogin(password) {
   const primaryOk = await loginToApi(THINK_TANK_API, password, THINK_TANK_REMOTE_TOKEN, 2500);
-  if (THINK_TANK_API !== LOCAL_VAULT_API) {
+  if (THINK_TANK_API !== LOCAL_VAULT_API && shouldUseLocalVault()) {
     await loginToApi(LOCAL_VAULT_API, password, LOCAL_VAULT_TOKEN, 900);
   }
   return primaryOk;
@@ -806,6 +811,7 @@ function unlockApp(targetView = pendingPrivateView || "bookshelf") {
       await pullRemoteEntries();
       await retryPendingEntries();
       await syncUnsavedLocalEntries("unlock");
+      if (window.ProjectUniverseBookshelf?.pullRemote) await window.ProjectUniverseBookshelf.pullRemote();
       if (window.refreshEnglishFromVault) await window.refreshEnglishFromVault();
     });
     syncAppStateV2("unlock");
@@ -863,10 +869,9 @@ async function initPasswordGate() {
     error.textContent = "";
     if (password === "9175") {
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, password);
+      const remoteOk = await remoteLogin(password);
+      if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       unlockApp(pendingPrivateView);
-      remoteLogin(password).then(remoteOk => {
-        if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
-      });
       return;
     }
     const remoteOk = await remoteLogin(password);

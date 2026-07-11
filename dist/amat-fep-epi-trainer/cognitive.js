@@ -157,6 +157,11 @@
       title: "U.S. POINTER / Alzheimer's Association",
       body: "복수의 건강 습관을 체계적으로 수행하는 생활중재 접근을 다룹니다.",
       url: "https://www.alz.org/us-pointer/study-results"
+    },
+    {
+      title: "Johns Hopkins / ACTIVE 20-year follow-up",
+      body: "2026년 보도된 ACTIVE 장기 추적은 처리속도 훈련과 장기 인지/일상기능 결과의 연관을 다룹니다.",
+      url: "https://www.hopkinsmedicine.org/news/newsroom/news-releases/2026/02/cognitive-speed-training-linked-to-lower-dementia-incidence-up-to-20-years-later"
     }
   ];
 
@@ -479,6 +484,59 @@
     const spots = weakSpots();
     if (!spots.length) return "내일도 같은 시간에 10-12분 세션을 반복하고, 주 1회 수면/운동/사회 활동 패턴을 확인합니다.";
     return `${spots[0]}을 내일의 첫 과제로 두고, 무리 없이 1개 행동만 더합니다.`;
+  }
+
+  function adaptiveDifficulty() {
+    const recent = state.sessions.slice(0, 5);
+    const average = recent.length
+      ? Math.round(recent.reduce((sum, session) => sum + Number(session.totalScore || 0), 0) / recent.length)
+      : totalScore();
+    if (average >= 85 && getStreak() >= 3) return {
+      label: "상향",
+      title: "난이도 소폭 상승",
+      detail: "최근 점수가 안정적이면 속도, 항목 수, 회상 지연을 아주 조금 늘립니다. 무리보다 지속성이 우선입니다."
+    };
+    if (average <= 45) return {
+      label: "완화",
+      title: "성공 경험 먼저",
+      detail: "오늘은 과제 수를 줄이고 운동/생활 보호요인부터 통과시켜 루틴 이탈을 막습니다."
+    };
+    return {
+      label: "유지",
+      title: "다영역 균형 유지",
+      detail: "기억, 주의, 언어, 실행기능, 생활 보호요인을 날짜별로 섞어 반복합니다."
+    };
+  }
+
+  function renderAdaptiveRoutine() {
+    const difficulty = adaptiveDifficulty();
+    const spots = weakSpots();
+    const focus = spots[0] || "균형 유지";
+    const routine = [
+      ["1", "몸 먼저", "90초 걷기나 의자 스쿼트처럼 안전한 신체 자극으로 시작"],
+      ["2", "약점 1개", `${focus}을 오늘의 첫 인지 과제로 배치`],
+      ["3", "언어화", "정답만 보지 말고 왜 그렇게 판단했는지 한 문장으로 말하기"],
+      ["4", "생활 보호막", "수면, 사회적 연결, 청각, 혈관위험 중 실제로 한 것만 체크"],
+      ["5", "저장", "점수보다 약점과 다음 행동을 D1/localStorage 기록으로 남기기"]
+    ];
+    return `
+      <section class="cognitive-adaptive-plan">
+        <div>
+          <p class="eyebrow">Adaptive Daily Routine</p>
+          <h2>${escapeHtml(difficulty.title)}</h2>
+          <p>${escapeHtml(difficulty.detail)} 현재 처방은 ${escapeHtml(difficulty.label)} 모드입니다.</p>
+        </div>
+        <div class="cognitive-routine-ladder">
+          ${routine.map(([step, title, body]) => `
+            <article>
+              <span>${escapeHtml(step)}</span>
+              <strong>${escapeHtml(title)}</strong>
+              <small>${escapeHtml(body)}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
   }
 
   function buildSessionRecord() {
@@ -960,6 +1018,8 @@
           ${renderMetric("저장 상태", state.remoteStatus, state.lastSavedRemoteAt ? `최근 ${state.lastSavedRemoteAt.slice(0, 10)}` : "D1 가능 시 자동 시도")}
           ${renderMetric("다음 행동", nextActionText(), "작고 반복 가능한 1개 행동")}
         </div>
+
+        ${renderAdaptiveRoutine()}
 
         ${started ? `${renderTaskNav()}${renderCurrentTask()}` : renderOverview()}
 

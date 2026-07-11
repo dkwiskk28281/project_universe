@@ -453,10 +453,17 @@ function buildAiContext(entries) {
       byBook[key].latestPages.push({
         title: page.title || "",
         pageType: page.pageType || "",
+        chapter: page.chapter || "",
+        topic: page.topic || page.title || "",
         summary: page.summary || "",
         evidence: page.evidence || "",
+        action: page.action || "",
+        result: page.result || "",
         nextAction: page.nextAction || "",
+        nextStep: page.nextStep || page.nextAction || "",
         tags: page.tags || [],
+        entities: page.entities || [],
+        date: page.date || "",
         createdAt: page.createdAt || ""
       });
     }
@@ -496,10 +503,17 @@ function buildAiContext(entries) {
       latestResearch: investmentPages.slice(0, 20).map(page => ({
         title: page.title || "",
         pageType: page.pageType || "",
+        chapter: page.chapter || "",
+        topic: page.topic || page.title || "",
         summary: page.summary || "",
         evidence: page.evidence || "",
+        action: page.action || "",
+        result: page.result || "",
         nextAction: page.nextAction || "",
+        nextStep: page.nextStep || page.nextAction || "",
         tags: page.tags || [],
+        entities: page.entities || [],
+        date: page.date || "",
         createdAt: page.createdAt || ""
       }))
     },
@@ -526,10 +540,18 @@ function buildAiContext(entries) {
       subsystem: entry.subsystem || "",
       severity: entry.severity || "",
       createdAt: entry.createdAt || "",
+      bookId: entry.bookId || "",
+      bookTitle: entry.bookTitle || "",
+      chapter: entry.chapter || "",
+      topic: entry.topic || "",
       summary: entry.summary || entry.context || "",
       evidence: entry.evidence || "",
+      action: entry.action || "",
+      result: entry.result || "",
+      tags: entry.tags || [],
+      entities: entry.entities || [],
       integrityHash: entry.integrityHash || entry.serverIntegrityHash || "",
-      nextAction: entry.nextAction || entry.nextStudy || ""
+      nextAction: entry.nextAction || entry.nextStep || entry.nextStudy || ""
     }))
   };
 }

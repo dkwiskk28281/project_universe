@@ -219,6 +219,7 @@ const englishTestState = {
 };
 
 const ENGLISH_ATTEMPTS_KEY = "amkEnglishAttempts";
+const ENGLISH_MICRO_ATTEMPTS_KEY = "amkEnglishMicroAttempts";
 const ENGLISH_RECORDS_KEY = "amkEnglishSessionRecords";
 const ENGLISH_PENDING_RECORDS_KEY = "amkEnglishPendingRecords";
 const ENGLISH_REMOTE_API = "https://projectuniverse.chang2058.workers.dev";
@@ -382,6 +383,33 @@ function saveEnglishAttempt(isCorrect) {
   localStorage.setItem(ENGLISH_ATTEMPTS_KEY, JSON.stringify(attempts.slice(-200)));
 }
 
+function getEnglishMicroAttempts() {
+  try {
+    return JSON.parse(localStorage.getItem(ENGLISH_MICRO_ATTEMPTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveEnglishMicroAttempt(item, selectedIndex) {
+  const [skillTag, skillNote] = classifyEnglishQuestion(item);
+  const attempt = {
+    id: `${item.id}-${selectedIndex}`,
+    questionId: item.id,
+    type: item.type,
+    prompt: item.question || item.stem || item.title || "",
+    selected: Number.isInteger(selectedIndex) ? item.options[selectedIndex] : "",
+    answer: item.options[item.answer],
+    correct: selectedIndex === item.answer,
+    skillTag,
+    skillNote,
+    createdAt: new Date().toISOString()
+  };
+  const byId = new Map(getEnglishMicroAttempts().map(record => [record.id, record]));
+  byId.set(attempt.id, attempt);
+  localStorage.setItem(ENGLISH_MICRO_ATTEMPTS_KEY, JSON.stringify([...byId.values()].slice(-500)));
+}
+
 function isEnglishQuestionGraded(item) {
   return Boolean(englishTestState.graded[item.id] || englishTestState.checked);
 }
@@ -407,6 +435,7 @@ function markEnglishQuestionAnswered(item, selectedIndex) {
   };
   if (!englishTestState.attemptLogged[item.id]) {
     saveEnglishAttempt(selectedIndex === item.answer);
+    saveEnglishMicroAttempt(item, selectedIndex);
     englishTestState.attemptLogged[item.id] = true;
   }
 }
@@ -453,6 +482,7 @@ function mergeEnglishRecords(records) {
 
 function englishApiBase() {
   if (location.hostname.endsWith(".workers.dev")) return location.origin;
+  if (["127.0.0.1", "localhost", "::1"].includes(location.hostname) && location.port) return location.origin;
   if (location.port === "4180") return location.origin;
   return ENGLISH_REMOTE_API;
 }
@@ -503,8 +533,17 @@ const englishStudyGuides = {
 
 function buildEnglishWeaknessReport(records = getEnglishRecords()) {
   const stats = {};
-  records.forEach(record => {
-    (record.results || []).forEach(result => {
+  const microResults = getEnglishMicroAttempts().map(item => ({
+    ...item,
+    prompt: item.prompt,
+    skillTag: item.skillTag,
+    correct: item.correct
+  }));
+  const resultRows = [
+    ...records.flatMap(record => record.results || []),
+    ...microResults
+  ];
+  resultRows.forEach(result => {
       const skill = result.skillTag || classifyEnglishQuestion(result)[0];
       if (!stats[skill]) stats[skill] = { skill, total: 0, wrong: 0, examples: [], guide: englishStudyGuides[skill] || englishStudyGuides["general English response"] };
       stats[skill].total += 1;
@@ -519,7 +558,6 @@ function buildEnglishWeaknessReport(records = getEnglishRecords()) {
           });
         }
       }
-    });
   });
   return Object.values(stats)
     .map(item => ({
@@ -838,6 +876,7 @@ function renderEnglishTestProfile() {
   if (!target) return;
   const score = getEnglishScore();
   const latestRecord = getEnglishRecords()[0];
+  const microAttempts = getEnglishMicroAttempts();
   const pool = getEnglishPoolCounts();
   const objectiveCount = ENGLISH_SET_COUNTS.grammar + ENGLISH_SET_COUNTS.vocabulary + ENGLISH_SET_COUNTS.reading + ENGLISH_SET_COUNTS.listening;
   target.innerHTML = `
@@ -857,6 +896,7 @@ function renderEnglishTestProfile() {
       <strong>현재 세트 ${objectiveCount + ENGLISH_SET_COUNTS.speaking}문항</strong>
       <span>객관식 ${objectiveCount} + 말하기 ${ENGLISH_SET_COUNTS.speaking}</span>
       <span>문제풀 ${pool.grammar + pool.vocabulary + pool.reading + pool.listening + pool.speaking}+개</span>
+      <span>즉시 태그 ${microAttempts.length}개 누적</span>
     </div>
     <div class="english-timer-card">
       <span data-english-cbt-state>${englishTestState.cbtRunning ? "실전 진행 중" : "대기"}</span>
@@ -886,6 +926,57 @@ function renderEnglishTestSources() {
   `;
 }
 
+function buildSimilarEnglishDrills(item, skillTag) {
+  const fieldNoun = item.type === "Listening" ? "hold reason" : item.type === "Reading" ? "next action" : "tool status";
+  const drills = {
+    "subject-verb agreement": [
+      "Neither the pump nor the abatement unit ___ ready.",
+      "The load lock and the transfer module ___ under review.",
+      "One of the facility signals ___ unstable."
+    ],
+    "present perfect and time": [
+      "The chamber has been under vacuum ___ 20 minutes.",
+      "The alarm has been active ___ 09:10.",
+      "We have monitored the trend ___ the last shift."
+    ],
+    "verb pattern and indirect question": [
+      "The customer asked us ___ the evidence pack.",
+      "Please let me know ___ the facility owner confirms readiness.",
+      "The senior CE told me ___ the assumptions separate from facts."
+    ],
+    "passive voice": [
+      "The connector ___ reseated after LOTO approval.",
+      "The checklist ___ reviewed before handover.",
+      "The issue ___ escalated to the correct owner."
+    ],
+    "conditionals for safety holds": [
+      "If the exhaust is not verified, we must ___.",
+      "Unless the interlock status is clear, we should ___.",
+      "If the evidence is incomplete, the safest next action is ___."
+    ],
+    "field-service vocabulary": [
+      "Explain escalate, baseline, and as-built in one customer update.",
+      "Use ETA, hold, and owner in a three-sentence status report.",
+      "Write one sentence separating confirmed fact from assumption."
+    ],
+    "reading for status-risk-action": [
+      `Read a short note and underline status, risk, and ${fieldNoun}.`,
+      "Convert a five-line handover note into three bullets: completed, open, stop condition.",
+      "Find the one action the next shift must avoid."
+    ],
+    "listening for hold reason and owner": [
+      "Listen once and write only the hold reason.",
+      "Listen again and write the owner and forbidden action.",
+      "Give a 30-second customer update using status-risk-next action."
+    ]
+  };
+  return drills[skillTag] || [
+    "Make one sentence with confirmed fact, one with assumption, one with next action.",
+    "Answer in three sentences: status, risk, next action.",
+    "Explain the same idea once in Korean and once in simple English."
+  ];
+}
+
 function renderObjectiveFeedback(item) {
   const isGraded = isEnglishQuestionGraded(item);
   if (!isGraded) {
@@ -901,6 +992,7 @@ function renderObjectiveFeedback(item) {
   const selectedText = Number.isInteger(selectedIndex) ? item.options[selectedIndex] : "미선택";
   const answerText = item.options[item.answer];
   const [skillTag, skillNote] = classifyEnglishQuestion(item);
+  const drills = buildSimilarEnglishDrills(item, skillTag);
   return `
     <div class="english-instant-feedback ${isCorrect ? "good" : "bad"}">
       <div>
@@ -913,6 +1005,11 @@ function renderObjectiveFeedback(item) {
         <div><dt>학습 포인트</dt><dd>${escapeEnglishTest(skillTag)} · ${escapeEnglishTest(skillNote)}</dd></div>
       </dl>
       <p>${escapeEnglishTest(item.explain || "정답 근거를 문제 문장 안에서 다시 확인하세요.")}</p>
+      <div class="english-remediation-panel">
+        <strong>바로 이어서 할 유사훈련</strong>
+        ${drills.map(drill => `<span>${escapeEnglishTest(drill)}</span>`).join("")}
+        <small>이 태그는 즉시 오답 메모리에 저장됩니다: ${escapeEnglishTest(skillTag)}</small>
+      </div>
     </div>
   `;
 }
@@ -1124,6 +1221,7 @@ function newEnglishTestSet() {
 
 function resetEnglishScore() {
   localStorage.removeItem(ENGLISH_ATTEMPTS_KEY);
+  localStorage.removeItem(ENGLISH_MICRO_ATTEMPTS_KEY);
   localStorage.removeItem(ENGLISH_RECORDS_KEY);
   englishTestState.lastSync = "브라우저 연습 통계 초기화 완료";
   englishTestState.selected = {};

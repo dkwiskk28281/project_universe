@@ -4,9 +4,10 @@
   const CLIENT_PASS_KEY = "ceTrainerPass";
   const REMOTE_TOKEN_KEY = "epiThinkTankRemoteToken";
   const LOCAL_TOKEN_KEY = "epiThinkTankLocalToken";
-  const BOOKSHELF_SCHEMA_VERSION = "life-bookshelf-page-v2";
-  const BOOKSHELF_EXPORT_VERSION = "life-bookshelf-export-v2";
+  const BOOKSHELF_SCHEMA_VERSION = "life-bookshelf-page-v3";
+  const BOOKSHELF_EXPORT_VERSION = "life-bookshelf-export-v3";
   const BOOKSHELF_D1_LIMIT_GB = 10;
+  const LIFE_PACKET_SCHEMA_VERSION = "my-life-intelligence-packet-v1";
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
@@ -267,14 +268,38 @@
 
   const TOKENIZATION_COIN_IDS = ["ondo-finance", "centrifuge", "maple", "pax-gold", "tether-gold", "ethena", "maker"];
 
+  const LIFE_ACTION_RECIPES = {
+    "cognitive-resilience": "오늘 10분 인지 루틴을 1세션 수행하고, 약한 영역 1개를 기록하세요.",
+    "career-fep-epi": "FEP/EPI 책에서 한 챕터를 열고 evidence-stop-report 문장 1개를 저장하세요.",
+    "life-os": "오늘 에너지와 다음 24시간의 가장 작은 행동 1개를 기록하세요.",
+    "family-health": "증상, 질문, 다음 예약/상담 행동을 원문 없이 요약하세요.",
+    "assets-finance": "자산 비중보다 리스크와 다음 확인일을 먼저 기록하세요.",
+    "investment-dyor": "관심 자산 하나를 fact-source-signal-risk-thesis-counter로 분리하세요.",
+    "business-foundry": "아이디어 하나를 고객 문제와 1주 실험으로 바꾸세요.",
+    "learning-library": "오늘 틀린 문제나 모르는 개념 1개를 내 말로 다시 설명하세요.",
+    "people-network": "미뤄둔 후속 연락이나 감사 표현 1개를 정하세요.",
+    "admin-vault": "만료일, 갱신일, 문의처 중 하나를 색인으로 남기세요.",
+    "ai-briefing-desk": "AI에게 공개 가능한 요약과 제외할 민감정보를 분리하세요."
+  };
+
+  const FEP_EPI_MASTERY_PATH = [
+    ["Fab 큰 그림", "FOUP에서 wafer가 출발해 EFEM, Load Lock, TM, PM을 거쳐 metrology/handover까지 이어지는 흐름을 먼저 그립니다.", "fab101"],
+    ["장비 구조", "Centura/Vantage 계열의 platform, transfer module, process module, gas box, pump/exhaust/abatement가 왜 필요한지 연결합니다.", "cluster"],
+    ["공정 변화", "EPI film growth, RTP thermal treatment, purge/pumpdown/exhaust가 wafer 위 변화와 어떻게 연결되는지 공정 극장에서 확인합니다.", "process-visual"],
+    ["설치 증거", "move-in, leveling, facility hook-up, power-on, dry run, qualification에서 CE가 남겨야 할 evidence를 런북으로 관리합니다.", "install"],
+    ["현장 판단", "증상에서 위험도, subsystem, 확인 evidence, stop condition, 고객 보고까지 한 번에 사고합니다.", "diagnostics"],
+    ["개인 지식화", "실제 경험은 symptom-evidence-action-result-prevention-customer report 구조로 Think Tank에 축적합니다.", "thinktank"]
+  ];
+
   const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
   const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
   const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
+  const isLocalWorkerPreview = isLocalBrowserHost && Boolean(location.port) && location.port !== "4180";
   const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";
   const BOOKSHELF_API =
     EPI_VAULT_CONFIG.apiUrl ||
     (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
-    (isCloudflareWorkerHost ? location.origin : "") ||
+    (isCloudflareWorkerHost || isLocalWorkerPreview ? location.origin : "") ||
     (location.port === "4180" ? location.origin : REMOTE_VAULT_API);
 
   const BOOKSHELF_BOOKS = [
@@ -527,17 +552,56 @@
     return [...new Set(list.map(tag => cleanText(tag, 24)).filter(Boolean))].slice(0, 12);
   }
 
+  function normalizeEntities(entities) {
+    const list = Array.isArray(entities) ? entities : String(entities || "").split(/[,，\n]/);
+    return [...new Set(list.map(entity => cleanText(entity, 48)).filter(Boolean))].slice(0, 16);
+  }
+
+  function inferEntities(text = "") {
+    const dictionary = [
+      "Centura", "Vantage", "EPI", "RTP", "EFEM", "FOUP", "Load Lock", "TM", "PM", "CM",
+      "Gas Box", "Pump", "Exhaust", "Abatement", "DVM", "Relay", "Interlock", "D1",
+      "Ethereum", "RWA", "ETF", "SEC", "DART", "FINGER", "ACTIVE"
+    ];
+    const haystack = String(text || "").toLowerCase();
+    return dictionary.filter(term => haystack.includes(term.toLowerCase())).slice(0, 12);
+  }
+
+  function buildRecordText(raw = {}) {
+    return [
+      raw.bookTitle,
+      raw.title,
+      raw.pageType,
+      raw.chapter,
+      raw.topic,
+      raw.summary,
+      raw.evidence,
+      raw.action,
+      raw.result,
+      raw.nextAction,
+      Array.isArray(raw.tags) ? raw.tags.join(" ") : raw.tags,
+      Array.isArray(raw.entities) ? raw.entities.join(" ") : raw.entities
+    ].filter(Boolean).join(" ");
+  }
+
   function pageCoreForHash(page) {
     return {
       bookId: page.bookId,
+      chapter: page.chapter,
+      topic: page.topic,
       title: page.title,
       pageType: page.pageType,
       privacyLevel: page.privacyLevel,
       summary: page.summary,
       evidence: page.evidence,
+      action: page.action,
+      result: page.result,
       nextAction: page.nextAction,
+      nextStep: page.nextStep,
+      entities: page.entities,
       tags: page.tags,
       aiExportOk: page.aiExportOk,
+      date: page.date,
       createdAt: page.createdAt
     };
   }
@@ -556,11 +620,18 @@
       severity: cleanText(raw.severity || raw.privacyLevel || "private-summary", 60),
       title: cleanText(raw.title || "제목 없는 페이지", 120),
       pageType: cleanText(raw.pageType || book.pageTypes?.[0] || "페이지", 80),
+      chapter: cleanText(raw.chapter || raw.pageType || book.shelf, 80),
+      topic: cleanText(raw.topic || raw.title || book.title, 120),
       privacyLevel: cleanText(raw.privacyLevel || raw.severity || "private-summary", 80),
       summary: cleanLongText(raw.summary || raw.context || "", 12000),
       evidence: cleanLongText(raw.evidence || "", 8000),
+      action: cleanLongText(raw.action || "", 4000),
+      result: cleanLongText(raw.result || "", 4000),
       nextAction: cleanLongText(raw.nextAction || raw.nextStudy || "", 4000),
+      nextStep: cleanLongText(raw.nextStep || raw.nextAction || raw.nextStudy || "", 4000),
       tags: normalizeTags(raw.tags),
+      entities: normalizeEntities(raw.entities || inferEntities(buildRecordText(raw))),
+      date: cleanText(raw.date || createdAt.slice(0, 10), 20),
       aiExportOk: Boolean(raw.aiExportOk),
       bookId: book.id,
       bookTitle: book.title,
@@ -786,6 +857,27 @@
             </div>
           </div>
         `).join("")}
+        <div class="fep-mastery-spine">
+          <div>
+            <p class="eyebrow">Senior CE 사고 순서</p>
+            <h3>초보자가 막히지 않도록 큰 그림에서 현장 판단까지 한 줄로 연결</h3>
+            <p>공개 자료로 확인 가능한 장비군과 공정 원리는 학습 콘텐츠로 넣고, 실제 recipe, customer site-specific acceptance limit, valve sequence, detector setpoint, interlock bypass는 현장 승인 문서 우선 경계로 분리합니다.</p>
+          </div>
+          <div class="fep-mastery-grid">
+            ${FEP_EPI_MASTERY_PATH.map(([title, desc, view], index) => `
+              <button class="fep-mastery-card" type="button" data-open-book-view="${escapeHtml(view)}">
+                <span>${index + 1}</span>
+                <strong>${escapeHtml(title)}</strong>
+                <small>${escapeHtml(desc)}</small>
+              </button>
+            `).join("")}
+          </div>
+          <div class="fep-boundary-strip">
+            <span><b>공개 학습</b>Applied 공식 장비 소개, OSHA/NIOSH/SEMI류 안전 원칙, 공개 논문/특허 수준의 원리</span>
+            <span><b>현장 문서</b>고객 라인 spec, gas matrix, acceptance limit, PM 절차, interlock logic, manual 상세 절차</span>
+            <span><b>CE 사고</b>증상 → 위험 → subsystem → evidence → stop condition → customer update → prevention</span>
+          </div>
+        </div>
       </section>
     `;
   }
@@ -1205,16 +1297,17 @@
   function getBookStats(book) {
     const bookPages = pagesForBook(book.id);
     const aiReady = bookPages.filter(page => page.aiExportOk).length;
-    const nextReady = bookPages.filter(page => page.nextAction).length;
+    const nextReady = bookPages.filter(page => page.nextAction || page.nextStep).length;
     const tagged = bookPages.filter(page => page.tags?.length).length;
+    const withEntities = bookPages.filter(page => page.entities?.length).length;
     const latest = [...bookPages].sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))[0];
     const score = Math.min(100, Math.round(
       Math.min(bookPages.length, 6) / 6 * 40 +
       (bookPages.length ? aiReady / bookPages.length : 0) * 25 +
       (bookPages.length ? nextReady / bookPages.length : 0) * 25 +
-      (bookPages.length ? tagged / bookPages.length : 0) * 10
+      (bookPages.length ? (tagged + withEntities) / (bookPages.length * 2) : 0) * 10
     ));
-    const missingNext = bookPages.filter(page => !page.nextAction).slice(0, 3);
+    const missingNext = bookPages.filter(page => !(page.nextAction || page.nextStep)).slice(0, 3);
     const suggestion = !bookPages.length
       ? "첫 페이지를 하나 저장해서 이 책을 활성화하세요."
       : !aiReady
@@ -1229,6 +1322,7 @@
       aiReady,
       nextReady,
       tagged,
+      withEntities,
       latest,
       score,
       missingNext,
@@ -1239,7 +1333,7 @@
   function libraryStats() {
     const exportReady = pages.filter(page => page.aiExportOk).length;
     const booksWithPages = new Set(pages.map(page => page.bookId).filter(Boolean)).size;
-    const pagesWithNextAction = pages.filter(page => page.nextAction).length;
+    const pagesWithNextAction = pages.filter(page => page.nextAction || page.nextStep).length;
     const overallScore = pages.length ? Math.round((exportReady / pages.length * 45) + (pagesWithNextAction / pages.length * 45) + (booksWithPages / BOOKSHELF_BOOKS.length * 10)) : 0;
     return {
       books: BOOKSHELF_BOOKS.length,
@@ -1254,13 +1348,189 @@
     return total ? Math.round(part / total * 100) : 0;
   }
 
+  function safeJsonParse(key, fallback) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "");
+      return parsed ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function localEnglishInsight() {
+    const records = safeJsonParse("amkEnglishSessionRecords", []);
+    const micro = safeJsonParse("amkEnglishMicroAttempts", []);
+    const allResults = [
+      ...records.flatMap(record => record.results || []),
+      ...micro.map(item => ({
+        type: item.type,
+        prompt: item.prompt,
+        correct: item.correct,
+        skillTag: item.skillTag
+      }))
+    ];
+    const bySkill = {};
+    allResults.forEach(result => {
+      const skill = result.skillTag || result.type || "general English";
+      if (!bySkill[skill]) bySkill[skill] = { skill, total: 0, wrong: 0 };
+      bySkill[skill].total += 1;
+      if (!result.correct) bySkill[skill].wrong += 1;
+    });
+    const weaknesses = Object.values(bySkill)
+      .map(item => ({
+        ...item,
+        accuracy: item.total ? Math.round((item.total - item.wrong) / item.total * 100) : 0
+      }))
+      .sort((a, b) => b.wrong - a.wrong || a.accuracy - b.accuracy);
+    const total = allResults.length;
+    const correct = allResults.filter(item => item.correct).length;
+    return {
+      records: records.length,
+      microAttempts: micro.length,
+      totalQuestions: total,
+      accuracy: total ? Math.round(correct / total * 100) : 0,
+      weaknesses: weaknesses.slice(0, 5)
+    };
+  }
+
+  function localCognitiveInsight() {
+    const state = safeJsonParse("projectUniverseCognitiveResilienceV1", {});
+    const sessions = Array.isArray(state.sessions) ? state.sessions : [];
+    const latest = sessions[0];
+    const weakMap = {};
+    sessions.forEach(session => (session.weakSpots || []).forEach(spot => {
+      weakMap[spot] = (weakMap[spot] || 0) + 1;
+    }));
+    return {
+      today: state.today || "",
+      streak: state.streak || 0,
+      sessions: sessions.length,
+      latestScore: latest?.totalScore || 0,
+      weakSpots: Object.entries(weakMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([spot, count]) => ({ spot, count }))
+    };
+  }
+
+  function localCareerInsight() {
+    const trainer = safeJsonParse("ceTrainerState", {});
+    const missions = Object.values(trainer.missions || {}).filter(Boolean).length;
+    const quizzes = Array.isArray(trainer.quizAttempts) ? trainer.quizAttempts : [];
+    const quizAccuracy = quizzes.length ? Math.round(quizzes.filter(Boolean).length / quizzes.length * 100) : 0;
+    const recentViews = Array.isArray(trainer.recentViews) ? trainer.recentViews.slice(0, 5) : [];
+    return {
+      missions,
+      quizAttempts: quizzes.length,
+      quizAccuracy,
+      recentViews,
+      lastView: trainer.lastView || ""
+    };
+  }
+
+  function todayActionForBook(book, stats = getBookStats(book)) {
+    if (stats.missingNext.length) return `열린 루프 닫기: ${stats.missingNext[0].title}`;
+    if (!stats.pages.length) return LIFE_ACTION_RECIPES[book.id] || "첫 기록 1개를 저장하세요.";
+    if (!stats.withEntities) return "관련 사람, 장비, 자산, 개념을 entities로 붙여 검색성을 올리세요.";
+    if (!stats.aiReady) return "AI에게 보여도 되는 비식별 요약 1개를 체크하세요.";
+    return LIFE_ACTION_RECIPES[book.id] || stats.suggestion;
+  }
+
+  function buildKnowledgeGraph() {
+    const nodes = new Map();
+    const edges = [];
+    const addNode = (id, type, label, meta = {}) => {
+      if (!id) return;
+      nodes.set(id, { id, type, label, ...meta });
+    };
+    const addEdge = (from, to, label) => {
+      if (from && to) edges.push({ from, to, label });
+    };
+    BOOKSHELF_BOOKS.forEach(book => {
+      addNode(`book:${book.id}`, "book", book.title, {
+        shelf: book.shelf,
+        privacyLevel: book.privacyLevel,
+        todayAction: todayActionForBook(book)
+      });
+      (book.linkedViews || []).slice(0, 8).forEach(view => {
+        addNode(`view:${view}`, "chapter", BOOK_VIEW_LABELS[view] || view, { bookId: book.id });
+        addEdge(`book:${book.id}`, `view:${view}`, "contains");
+      });
+    });
+    pages.forEach(page => {
+      const pageId = `page:${page.id}`;
+      addNode(pageId, "record", page.title, {
+        bookId: page.bookId,
+        chapter: page.chapter,
+        topic: page.topic,
+        date: page.date,
+        privacyLevel: page.privacyLevel,
+        aiExportOk: page.aiExportOk
+      });
+      addEdge(`book:${page.bookId}`, pageId, "has-record");
+      if (page.chapter) {
+        const chapterId = `chapter:${page.bookId}:${page.chapter}`;
+        addNode(chapterId, "chapter", page.chapter, { bookId: page.bookId });
+        addEdge(pageId, chapterId, "belongs-to");
+      }
+      (page.tags || []).forEach(tag => {
+        const tagId = `tag:${tag.toLowerCase()}`;
+        addNode(tagId, "tag", tag);
+        addEdge(pageId, tagId, "tagged");
+      });
+      (page.entities || []).forEach(entity => {
+        const entityId = `entity:${entity.toLowerCase()}`;
+        addNode(entityId, "entity", entity);
+        addEdge(pageId, entityId, "mentions");
+      });
+      if (page.nextAction || page.nextStep) {
+        const actionId = `action:${page.id}`;
+        addNode(actionId, "next-action", (page.nextAction || page.nextStep).slice(0, 100), { due: page.date });
+        addEdge(pageId, actionId, "next");
+      }
+    });
+    const tagNodes = [...nodes.values()].filter(node => node.type === "tag").length;
+    const entityNodes = [...nodes.values()].filter(node => node.type === "entity").length;
+    return {
+      schema: "life-knowledge-graph-v1",
+      generatedAt: new Date().toISOString(),
+      counts: {
+        nodes: nodes.size,
+        edges: edges.length,
+        books: BOOKSHELF_BOOKS.length,
+        records: pages.length,
+        tags: tagNodes,
+        entities: entityNodes
+      },
+      nodes: [...nodes.values()].slice(0, 300),
+      edges: edges.slice(0, 600)
+    };
+  }
+
+  function buildTodayAgenda() {
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const weakBook = BOOKSHELF_BOOKS
+      .map(book => ({ book, stats: getBookStats(book) }))
+      .sort((a, b) => a.stats.score - b.stats.score)[0];
+    return [
+      { lane: "인지", action: cognitive.sessions ? "오늘 인지 루틴을 이어서 streak를 유지하세요." : "인지훈련 첫 세션을 시작하세요.", evidence: `${cognitive.sessions} sessions · streak ${cognitive.streak}` },
+      { lane: "직무", action: career.quizAccuracy < 70 ? "FEP/EPI 판단형 퀴즈와 runbook evidence를 복습하세요." : "install 또는 process visual 장을 하나 열어 현장 보고 문장을 만드세요.", evidence: `quiz ${career.quizAccuracy}% · missions ${career.missions}` },
+      { lane: "영어", action: english.weaknesses[0] ? `${english.weaknesses[0].skill} 유형을 10분 보강하세요.` : "영어 CBT 1세트를 시작해 약점 태그를 만드세요.", evidence: `${english.totalQuestions} questions · ${english.accuracy}%` },
+      { lane: "책장", action: weakBook ? todayActionForBook(weakBook.book, weakBook.stats) : "첫 기록을 저장하세요.", evidence: weakBook ? `${weakBook.book.title} 정리도 ${weakBook.stats.score}` : "기록 대기" }
+    ];
+  }
+
   function buildBookshelfAudit() {
     const total = pages.length;
     const cloudSaved = pages.filter(page => page.remoteSavedAt).length;
     const localOnly = pages.filter(needsCloudSync).length;
-    const withNext = pages.filter(page => page.nextAction).length;
+    const withNext = pages.filter(page => page.nextAction || page.nextStep).length;
     const withTags = pages.filter(page => page.tags?.length).length;
+    const withEntities = pages.filter(page => page.entities?.length).length;
     const withEvidence = pages.filter(page => page.evidence).length;
+    const withActionResult = pages.filter(page => page.action || page.result).length;
     const exportReady = pages.filter(page => page.aiExportOk).length;
     const validSchema = pages.filter(page =>
       page.id &&
@@ -1277,7 +1547,9 @@
       ["DB 동기화", percent(cloudSaved, total), `${cloudSaved}/${total || 0} 페이지가 Cloudflare D1 저장 확인`],
       ["행동성", percent(withNext, total), `${withNext}/${total || 0} 페이지에 다음 행동 포함`],
       ["검색성", percent(withTags, total), `${withTags}/${total || 0} 페이지에 태그 포함`],
+      ["연결성", percent(withEntities, total), `${withEntities}/${total || 0} 페이지에 entities 포함`],
       ["근거성", percent(withEvidence, total), `${withEvidence}/${total || 0} 페이지에 근거/출처 포함`],
+      ["결과성", percent(withActionResult, total), `${withActionResult}/${total || 0} 페이지에 action/result 포함`],
       ["책장 확장", percent(booksWithPages, BOOKSHELF_BOOKS.length), `${booksWithPages}/${BOOKSHELF_BOOKS.length} 권이 실제 기록 보유`]
     ];
     const score = total ? Math.round(dimensions.reduce((sum, [, value]) => sum + value, 0) / dimensions.length) : 0;
@@ -1287,7 +1559,9 @@
       localOnly,
       withNext,
       withTags,
+      withEntities,
       withEvidence,
+      withActionResult,
       exportReady,
       booksWithPages,
       latest,
@@ -1441,6 +1715,13 @@
         aiPolicy: "aiExportOk=true인 비식별 요약만 AI 분석 패킷 후보로 사용"
       },
       audit,
+      knowledgeGraph: buildKnowledgeGraph(),
+      todayAgenda: buildTodayAgenda(),
+      localSignals: {
+        english: localEnglishInsight(),
+        cognitive: localCognitiveInsight(),
+        career: localCareerInsight()
+      },
       books: BOOKSHELF_BOOKS.map(book => ({
         id: book.id,
         title: book.title,
@@ -1451,6 +1732,108 @@
       })),
       pages: pages.map(normalizePage)
     };
+  }
+
+  function buildMyLifeIntelligencePacket(remoteContext = null) {
+    const bookshelfExport = buildBookshelfExport();
+    return {
+      schema: LIFE_PACKET_SCHEMA_VERSION,
+      generatedAt: new Date().toISOString(),
+      title: "My Life Intelligence Packet",
+      operatingRule: [
+        "Use this as structured personal context, not raw private documents.",
+        "Separate fact, assumption, risk, action, result, and missing data.",
+        "Do not ask for passwords, seed phrases, raw medical documents, customer confidential manuals, or account identifiers.",
+        "Return high-signal patterns and the smallest useful next action."
+      ],
+      storageBoundary: {
+        primary: "Cloudflare D1 / ce_data for structured JSON entries",
+        localCache: "browser localStorage for offline fallback",
+        optionalMirror: "D:\\FEP_EPI_ThinkTank_Vault only when the personal local vault server is running",
+        d1Limit: `Cloudflare public docs list ${BOOKSHELF_D1_LIMIT_GB}GB per D1 database; large files should move to R2 or local encrypted storage.`
+      },
+      safetyBoundary: {
+        career: "No recipe, valve sequence, detector setpoint, interlock bypass, customer site-specific procedure, or internal manual content.",
+        health: "Not diagnosis or treatment; use summaries for medical consultation preparation.",
+        investment: "Research notes only; no buy/sell instruction or financial advice."
+      },
+      todayAgenda: buildTodayAgenda(),
+      knowledgeGraph: bookshelfExport.knowledgeGraph,
+      bookshelf: {
+        audit: bookshelfExport.audit,
+        books: bookshelfExport.books,
+        exportApprovedPages: bookshelfExport.pages.filter(page => page.aiExportOk)
+      },
+      localSignals: bookshelfExport.localSignals,
+      remoteContext: remoteContext || null
+    };
+  }
+
+  function renderKnowledgeGraphPanel() {
+    const graph = buildKnowledgeGraph();
+    const agenda = buildTodayAgenda();
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const entityPreview = graph.nodes.filter(node => node.type === "entity").slice(0, 10);
+    return `
+      <section class="knowledge-graph-panel" aria-label="개인 지식 그래프">
+        <div class="knowledge-graph-head">
+          <div>
+            <p class="eyebrow">Personal Knowledge Graph</p>
+            <h2>모든 책의 기록을 하나의 AI 분석 구조로 연결</h2>
+            <p>각 기록은 책, 챕터, 주제, 태그, entities, 근거, 실행, 결과, 다음 행동으로 정규화됩니다. 나중에 AI에게 넘길 때 이 그래프가 “나의 패턴”을 읽는 색인이 됩니다.</p>
+          </div>
+          <div class="knowledge-score-ring">
+            <span>GRAPH</span>
+            <strong>${graph.counts.nodes}</strong>
+            <small>${graph.counts.edges} links</small>
+          </div>
+        </div>
+        <div class="knowledge-agenda-grid">
+          ${agenda.map(item => `
+            <article>
+              <span>${escapeHtml(item.lane)}</span>
+              <strong>${escapeHtml(item.action)}</strong>
+              <small>${escapeHtml(item.evidence)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="knowledge-signal-grid">
+          <article>
+            <span>영어 약점</span>
+            <strong>${escapeHtml(english.weaknesses[0]?.skill || "데이터 대기")}</strong>
+            <small>${english.totalQuestions}문항 · ${english.accuracy}%</small>
+          </article>
+          <article>
+            <span>인지 루틴</span>
+            <strong>${cognitive.streak}일</strong>
+            <small>${cognitive.sessions}세션 · 최근 ${cognitive.latestScore}점</small>
+          </article>
+          <article>
+            <span>CE 학습</span>
+            <strong>${career.quizAccuracy}%</strong>
+            <small>${career.quizAttempts}회 퀴즈 · 미션 ${career.missions}</small>
+          </article>
+          <article>
+            <span>Entities</span>
+            <strong>${graph.counts.entities}</strong>
+            <small>${entityPreview.map(node => node.label).join(", ") || "기록에 관련 대상을 붙이면 채워집니다."}</small>
+          </article>
+        </div>
+        <div class="knowledge-graph-strip" aria-label="지식 그래프 미리보기">
+          ${graph.nodes.slice(0, 18).map(node => `
+            <span class="node-${escapeHtml(node.type)}"><b>${escapeHtml(node.type)}</b>${escapeHtml(node.label)}</span>
+          `).join("")}
+        </div>
+        <div class="knowledge-actions">
+          <button class="primary" type="button" data-command-action="copy-life-packet">My Life Packet 복사</button>
+          <button class="secondary" type="button" data-command-action="focus-capture">구조화 기록 추가</button>
+          <button class="secondary" type="button" data-command-action="open-ai-desk">AI 브리핑 책 열기</button>
+          <span class="copy-status" id="life-packet-copy-status"></span>
+        </div>
+      </section>
+    `;
   }
 
   function downloadBookshelfExport() {
@@ -1530,6 +1913,7 @@
         </div>
       </section>
       ${renderIntelBriefingPanel(activeBook, activeStats)}
+      ${renderKnowledgeGraphPanel()}
       ${renderLifetimeOpsPanel()}
       <section class="library-overview" aria-label="전체 책장">
         <div class="panel-title-row">
@@ -1541,13 +1925,16 @@
         </div>
         <div class="library-book-grid">
           ${BOOKSHELF_BOOKS.map(book => {
-            const count = pagesForBook(book.id).length;
+            const bookStats = getBookStats(book);
+            const count = bookStats.pages.length;
             return `
               <button class="library-book-card ${book.id === activeBook.id ? "active" : ""}" type="button" data-book-card="${escapeHtml(book.id)}">
                 <span class="book-card-code">${escapeHtml(book.code)}</span>
                 <strong>${escapeHtml(book.title)}</strong>
-                <small>${escapeHtml(book.shelf)} / ${escapeHtml(privacyLabel(book.privacyLevel))}</small>
-                <em>${count}쪽</em>
+                <small>${escapeHtml(book.subtitle)}</small>
+                <i>${escapeHtml(book.shelf)} · ${escapeHtml(privacyLabel(book.privacyLevel))}</i>
+                <em>${count}쪽 · 최근 ${escapeHtml(freshnessText(bookStats.latest?.createdAt || bookStats.latest?.updatedAt))}</em>
+                <b>${escapeHtml(todayActionForBook(book, bookStats))}</b>
               </button>
             `;
           }).join("")}
@@ -1662,6 +2049,14 @@
         if (action === "copy-ai") {
           copyText(JSON.stringify(buildBookshelfExport(), null, 2), "#bookshelf-export-copy-status");
         }
+        if (action === "copy-life-packet") {
+          copyText(JSON.stringify(buildMyLifeIntelligencePacket(), null, 2), "#life-packet-copy-status");
+        }
+        if (action === "open-ai-desk") {
+          activeBookId = "ai-briefing-desk";
+          localStorage.setItem(ACTIVE_BOOK_KEY, activeBookId);
+          renderBookshelf();
+        }
       });
     });
     detail.querySelector("#bookshelf-retry-sync")?.addEventListener("click", () => retryUnsyncedPages());
@@ -1706,6 +2101,14 @@
                 </select>
               </label>
               <label>
+                챕터/영역
+                <input id="bookshelf-chapter" maxlength="80" placeholder="예: Install, Gas safety, 가족 건강" />
+              </label>
+              <label>
+                주제
+                <input id="bookshelf-topic" maxlength="120" placeholder="예: pumpdown 지연, 영어 if/unless, 혈압 추적" />
+              </label>
+              <label>
                 민감도
                 <select id="bookshelf-privacy">
                   <option value="private-summary">개인 요약</option>
@@ -1719,6 +2122,10 @@
                 태그
                 <input id="bookshelf-tags" placeholder="예: 설치, 영어, 건강" />
               </label>
+              <label>
+                Entities
+                <input id="bookshelf-entities" placeholder="예: Centura, Load Lock, Ethereum, 병원명" />
+              </label>
             </div>
             <label>
               요약
@@ -1728,6 +2135,16 @@
               근거/출처
               <textarea id="bookshelf-evidence" placeholder="내가 직접 본 사실, 공개 링크, 측정값, 대화 요약, 판단을 뒷받침하는 근거를 분리해 적습니다."></textarea>
             </label>
+            <div class="bookshelf-capture-grid">
+              <label>
+                실행/조치
+                <textarea id="bookshelf-action" placeholder="내가 한 행동, 하기로 한 행동, 확인 요청, 학습 조치"></textarea>
+              </label>
+              <label>
+                결과/배운 점
+                <textarea id="bookshelf-result" placeholder="결과, 바뀐 판단, 재발 방지, 배운 점"></textarea>
+              </label>
+            </div>
             <label>
               다음 행동
               <textarea id="bookshelf-next-action" placeholder="다음 확인, 질문, 실험, 병원/전문가 상담, 재검토 날짜 등을 적습니다."></textarea>
@@ -1800,20 +2217,12 @@
     try {
       const data = await apiFetch("/api/ai-context");
       const context = data.context || {};
-      const packet = {
-        schema: context.schema,
-        generatedAt: context.generatedAt,
-        countsByType: context.countsByType,
-        english: context.english,
-        investment: context.investment,
-        bookshelf: context.bookshelf,
-        localBookshelfAudit: buildBookshelfAudit(),
-        recentItemsPreview: (context.recentItems || []).slice(0, 8)
-      };
+      const packet = buildMyLifeIntelligencePacket(context);
       latestAiPacketText = JSON.stringify(packet, null, 2);
       const counts = Object.entries(context.countsByType || {});
       const books = context.bookshelf || [];
       const english = context.english || {};
+      const agenda = packet.todayAgenda || [];
       const topWeakness = english.weaknesses?.[0];
       const recent = (context.recentItems || []).slice(0, 5);
       target.innerHTML = `
@@ -1833,6 +2242,15 @@
             <strong>${english.accuracy ?? 0}%</strong>
             <small>${topWeakness ? `${escapeHtml(topWeakness.skill)} 우선 보강` : "영어 오답 데이터 대기"}</small>
           </article>
+          <article>
+            <span>Graph</span>
+            <strong>${packet.knowledgeGraph?.counts?.nodes || 0}</strong>
+            <small>${packet.knowledgeGraph?.counts?.edges || 0} links · ${packet.knowledgeGraph?.counts?.entities || 0} entities</small>
+          </article>
+        </div>
+        <div class="ai-context-recent">
+          <strong>오늘 추천 action</strong>
+          ${agenda.map(item => `<span>${escapeHtml(item.lane)} · ${escapeHtml(item.action)}</span>`).join("")}
         </div>
         <div class="ai-context-recent">
           <strong>최근 AI 재료</strong>
@@ -1857,14 +2275,21 @@
         <header>
           <div>
             <h3>${escapeHtml(page.title || "제목 없는 페이지")}</h3>
-            <small>${escapeHtml(page.pageType || "페이지")} / ${escapeHtml(privacyLabel(page.privacyLevel || "private-summary"))}</small>
+            <small>${escapeHtml(page.pageType || "페이지")} / ${escapeHtml(page.chapter || "챕터 미지정")} / ${escapeHtml(privacyLabel(page.privacyLevel || "private-summary"))}</small>
           </div>
           <span>${escapeHtml(syncLabel(page.syncStatus))}</span>
         </header>
+        <div class="page-kg-line">
+          <span>Topic: ${escapeHtml(page.topic || page.title || "")}</span>
+          <span>Date: ${escapeHtml(page.date || "")}</span>
+        </div>
         <p>${escapeHtml(page.summary || "")}</p>
         ${page.evidence ? `<small class="page-evidence">근거: ${escapeHtml(page.evidence)}</small>` : ""}
-        ${page.nextAction ? `<strong>다음: ${escapeHtml(page.nextAction)}</strong>` : ""}
+        ${page.action ? `<small class="page-evidence">실행: ${escapeHtml(page.action)}</small>` : ""}
+        ${page.result ? `<small class="page-evidence">결과: ${escapeHtml(page.result)}</small>` : ""}
+        ${page.nextAction || page.nextStep ? `<strong>다음: ${escapeHtml(page.nextAction || page.nextStep)}</strong>` : ""}
         <div class="entry-tags">${(page.tags || []).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
+        ${page.entities?.length ? `<div class="entry-tags entity-tags">${page.entities.map(entity => `<span>${escapeHtml(entity)}</span>`).join("")}</div>` : ""}
       </article>
     `;
   }
@@ -1873,7 +2298,7 @@
     const exportPages = pages
       .filter(page => page.bookId === book.id && page.aiExportOk)
       .slice(0, 10)
-      .map((page, index) => `${index + 1}. ${page.title} | ${page.pageType} | ${page.summary}${page.evidence ? ` | 근거: ${page.evidence}` : ""}${page.nextAction ? ` | 다음: ${page.nextAction}` : ""}`);
+      .map((page, index) => `${index + 1}. ${page.title} | ${page.chapter}/${page.topic} | ${page.pageType} | ${page.summary}${page.evidence ? ` | 근거: ${page.evidence}` : ""}${page.action ? ` | 실행: ${page.action}` : ""}${page.result ? ` | 결과: ${page.result}` : ""}${page.nextAction || page.nextStep ? ` | 다음: ${page.nextAction || page.nextStep}` : ""}${page.entities?.length ? ` | entities: ${page.entities.join(", ")}` : ""}`);
 
     return [
       `책: ${book.title}`,
@@ -1897,6 +2322,11 @@
       .map(tag => tag.trim())
       .filter(Boolean)
       .slice(0, 12);
+    const entities = document.querySelector("#bookshelf-entities").value
+      .split(/[,，\n]/)
+      .map(entity => entity.trim())
+      .filter(Boolean)
+      .slice(0, 16);
 
     const page = {
       id: `bookshelf-${uid()}`,
@@ -1905,11 +2335,17 @@
       severity: document.querySelector("#bookshelf-privacy").value,
       title: document.querySelector("#bookshelf-title").value.trim(),
       pageType: document.querySelector("#bookshelf-page-type").value,
+      chapter: document.querySelector("#bookshelf-chapter").value.trim() || document.querySelector("#bookshelf-page-type").value,
+      topic: document.querySelector("#bookshelf-topic").value.trim() || document.querySelector("#bookshelf-title").value.trim(),
       privacyLevel: document.querySelector("#bookshelf-privacy").value,
       summary: document.querySelector("#bookshelf-summary").value.trim(),
       evidence: document.querySelector("#bookshelf-evidence").value.trim(),
+      action: document.querySelector("#bookshelf-action").value.trim(),
+      result: document.querySelector("#bookshelf-result").value.trim(),
       nextAction: document.querySelector("#bookshelf-next-action").value.trim(),
+      nextStep: document.querySelector("#bookshelf-next-action").value.trim(),
       tags,
+      entities,
       aiExportOk: document.querySelector("#bookshelf-ai-export").checked,
       bookId: book.id,
       bookTitle: book.title,
@@ -1934,11 +2370,14 @@
   window.ProjectUniverseBookshelf = {
     books: BOOKSHELF_BOOKS,
     getPages: () => [...pages],
-    render: renderBookshelf
+    render: renderBookshelf,
+    pullRemote: pullRemotePages,
+    retrySync: retryUnsyncedPages,
+    buildLifePacket: buildMyLifeIntelligencePacket
   };
 
   document.addEventListener("DOMContentLoaded", () => {
     renderBookshelf();
-    pullRemotePages();
+    if (document.body.classList.contains("auth-unlocked")) pullRemotePages();
   });
 })();

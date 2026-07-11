@@ -46,6 +46,268 @@ html {
   overflow-x: hidden;
 }
 
+/* Life OS v3: knowledge graph, adaptive routines, and instant remediation */
+.knowledge-graph-panel,
+.fep-mastery-spine,
+.cognitive-adaptive-plan,
+.english-remediation-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid rgba(89, 255, 177, 0.34);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.085), rgba(167, 247, 255, 0.035)),
+    rgba(3, 15, 11, 0.965);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.knowledge-graph-head,
+.cognitive-adaptive-plan {
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 0.28fr);
+  align-items: stretch;
+}
+
+.knowledge-graph-head h2,
+.knowledge-graph-head p,
+.fep-mastery-spine h3,
+.fep-mastery-spine p,
+.cognitive-adaptive-plan h2,
+.cognitive-adaptive-plan p {
+  margin: 0;
+}
+
+.knowledge-graph-head p:not(.eyebrow),
+.fep-mastery-spine p,
+.cognitive-adaptive-plan p,
+.english-remediation-panel small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.knowledge-score-ring {
+  display: grid;
+  gap: 4px;
+  align-content: center;
+  min-height: 132px;
+  padding: 14px;
+  border: 1px solid rgba(50, 255, 173, 0.35);
+  border-radius: 8px;
+  background: rgba(1, 12, 8, 0.82);
+  text-align: center;
+}
+
+.knowledge-score-ring span,
+.knowledge-agenda-grid span,
+.knowledge-signal-grid span,
+.fep-boundary-strip b,
+.english-remediation-panel strong {
+  color: var(--console-cyan);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.knowledge-score-ring strong {
+  color: var(--accent);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.knowledge-score-ring small {
+  color: var(--muted);
+}
+
+.knowledge-agenda-grid,
+.knowledge-signal-grid,
+.fep-mastery-grid,
+.cognitive-routine-ladder {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.fep-mastery-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.knowledge-agenda-grid article,
+.knowledge-signal-grid article,
+.fep-mastery-card,
+.cognitive-routine-ladder article,
+.english-remediation-panel span,
+.page-kg-line span {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  min-height: 92px;
+  padding: 12px;
+  border: 1px solid rgba(89, 255, 177, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(50, 255, 173, 0.075), rgba(0, 0, 0, 0.08)),
+    rgba(5, 24, 17, 0.96);
+  color: var(--ink);
+}
+
+.knowledge-agenda-grid strong,
+.knowledge-signal-grid strong,
+.fep-mastery-card strong,
+.cognitive-routine-ladder strong,
+.english-remediation-panel span {
+  color: #f7fff9;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-agenda-grid small,
+.knowledge-signal-grid small,
+.fep-mastery-card small,
+.cognitive-routine-ladder small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.knowledge-graph-strip,
+.fep-boundary-strip,
+.page-kg-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.knowledge-graph-strip span,
+.fep-boundary-strip span,
+.page-kg-line span {
+  min-height: auto;
+  width: max-content;
+  max-width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.knowledge-graph-strip b {
+  display: block;
+  color: var(--console-cyan);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.knowledge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.library-book-card {
+  gap: 7px;
+}
+
+.library-book-card i,
+.library-book-card b {
+  display: block;
+  font-style: normal;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.library-book-card i {
+  color: var(--console-cyan);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.library-book-card b {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.entity-tags span {
+  border-color: rgba(167, 247, 255, 0.24) !important;
+  color: var(--console-cyan) !important;
+}
+
+.bookshelf-capture-grid textarea {
+  min-height: 96px;
+}
+
+.english-remediation-panel {
+  margin-top: 10px;
+  padding: 12px;
+  background:
+    linear-gradient(135deg, rgba(167, 247, 255, 0.07), rgba(50, 255, 173, 0.06)),
+    rgba(2, 14, 10, 0.94) !important;
+}
+
+.english-remediation-panel span {
+  min-height: auto;
+  padding: 9px 10px;
+  color: var(--ink) !important;
+}
+
+.cognitive-routine-ladder {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.cognitive-routine-ladder span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(50, 255, 173, 0.14);
+  color: var(--accent);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-weight: 950;
+}
+
+@media (max-width: 980px) {
+  .knowledge-graph-head,
+  .cognitive-adaptive-plan {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-agenda-grid,
+  .knowledge-signal-grid,
+  .fep-mastery-grid,
+  .cognitive-routine-ladder {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .knowledge-graph-panel,
+  .fep-mastery-spine,
+  .cognitive-adaptive-plan,
+  .english-remediation-panel {
+    padding: 13px;
+  }
+
+  .knowledge-agenda-grid,
+  .knowledge-signal-grid,
+  .fep-mastery-grid,
+  .cognitive-routine-ladder,
+  .bookshelf-capture-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .knowledge-score-ring {
+    min-height: 104px;
+    text-align: left;
+  }
+}
+
 body {
   margin: 0;
   overflow-x: hidden;
