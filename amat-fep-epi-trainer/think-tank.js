@@ -445,6 +445,115 @@ function entryTags(entry) {
     .slice(0, 10);
 }
 
+const trainerChapterLabels = {
+  "fab-intro": "Fab 입문",
+  "applied-platforms": "Applied 장비군과 platform",
+  "centura-vantage": "Centura/Vantage 구조",
+  "wafer-path": "EFEM/LL/TM/PM wafer path",
+  "epi-physics": "EPI 공정 원리",
+  "rtp-physics": "RTP 공정 원리",
+  "gas-vacuum": "Gas/Vacuum/Exhaust",
+  "facility-hookup": "Facility hook-up",
+  "electrical-dvm": "Electrical/DVM",
+  "install-sequence": "Install sequence",
+  "qualification": "Qualification/metrology",
+  "maintenance": "Maintenance/seasoning",
+  "failure-mode": "Failure mode troubleshooting",
+  "handover": "Customer communication/handover",
+  "thinktank-loop": "Think Tank 사고 루프"
+};
+
+function loadTrainerState() {
+  try {
+    return JSON.parse(localStorage.getItem("ceTrainerState") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function buildWeaknessSynthesis(entries = loadEntries()) {
+  const trainer = loadTrainerState();
+  const curriculumWrong = Object.entries(trainer.curriculumQuiz || {})
+    .filter(([, result]) => result === "wrong")
+    .map(([id]) => trainerChapterLabels[id] || id)
+    .slice(0, 6);
+  const scenarioWeakness = Object.entries(trainer.scenarioWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const scenarioAnswers = Object.values(trainer.scenarioAnswers || {});
+  const scenarioAccuracy = scenarioAnswers.length
+    ? Math.round((scenarioAnswers.filter(item => item.correct).length / scenarioAnswers.length) * 100)
+    : 0;
+  const quizAttempts = trainer.quizAttempts || [];
+  const quizAccuracy = quizAttempts.length
+    ? Math.round((quizAttempts.filter(Boolean).length / quizAttempts.length) * 100)
+    : 0;
+  const subsystemCounts = entries.reduce((acc, entry) => {
+    const key = entry.subsystem || "Unclassified";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const topSubsystems = Object.entries(subsystemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const incompletePackets = entries.filter(entry =>
+    !entry.symptom || !entry.evidence || !entry.action || !entry.result || !entry.prevention || !entry.customerReport
+  ).length;
+  const nextActions = [];
+  if (scenarioWeakness[0]) nextActions.push(`${scenarioWeakness[0][0]} 케이스를 3개 더 풀고, stop condition 문장을 직접 써보기`);
+  if (curriculumWrong[0]) nextActions.push(`${curriculumWrong[0]} 챕터의 1분 요약을 다시 읽고 퀴즈 재시도`);
+  if (incompletePackets) nextActions.push(`불완전한 경험 기록 ${incompletePackets}개를 evidence/action/result/prevention/report 구조로 보강`);
+  if (!entries.length) nextActions.push("첫 현장/학습 경험을 symptom -> evidence -> action -> result 구조로 저장");
+  return {
+    curriculumWrong,
+    scenarioWeakness,
+    scenarioAccuracy,
+    quizAccuracy,
+    topSubsystems,
+    incompletePackets,
+    nextActions,
+    entriesCount: entries.length
+  };
+}
+
+function renderWeaknessSynthesis() {
+  const data = buildWeaknessSynthesis(loadEntries());
+  return `
+    <section class="thinktank-panel weakness-synthesis">
+      <div class="weakness-synthesis-head">
+        <div>
+          <p class="eyebrow">Personal CE Intelligence</p>
+          <h2>내가 약한 현장 사고 패턴</h2>
+          <p>커리큘럼 퀴즈, 현장 판단 훈련, 저장된 경험을 한 번에 묶어 다음 학습 방향을 만듭니다.</p>
+        </div>
+        <div class="synthesis-score-row">
+          <span><strong>${data.scenarioAccuracy}%</strong><small>판단훈련 정확도</small></span>
+          <span><strong>${data.quizAccuracy}%</strong><small>기초퀴즈 정확도</small></span>
+          <span><strong>${data.entriesCount}</strong><small>경험 기록</small></span>
+        </div>
+      </div>
+      <div class="synthesis-grid">
+        <article>
+          <strong>틀린 커리큘럼</strong>
+          ${data.curriculumWrong.length ? `<ul>${data.curriculumWrong.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : `<p>현재 누적 오답 없음</p>`}
+        </article>
+        <article>
+          <strong>반복 약점 subsystem</strong>
+          ${data.scenarioWeakness.length ? `<ul>${data.scenarioWeakness.map(([tag, count]) => `<li>${escapeHtml(tag)} <b>${count}</b></li>`).join("")}</ul>` : `<p>현장 판단 케이스를 풀면 자동 누적됩니다.</p>`}
+        </article>
+        <article>
+          <strong>내 경험이 많은 영역</strong>
+          ${data.topSubsystems.length ? `<ul>${data.topSubsystems.map(([tag, count]) => `<li>${escapeHtml(tag)} <b>${count}</b></li>`).join("")}</ul>` : `<p>아직 경험 기록이 없습니다.</p>`}
+        </article>
+        <article>
+          <strong>다음 성장 action</strong>
+          <ul>${data.nextActions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderEntries() {
   const list = document.querySelector("#thinktank-entry-list");
   if (!list) return;
@@ -525,6 +634,8 @@ async function saveThinkTankEntry(event) {
   entries.push(entry);
   saveEntries(entries);
   renderEntries();
+  const synthesis = document.querySelector(".weakness-synthesis");
+  if (synthesis) synthesis.outerHTML = renderWeaknessSynthesis();
   form.reset();
 
   try {
@@ -543,7 +654,9 @@ async function exportThinkTank() {
     exportedAt: new Date().toISOString(),
     entries: loadEntries(),
     localStorage: getLocalStorageSnapshot(),
-    masteryDomains
+    masteryDomains,
+    trainerState: loadTrainerState(),
+    weaknessSynthesis: buildWeaknessSynthesis()
   };
   try {
     await apiFetch("/api/export", { method: "POST", body: JSON.stringify(payload) });
@@ -569,6 +682,7 @@ function renderThinkTank() {
   if (!root) return;
   root.innerHTML = `
     <section class="vault-status" id="vault-status-panel"></section>
+    ${renderWeaknessSynthesis()}
     <section class="thinktank-layout">
       <article class="thinktank-panel">
         <p class="eyebrow">Structured Experience Capture</p>

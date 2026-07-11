@@ -136,8 +136,84 @@ const moduleVisuals = {
   }
 };
 
+const clusterAnatomyParts = [
+  {
+    id: "efem",
+    label: "EFEM / FI",
+    role: "FOUP를 열고 wafer를 대기압 상태에서 load lock으로 넘기는 앞단 handling 구역입니다.",
+    why: "Fab carrier와 vacuum cluster 사이를 연결합니다. mapping, align, pick/place가 흔들리면 공정 chamber fault처럼 보일 수 있습니다.",
+    symptoms: ["wafer not present", "slot map mismatch", "align fail", "FOUP door/load port alarm"],
+    ce: "FOUP seating, slot map, EFEM robot, aligner, LL handoff를 같은 wafer ID로 연결해 봅니다."
+  },
+  {
+    id: "foup",
+    label: "FOUP / Load Port",
+    role: "wafer가 담겨 장비에 들어오는 carrier와 docking station입니다.",
+    why: "Fab 물류와 장비가 만나는 첫 지점입니다. slot, orientation, seating이 틀리면 이후 path 전체가 흔들립니다.",
+    symptoms: ["carrier ID mismatch", "door open fail", "slot mapping inconsistency", "wafer skew"],
+    ce: "같은 FOUP/다른 slot, 다른 FOUP/같은 slot split으로 carrier 문제와 tool 문제를 분리합니다."
+  },
+  {
+    id: "loadlock",
+    label: "Load Lock",
+    role: "대기압 EFEM과 vacuum TM 사이 압력 경계를 만드는 중간 방입니다.",
+    why: "main vacuum을 매번 깨지 않고 wafer를 넣고 빼기 위해 필요합니다. pump/vent curve가 install qualification의 핵심 evidence입니다.",
+    symptoms: ["pumpdown timeout", "vent timeout", "pressure mismatch", "door/slit valve sensor mismatch"],
+    ce: "LL-A/B curve, gauge, roughing/vent path, door seal, slit valve state를 같은 cycle에서 비교합니다."
+  },
+  {
+    id: "tm",
+    label: "Transfer Module",
+    role: "vacuum 안 중앙 robot이 PM/CM/LL 사이로 wafer를 이동시키는 공간입니다.",
+    why: "cluster tool의 교차로입니다. 여기 geometry가 틀리면 여러 chamber에서 비슷한 handling 문제가 반복됩니다.",
+    symptoms: ["robot teach drift", "scrape mark", "handoff fail", "wafer lost during transfer"],
+    ce: "leveling, blade height, lift pin, slit valve center, handoff timing을 wafer 없이 먼저 확인합니다."
+  },
+  {
+    id: "pm",
+    label: "PM / Process Module",
+    role: "EPI growth 또는 RTP anneal처럼 wafer에 실제 공정 행위가 일어나는 chamber입니다.",
+    why: "gas, thermal, pressure, wafer support가 wafer result로 바로 이어지는 곳입니다.",
+    symptoms: ["thickness/Rs drift", "temperature trace abnormal", "particle/defect jump", "gas flow mismatch"],
+    ce: "PM은 Preventive Maintenance가 아니라 Process Module일 수 있습니다. 문맥별 의미를 분리하세요."
+  },
+  {
+    id: "cm",
+    label: "CM / Clean or Cool Module",
+    role: "pre-clean, surface prep, cooldown처럼 process 전후 상태를 만드는 support chamber입니다.",
+    why: "EPI는 표면 준비가 중요하고 RTP는 열 이후 cooldown/handling risk가 중요합니다.",
+    symptoms: ["first wafer defect", "queue time sensitivity", "cooldown delay", "surface contamination"],
+    ce: "CM은 회사/문서마다 Clean Module, Cooldown Module, Chamber Module 등으로 달라질 수 있어 official drawing 확인이 필요합니다."
+  },
+  {
+    id: "gasbox",
+    label: "Gas Box",
+    role: "MFC, valve, pressure control을 통해 gas를 chamber로 공급하는 장비 내부/측면 subsystem입니다.",
+    why: "EPI/RTP chemistry는 gas delivery stability와 purge readiness에 민감합니다.",
+    symptoms: ["MFC actual mismatch", "supply pressure alarm", "purge incomplete", "gas ready fail"],
+    ce: "gas supply, MFC trend, valve state, purge, SDS/EHS owner를 분리해 확인합니다."
+  },
+  {
+    id: "pump",
+    label: "Pump / Foreline",
+    role: "chamber와 load lock의 gas를 빼고 vacuum 또는 reduced pressure를 만드는 subsystem입니다.",
+    why: "pumpdown curve와 base pressure는 leak, seal, valve, exhaust issue를 빠르게 보여주는 fingerprint입니다.",
+    symptoms: ["long pumpdown", "base pressure drift", "foreline pressure high", "abatement trip"],
+    ce: "door seal, valve state, gauge, pump health, foreline restriction을 PM 전후 변화와 함께 봅니다."
+  },
+  {
+    id: "abatement",
+    label: "Exhaust / Abatement",
+    role: "byproduct와 위험 gas를 tool 밖으로 빼고 처리하는 safety-critical path입니다.",
+    why: "process가 아무리 정상이어도 exhaust/abatement가 불확실하면 first gas와 wafer qualification을 진행할 수 없습니다.",
+    symptoms: ["exhaust not ready", "abatement fault", "gas detector alarm", "pressure disturbance"],
+    ce: "tool ready signal과 local actual state를 customer facility/EHS owner witness로 대조합니다."
+  }
+];
+
 let clusterState = {};
 let selectedClusterPlatform = "centuraPrime";
+let activeClusterAnatomy = "efem";
 let clusterFlowOn = false;
 let clusterFlowStep = 0;
 let clusterFlowTimer = null;
@@ -662,7 +738,37 @@ function renderClusterLegend() {
 }
 
 function renderClusterConcepts() {
+  const selectedPart = clusterAnatomyParts.find(part => part.id === activeClusterAnatomy) || clusterAnatomyParts[0];
   document.querySelector("#cluster-concepts").innerHTML = `
+    <div class="cluster-anatomy-lab">
+      <div class="section-heading">
+        <p>Equipment Anatomy Lab</p>
+        <h2>장비 구조 해부실</h2>
+      </div>
+      <p class="cluster-anatomy-note">아래 부품을 누르면 역할, 왜 필요한지, 문제가 생겼을 때 보이는 증상, CE 관점 확인 순서가 바로 바뀝니다.</p>
+      <div class="cluster-anatomy-grid">
+        ${clusterAnatomyParts.map(part => `
+          <button class="anatomy-chip ${part.id === selectedPart.id ? "active" : ""}" type="button" data-anatomy="${part.id}">
+            ${part.label}
+          </button>
+        `).join("")}
+      </div>
+      <article class="anatomy-detail-panel">
+        <span>${selectedPart.label}</span>
+        <h3>${selectedPart.role}</h3>
+        <p>${selectedPart.why}</p>
+        <div class="anatomy-detail-grid">
+          <section>
+            <strong>문제 시 보이는 증상</strong>
+            <ul>${selectedPart.symptoms.map(item => `<li>${item}</li>`).join("")}</ul>
+          </section>
+          <section>
+            <strong>CE 관점</strong>
+            <p>${selectedPart.ce}</p>
+          </section>
+        </div>
+      </article>
+    </div>
     <h2>아무것도 모르는 사람용 구조 설명</h2>
     <div class="deep-item"><strong>FI/EFEM은 무엇인가?</strong><span>FI는 Factory Interface, EFEM은 Equipment Front End Module입니다. 쉽게 말하면 장비 앞쪽에서 FOUP을 열고 wafer를 꺼내 Load Lock으로 넘기는 대기압 로봇 구역입니다. 아직 진공 공정 챔버 안이 아니므로, FOUP 도킹·door open·wafer align·load lock handoff를 이해하는 입구라고 보면 됩니다.</span></div>
     <div class="deep-item"><strong>왜 Load Lock이 필요한가?</strong><span>Fab 앞쪽 FOUP/EFEM은 대기압이고, EPI/RTP 같은 process chamber는 진공 또는 제어된 분위기가 필요합니다. Load Lock은 웨이퍼를 바로 공정 챔버에 넣지 않고, 작은 중간방에서 압력을 맞춰 오염과 공정 불안정을 줄이는 문입니다.</span></div>
@@ -681,6 +787,12 @@ function renderClusterConcepts() {
     <div class="deep-item"><strong>5. qualification 기준 묻기</strong><span>chamber matching, pump/vent time, robot transfer reliability, temperature/thickness/defect 기준을 고객과 선임에게 확인합니다.</span></div>
     <div class="deep-item"><strong>6. 실제 정답은 site config</strong><span>이 게임은 공개 자료 기반 대표 구조입니다. 실제 정답은 Applied configuration drawing, customer spec, install manual에 있습니다.</span></div>
   `;
+  document.querySelectorAll("[data-anatomy]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeClusterAnatomy = button.dataset.anatomy;
+      renderClusterConcepts();
+    });
+  });
 }
 
 function showClusterAnswer() {

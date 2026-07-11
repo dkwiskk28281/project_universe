@@ -916,6 +916,379 @@ scenarios.push(
   }
 );
 
+scenarios.push(
+  {
+    title: "Load lock pump/vent가 반복적으로 timeout 난다",
+    status: "Load lock / vacuum boundary",
+    phase: "Wafer path bring-up",
+    facts: [
+      "EFEM에서는 FOUP mapping이 정상인데 LL pump 또는 vent step에서 timeout이 반복된다.",
+      "PM chamber pumpdown은 정상이고 특정 load lock에서만 편차가 크다.",
+      "최근 door seal inspection 또는 N2 vent line 작업 이력이 있다."
+    ],
+    suspects: [
+      "LL door seal, O-ring, hinge/latch seating 불량",
+      "roughing valve, vent valve, pressure gauge response 이상",
+      "N2/CDA vent pressure 또는 restrictor 문제",
+      "slit valve state와 pressure equalization sequence 불일치"
+    ],
+    evidence: [
+      "LL-A/LL-B pumpdown and vent curve를 같은 scale로 비교한다.",
+      "door closed sensor, slit valve state, pressure gauge trace를 시간축으로 맞춘다.",
+      "최근 작업 부위와 seal/contact witness mark를 사진으로 남긴다.",
+      "wafer 없이 dry cycle로 재현성을 확인하되, 승인 없는 sequence 변경은 하지 않는다."
+    ],
+    stop: "pressure mismatch, door/slit valve sensor mismatch, wafer trapped state가 의심되면 wafer 이동을 멈추고 선임 CE와 customer owner를 호출한다.",
+    report: "Load lock 전환 시간이 한쪽에서 반복적으로 지연됩니다. LL-A/B curve, door/slit valve state, vent/roughing path, 최근 seal 작업 이력을 묶어 확인하겠습니다.",
+    next: [
+      "wafer 없는 dry pump/vent 반복으로 범위를 좁힌다.",
+      "gauge reading과 실제 valve state를 알람/로그와 대조한다.",
+      "facility N2/CDA ready와 vent line owner를 확인한다.",
+      "고객 wafer 투입 전 pressure boundary integrity를 닫는다."
+    ],
+    publicBasis: "공개 cluster/load-lock 자료는 load lock이 atmosphere와 vacuum transfer module 사이의 pressure boundary임을 설명한다. 실제 pump/vent valve sequence와 setpoint는 OEM/site 문서 범위다.",
+    good: "맞습니다. Load lock 문제는 pump만 보지 말고 pressure boundary, valve state, gauge response, wafer handoff를 같이 봐야 합니다.",
+    choices: [
+      ["timeout을 줄이기 위해 pump/vent 시간을 임의로 늘리거나 줄인다.", false],
+      ["LL-A/B curve와 door/slit valve/gauge trace를 비교해 pressure boundary를 확인한다.", true],
+      ["FOUP mapping이 정상이라면 load lock은 원인이 아니라고 본다.", false]
+    ]
+  },
+  {
+    title: "FOUP mapping은 정상인데 wafer not present alarm이 난다",
+    status: "EFEM / mapping / handoff",
+    phase: "Factory interface diagnostic",
+    facts: [
+      "load port는 carrier를 정상 인식하지만 특정 slot에서 wafer present가 흔들린다.",
+      "LL handoff 직전 또는 직후에만 alarm이 난다.",
+      "최근 FOUP, aligner, robot teach 관련 작업이 있었다."
+    ],
+    suspects: [
+      "FOUP seating, slot map, wafer bow/placement 문제",
+      "EFEM robot end-effector vacuum/edge grip 상태",
+      "aligner 센서 또는 handoff 위치 teach drift",
+      "LL shelf/lift pin과 atmospheric robot handoff mismatch"
+    ],
+    evidence: [
+      "slot map, robot pick/place log, aligner result, handoff point를 같은 wafer ID로 묶는다.",
+      "wafer 없이 sensor toggle과 robot path를 확인하고, dummy wafer로 승인된 dry run만 수행한다.",
+      "FOUP seating repeatability와 load port latch 상태를 사진/체크로 남긴다.",
+      "same slot, different FOUP와 same FOUP, different slot split으로 범위를 좁힌다."
+    ],
+    stop: "double wafer, wafer skew, scrape mark, wafer edge contact가 보이면 반복 cycle보다 즉시 hold가 우선이다.",
+    report: "Wafer presence alarm은 FOUP mapping만으로 결론낼 수 없습니다. slot map, EFEM pick/place, aligner, LL handoff를 같은 wafer ID 기준으로 분리해 확인하겠습니다.",
+    next: [
+      "FOUP/slot split을 설계한다.",
+      "sensor state와 robot command timing을 비교한다.",
+      "teach나 offset은 승인된 절차와 선임 입회로만 다룬다.",
+      "scrape/particle risk가 있으면 customer wafer 사용을 멈춘다."
+    ],
+    publicBasis: "공개 EFEM/load-lock 설명은 FOUP와 parent tool 사이 atmospheric wafer handling과 vacuum boundary handoff를 설명한다. 실제 teach 좌표와 calibration 절차는 비공개다.",
+    good: "좋습니다. mapping 정상은 시작점일 뿐이고 handoff evidence까지 이어야 wafer path 사고가 닫힙니다.",
+    choices: [
+      ["FOUP을 바꿔보고 되면 바로 production을 진행한다.", false],
+      ["slot/FOUP split과 EFEM-aligner-LL handoff evidence를 같은 wafer ID로 묶는다.", true],
+      ["wafer present sensor를 임시로 무시하고 cycle count를 채운다.", false]
+    ]
+  },
+  {
+    title: "PCW flow alarm 뒤 RTP trace가 동시에 흔들린다",
+    status: "Cooling / thermal stability",
+    phase: "Facility-linked thermal diagnostic",
+    facts: [
+      "RTP chamber에서 PCW/chiller 관련 alarm이 간헐적으로 발생한다.",
+      "temperature trace와 lamp command가 같은 시간대에 흔들린다.",
+      "facility PCW supply 압력 또는 온도 trend가 교대조마다 다르게 보고된다."
+    ],
+    suspects: [
+      "PCW flow, temperature, pressure instability",
+      "filter/strainer restriction 또는 valve partially closed",
+      "lamp power/cooling interlock margin 부족",
+      "facility signal은 ready지만 실제 thermal load 대응 부족"
+    ],
+    evidence: [
+      "tool alarm timestamp와 PCW supply/return trend를 overlay한다.",
+      "정상 chamber와 suspect chamber의 cooling demand를 비교한다.",
+      "facility owner가 보는 chiller/PCW trend와 tool trace를 같은 시간축으로 맞춘다.",
+      "cooling abnormal이 있으면 thermal process 결과를 metrology와 연결한다."
+    ],
+    stop: "cooling flow loss, high temperature, lamp/power risk, wafer slip/break 가능성이 있으면 RTP run을 중지한다.",
+    report: "RTP trace 변동과 PCW alarm이 같은 시간대에 겹칩니다. tool trace와 facility PCW trend를 overlay해 thermal control issue인지 facility margin issue인지 분리하겠습니다.",
+    next: [
+      "facility PCW owner를 포함해 실제 supply/return trend를 받는다.",
+      "strainer/filter/valve 상태는 승인된 owner와 확인한다.",
+      "baseline wafer 결과와 trace 흔들림을 같은 lot/time으로 묶는다.",
+      "cooling risk가 닫히기 전에는 wafer qualification을 밀어붙이지 않는다."
+    ],
+    publicBasis: "Applied RTP 공개자료는 thermal uniformity와 closed-loop temperature control을 강조한다. 냉각 조건의 site-specific limit과 piping detail은 현장 문서 범위다.",
+    good: "맞습니다. RTP에서 냉각은 facility 문제처럼 보여도 공정 trace와 wafer 결과에 바로 연결됩니다.",
+    choices: [
+      ["PCW는 facility 문제이므로 CE가 볼 필요가 없다고 판단한다.", false],
+      ["RTP trace, lamp command, PCW supply/return trend를 같은 시간축으로 묶는다.", true],
+      ["alarm을 reset하고 trace가 지나가면 pass로 처리한다.", false]
+    ]
+  },
+  {
+    title: "CDA/N2 pressure dip 이후 pneumatic valve response가 늦다",
+    status: "Pneumatic / facility",
+    phase: "Install dry-run and valve motion",
+    facts: [
+      "slit valve 또는 gas valve actuation이 특정 시간대에 느려진다.",
+      "sensor mismatch alarm은 짧게 발생했다 사라진다.",
+      "CDA/N2 facility 압력이 교대 시간 또는 다른 장비 load와 함께 흔들린다."
+    ],
+    suspects: [
+      "CDA/N2 supply pressure sag 또는 regulator 설정 문제",
+      "pneumatic solenoid coil/valve spool sluggish",
+      "actuator mechanical bind 또는 speed controller change",
+      "sensor response와 실제 motion 간 timing margin 부족"
+    ],
+    evidence: [
+      "actuator command, coil voltage, sensor feedback, CDA/N2 pressure를 같은 cycle에서 비교한다.",
+      "전기 command가 정상인지, pneumatic energy가 충분한지 분리한다.",
+      "최근 regulator, fitting, tube, cylinder 작업 이력을 확인한다.",
+      "반복 sensor mismatch가 wafer motion과 겹치면 dry run을 멈춘다."
+    ],
+    stop: "slit valve motion uncertainty, wafer near valve, pressure energy hazard, pinch point가 있으면 수동 개입 없이 hold한다.",
+    report: "Valve response delay는 command와 pneumatic energy를 분리해 보겠습니다. coil voltage, sensor feedback, CDA/N2 pressure trend를 같은 cycle에서 비교하겠습니다.",
+    next: [
+      "DVM으로 command presence를 확인하기 전 회로 권한과 안전 상태를 확인한다.",
+      "facility pressure trend와 tool cycle timestamp를 맞춘다.",
+      "mechanical bind는 승인된 절차와 LOTO 조건에서 확인한다.",
+      "sensor mismatch가 재현되면 wafer path qualification을 hold한다."
+    ],
+    publicBasis: "공개 직무/안전자료는 CE가 pneumatic, hydraulic, electrical, gas system을 다룬다고 설명한다. actuator speed setting과 valve sequence는 공개 범위가 아니다.",
+    good: "정답입니다. 공압 문제는 전기 command, 공압 source, mechanical motion, feedback sensor를 분리해야 합니다.",
+    choices: [
+      ["센서가 결국 들어오므로 timing alarm은 무시한다.", false],
+      ["command, feedback, CDA/N2 pressure, 실제 motion을 한 cycle 안에서 분리한다.", true],
+      ["valve가 느리면 speed controller를 임의로 돌려본다.", false]
+    ]
+  },
+  {
+    title: "Gas detector local alarm 후 tool screen은 normal로 보인다",
+    status: "Toxic gas / EHS boundary",
+    phase: "Gas safety event response",
+    facts: [
+      "gas cabinet 또는 local detector에서 alarm 이력이 보인다.",
+      "tool HMI는 현재 normal이고 고객 일정은 first wafer를 요구한다.",
+      "사용 gas에는 hydride, chlorosilane, HCl 계열이 포함될 수 있다."
+    ],
+    suspects: [
+      "local detector event와 tool ready signal 간 정보 불일치",
+      "gas cabinet, VMB/VMP, exhaust/abatement state 미확인",
+      "recent cylinder change, purge, line release issue",
+      "false alarm 가능성도 있지만 EHS owner 판단 전에는 확정 불가"
+    ],
+    evidence: [
+      "local detector alarm history, gas cabinet status, abatement/exhaust ready를 owner witness로 확인한다.",
+      "SDS와 site emergency response 절차를 우선 적용한다.",
+      "tool HMI normal은 sufficient evidence가 아니며 facility/EHS record를 같이 본다.",
+      "detector setpoint, bypass, calibration internal detail은 웹 교육자료에 넣지 않는다."
+    ],
+    stop: "gas alarm, unknown odor, exhaust not ready, area control uncertainty가 있으면 즉시 stop-work와 EHS escalation을 적용한다.",
+    report: "Tool 화면은 normal이지만 local gas detector event가 있어 EHS/facility owner와 alarm history, gas cabinet, exhaust/abatement readiness를 확인한 뒤 진행하겠습니다.",
+    next: [
+      "area safety와 PPE/evacuation/site rule을 먼저 따른다.",
+      "EHS owner, gas owner, senior CE를 동시에 align한다.",
+      "확인 전에는 first gas/first wafer를 진행하지 않는다.",
+      "고객에게 일정 영향보다 안전 경계와 확인 owner를 먼저 공유한다."
+    ],
+    publicBasis: "OSHA/NIOSH 자료는 arsine, phosphine, diborane, silane, HCl 등 semiconductor gas 위험을 설명한다. 현장 detector 설정값과 대응 sequence는 site/EHS 절차 우선이다.",
+    good: "맞습니다. gas event는 tool 화면 normal만으로 종료하지 않고 EHS boundary를 먼저 닫아야 합니다.",
+    choices: [
+      ["tool screen이 normal이면 event는 무시하고 wafer를 진행한다.", false],
+      ["local detector, gas cabinet, exhaust/abatement, EHS owner 확인을 먼저 닫는다.", true],
+      ["detector setpoint를 낮추거나 bypass해 false alarm인지 본다.", false]
+    ]
+  },
+  {
+    title: "Host/recipe download mismatch 후 chamber route가 예상과 다르다",
+    status: "Host / data / route control",
+    phase: "Automation and recipe readiness",
+    facts: [
+      "tool은 recipe download를 받았지만 chamber routing이 expected route와 다르다.",
+      "manual screen과 host message의 recipe 이름 또는 revision이 다르게 보인다.",
+      "wafer path는 정상 동작하지만 qualification result 해석이 어려워진다."
+    ],
+    suspects: [
+      "recipe revision, host permission, route table mismatch",
+      "tool configuration/chamber enable state와 host dispatch 불일치",
+      "lot/wafer/slot ID mapping issue",
+      "software revision 또는 customer automation rule 차이"
+    ],
+    evidence: [
+      "host message, recipe ID/revision, chamber route history, wafer ID를 한 packet으로 묶는다.",
+      "manual 변경이나 임의 recipe edit 없이 customer automation owner와 대조한다.",
+      "same lot의 정상 wafer와 suspect wafer route를 비교한다.",
+      "qualification wafer 결과를 route 차이와 연결해 해석한다."
+    ],
+    stop: "recipe/route identity가 불명확하면 customer wafer 진행을 멈춘다. 승인 없는 recipe edit, permission 우회, host spoof는 금지다.",
+    report: "Recipe/route mismatch 가능성이 있어 host message, recipe revision, route history, wafer ID를 묶어 customer automation owner와 확인하겠습니다.",
+    next: [
+      "tool local recipe와 host recipe ID/revision을 비교한다.",
+      "chamber enable/disable 상태와 dispatch rule을 확인한다.",
+      "route mismatch가 wafer result에 미친 영향을 customer/process owner와 분리한다.",
+      "데이터 보안/권한 policy를 지킨다."
+    ],
+    publicBasis: "Applied CE 직무 공개자료는 digital analytics와 customer communication을 요구한다. 실제 host command, recipe permission, customer automation policy는 비공개다.",
+    good: "정답입니다. route/recipe identity는 wafer result의 해석 기준이므로 customer owner와 evidence로 닫아야 합니다.",
+    choices: [
+      ["wafer path가 돌았으니 recipe mismatch는 무시한다.", false],
+      ["host message, recipe revision, route history, wafer ID를 묶어 owner와 확인한다.", true],
+      ["local recipe를 임의 수정해 host와 맞춘다.", false]
+    ]
+  },
+  {
+    title: "24V control rail이 부하 켜질 때만 sag한다",
+    status: "DVM / control power",
+    phase: "Electrical field diagnostic",
+    facts: [
+      "무부하 측정에서는 24V가 정상인데 solenoid bank가 켜질 때 relay chatter가 난다.",
+      "특정 connector 근처를 만지면 alarm 재현성이 달라진다.",
+      "최근 cable routing 또는 terminal 작업이 있었다."
+    ],
+    suspects: [
+      "SMPS 용량/health 문제 또는 overload",
+      "loose terminal, high resistance contact, voltage drop",
+      "coil short, downstream load 문제",
+      "0V/common reference 또는 ground bonding issue"
+    ],
+    evidence: [
+      "부하 on 상태에서 supply output, fuse line/load side, terminal, load coil voltage를 비교한다.",
+      "closed contact 양단 voltage drop을 측정해 high resistance point를 찾는다.",
+      "DVM mode, reference point, expected value, actual value를 기록한다.",
+      "live panel 접근은 권한, PPE, 선임 입회, site rule 충족 시에만 한다."
+    ],
+    stop: "energized work 권한이 없거나 arc/short/stored energy 위험이 있으면 측정하지 않고 LOTO/승인 절차로 전환한다.",
+    report: "24V rail은 무부하 정상이나 부하 on에서 sag가 보입니다. supply, fuse, terminal, load coil 구간별 voltage drop을 expected/actual로 기록해 high resistance 또는 overload를 분리하겠습니다.",
+    next: [
+      "측정 전 schematic 기준 expected value를 먼저 말한다.",
+      "meter jack/range/CAT rating과 prove를 완료한다.",
+      "부하 on/off 양쪽에서 값을 비교한다.",
+      "임의 jumper나 강제 energize는 하지 않는다."
+    ],
+    publicBasis: "NIOSH/OSHA hazardous energy 자료는 electrical/stored energy control을 강조한다. 실제 panel 접근과 test point는 OEM/site 승인 절차가 필요하다.",
+    good: "맞습니다. 전기 진단은 값을 재는 행위보다 expected value와 안전 권한을 세우는 사고가 먼저입니다.",
+    choices: [
+      ["무부하 24V가 정상이니 전기 문제는 배제한다.", false],
+      ["부하 on 상태에서 구간별 voltage drop을 expected/actual로 기록한다.", true],
+      ["relay가 떨리면 더 큰 fuse로 교체해본다.", false]
+    ]
+  },
+  {
+    title: "Baseline wafer particle burst가 PM recovery 첫 run에서만 나온다",
+    status: "PM recovery / seasoning",
+    phase: "Maintenance recovery and qualification",
+    facts: [
+      "PM 직후 첫 baseline wafer에서 particle이 높고 이후 조금 낮아진다.",
+      "pumpdown과 transfer alarm은 없지만 wafer map signature가 chamber 내부 source처럼 보인다.",
+      "고객은 생산 wafer를 빠르게 넣고 싶어 한다."
+    ],
+    suspects: [
+      "PM disturbance, chamber open 후 residual particle",
+      "seasoning 또는 burn-in 부족",
+      "wafer support, edge ring, gas inlet, exhaust path disturbance",
+      "metrology repeatability 또는 incoming wafer effect"
+    ],
+    evidence: [
+      "PM 작업 부위와 particle map 위치/형태를 비교한다.",
+      "first wafer, second wafer, post-seasoning baseline을 분리해 trend를 본다.",
+      "chamber clean/seasoning completion evidence와 lot release criteria를 customer owner와 대조한다.",
+      "particle이 낮아지는 추세라도 stop condition을 customer/process owner와 명확히 한다."
+    ],
+    stop: "particle burst가 spec을 넘거나 wafer scratch/break, gas/exhaust/vacuum abnormal이 동반되면 production release를 hold한다.",
+    report: "PM recovery 첫 wafer에서 particle burst가 관찰됩니다. PM 작업 부위, wafer map, seasoning 전후 baseline trend를 묶어 production release 가능 여부를 customer owner와 판단하겠습니다.",
+    next: [
+      "baseline sequence를 고객과 합의한다.",
+      "particle map과 chamber geometry를 연결해 suspect source를 좁힌다.",
+      "production wafer 투입 전 pass evidence와 남은 risk를 문장으로 정리한다.",
+      "PM 직후 정상화 경향을 근거 없이 보장하지 않는다."
+    ],
+    publicBasis: "공개 EPI 자료는 low defect와 chamber uniformity가 핵심 품질 지표임을 보여준다. 실제 seasoning recipe와 acceptance limit은 현장/OEM 문서만 따른다.",
+    good: "정답입니다. PM recovery는 첫 wafer만 보지 말고 trend, source geometry, release risk를 같이 판단해야 합니다.",
+    choices: [
+      ["두 번째부터 낮아질 것 같으니 생산 wafer를 바로 넣는다.", false],
+      ["PM 작업 부위, wafer map, seasoning 전후 baseline trend를 묶어 release risk를 판단한다.", true],
+      ["particle은 metrology noise라고 보고 무시한다.", false]
+    ]
+  },
+  {
+    title: "Abatement trip이 qualification 중간에 발생한다",
+    status: "Abatement / byproduct control",
+    phase: "Process gas qualification",
+    facts: [
+      "qualification wafer 진행 중 abatement fault 또는 exhaust related alarm이 발생했다.",
+      "tool chamber pressure도 짧게 흔들렸다.",
+      "사용 chemistry는 byproduct exhaust와 scrubber readiness가 중요하다."
+    ],
+    suspects: [
+      "abatement system fault, exhaust flow instability",
+      "foreline/pump/exhaust restriction",
+      "gas flow transient와 abatement capacity mismatch",
+      "facility signal mapping 또는 maintenance 상태"
+    ],
+    evidence: [
+      "tool alarm time, chamber pressure, MFC actual, pump/foreline, abatement local log를 같은 시간축으로 맞춘다.",
+      "facility/abatement owner와 local panel state, maintenance history를 확인한다.",
+      "wafer result 영향 여부를 metrology와 연결한다.",
+      "abatement bypass, trip setpoint, internal logic은 공개 웹에 넣지 않는다."
+    ],
+    stop: "abatement fault가 있으면 toxic/corrosive/flammable gas process를 계속하지 않는다. exhaust unsafe 가능성이 있으면 EHS escalation이 우선이다.",
+    report: "Qualification 중 abatement trip과 chamber pressure disturbance가 같은 시간대에 발생했습니다. tool trend와 abatement local log를 owner witness로 확인하고 wafer 영향 여부를 분리하겠습니다.",
+    next: [
+      "process를 hold하고 area/site safety condition을 확인한다.",
+      "abatement owner, facility owner, senior CE를 연결한다.",
+      "tool trace와 local abatement log를 timestamp로 정렬한다.",
+      "wafer/metrology result를 affected/unaffected로 구분한다."
+    ],
+    publicBasis: "SEMI S6와 OSHA/NIOSH류 안전자료는 exhaust/abatement control의 중요성을 설명한다. 실제 abatement setpoint, bypass, trip logic은 비공개/위험 정보다.",
+    good: "맞습니다. abatement trip은 생산성 문제가 아니라 safety envelope 문제로 먼저 분류해야 합니다.",
+    choices: [
+      ["fault가 reset되면 같은 wafer lot을 계속 진행한다.", false],
+      ["process를 hold하고 tool trace와 abatement local log를 owner witness로 대조한다.", true],
+      ["abatement trip signal을 무시하도록 임시 처리한다.", false]
+    ]
+  },
+  {
+    title: "RTP wafer rotation abnormal이 trace non-uniformity와 겹친다",
+    status: "RTP rotation / uniformity",
+    phase: "Thermal uniformity diagnostic",
+    facts: [
+      "RTP trace는 평균 temperature는 맞지만 within-wafer uniformity가 나빠졌다.",
+      "wafer rotation feedback이 간헐적으로 흔들린다.",
+      "최근 chamber clean 또는 rotation assembly 관련 점검이 있었다."
+    ],
+    suspects: [
+      "rotation drive, bearing/levitation, motor feedback issue",
+      "wafer centering 또는 support/contact issue",
+      "sensor/pyrometer sampling과 rotation synchronization 문제",
+      "cooling 또는 chamber window condition 변화"
+    ],
+    evidence: [
+      "rotation feedback, temperature zone trace, wafer map radial signature를 비교한다.",
+      "wafer centering/alignment와 support contact를 승인된 dry run으로 확인한다.",
+      "정상 chamber 또는 PM 전 baseline과 uniformity map을 overlay한다.",
+      "mechanical access는 LOTO/stored energy/site procedure를 따른다."
+    ],
+    stop: "wafer slip, rotation unstable, mechanical contact, high-temperature hazard가 의심되면 run을 중지한다.",
+    report: "RTP 평균 온도는 맞지만 rotation feedback과 uniformity map이 함께 흔들립니다. rotation, wafer centering, zone trace, chamber window/cooling을 분리해 확인하겠습니다.",
+    next: [
+      "zone trace와 wafer map을 같은 orientation으로 비교한다.",
+      "rotation feedback과 alarm timestamp를 확인한다.",
+      "mechanical inspection은 승인된 안전 상태에서만 한다.",
+      "temperature target 보정으로 uniformity 문제를 덮지 않는다."
+    ],
+    publicBasis: "Applied Radiance Plus 공개자료는 wafer rotation과 multi-point temperature control을 강조한다. 실제 rotation calibration과 chamber service 절차는 비공개다.",
+    good: "좋습니다. 평균값이 정상이어도 wafer uniformity와 rotation evidence를 같이 봐야 합니다.",
+    choices: [
+      ["평균 온도가 맞으므로 pass로 본다.", false],
+      ["rotation feedback, zone trace, wafer map radial signature를 함께 비교한다.", true],
+      ["uniformity는 metrology 문제라고 단정한다.", false]
+    ]
+  }
+);
+
 const questions = [
   {
     q: "RTP의 가장 가까운 설명은?",
@@ -2173,6 +2546,57 @@ const electricalTroubleshooting = [
   ["Ground/noise issue", "shield termination, chassis bond, cable routing, motor/lamp switching noise, analog signal reference를 의심합니다."]
 ];
 
+const dvmExpectedValueDrills = [
+  {
+    title: "24V sensor input이 OFF로 보일 때",
+    symptom: "screen에서는 sensor off, sensor LED는 on처럼 보임",
+    expected: "sensor supply는 +24V와 0V 사이에서 안정적이어야 하고, output은 target 상태에 따라 high/low가 명확히 바뀌어야 한다.",
+    evidence: "sensor supply, sensor output, PLC input terminal을 같은 기준점에서 비교한다.",
+    safety: "live I/O 측정은 승인된 low-voltage panel 접근과 meter prove 후에만 수행한다.",
+    report: "Sensor LED와 controller input이 다르게 보여 supply/output/input terminal을 분리 측정하겠습니다."
+  },
+  {
+    title: "Relay chatter가 부하 on 때만 발생",
+    symptom: "idle은 정상, solenoid bank on 순간 relay가 떨림",
+    expected: "coil 양단은 정격 근처로 유지되어야 하며 closed contact 양단 voltage drop은 작아야 한다.",
+    evidence: "SMPS output, fuse load side, relay coil, suspect contact 양단 voltage drop을 부하 on 상태에서 비교한다.",
+    safety: "energized cabinet 측정 권한, PPE, CAT rating, lead 위치가 불확실하면 측정하지 않는다.",
+    report: "무부하 정상값만으로는 부족해 load-on voltage drop으로 high resistance 또는 overload를 분리하겠습니다."
+  },
+  {
+    title: "Fuse가 반복해서 open",
+    symptom: "교체하면 잠시 살아나지만 같은 subsystem fuse가 다시 끊김",
+    expected: "정상 부하는 fuse rating 안의 전류를 사용해야 하며 downstream short나 coil fault가 없어야 한다.",
+    evidence: "fuse line/load side 전압, 무전원 상태 downstream resistance, cable pinch, load coil resistance를 확인한다.",
+    safety: "더 큰 fuse로 바꾸거나 반복 교체하는 행동은 금지. LOTO와 stored energy discharge가 먼저다.",
+    report: "Fuse open은 결과일 수 있으므로 downstream short, load coil, cable pinch를 확인한 뒤 교체 여부를 판단하겠습니다."
+  },
+  {
+    title: "Interlock ready가 간헐적으로 떨어짐",
+    symptom: "door/exhaust/cooling ready가 순간적으로 drop",
+    expected: "closed interlock chain의 각 접점 후단은 expected ready voltage를 유지하고, 접점 양단 drop은 매우 작아야 한다.",
+    evidence: "chain 시작점부터 각 contact 후단 voltage, local ready status, tool input state를 timestamp로 맞춘다.",
+    safety: "interlock은 보호 기능이므로 bypass나 jumper는 학습/현장 모두 금지 영역이다.",
+    report: "Interlock drop은 실제 unsafe condition인지 signal path 문제인지 chain segment별 expected/actual로 분리하겠습니다."
+  },
+  {
+    title: "Solenoid command는 있는데 valve가 안 움직임",
+    symptom: "controller output on, actuator motion 없음",
+    expected: "coil 양단 전압이 정격에 가깝고 CDA/N2 pressure가 충분하면 actuator가 움직여야 한다.",
+    evidence: "controller output, relay/contact, coil voltage, return path, pneumatic pressure, actuator feedback을 분리한다.",
+    safety: "강제 energize, 임의 jumper, pinch point 접근은 승인 없는 행동으로 금지한다.",
+    report: "전기 command와 pneumatic energy를 분리해 coil voltage, air pressure, feedback timing을 확인하겠습니다."
+  },
+  {
+    title: "Analog signal이 noise처럼 흔들림",
+    symptom: "pressure/temperature/flow feedback이 실제보다 빠르게 요동",
+    expected: "sensor supply와 signal reference는 안정적이고 shield/ground path는 장비 문서와 맞아야 한다.",
+    evidence: "sensor supply, signal, reference, nearby switching load, cable route, shield termination을 비교한다.",
+    safety: "ground/shield를 임의로 변경하면 더 큰 noise나 안전 문제가 생길 수 있어 승인 절차가 필요하다.",
+    report: "Analog noise는 sensor fault로 단정하지 않고 supply/reference/cable routing/switching load를 함께 확인하겠습니다."
+  }
+];
+
 const electricalSafetyRules = [
   "전기 작업은 de-energize가 기본입니다. live 측정이 필요하더라도 자격, 승인, PPE, 선임 입회, site rule을 먼저 확인합니다.",
   "LOTO는 전기만이 아니라 pneumatic, hydraulic, vacuum, thermal, mechanical, chemical stored energy까지 포함해 생각합니다.",
@@ -2298,6 +2722,12 @@ sources.push(
   ["NIOSH Pocket Guide Ammonia", "https://www.cdc.gov/niosh/npg/npgd0028.html"],
   ["SIA Environment, Health & Safety Practices Fact Sheet", "https://www.semiconductors.org/wp-content/uploads/2024/12/SIA_Environment-Health-Safety-Practices_Fact-Sheet-12-9-24.pdf"],
   ["Applied Materials Field Service Engineer role reference", "https://jobs.appliedmaterials.com/job/austin/field-service-engineer/95/93828167312"]
+);
+
+sources.push(
+  ["NIOSH IDLH Chemical Values", "https://www.cdc.gov/niosh/idlh/intridl4.html"],
+  ["Public load-lock / atmospheric front-end patent", "https://patents.google.com/patent/WO1999035673A1/en"],
+  ["Public pre-clean and chamber evacuation patent", "https://patents.google.com/patent/US7651948B2/en"]
 );
 
 sources.push(
@@ -2455,6 +2885,97 @@ const installMissionStages = [
     evidence: ["wafer transfer count", "pumpdown curve", "MFC response", "temperature trace", "metrology baseline"],
     stop: "particle jump, transfer scratch, temperature drift, leak suspicion은 production release 전에 닫습니다.",
     senior: "acceptance fail이면 rework 범위와 retest 범위를 어디까지 잡을 것인가?"
+  }
+];
+
+const installInteractiveChecklist = [
+  {
+    id: "move-in",
+    title: "Move-in / Rigging",
+    owner: "CE + rigging vendor + customer EHS",
+    evidence: ["route clear photo", "shock/tilt indicator", "crate damage check", "cleanroom entry permit"],
+    stop: "crate damage, route obstruction, floor/load uncertainty, unapproved rigging point가 있으면 hold",
+    report: "Move-in risk는 route, crate condition, EHS permit 기준으로 확인 중이며 blocker는 punch item으로 분리하겠습니다."
+  },
+  {
+    id: "set-place",
+    title: "Set in Place / Footprint",
+    owner: "CE + customer facility + layout owner",
+    evidence: ["tool footprint match", "service clearance", "gas box/pump access", "EMO/access path"],
+    stop: "service door, pump cart, emergency access, gas box 접근이 막히면 위치 확정 금지",
+    report: "Tool 위치는 footprint뿐 아니라 service access와 emergency access 기준으로 검증하겠습니다."
+  },
+  {
+    id: "leveling",
+    title: "Leveling / Module Docking",
+    owner: "CE + senior CE",
+    evidence: ["level record", "module mating face", "gate/slit valve alignment", "robot reach envelope"],
+    stop: "blade height, docking face, lift pin, slit valve clearance가 불확실하면 dry run 전 hold",
+    report: "Module docking은 wafer가 지나갈 geometry risk를 제거하는 단계로 보고, dry run 전 alignment evidence를 닫겠습니다."
+  },
+  {
+    id: "facility-hookup",
+    title: "Facility Hook-up",
+    owner: "CE + electrical/gas/exhaust/PCW facility owners",
+    evidence: ["POC label", "drawing revision", "power/ground check", "PCW/CDA/N2/exhaust ready", "as-built markup"],
+    stop: "drawing mismatch, unknown line, unapproved gas release, exhaust/abatement uncertainty는 즉시 hold",
+    report: "Hook-up은 POC, drawing revision, actual state, owner witness를 대조해 진행하겠습니다."
+  },
+  {
+    id: "power-on",
+    title: "Power-on / Controller Boot",
+    owner: "CE + electrical owner + controls owner",
+    evidence: ["main power check", "24V rail stable", "controller boot", "alarm baseline", "host/network state"],
+    stop: "energized panel 권한/LOTO/PPE 불명확, unexplained alarm, smoke/odor/heat는 power hold",
+    report: "Power-on은 전원 안정, controller boot, alarm baseline을 기준으로 다음 단계 가능성을 판단하겠습니다."
+  },
+  {
+    id: "interlock",
+    title: "Interlock / Safety Chain",
+    owner: "CE + EHS + facility owner",
+    evidence: ["EMO/E-stop", "covers/doors", "exhaust/abatement ready", "gas box ready", "cooling/vacuum ready"],
+    stop: "interlock bypass, 임의 jumper, detector setpoint 변경 요청은 금지 영역",
+    report: "Safety chain은 우회하지 않고 hardwired state와 actual facility state를 owner witness로 확인하겠습니다."
+  },
+  {
+    id: "dry-run",
+    title: "Dry Run / Wafer Path",
+    owner: "CE + senior CE + customer automation owner",
+    evidence: ["FOUP map", "EFEM handoff", "LL pump/vent curve", "TM robot cycle", "PM/CM handoff count"],
+    stop: "scrape, wafer not present, double wafer, pressure mismatch, repeated sensor mismatch가 있으면 hold",
+    report: "Dry run은 FOUP에서 PM까지 wafer path의 mechanical, pressure, sensor evidence를 닫는 단계입니다."
+  },
+  {
+    id: "first-gas",
+    title: "First Gas Readiness",
+    owner: "CE + gas owner + abatement owner + EHS",
+    evidence: ["SDS reviewed", "gas cabinet ready", "purge/leak evidence", "exhaust/abatement ready", "area response plan"],
+    stop: "gas alarm, exhaust not ready, unverified line release, unknown purge completion은 진행 금지",
+    report: "First gas는 process 전 안전 envelope를 닫는 gate로 보고, gas/exhaust/abatement owner witness 후 진행하겠습니다."
+  },
+  {
+    id: "baseline",
+    title: "Baseline Wafer",
+    owner: "CE + process owner + metrology owner",
+    evidence: ["wafer ID", "route history", "temperature/pressure/MFC trace", "defect/thickness/Rs", "metrology recipe"],
+    stop: "particle burst, wafer damage, trace abnormal, metrology outlier가 설명되지 않으면 production release 금지",
+    report: "Baseline wafer 결과는 tool trace와 metrology를 같은 wafer ID로 묶어 qualification 의미를 설명하겠습니다."
+  },
+  {
+    id: "qualification",
+    title: "Qualification / Acceptance",
+    owner: "CE + customer owner + senior CE",
+    evidence: ["acceptance test list", "pass/fail record", "open punch", "risk retired list", "retest scope"],
+    stop: "acceptance criterion, test owner, wafer impact, open risk가 불명확하면 sign-off scope 분리",
+    report: "Qualification은 pass 문서가 아니라 위험이 어떤 evidence로 제거됐는지 설명하는 단계로 정리하겠습니다."
+  },
+  {
+    id: "handover",
+    title: "Handover / Shift Memory",
+    owner: "CE + customer + next shift",
+    evidence: ["summary packet", "remaining risk", "owner/ETA", "customer report", "data location"],
+    stop: "미해결 safety/facility/process risk를 숨기거나 구두로만 넘기면 handover 금지",
+    report: "Handover는 current status, open item, owner, ETA, next action을 한 packet으로 남기겠습니다."
   }
 ];
 
@@ -4159,15 +4680,41 @@ function renderScenarios() {
 }
 
 function renderScenarios() {
-  document.querySelector("#scenario-list").innerHTML = scenarios.map((scenario, index) => `
-    <button class="scenario-tab ${index === activeScenario ? "active" : ""}" data-scenario="${index}">
-      <strong>${scenario.title}</strong>
-      <span>${scenario.status}</span>
-    </button>
-  `).join("");
-
   const scenario = scenarios[activeScenario];
   const safeList = items => (items || []).map(item => `<li>${item}</li>`).join("");
+  const scenarioAnswers = state.scenarioAnswers || {};
+  const scenarioWeakness = state.scenarioWeakness || {};
+  const solvedCases = Object.keys(scenarioAnswers).length;
+  const correctCases = Object.values(scenarioAnswers).filter(answer => answer.correct).length;
+  const weaknessList = Object.entries(scenarioWeakness)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+  const recorded = scenarioAnswers[scenario.title];
+
+  document.querySelector("#scenario-list").innerHTML = `
+    <section class="scenario-trainer-dashboard">
+      <p class="eyebrow">Field Decision Trainer</p>
+      <h2>현장 판단 약점 보드</h2>
+      <div class="case-stats">
+        <span><strong>${solvedCases}</strong><small>푼 케이스</small></span>
+        <span><strong>${correctCases}</strong><small>정답</small></span>
+        <span><strong>${scenarios.length}</strong><small>전체 케이스</small></span>
+      </div>
+      <div class="weakness-chip-row">
+        ${weaknessList.length ? weaknessList.map(([tag, count]) => `<span class="weakness-chip">${tag} ${count}</span>`).join("") : `<span class="weakness-chip calm">아직 누적 약점 없음</span>`}
+      </div>
+    </section>
+    ${scenarios.map((item, index) => {
+      const answer = scenarioAnswers[item.title];
+      return `
+        <button class="scenario-tab ${index === activeScenario ? "active" : ""} ${answer ? (answer.correct ? "solved-good" : "solved-bad") : ""}" data-scenario="${index}">
+          <strong>${item.title}</strong>
+          <span>${item.status}</span>
+          ${answer ? `<em>${answer.correct ? "맞음" : "복습"}</em>` : ""}
+        </button>
+      `;
+    }).join("")}
+  `;
 
   document.querySelector("#scenario-panel").innerHTML = `
     <div class="case-board-head">
@@ -4220,11 +4767,11 @@ function renderScenarios() {
     </section>
     <h3 class="case-decision-title">가장 먼저 취할 행동은?</h3>
     <div class="decision-grid">
-      ${scenario.choices.map(([text, isGood]) => `
-        <button class="decision" data-good="${isGood}">${text}</button>
+      ${scenario.choices.map(([text, isGood], index) => `
+        <button class="decision ${recorded && isGood ? "good" : ""} ${recorded?.selected === text ? "picked" : ""} ${recorded?.selected === text && !isGood ? "bad" : ""}" data-good="${isGood}" data-choice-index="${index}">${text}</button>
       `).join("")}
     </div>
-    <p class="explain" id="scenario-feedback">답을 고르면 왜 맞는지 바로 설명합니다. 핵심은 빠른 결론보다 안전한 증거 수집입니다.</p>
+    <p class="explain" id="scenario-feedback">${recorded ? (recorded.correct ? scenario.good : "이 선택은 너무 빠르거나 위험합니다. 다시 symptom -> risk -> evidence -> stop condition 순서로 좁혀보세요.") : "답을 고르면 왜 맞는지 바로 설명합니다. 핵심은 빠른 결론보다 안전한 증거 수집입니다."}</p>
   `;
 
   document.querySelectorAll(".scenario-tab").forEach(btn => {
@@ -4236,13 +4783,34 @@ function renderScenarios() {
 
   document.querySelectorAll(".decision").forEach(btn => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll(".decision").forEach(item => item.classList.remove("good"));
-      if (btn.dataset.good === "true") {
-        btn.classList.add("good");
+      const selectedText = scenario.choices[Number(btn.dataset.choiceIndex)]?.[0] || btn.textContent.trim();
+      const correct = btn.dataset.good === "true";
+      state.scenarioAnswers = state.scenarioAnswers || {};
+      state.scenarioAnswers[scenario.title] = {
+        correct,
+        selected: selectedText,
+        status: scenario.status,
+        at: new Date().toISOString()
+      };
+      if (!correct) {
+        state.scenarioWeakness = state.scenarioWeakness || {};
+        state.scenarioWeakness[scenario.status] = (state.scenarioWeakness[scenario.status] || 0) + 1;
+      }
+      persistState();
+      document.querySelectorAll(".decision").forEach(item => {
+        const itemCorrect = item.dataset.good === "true";
+        item.classList.toggle("good", itemCorrect);
+        item.classList.toggle("picked", item === btn);
+        item.classList.toggle("bad", item === btn && !correct);
+      });
+      if (correct) {
         document.querySelector("#scenario-feedback").textContent = scenario.good;
       } else {
         document.querySelector("#scenario-feedback").textContent = "이 선택은 성급합니다. senior CE는 안전 경계, 변경점, 로그, 계측값, wafer evidence 순서로 원인을 좁힙니다.";
       }
+      renderLearningHud();
+      renderMetrics();
+      renderScenarios();
     });
   });
 
@@ -4309,7 +4877,37 @@ function renderInstall() {
       `).join("")}
     </div>
   `;
-  document.querySelector("#install-mission-board").innerHTML = installMissionStages.map(stage => `
+  const installDone = state.installChecklist || {};
+  const installChecked = installInteractiveChecklist.filter(item => installDone[item.id]).length;
+  document.querySelector("#install-mission-board").innerHTML = `
+    <section class="install-checklist-console">
+      <div class="install-checklist-head">
+        <div>
+          <p class="eyebrow">Interactive Install Runbook</p>
+          <h2>Move-in부터 handover까지 현장 체크</h2>
+          <p>각 단계는 “증거 -> owner -> stop condition -> 고객 보고” 순서로 닫습니다. 실제 수치, valve sequence, detector setting은 현장 승인 문서 우선입니다.</p>
+        </div>
+        <strong>${installChecked}/${installInteractiveChecklist.length}</strong>
+      </div>
+      <div class="gate-progress">
+        <span style="width: ${(installChecked / installInteractiveChecklist.length) * 100}%"></span>
+      </div>
+      <div class="install-checklist-grid">
+        ${installInteractiveChecklist.map(item => `
+          <label class="install-check-row ${installDone[item.id] ? "checked" : ""}" for="install-${item.id}">
+            <input id="install-${item.id}" type="checkbox" data-install-check="${item.id}" ${installDone[item.id] ? "checked" : ""} />
+            <span>
+              <strong>${item.title}</strong>
+              <small>Owner: ${item.owner}</small>
+              <em>Evidence: ${item.evidence.join(" / ")}</em>
+              <b>Stop: ${item.stop}</b>
+              <i>${item.report}</i>
+            </span>
+          </label>
+        `).join("")}
+      </div>
+    </section>
+    ${installMissionStages.map(stage => `
     <article class="mission-card">
       <span class="mission-badge">${stage.badge}</span>
       <h2>${stage.title}</h2>
@@ -4321,7 +4919,8 @@ function renderInstall() {
       <strong>Senior question</strong>
       <p>${stage.senior}</p>
     </article>
-  `).join("");
+  `).join("")}
+  `;
   document.querySelector("#install-grid").innerHTML = installPhases.map(item => `
     <article class="install-card">
       <span class="phase">Phase ${item.phase}</span>
@@ -4357,6 +4956,17 @@ function renderInstall() {
   document.querySelector("#install-source-strip").innerHTML = installSourceLinks.map(([label, url]) => `
     <a href="${url}" target="_blank" rel="noreferrer">${label}</a>
   `).join("");
+
+  document.querySelectorAll("[data-install-check]").forEach(input => {
+    input.addEventListener("change", () => {
+      state.installChecklist = state.installChecklist || {};
+      state.installChecklist[input.dataset.installCheck] = input.checked;
+      persistState();
+      renderInstall();
+      renderLearningHud();
+      renderMetrics();
+    });
+  });
 }
 
 function renderRunbook() {
@@ -4549,6 +5159,19 @@ function getActiveProcessVisual() {
   return { flow, step: flow.steps[activeProcessStep] };
 }
 
+function processGasRisk(tag) {
+  const key = String(tag).toLowerCase();
+  if (["ph3", "ash3", "b2h6", "geh4"].some(item => key.includes(item))) return "독성/가연성 hydride 계열. SDS, detector, exhaust, abatement, EHS owner 확인이 우선입니다.";
+  if (["sih4", "dcs", "tcs", "chlorosilane"].some(item => key.includes(item))) return "가연성 또는 수분 반응성 silicon precursor 계열. 실제 gas matrix와 purge/exhaust 준비는 현장 문서로만 확정합니다.";
+  if (key.includes("hcl")) return "부식성/독성 gas. 배기/스크러버 readiness와 PPE/EHS 절차를 먼저 확인합니다.";
+  if (key.includes("h2")) return "가연성 gas. ignition source, purge, exhaust, leak integrity, abatement readiness를 분리해 확인합니다.";
+  if (["n2", "ar"].some(item => key.includes(item))) return "불활성 gas라도 질식과 압력 energy 위험이 있습니다. confined space/ventilation/site rule을 따릅니다.";
+  if (["o2", "o3", "n2o", "no", "nh3"].some(item => key.includes(item))) return "oxidizer/reactive ambient 가능성. fuel gas separation, exhaust, material compatibility는 현장 승인 문서 우선입니다.";
+  if (key.includes("vacuum")) return "진공 boundary 단계. door, slit valve, pumpdown curve, pressure equalization evidence가 중요합니다.";
+  if (key.includes("abatement") || key.includes("exhaust")) return "배기/처리 단계. ready signal과 local actual state를 owner witness로 대조합니다.";
+  return "공개자료 기준 개념 tag입니다. 실제 사용 여부와 위험 등급은 tool option, gas matrix, SDS, site EHS 문서로 확인합니다.";
+}
+
 function renderProcessVisual() {
   const flowTabs = document.querySelector("#process-flow-tabs");
   const stepList = document.querySelector("#process-step-list");
@@ -4656,6 +5279,13 @@ function renderProcessVisual() {
   detail.innerHTML = `
     <p class="eyebrow">${step.title}</p>
     <h2>${step.subtitle}</h2>
+    <div class="process-safety-ribbon">
+      <strong>Gas / state risk</strong>
+      <div>
+        ${step.gasTags.map(tag => `<span title="${processGasRisk(tag)}"><b>${tag}</b><small>${processGasRisk(tag)}</small></span>`).join("")}
+      </div>
+      <p>공개자료로 확인 가능한 위험 family만 표시합니다. 실제 gas 연결, recipe, valve sequence, detector setpoint는 공식 교육/현장 승인 문서가 우선입니다.</p>
+    </div>
     <div class="detail-grid">
       <section class="info-block">
         <h3>장비가 하는 행위</h3>
@@ -4826,6 +5456,27 @@ function renderElectrical() {
   document.querySelector("#electrical-troubleshooting").innerHTML = `
     <h2>현장 고장 추적 루틴</h2>
     ${electricalTroubleshooting.map(([title, body]) => `<div class="deep-item"><strong>${title}</strong><span>${body}</span></div>`).join("")}
+    <div class="dvm-builder">
+      <div class="section-heading">
+        <p>Expected Value Builder</p>
+        <h2>DVM을 대기 전에 먼저 말해야 할 것</h2>
+      </div>
+      <p class="builder-note">좋은 측정은 “어디를 찍었나”보다 “정상이라면 어떤 값이어야 하는가”에서 시작합니다. 아래 카드를 읽고 expected, evidence, safety를 먼저 말한 뒤 측정한다고 상상하세요.</p>
+      <div class="dvm-builder-grid">
+        ${dvmExpectedValueDrills.map(item => `
+          <article class="dvm-builder-card">
+            <span>${item.title}</span>
+            <h3>${item.symptom}</h3>
+            <dl>
+              <dt>Expected</dt><dd>${item.expected}</dd>
+              <dt>Evidence</dt><dd>${item.evidence}</dd>
+              <dt>Stop / Safety</dt><dd>${item.safety}</dd>
+              <dt>Report</dt><dd>${item.report}</dd>
+            </dl>
+          </article>
+        `).join("")}
+      </div>
+    </div>
   `;
   document.querySelector("#electrical-safety").innerHTML = `
     <h2>전기 작업 Stop 조건</h2>

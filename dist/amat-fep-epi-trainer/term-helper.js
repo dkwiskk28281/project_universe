@@ -305,6 +305,30 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function relatedViewForTerm(info) {
+  const text = `${info.term} ${info.category} ${info.plain} ${info.ce}`.toLowerCase();
+  if (/gas|mfc|purge|pumpdown|exhaust|abatement|toxic|pyrophoric|hcl|silane|dopant/.test(text)) return "gases";
+  if (/load lock|efem|foup|transfer|cluster|centura|vantage|process module|slit|handoff|mapping/.test(text)) return "cluster";
+  if (/epi|epitaxy|rtp|ramp|soak|spike|pyrometer|thermal|native oxide|susceptor|precursor/.test(text)) return "process-visual";
+  if (/relay|dvm|dmm|voltage|current|resistance|loto|interlock|plc|sensor|continuity/.test(text)) return "electrical";
+  if (/hook-up|rigging|qualification|baseline|handover|facility|poc|as-built|redline/.test(text)) return "install";
+  if (/symptom|evidence|suspected cause|customer report|summary packet|action|prevention/.test(text)) return "thinktank";
+  return "glossary";
+}
+
+function relatedViewLabel(view) {
+  const labels = {
+    gases: "Gas/Safety",
+    cluster: "구조 해부실",
+    "process-visual": "공정 극장",
+    electrical: "전기/DVM",
+    install: "Install",
+    thinktank: "Think Tank",
+    glossary: "용어집"
+  };
+  return labels[view] || "관련 챕터";
+}
+
 function renderEnglishTerms() {
   const grid = document.querySelector("#english-terms-grid");
   if (!grid) return;
@@ -359,10 +383,17 @@ function enhanceEnglishTerms(root = document.querySelector("main")) {
       const span = document.createElement("span");
       span.className = "term-explain";
       span.tabIndex = 0;
+      const relatedView = relatedViewForTerm(info);
       span.dataset.short = info.short;
-      span.dataset.tip = `${info.short} | ${info.plain} CE 관점: ${info.ce}`;
-      span.title = `${info.term}: ${info.plain} CE 관점: ${info.ce}`;
-      span.setAttribute("aria-label", `${info.term}: ${info.short}. ${info.plain} CE 관점: ${info.ce}`);
+      span.dataset.view = relatedView;
+      span.dataset.tip = `${info.term} | ${info.short} | ${info.plain} CE 관점: ${info.ce} 관련 장: ${relatedViewLabel(relatedView)}. 클릭하면 이동합니다.`;
+      span.title = `${info.term}: ${info.plain} CE 관점: ${info.ce} 관련 장: ${relatedViewLabel(relatedView)}`;
+      span.setAttribute("aria-label", `${info.term}: ${info.short}. ${info.plain} CE 관점: ${info.ce}. 관련 장 ${relatedViewLabel(relatedView)}. 클릭하면 이동합니다.`);
+      span.addEventListener("click", event => {
+        event.preventDefault();
+        const view = span.dataset.view || "glossary";
+        if (typeof window.showView === "function") window.showView(view);
+      });
       span.textContent = match;
       fragment.append(span);
       lastIndex = index + match.length;
