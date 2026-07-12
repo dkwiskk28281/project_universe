@@ -562,6 +562,84 @@ function isEnglishQuestionGraded(item) {
   return Boolean(englishTestState.graded[item.id] || englishTestState.checked);
 }
 
+function buildEnglishSkillClinic() {
+  const attempts = getEnglishMicroAttempts();
+  const queue = getEnglishReviewQueue();
+  const skills = {};
+  attempts.forEach(item => {
+    const skill = item.skillTag || item.type || "general";
+    if (!skills[skill]) skills[skill] = { skill, attempts: 0, misses: 0, due: 0, examples: [] };
+    skills[skill].attempts += 1;
+    if (!item.correct) skills[skill].misses += 1;
+    if (skills[skill].examples.length < 2) skills[skill].examples.push(item.prompt || item.title || "");
+  });
+  queue.forEach(item => {
+    const skill = item.skillTag || item.type || "general";
+    if (!skills[skill]) skills[skill] = { skill, attempts: 0, misses: 0, due: 0, examples: [] };
+    if (new Date(item.dueAt || 0).getTime() <= Date.now()) skills[skill].due += 1;
+    if (skills[skill].examples.length < 2) skills[skill].examples.push(item.prompt || "");
+  });
+  const fallback = [
+    { skill: "workplace-reporting", attempts: 0, misses: 0, due: 0, examples: ["The confirmed fact is ___. The current risk is ___."] },
+    { skill: "grammar-tense", attempts: 0, misses: 0, due: 0, examples: ["We found the issue after checking the log."] },
+    { skill: "technical-vocabulary", attempts: 0, misses: 0, due: 0, examples: ["The abatement ready signal is not stable yet."] }
+  ];
+  const rows = Object.values(skills).length ? Object.values(skills) : fallback;
+  return rows.sort((a, b) => (b.misses + b.due) - (a.misses + a.due) || b.attempts - a.attempts).slice(0, 5);
+}
+
+function englishClinicLens(skill) {
+  const lower = String(skill || "").toLowerCase();
+  if (lower.includes("tense") || lower.includes("grammar")) return ["시제/동사", "작업 완료, 진행 중, 예정 action을 현재완료/과거/미래로 구분합니다.", "We have completed ___. We are checking ___. We will update you by ___."];
+  if (lower.includes("vocab") || lower.includes("technical")) return ["기술 어휘", "gas, exhaust, vacuum, qualification처럼 현장 명사를 쉬운 설명과 함께 말합니다.", "The exhaust path means the route that carries gas away safely."];
+  if (lower.includes("listen")) return ["듣기 핵심어", "숫자, 시간, owner, risk 단어를 먼저 잡습니다.", "I heard that the next update is at ___ and the owner is ___."];
+  if (lower.includes("reading")) return ["독해 스캔", "목적, 조건, 예외, 다음 action을 표시합니다.", "The main requirement is ___, but the exception is ___."];
+  if (lower.includes("speaking") || lower.includes("report")) return ["말하기 구조", "status, fact, risk, next action, ETA 순서로 짧게 말합니다.", "Current status is ___. Confirmed fact is ___. Next action is ___."];
+  return ["업무 영어", "정답만 외우지 말고 같은 의미를 다른 문장으로 다시 말합니다.", "I am not fully sure yet, so I will verify the data first."];
+}
+
+function renderEnglishSkillClinic() {
+  const rows = buildEnglishSkillClinic();
+  const templates = [
+    ["고객 update", "The confirmed fact is ___. The current risk is ___. The next action is ___. I will update you by ___."],
+    ["hold 설명", "We should hold this step because ___ is not confirmed yet. Continuing now may affect ___."],
+    ["escalation", "I would escalate this to ___ because the evidence shows ___ and the stop condition is ___."]
+  ];
+  return `
+    <section class="english-skill-clinic">
+      <div class="english-clinic-head">
+        <div>
+          <p class="eyebrow">Weakness Clinic</p>
+          <h2>오답이 바로 복습 처방으로 바뀌는 영어 클리닉</h2>
+          <p>한 문제를 풀 때마다 skill tag, lapse, due 상태를 모아 어떤 문법/어휘/말하기 패턴을 다시 꺼내야 하는지 보여줍니다. 목표는 시험 점수뿐 아니라 Applied CE 현장 보고 영어입니다.</p>
+        </div>
+        <button class="secondary" type="button" data-english-review-set>약점 세트 생성</button>
+      </div>
+      <div class="english-clinic-grid">
+        ${rows.map(row => {
+          const [lens, body, sentence] = englishClinicLens(row.skill);
+          const pressure = row.misses + row.due;
+          return `
+            <article class="${pressure > 2 ? "hot" : ""}">
+              <span>${escapeEnglishTest(row.skill)}</span>
+              <strong>${escapeEnglishTest(lens)}</strong>
+              <small>${row.misses} misses · ${row.due} due · ${row.attempts} attempts</small>
+              <p>${escapeEnglishTest(body)}</p>
+              <code>${escapeEnglishTest(sentence)}</code>
+              <em>${escapeEnglishTest(row.examples.filter(Boolean)[0] || "새 문제를 풀면 여기에 실제 약점 예문이 쌓입니다.")}</em>
+            </article>
+          `;
+        }).join("")}
+      </div>
+      <div class="english-template-strip">
+        ${templates.map(([title, sentence]) => `
+          <span><b>${escapeEnglishTest(title)}</b>${escapeEnglishTest(sentence)}</span>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
 function getEnglishObjectiveStats(objectiveItems) {
   const answeredItems = objectiveItems.filter(item => isEnglishQuestionGraded(item));
   const correct = answeredItems.reduce((acc, item) => (
@@ -1253,6 +1331,7 @@ function renderEnglishTestMain() {
     ${renderEnglishQualityPanel(objectiveItems)}
     ${renderEnglishWeaknessPanel(objectiveItems)}
     ${renderEnglishSpacedReviewPanel()}
+    ${renderEnglishSkillClinic()}
     <section class="english-section-band">
       <h2>객관식 CBT</h2>
       <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 이제 끝까지 기다릴 필요 없이 한 문제를 선택하는 순간 공부가 시작됩니다. 틀리면 바로 해설을 읽고, 정답 문장을 소리 내어 한 번 말한 뒤 다음 문제로 넘어가세요.</p>
@@ -1286,7 +1365,9 @@ function renderEnglishTestMain() {
     });
   });
 
-  target.querySelector("[data-english-review-set]")?.addEventListener("click", startEnglishFocusedReviewSet);
+  target.querySelectorAll("[data-english-review-set]").forEach(button => {
+    button.addEventListener("click", startEnglishFocusedReviewSet);
+  });
 
   target.querySelectorAll("[data-speak-audio]").forEach(button => {
     button.addEventListener("click", () => {

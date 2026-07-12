@@ -11762,3 +11762,325 @@ body[data-current-view="cognitive"] .learning-hud {
     margin: 4px 0;
   }
 }
+
+.life-os-audit-panel,
+.english-skill-clinic,
+.cognitive-director-panel {
+  border: 1px solid rgba(102, 255, 193, 0.22);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(5, 32, 29, 0.92), rgba(2, 12, 16, 0.96)),
+    rgba(0, 0, 0, 0.75);
+  color: #ecfff8;
+  padding: clamp(18px, 3vw, 28px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.26);
+  overflow: hidden;
+}
+
+.life-os-audit-head,
+.english-clinic-head,
+.cognitive-director-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.life-os-audit-head h2,
+.english-clinic-head h2,
+.cognitive-director-head h2 {
+  color: #ffffff;
+  margin: 0 0 8px;
+  letter-spacing: 0;
+}
+
+.life-os-audit-head p,
+.english-clinic-head p,
+.cognitive-director-head p {
+  color: #c9f7e7;
+  line-height: 1.65;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.life-os-audit-score,
+.cognitive-director-score {
+  min-width: 132px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(127, 255, 196, 0.38);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: radial-gradient(circle, rgba(102, 255, 193, 0.16), rgba(0, 0, 0, 0.08));
+}
+
+.life-os-audit-score span,
+.cognitive-director-score span {
+  color: #7fffc4;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.life-os-audit-score strong,
+.cognitive-director-score strong {
+  display: block;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.life-os-audit-score small,
+.cognitive-director-score small {
+  color: #b7ded3;
+}
+
+.life-os-rubric-grid,
+.english-clinic-grid,
+.cognitive-director-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.life-os-rubric-grid article,
+.english-clinic-grid article,
+.cognitive-director-grid article {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 14px;
+  overflow-wrap: anywhere;
+}
+
+.life-os-rubric-grid article.warn,
+.english-clinic-grid article.hot,
+.cognitive-director-grid article.focus {
+  border-color: rgba(255, 208, 117, 0.52);
+  background: rgba(89, 55, 6, 0.18);
+}
+
+.life-os-rubric-grid article.ok,
+.cognitive-director-grid article.steady {
+  border-color: rgba(102, 255, 193, 0.26);
+}
+
+.life-os-rubric-grid span,
+.english-clinic-grid span,
+.cognitive-director-grid span {
+  display: inline-flex;
+  color: #7fffc4;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.life-os-rubric-grid strong,
+.english-clinic-grid strong,
+.cognitive-director-grid strong {
+  display: block;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.life-os-rubric-grid small,
+.english-clinic-grid small,
+.cognitive-director-grid small {
+  display: block;
+  color: #b7ded3;
+  margin-bottom: 8px;
+}
+
+.life-os-rubric-grid p,
+.english-clinic-grid p,
+.cognitive-director-grid p {
+  color: #d9fff1;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.life-os-rubric-grid i {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.life-os-rubric-grid i em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4de3a0, #ccff75);
+}
+
+.transcendence-loop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.transcendence-loop-grid article,
+.bottleneck-board {
+  border: 1px solid rgba(102, 255, 193, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  padding: 14px;
+}
+
+.transcendence-loop-grid strong {
+  color: #ffffff;
+}
+
+.transcendence-loop-grid div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.transcendence-loop-grid span {
+  border: 1px solid rgba(102, 255, 193, 0.2);
+  border-radius: 999px;
+  color: #ccffea;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
+.transcendence-loop-grid small,
+.transcendence-loop-grid p {
+  color: #cdeee4;
+  line-height: 1.5;
+}
+
+.bottleneck-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.bottleneck-board > div {
+  grid-column: 1 / -1;
+}
+
+.bottleneck-board h3 {
+  color: #ffffff;
+  margin: 4px 0 0;
+}
+
+.bottleneck-board article {
+  min-width: 0;
+  border-left: 3px solid rgba(102, 255, 193, 0.42);
+  background: rgba(255, 255, 255, 0.045);
+  border-radius: 6px;
+  padding: 12px;
+  overflow-wrap: anywhere;
+}
+
+.bottleneck-board article.critical {
+  border-left-color: #ffd075;
+}
+
+.bottleneck-board article.high {
+  border-left-color: #7fffc4;
+}
+
+.bottleneck-board span {
+  color: #7fffc4;
+  font-size: 0.76rem;
+}
+
+.bottleneck-board strong {
+  display: block;
+  color: #ffffff;
+  margin: 6px 0;
+}
+
+.bottleneck-board p,
+.bottleneck-board small {
+  color: #cfeee5;
+  line-height: 1.5;
+}
+
+.english-clinic-grid code {
+  display: block;
+  white-space: pre-wrap;
+  color: #111f1b;
+  background: #c8ffe7;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 0.88rem;
+}
+
+.english-clinic-grid em {
+  display: block;
+  color: #bce8dc;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.english-template-strip,
+.cognitive-director-footer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.english-template-strip span,
+.cognitive-director-footer span {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: #dffff2;
+  padding: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.english-template-strip b,
+.cognitive-director-footer b {
+  display: block;
+  color: #7fffc4;
+  margin-bottom: 4px;
+}
+
+:root[data-theme="dark"] .life-os-audit-panel,
+:root[data-theme="dark"] .english-skill-clinic,
+:root[data-theme="dark"] .cognitive-director-panel {
+  background-color: rgba(1, 12, 12, 0.94);
+  color: #ecfff8;
+}
+
+@media (max-width: 760px) {
+  .life-os-audit-head,
+  .english-clinic-head,
+  .cognitive-director-head {
+    grid-template-columns: 1fr;
+  }
+
+  .life-os-audit-score,
+  .cognitive-director-score {
+    width: 100%;
+    aspect-ratio: auto;
+    min-height: 96px;
+    border-radius: 10px;
+  }
+
+  .life-os-rubric-grid,
+  .english-clinic-grid,
+  .cognitive-director-grid,
+  .transcendence-loop-grid,
+  .bottleneck-board,
+  .english-template-strip,
+  .cognitive-director-footer {
+    grid-template-columns: 1fr;
+  }
+}

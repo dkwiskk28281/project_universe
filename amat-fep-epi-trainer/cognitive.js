@@ -676,6 +676,80 @@
     `;
   }
 
+  function buildCognitiveDirector() {
+    const scores = scoreByTask();
+    const weak = weakSpots();
+    const order = activeTaskOrder();
+    const domainMap = {
+      movement: "생활 보호요인",
+      stroop: "주의 억제",
+      memory: "기억 회상",
+      sequence: "처리속도",
+      lifestyle: "생활 보호요인",
+      category: "언어 유창성",
+      nback: "작업기억",
+      route: "공간추론",
+      planning: "실행기능"
+    };
+    const routine = order.map((key, index) => {
+      const meta = taskMeta[key];
+      const score = scores[key] || 0;
+      const target = Math.round(meta.points * 0.7);
+      return {
+        key,
+        order: index + 1,
+        domain: domainMap[key] || meta.label,
+        title: meta.label,
+        score,
+        target,
+        state: score >= target ? "유지" : "집중",
+        reason: weak.includes(meta.label) ? "최근 약점으로 잡힌 영역" : "오늘 루틴 균형을 위한 영역"
+      };
+    });
+    return {
+      routine,
+      weak,
+      streak: getStreak(),
+      total: totalScore(),
+      evidence: evidenceLinks.map(item => item.title).slice(0, 3)
+    };
+  }
+
+  function renderCognitiveDirectorPanel() {
+    const director = buildCognitiveDirector();
+    return `
+      <section class="cognitive-director-panel" aria-label="오늘의 인지훈련 감독판">
+        <div class="cognitive-director-head">
+          <div>
+            <p class="eyebrow">Daily Cognitive Director</p>
+            <h2>오늘은 이 순서로 뇌를 깨웁니다</h2>
+            <p>기억, 주의, 처리속도, 언어, 공간추론, 실행기능, 생활 보호요인을 분리해 추적합니다. 의료 진단이나 치료가 아니라 매일 재개 가능한 비진단 훈련 루틴입니다.</p>
+          </div>
+          <div class="cognitive-director-score">
+            <span>ROUTINE</span>
+            <strong>${director.total}</strong>
+            <small>${director.streak}일 streak</small>
+          </div>
+        </div>
+        <div class="cognitive-director-grid">
+          ${director.routine.map(item => `
+            <article class="${item.state === "집중" ? "focus" : "steady"}">
+              <span>${item.order}. ${escapeHtml(item.domain)}</span>
+              <strong>${escapeHtml(item.title)}</strong>
+              <small>${item.score}/${item.target} · ${escapeHtml(item.state)}</small>
+              <p>${escapeHtml(item.reason)}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="cognitive-director-footer">
+          <span><b>약점</b>${director.weak.map(escapeHtml).join(" · ") || "아직 뚜렷한 약점 없음"}</span>
+          <span><b>근거</b>${director.evidence.map(escapeHtml).join(" · ")}</span>
+          <span><b>경계</b>반복 혼란, 갑작스러운 기억/언어 변화, 두통/어지러움은 점수보다 의료 상담이 우선입니다.</span>
+        </div>
+      </section>
+    `;
+  }
+
   function renderOverview() {
     const order = activeTaskOrder().map(key => taskMeta[key].label).join(" · ");
     return `
@@ -1059,6 +1133,8 @@
           ${renderMetric("저장 상태", state.remoteStatus, state.lastSavedRemoteAt ? `최근 ${state.lastSavedRemoteAt.slice(0, 10)}` : "D1 가능 시 자동 시도")}
           ${renderMetric("다음 행동", nextActionText(), "작고 반복 가능한 1개 행동")}
         </div>
+
+        ${renderCognitiveDirectorPanel()}
 
         ${renderAdaptiveRoutine()}
 

@@ -4682,7 +4682,130 @@ lifeOsSystematicFailureCases.forEach(([title, status, phase, facts, suspects, ev
   });
 });
 
-while (scenarios.length < 40) {
+const lifeOsAdvancedFailureCases = [
+  {
+    title: "MFC response looks slow after gas line work",
+    status: "Gas delivery / MFC",
+    phase: "First gas readiness and baseline check",
+    facts: ["최근 gas line 작업 이후 특정 gas channel response가 이전 trend보다 늦다.", "tool alarm은 clear지만 baseline trace가 golden trace와 다르다.", "customer는 first wafer 진행 가능 여부를 묻고 있다."],
+    suspects: ["MFC response drift", "gas line purge/readiness concern", "pressure regulator or supply stability", "signal scaling or configuration mismatch"],
+    evidence: ["approved dry-run trace vs golden trace", "gas cabinet/VMB status and owner witness", "tool I/O trend, not recipe setpoint", "recent line work and leak/purge sign-off"],
+    stop: "gas readiness, purge completion, exhaust/abatement owner sign-off가 닫히지 않으면 wafer 진행을 hold한다.",
+    report: "Gas channel response가 golden trace와 달라 first wafer 전 gas owner sign-off, line readiness, tool trace를 함께 확인하겠습니다. recipe나 setpoint 변경은 공식 승인 없이 진행하지 않겠습니다."
+  },
+  {
+    title: "Abatement ready signal flickers during purge preparation",
+    status: "Exhaust / abatement",
+    phase: "Purge and safety permissive",
+    facts: ["tool에서는 ready가 순간적으로 들어오지만 abatement local log에는 transient가 남는다.", "purge 준비 단계에서만 반복된다.", "일정 압박 때문에 tool 화면 기준으로 진행하자는 의견이 있다."],
+    suspects: ["abatement transient", "exhaust flow margin", "dry contact timing mismatch", "facility event logging mismatch"],
+    evidence: ["tool event log and abatement local log time sync", "facility owner witness", "actual exhaust/abatement ready status", "gas phase impact review"],
+    stop: "toxic/corrosive/flammable gas와 연결된 ready 신호가 안정적으로 확인되지 않으면 purge/first gas는 hold한다.",
+    report: "Tool ready 화면만으로 판단하지 않고 abatement local event와 facility owner 확인을 묶어 safety permissive를 닫은 뒤 다음 단계로 가겠습니다."
+  },
+  {
+    title: "Load lock particle spike appears after vent",
+    status: "Load lock / vacuum / particles",
+    phase: "Vent, pumpdown, wafer transfer readiness",
+    facts: ["load lock vent 이후 첫 dummy wafer particle이 높다.", "pumpdown은 목표에 도달하지만 curve shape가 이전보다 느리다.", "최근 door seal 또는 vent path PM 이력이 있다."],
+    suspects: ["vent path contamination", "door seal seating", "pumpdown path restriction", "handling contact after maintenance"],
+    evidence: ["particle map location", "golden pumpdown curve overlay", "recent PM witness mark/photo", "repeat dummy wafer trend"],
+    stop: "particle source가 불명확하거나 vacuum integrity가 불확실하면 customer wafer로 넘어가지 않는다.",
+    report: "Load lock particle은 단일 숫자보다 vent/pumpdown curve, wafer map, PM work area를 묶어 확인하고 release 기준은 process owner sign-off로 닫겠습니다."
+  },
+  {
+    title: "RTP temperature trace drifts only on high-emissivity wafer",
+    status: "RTP thermal / pyrometry",
+    phase: "Thermal qualification",
+    facts: ["standard wafer에서는 trace가 안정적이다.", "특정 wafer type에서 measured temperature가 command와 벌어진다.", "pyrometry window cleaning history가 오래됐다."],
+    suspects: ["wafer emissivity effect", "pyrometry optical path contamination", "lamp/zone matching", "centering or backside condition"],
+    evidence: ["same recipe family trace by wafer type without exposing recipe details", "window/chamber history", "centering evidence", "metrology correlation"],
+    stop: "thermal runaway, wafer damage risk, owner-approved comparison 부재 시 qualification 반복보다 hold/escalation을 우선한다.",
+    report: "RTP trace drift는 wafer type과 optical path 변수를 분리해 확인하겠습니다. 공식 승인 없는 temperature limit이나 recipe 변경은 진행하지 않겠습니다."
+  },
+  {
+    title: "EFEM aligner repeatability changes after move-in",
+    status: "EFEM / aligner / handling",
+    phase: "Move-in recovery and factory interface check",
+    facts: ["move-in 이후 aligner repeatability가 흔들린다.", "FOUP mapping은 정상처럼 보인다.", "특정 load port와 특정 carrier 조합에서 더 많이 보인다."],
+    suspects: ["tool leveling or vibration", "aligner teach drift", "FOUP seating repeatability", "carrier condition"],
+    evidence: ["same carrier/different port split", "different carrier/same port split", "leveling/vibration check record", "aligner repeatability log"],
+    stop: "wafer edge contact, slip, scrape 가능성이 보이면 반복 transfer보다 hold 후 owner review가 우선이다.",
+    report: "EFEM repeatability는 carrier, load port, aligner, leveling 변수를 split해 좁히고 wafer handling risk가 있으면 customer wafer 진행을 멈추겠습니다."
+  },
+  {
+    title: "Slit valve open feedback is late before PM handoff",
+    status: "Transfer module / slit valve",
+    phase: "Vacuum handoff and robot path",
+    facts: ["robot home은 정상이다.", "특정 PM 앞에서 slit valve open feedback이 늦게 들어온다.", "최근 PM docking 또는 valve service가 있었다."],
+    suspects: ["slit valve actuator response", "PM docking alignment", "sensor/feedback timing", "vacuum differential or mechanical drag"],
+    evidence: ["same PM repeatability", "valve actuation log", "PM docking witness mark", "approved dry cycle under safe condition"],
+    stop: "wafer contact, valve mismatch, vacuum risk가 있으면 speed change나 bypass 대신 hold한다.",
+    report: "Slit valve feedback 지연은 robot 문제가 아니라 PM interface, valve actuation, sensor timing까지 같은 path로 확인하겠습니다."
+  },
+  {
+    title: "Two vacuum gauges disagree during pumpdown recovery",
+    status: "Vacuum / gauge / pump",
+    phase: "Pumpdown qualification",
+    facts: ["main screen pressure와 local gauge trend가 다르다.", "base pressure는 도달하지만 rate-of-rise 판단이 애매하다.", "최근 gauge replacement 또는 cable work가 있었다."],
+    suspects: ["gauge calibration or response lag", "cable/signal scaling issue", "small leak masked by final pressure", "pump path restriction"],
+    evidence: ["time-aligned gauge trends", "approved leak/rate-of-rise result", "recent gauge/cable work record", "known-good chamber comparison"],
+    stop: "vacuum integrity가 불명확하면 process gas introduction과 wafer qualification을 hold한다.",
+    report: "최종 pressure만 보지 않고 gauge 간 trend와 recent work를 맞춰 vacuum integrity evidence를 닫겠습니다."
+  },
+  {
+    title: "Baseline wafer passes but sample size is too thin",
+    status: "Qualification / metrology",
+    phase: "Baseline wafer and handover decision",
+    facts: ["첫 wafer 결과는 pass다.", "run-to-run variation trend가 아직 안정됐다고 말하기 어렵다.", "handover 일정을 앞당기자는 요구가 있다."],
+    suspects: ["insufficient sample size", "tool stabilization", "metrology repeatability", "facility drift"],
+    evidence: ["repeat wafer trend", "metrology repeat/correlation", "tool trace stability", "owner-approved acceptance plan"],
+    stop: "공식 acceptance sample/owner sign-off가 없으면 single pass만으로 handover하지 않는다.",
+    report: "첫 wafer pass는 긍정적이지만 release 판단은 sample count, trend stability, metrology repeatability, owner sign-off로 닫겠습니다."
+  },
+  {
+    title: "Customer asks for a final report while open items remain",
+    status: "Customer communication / handover",
+    phase: "Handover and open item control",
+    facts: ["tool은 production-ready처럼 보이나 open punch item이 남았다.", "고객은 summary report를 먼저 요청한다.", "일부 evidence owner가 아직 sign-off하지 않았다."],
+    suspects: ["report scope ambiguity", "missing owner sign-off", "untracked residual risk", "schedule pressure"],
+    evidence: ["open item list with owner/ETA", "risk classification", "completed evidence packet", "stop condition agreement"],
+    stop: "안전/wafer damage/process quality 영향 open item은 final handover에서 제외하거나 conditional로 명확히 표시한다.",
+    report: "완료 evidence와 open item을 분리해 보고하고, 잔여 risk, owner, ETA, stop condition을 명확히 달아 conditional handover 여부를 확인하겠습니다."
+  },
+  {
+    title: "DVM shows normal voltage unloaded but sensor input drops under load",
+    status: "Electrical / DVM / controls",
+    phase: "Power-on diagnostic",
+    facts: ["unloaded 측정에서는 24V가 정상이다.", "sensor 또는 relay coil이 붙는 순간 input이 떨어진다.", "최근 terminal rework가 있었다."],
+    suspects: ["high resistance connection", "weak power supply", "shorted or overloaded load", "fuse holder/contact issue"],
+    evidence: ["expected value before measuring", "loaded voltage drop by segment", "visual heat/discoloration/loose terminal check", "LOTO/energized work approval boundary"],
+    stop: "승인 없는 energized work, jumper, interlock bypass는 금지한다.",
+    report: "무부하 전압보다 load-on voltage drop이 핵심이므로 supply, fuse, terminal, load segment를 expected/actual로 나눠 확인하겠습니다."
+  }
+];
+
+lifeOsAdvancedFailureCases.forEach(item => {
+  if (scenarios.some(scenario => scenario.title === item.title)) return;
+  scenarios.push({
+    ...item,
+    next: [
+      "증상 scope와 시간대를 먼저 고정한다.",
+      "안전 위험과 wafer/process 영향도를 분리한다.",
+      "owner witness가 필요한 evidence를 지정한다.",
+      "고객 보고는 fact, risk, next action, ETA 순서로 말한다."
+    ],
+    publicBasis: "공개 안전자료와 field-service 사고 프레임 기반의 훈련 케이스입니다. recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 포함하지 않습니다.",
+    good: "맞습니다. senior CE는 빠른 단정보다 안전 경계, evidence ladder, owner sign-off, 고객 보고의 순서를 지킵니다.",
+    choices: [
+      ["화면 alarm이 clear이면 wafer를 진행하고 결과로 판단한다.", false],
+      ["위험도, 후보 subsystem, 필요한 evidence, stop condition을 먼저 닫고 진행 여부를 판단한다.", true],
+      ["시간을 줄이기 위해 임의로 interlock이나 threshold를 우회한다.", false]
+    ]
+  });
+});
+
+while (scenarios.length < 60) {
   const index = scenarios.length + 1;
   scenarios.push({
     title: `Evidence ladder drill ${index}: symptom만 있고 원인 단정 압박이 있다`,

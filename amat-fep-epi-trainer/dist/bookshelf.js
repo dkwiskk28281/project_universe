@@ -14,7 +14,8 @@
   const FILE_INDEX_SCHEMA_VERSION = "life-file-index-v1";
   const LIFE_OS_TASK_KEY = "projectUniverseLifeOsTaskLogV2";
   const ACTIVE_GRAPH_NODE_KEY = "projectUniverseActiveGraphNode";
-  const LIFE_PACKET_CENTER_VERSION = "life-packet-center-v2";
+  const LIFE_OS_UPGRADE_VERSION = "life-os-v3-transcendence";
+  const LIFE_PACKET_CENTER_VERSION = "life-packet-center-v3";
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
@@ -2134,6 +2135,165 @@
     `;
   }
 
+  function rubricScore(value, label, evidence, action, extras = {}) {
+    const score = Math.max(0, Math.min(10, Math.round(value)));
+    return { score, label, evidence, action, ...extras };
+  }
+
+  function buildLifeOsRubric() {
+    const stats = libraryStats();
+    const graph = buildKnowledgeGraph();
+    const audit = buildBookshelfAudit();
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const pagesTotal = Math.max(1, pages.length);
+    const aiReadyRatio = pages.filter(page => page.aiExportOk).length / pagesTotal;
+    const structuredRatio = pages.filter(page => page.evidence && (page.action || page.nextStep || page.nextAction)).length / pagesTotal;
+    const syncRatio = pages.filter(page => String(page.syncStatus || "").includes("D1") || String(page.syncStatus || "").includes("saved")).length / pagesTotal;
+    const evidenceRatio = pages.filter(page => (page.evidence || page.sourceUrl || page.sourceTitle)).length / pagesTotal;
+    const privateBoundaryRatio = pages.filter(page => page.privacyLevel && page.exportPolicy).length / pagesTotal;
+    const briefing = buildOperatingBriefing();
+
+    return [
+      rubricScore(briefing.tasks.length >= 4 ? 9 : 6, "오늘 할 일 즉시성", `${briefing.done}/${briefing.total} action, readiness ${briefing.readiness}`, "완료/열기 버튼이 오늘 루틴으로 바로 이어져야 합니다."),
+      rubricScore(stats.books >= 8 ? 9 : 7, "책장 OS 구조", `${stats.books} books, active shelf ${activeBookId}`, "책마다 최근 활동, 저장 수, 다음 action을 계속 노출합니다."),
+      rubricScore(Math.min(10, graph.counts.edges / Math.max(1, graph.counts.nodes) * 6 + 4), "지식 그래프 연결", `${graph.counts.nodes} nodes / ${graph.counts.edges} links`, "태그와 entities가 비어 있는 기록을 보강하면 분석력이 올라갑니다."),
+      rubricScore(aiReadyRatio * 10, "AI 분석 가능 기록", `${Math.round(aiReadyRatio * 100)}% export-ready`, "민감정보 제외 packet과 summary packet을 분리해서 유지합니다."),
+      rubricScore(Math.min(10, career.quizAccuracy / 12 + career.missions / 3 + 4), "FEP/EPI/RTP CE 성장", `${career.quizAccuracy}% quiz, ${career.missions} missions`, "failure mode 오답을 현장 판단 복습 큐로 더 많이 쌓습니다."),
+      rubricScore(Math.min(10, english.accuracy / 12 + english.totalQuestions / 25 + 3), "영어시험 루틴", `${english.totalQuestions} attempts, ${english.accuracy}%`, "즉시 채점 후 약점 태그별 말하기 전환 문장을 반복합니다."),
+      rubricScore(Math.min(10, cognitive.streak * 1.5 + cognitive.sessions / 3 + 4), "인지훈련 장기 루틴", `${cognitive.streak} day streak, ${cognitive.sessions} sessions`, "매일 다른 도메인 조합과 주간 리포트를 유지합니다."),
+      rubricScore(Math.min(10, pages.filter(page => page.bookId === "investment-dyor").length * 1.4 + 4), "투자 DYOR 기록", `${pages.filter(page => page.bookId === "investment-dyor").length} notes`, "fact/source/signal/risk/counter-thesis/reviewDate가 빠지지 않게 기록합니다."),
+      rubricScore(Math.min(10, syncRatio * 6 + audit.score / 25), "저장/백업/복원 신뢰", `${Math.round(syncRatio * 100)}% sync-like, audit ${audit.score}`, "D1/localStorage/R2-D vault 역할을 관리자 패널에서 계속 분리합니다."),
+      rubricScore(privateBoundaryRatio * 10, "보안/프라이버시 경계", `${Math.round(privateBoundaryRatio * 100)}% privacy tagged`, "비밀번호, seed phrase, 고객 비공개자료, recipe 저장 금지 경계를 반복 노출합니다."),
+      rubricScore(Math.min(10, evidenceRatio * 6 + 3), "모바일/다크 QA 준비", `${Math.round(evidenceRatio * 100)}% evidence-tagged records`, "Playwright overflow/contrast 체크를 배포 전 기본 게이트로 유지합니다."),
+      rubricScore(Math.min(10, structuredRatio * 6 + briefing.readiness / 25), "매일 쓰고 싶은 UX", `${Math.round(structuredRatio * 100)}% structured, readiness ${briefing.readiness}`, "기록이 다음 action으로 이어지는 비율을 높입니다.")
+    ];
+  }
+
+  function buildLifeOsBottlenecks() {
+    const graph = buildKnowledgeGraph();
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const pendingSync = pages.filter(page => !String(page.syncStatus || "").includes("D1")).length;
+    const noEvidence = pages.filter(page => !(page.evidence || page.sourceUrl || page.sourceTitle)).length;
+    const noNext = pages.filter(page => !(page.nextStep || page.nextAction || page.action)).length;
+    const noTags = pages.filter(page => !(page.tags || []).length).length;
+    const investmentNotes = pages.filter(page => page.bookId === "investment-dyor").length;
+    const healthNotes = pages.filter(page => page.bookId === "family-health").length;
+    const ideaNotes = pages.filter(page => page.bookId === "ideas-business").length;
+    const queue = safeJsonParse("amkEnglishSpacedReviewQueue", []);
+    return [
+      ["Daily OS", "첫 화면 action이 많아질수록 우선순위가 흐려질 수 있음", "오늘 3개만 primary action으로 표시하고 나머지는 backlog로 내리기", "product", "이번 주"],
+      ["Knowledge Graph", `그래프 링크 밀도 ${graph.counts.edges}/${graph.counts.nodes}`, "태그/entities를 기록 생성 폼의 기본 필드로 유지", "data", "상시"],
+      ["AI Packet", "AI에게 보여줄 packet 목적이 많아짐", "직무/영어/인지/투자/민감 제외 packet을 별도 버튼으로 유지", "data", "완료 유지"],
+      ["Storage", `${pendingSync} records need D1 confirmation`, "syncStatus와 재시도 버튼을 관리자 패널에 계속 노출", "backend", "매일 확인"],
+      ["Backup", "D1은 큰 파일 저장소가 아님", "원문 파일은 R2 또는 D-drive vault index 구조로만 참조", "architecture", "상시"],
+      ["Privacy", "건강/자산/가족 기록은 AI export 오염 위험", "privacyLevel/exportPolicy를 저장 전 필수화", "security", "상시"],
+      ["FEP/EPI", `CE quiz accuracy ${career.quizAccuracy}%`, "failure mode 오답을 subsystem별 복습으로 연결", "curriculum", "이번 배포"],
+      ["FEP/EPI", "초보자는 gas/vacuum/facility 흐름에서 막힘", "개념 -> 장비 위치 -> wafer 변화 -> evidence -> stop 조건 포맷 유지", "curriculum", "계속"],
+      ["FEP/EPI Safety", "위험한 manual-level 정보 유혹", "recipe/sequence/setpoint/bypass/site-specific limit은 공식 교육 문서 우선으로 분리", "safety", "절대"],
+      ["English", `${english.totalQuestions} attempts only`, "한 문제 즉시 해설과 약점 clinic을 홈 루틴으로 노출", "learning", "이번 배포"],
+      ["English", "문제 패턴 반복 위험", "distractor 품질과 말하기 전환 문장을 약점별로 다양화", "learning", "계속"],
+      ["Cognition", `${cognitive.streak} day streak`, "streak보다 재개 가능성을 더 크게 보여주기", "habit", "상시"],
+      ["Cognition", "훈련이 의료 진단처럼 보일 수 있음", "비진단/비치료 경계와 상담 신호를 반복 표시", "safety", "상시"],
+      ["Investment", `${investmentNotes} DYOR notes`, "fact/source/signal/risk/thesis/counter-thesis/action/reviewDate 구조 고정", "research", "다음"],
+      ["Health", `${healthNotes} health notes`, "검진표 원문 대신 summary/index/hash만 저장", "privacy", "다음"],
+      ["Ideas", `${ideaNotes} idea notes`, "아이디어는 problem/customer/evidence/next experiment로 구조화", "strategy", "다음"],
+      ["Records", `${noEvidence} records without evidence`, "근거 없는 생각은 assumption으로 표시", "data quality", "상시"],
+      ["Records", `${noNext} records without next action`, "기록 저장 후 다음 1개 행동을 자동 제안", "data quality", "상시"],
+      ["Records", `${noTags} records without tags`, "저장 폼에서 태그 추천 칩 제공", "data quality", "다음"],
+      ["QA", "수동으로 보기 좋은 것과 모바일에서 쓰기 좋은 것은 다름", "배포마다 desktop/mobile overflow 0, console error 0 확인", "qa", "배포 전"]
+    ].map(([area, problem, action, owner, target], index) => ({
+      rank: index + 1,
+      area,
+      problem,
+      action,
+      owner,
+      target,
+      priority: index < 6 ? "critical" : index < 14 ? "high" : "routine"
+    }));
+  }
+
+  function buildTranscendenceLoops() {
+    const rubric = buildLifeOsRubric();
+    const low = [...rubric].sort((a, b) => a.score - b.score).slice(0, 3);
+    const queue = safeJsonParse("amkEnglishSpacedReviewQueue", []);
+    return [
+      {
+        title: "품질 루프",
+        steps: ["Audit", "Improve", "Verify", "Ship"],
+        state: `lowest: ${low.map(item => `${item.label} ${item.score}/10`).join(", ")}`,
+        action: "가장 낮은 항목부터 UI/데이터/훈련을 짧은 루프로 개선합니다."
+      },
+      {
+        title: "성장 루프",
+        steps: ["Record", "Weakness", "Routine", "Packet"],
+        state: `${queue.length} english review items, ${pages.length} life records`,
+        action: "오답과 경험을 다음 루틴과 AI packet으로 연결합니다."
+      }
+    ];
+  }
+
+  function renderLifeOsAuditPanel() {
+    const rubric = buildLifeOsRubric();
+    const average = Math.round(rubric.reduce((sum, item) => sum + item.score, 0) / rubric.length * 10);
+    const bottlenecks = buildLifeOsBottlenecks();
+    const loops = buildTranscendenceLoops();
+    return `
+      <section class="life-os-audit-panel" aria-label="초월 품질 감사판">
+        <div class="life-os-audit-head">
+          <div>
+            <p class="eyebrow">Transcendence Audit · ${LIFE_OS_UPGRADE_VERSION}</p>
+            <h2>초월 품질 감사판</h2>
+            <p>이 패널은 웹이 스스로 12개 기준을 채점하고, 가장 큰 병목 20개를 드러내는 자기비판 루프입니다. 목표는 기능 개수가 아니라 매일 열었을 때 다음 행동이 분명한 개인 운영체제입니다.</p>
+          </div>
+          <div class="life-os-audit-score">
+            <span>SELF SCORE</span>
+            <strong>${average}</strong>
+            <small>12 criteria average</small>
+          </div>
+        </div>
+        <div class="life-os-rubric-grid">
+          ${rubric.map(item => `
+            <article class="${item.score < 7 ? "warn" : "ok"}">
+              <span>${item.score}/10</span>
+              <strong>${escapeHtml(item.label)}</strong>
+              <small>${escapeHtml(item.evidence)}</small>
+              <p>${escapeHtml(item.action)}</p>
+              <i><em style="width:${item.score * 10}%"></em></i>
+            </article>
+          `).join("")}
+        </div>
+        <div class="transcendence-loop-grid">
+          ${loops.map(loop => `
+            <article>
+              <strong>${escapeHtml(loop.title)}</strong>
+              <div>${loop.steps.map(step => `<span>${escapeHtml(step)}</span>`).join("")}</div>
+              <small>${escapeHtml(loop.state)}</small>
+              <p>${escapeHtml(loop.action)}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="bottleneck-board">
+          <div>
+            <p class="eyebrow">Top 20 Bottlenecks</p>
+            <h3>숨기지 않고 보는 개선 대기열</h3>
+          </div>
+          ${bottlenecks.map(item => `
+            <article class="${escapeHtml(item.priority)}">
+              <span>#${item.rank} ${escapeHtml(item.area)}</span>
+              <strong>${escapeHtml(item.problem)}</strong>
+              <p>${escapeHtml(item.action)}</p>
+              <small>${escapeHtml(item.owner)} · ${escapeHtml(item.target)}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function buildSpecializedPacket(kind) {
     const now = new Date().toISOString();
     const pagePool = pages.map(normalizePage);
@@ -2150,7 +2310,12 @@
       },
       knowledgeGraph: buildKnowledgeGraph(),
       patternSignals: buildPatternSignals(),
-      nextSevenDays: buildNextSevenDays()
+      nextSevenDays: buildNextSevenDays(),
+      qualityAudit: {
+        rubric: buildLifeOsRubric(),
+        bottlenecks: buildLifeOsBottlenecks(),
+        loops: buildTranscendenceLoops()
+      }
     };
     const redactedPages = pagePool.filter(page => page.aiExportOk).map(redactPageForAi);
     if (kind === "full-backup") return buildBookshelfExport();
@@ -2213,6 +2378,48 @@
         cognitiveState
       };
     }
+    if (kind === "investment-dyor") {
+      return {
+        ...common,
+        title: "Investment DYOR research packet",
+        includes: ["research notes", "fact/source/signal/risk/thesis/counter-thesis/action/reviewDate fields"],
+        excludes: ["financial advice", "seed phrase", "account identifiers", "brokerage credentials"],
+        rule: "Use as personal research context only. Do not convert into buy/sell instruction.",
+        pages: redactedPages.filter(page => page.bookId === "investment-dyor"),
+        template: {
+          fact: "What is verified?",
+          source: "Where did it come from?",
+          signal: "Why might it matter?",
+          risk: "What can invalidate it?",
+          thesis: "Main interpretation",
+          counterThesis: "Best opposing interpretation",
+          action: "Research action, not trade instruction",
+          reviewDate: "When to revisit"
+        }
+      };
+    }
+    if (kind === "last-seven-days") {
+      const since = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      return {
+        ...common,
+        title: "Last 7 days operating packet",
+        includes: ["recent records", "completed task log", "next-seven-days actions"],
+        excludes: ["raw files", "private credentials"],
+        pages: redactedPages.filter(page => new Date(page.updatedAt || page.createdAt || 0).getTime() >= since),
+        completedTasks: loadLifeTaskLog().filter(entry => new Date(entry.doneAt || 0).getTime() >= since)
+      };
+    }
+    if (kind === "quality-audit") {
+      return {
+        ...common,
+        title: "Life OS quality audit packet",
+        includes: ["12-score rubric", "top 20 bottlenecks", "two improvement loops"],
+        excludes: ["private raw content"],
+        rubric: buildLifeOsRubric(),
+        bottlenecks: buildLifeOsBottlenecks(),
+        loops: buildTranscendenceLoops()
+      };
+    }
     return buildMyLifeIntelligencePacket();
   }
 
@@ -2224,7 +2431,10 @@
       ["career-growth", "직무 성장 packet", "FEP/EPI, 영어, CE 사고력 신호를 묶습니다.", "커리어 코칭용"],
       ["fep-ce", "FEP/EPI CE packet", "장비 학습, failure case, 공개자료 검증 태그를 묶습니다.", "비공개 절차 제외"],
       ["english-weakness", "영어 약점 packet", "오답, 복습 큐, 약한 skill tag를 정리합니다.", "영어 코치용"],
-      ["cognitive-routine", "인지훈련 packet", "비진단 루틴, streak, 약점 영역을 정리합니다.", "건강 원문 제외"]
+      ["cognitive-routine", "인지훈련 packet", "비진단 루틴, streak, 약점 영역을 정리합니다.", "건강 원문 제외"],
+      ["investment-dyor", "투자 DYOR packet", "fact/source/signal/risk/thesis/counter-thesis/action/reviewDate 구조만 묶습니다.", "투자 조언 아님"],
+      ["last-seven-days", "최근 7일 운영 packet", "최근 기록과 완료 action, 다음 7일 계획을 AI가 읽기 쉽게 묶습니다.", "원문 파일 제외"],
+      ["quality-audit", "품질 감사 packet", "12개 기준 점수, 병목 20개, 개선 루프를 내보냅니다.", "개선 회고용"]
     ];
     return `
       <section class="packet-center-panel" aria-label="AI 분석 패킷 센터">
@@ -2483,6 +2693,7 @@
     const redactedExport = buildRedactedBookshelfExport();
     return {
       schema: LIFE_PACKET_SCHEMA_VERSION,
+      osUpgradeVersion: LIFE_OS_UPGRADE_VERSION,
       generatedAt: new Date().toISOString(),
       title: "My Life Intelligence Packet",
       operatingRule: [
@@ -2511,6 +2722,11 @@
       },
       todayAgenda: buildTodayAgenda(),
       nextSevenDays: buildNextSevenDays(),
+      qualityAudit: {
+        rubric: buildLifeOsRubric(),
+        bottlenecks: buildLifeOsBottlenecks(),
+        loops: buildTranscendenceLoops()
+      },
       patternSignals: buildPatternSignals(),
       exportClassCounts: buildExportClassCounts(),
       knowledgeGraph: bookshelfExport.knowledgeGraph,
@@ -2829,6 +3045,7 @@
         </div>
       </section>
       ${renderOperatingBriefingPanel(activeBook)}
+      ${renderLifeOsAuditPanel()}
       ${renderIntelBriefingPanel(activeBook, activeStats)}
       ${renderKnowledgeGraphPanel()}
       ${renderPacketCenterPanel()}
