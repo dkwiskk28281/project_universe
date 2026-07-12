@@ -580,6 +580,55 @@
     `;
   }
 
+  function renderCognitiveTrendPanel() {
+    const recent = state.sessions.slice(0, 14);
+    const domains = [
+      ["memory", "기억"],
+      ["stroop", "주의"],
+      ["sequence", "처리속도"],
+      ["category", "언어"],
+      ["route", "공간추론"],
+      ["planning", "실행기능"],
+      ["lifestyle", "생활 보호요인"]
+    ];
+    const rows = domains.map(([key, label]) => {
+      const values = recent
+        .map(session => Number(session.scores?.[key] || 0))
+        .filter(value => value > 0);
+      const avg = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
+      const last = values[0] || 0;
+      const trend = values.length >= 2 ? last - values[values.length - 1] : 0;
+      return { key, label, avg, last, trend };
+    });
+    const missedDays = state.sessions.length ? Math.max(0, Math.min(7, Math.floor((Date.now() - new Date(state.sessions[0].sessionDate || state.today).getTime()) / 86400000))) : 0;
+    return `
+      <section class="cognitive-trend-panel">
+        <div class="cognitive-trend-head">
+          <div>
+            <p class="eyebrow">Long Routine Trend</p>
+            <h2>끊겨도 실패가 아니라, 다시 시작하면 루틴입니다</h2>
+            <p>최근 세션을 기준으로 영역별 평균과 방향을 봅니다. 점수는 진단이 아니라 다음 루틴을 고르는 신호입니다.</p>
+          </div>
+          <span class="sync-pill">${missedDays ? `${missedDays}일 공백 후 재개 가능` : "오늘 이어가는 중"}</span>
+        </div>
+        <div class="cognitive-trend-grid">
+          ${rows.map(row => `
+            <article>
+              <span>${escapeHtml(row.label)}</span>
+              <strong>${row.avg}</strong>
+              <i><em style="width:${Math.min(100, row.avg * 5)}%"></em></i>
+              <small>${row.trend > 0 ? "상승" : row.trend < 0 ? "보강" : "유지"} · 최근 ${row.last}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="cognitive-restart-note">
+          <b>다음 주 루틴</b>
+          <span>${weakSpots()[0] || "균형 유지"} 영역을 첫 과제로 두고, movement/lifestyle 보호요인을 매번 짧게 포함합니다.</span>
+        </div>
+      </section>
+    `;
+  }
+
   function buildSessionRecord() {
     const scores = scoreByTask();
     const stroop = stroopStats();
@@ -1135,6 +1184,8 @@
         </div>
 
         ${renderCognitiveDirectorPanel()}
+
+        ${renderCognitiveTrendPanel()}
 
         ${renderAdaptiveRoutine()}
 

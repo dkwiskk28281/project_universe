@@ -1204,6 +1204,19 @@ function buildSimilarEnglishDrills(item, skillTag) {
   ];
 }
 
+function buildEnglishVariationQuestions(item, skillTag) {
+  return buildSimilarEnglishDrills(item, skillTag).slice(0, 3).map((prompt, index) => ({
+    id: `${item.id}-variation-${index + 1}`,
+    prompt,
+    cue: index === 0 ? "same grammar" : index === 1 ? "field wording" : "speaking transfer",
+    answerFrame: index === 0
+      ? "정답 근거를 원문 문장 안에서 찾고, 같은 문법으로 새 문장을 만드세요."
+      : index === 1
+        ? "status, risk, next action 중 어떤 축을 묻는지 표시하세요."
+        : "30초 답변: confirmed fact -> risk -> next action 순서로 말하세요."
+  }));
+}
+
 function renderObjectiveFeedback(item) {
   const isGraded = isEnglishQuestionGraded(item);
   if (!isGraded) {
@@ -1220,6 +1233,7 @@ function renderObjectiveFeedback(item) {
   const answerText = item.options[item.answer];
   const [skillTag, skillNote] = classifyEnglishQuestion(item);
   const drills = buildSimilarEnglishDrills(item, skillTag);
+  const variations = buildEnglishVariationQuestions(item, skillTag);
   return `
     <div class="english-instant-feedback ${isCorrect ? "good" : "bad"}">
       <div>
@@ -1236,6 +1250,16 @@ function renderObjectiveFeedback(item) {
         <strong>바로 이어서 할 유사훈련</strong>
         ${drills.map(drill => `<span>${escapeEnglishTest(drill)}</span>`).join("")}
         <small>이 태그는 즉시 오답 메모리에 저장됩니다: ${escapeEnglishTest(skillTag)}</small>
+      </div>
+      <div class="english-variation-panel">
+        <strong>변형문제 3개</strong>
+        ${variations.map((variation, index) => `
+          <article>
+            <span>${index + 1}. ${escapeEnglishTest(variation.cue)}</span>
+            <p>${escapeEnglishTest(variation.prompt)}</p>
+            <small>${escapeEnglishTest(variation.answerFrame)}</small>
+          </article>
+        `).join("")}
       </div>
     </div>
   `;

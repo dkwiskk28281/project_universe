@@ -17,8 +17,11 @@ const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
 const LOCAL_VAULT_TOKEN = "epiThinkTankLocalToken";
 const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
 const THINK_TANK_DEVICE_KEY = "projectUniverseSourceDevice";
+const PRIVATE_IDLE_LAST_ACTIVE_KEY = "projectUniversePrivateLastActive";
+const PRIVATE_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 let pendingPrivateView = "bookshelf";
 let privateSyncStarted = false;
+let idleLockTimer = null;
 
 const masteryDomains = [
   ["EPI Process Physics", ["surface preparation", "nucleation", "growth rate", "mass transport", "reaction kinetics", "selectivity"]],
@@ -811,9 +814,64 @@ function hidePasswordGate() {
   if (error) error.textContent = "";
 }
 
+function markPrivateActivity() {
+  if (!document.body.classList.contains("auth-unlocked")) return;
+  sessionStorage.setItem(PRIVATE_IDLE_LAST_ACTIVE_KEY, String(Date.now()));
+}
+
+function idleRemainingMs() {
+  const last = Number(sessionStorage.getItem(PRIVATE_IDLE_LAST_ACTIVE_KEY) || 0);
+  if (!last || !document.body.classList.contains("auth-unlocked")) return 0;
+  return Math.max(0, PRIVATE_IDLE_TIMEOUT_MS - (Date.now() - last));
+}
+
+function privateSecurityStatus() {
+  const remaining = idleRemainingMs();
+  return {
+    unlocked: document.body.classList.contains("auth-unlocked"),
+    idleTimeoutMs: PRIVATE_IDLE_TIMEOUT_MS,
+    remainingMs: remaining,
+    remainingMinutes: Math.ceil(remaining / 60000),
+    lastActiveAt: sessionStorage.getItem(PRIVATE_IDLE_LAST_ACTIVE_KEY) || "",
+    boundary: "Client-side idle lock only. It reduces accidental exposure but is not a replacement for real account auth, MFA, or encrypted storage."
+  };
+}
+
+function stopIdleLockWatcher() {
+  if (idleLockTimer) {
+    clearInterval(idleLockTimer);
+    idleLockTimer = null;
+  }
+}
+
+function lockPrivateSession(reason = "manual") {
+  clearClientAuthState();
+  clearServerAuthState();
+  stopIdleLockWatcher();
+  sessionStorage.removeItem(PRIVATE_IDLE_LAST_ACTIVE_KEY);
+  document.body.dataset.lockReason = reason;
+  document.body.classList.remove("auth-unlocked");
+  showEntryChoice();
+}
+
+function startIdleLockWatcher() {
+  markPrivateActivity();
+  stopIdleLockWatcher();
+  idleLockTimer = setInterval(() => {
+    if (!document.body.classList.contains("auth-unlocked")) return;
+    if (idleRemainingMs() <= 0) lockPrivateSession("idle-timeout");
+  }, 15000);
+}
+
+["pointerdown", "keydown", "touchstart", "scroll"].forEach(eventName => {
+  window.addEventListener(eventName, markPrivateActivity, { passive: true });
+});
+
 function showEntryChoice() {
   clearClientAuthState();
   clearServerAuthState();
+  stopIdleLockWatcher();
+  sessionStorage.removeItem(PRIVATE_IDLE_LAST_ACTIVE_KEY);
   document.body.classList.remove("auth-locked", "auth-unlocked");
   document.body.classList.add("auth-public", "entry-choice-open");
   document.body.classList.remove("entry-choice-closed");
@@ -852,6 +910,7 @@ function unlockApp(targetView = pendingPrivateView || "bookshelf") {
   document.body.classList.add("entry-choice-closed");
   document.querySelector("#entry-choice-gate")?.classList.add("hidden");
   hidePasswordGate();
+  startIdleLockWatcher();
   renderThinkTank();
   if (window.showView) window.showView(targetView || "bookshelf", { instant: true });
   if (!privateSyncStarted) {
@@ -876,6 +935,8 @@ async function initPasswordGate() {
     requestAccess: showPasswordGate,
     enterCognitive: enterCognitivePublic,
     showEntryChoice,
+    lock: lockPrivateSession,
+    securityStatus: privateSecurityStatus,
     isUnlocked: () => document.body.classList.contains("auth-unlocked")
   };
   window.requestBookshelfAccess = showPasswordGate;
@@ -889,7 +950,6 @@ async function initPasswordGate() {
     else showPasswordGate("bookshelf");
   });
   document.querySelector("#logout-btn")?.addEventListener("click", async () => {
-    clearClientAuthState();
     try {
       await fetch(`${THINK_TANK_API}/api/logout`, {
         method: "POST",
@@ -899,14 +959,14 @@ async function initPasswordGate() {
     } catch {
       // Server logout is best-effort; local gate state is cleared below.
     }
-    document.body.classList.remove("auth-unlocked");
-    showEntryChoice();
+    lockPrivateSession("manual");
   });
   if (vaultToken() && vaultPassword()) {
     try {
       await apiFetch("/api/health");
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       document.body.classList.add("auth-unlocked");
+      startIdleLockWatcher();
     } catch {
       clearClientAuthState();
     }

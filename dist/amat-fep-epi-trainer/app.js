@@ -4869,10 +4869,19 @@ function renderScenarios() {
 }
 
 function renderScenarios() {
-  const scenario = scenarios[activeScenario];
   const safeList = items => (items || []).map(item => `<li>${item}</li>`).join("");
   const scenarioAnswers = state.scenarioAnswers || {};
   const scenarioWeakness = state.scenarioWeakness || {};
+  const scenarioReports = state.scenarioReports || {};
+  const scenarioFilter = state.scenarioFilter || "all";
+  const scenarioStatuses = [...new Set(scenarios.map(item => item.status))].sort();
+  const scenarioPool = scenarioFilter === "all"
+    ? scenarios
+    : scenarios.filter(item => item.status === scenarioFilter);
+  if (!scenarioPool.some(item => scenarios.indexOf(item) === activeScenario)) {
+    activeScenario = scenarios.indexOf(scenarioPool[0] || scenarios[0]);
+  }
+  const scenario = scenarios[activeScenario];
   const solvedCases = Object.keys(scenarioAnswers).length;
   const correctCases = Object.values(scenarioAnswers).filter(answer => answer.correct).length;
   const weaknessList = Object.entries(scenarioWeakness)
@@ -4887,13 +4896,18 @@ function renderScenarios() {
       <div class="case-stats">
         <span><strong>${solvedCases}</strong><small>푼 케이스</small></span>
         <span><strong>${correctCases}</strong><small>정답</small></span>
-        <span><strong>${scenarios.length}</strong><small>전체 케이스</small></span>
+        <span><strong>${scenarioPool.length}/${scenarios.length}</strong><small>filtered/all</small></span>
+      </div>
+      <div class="scenario-filter-row">
+        <button class="${scenarioFilter === "all" ? "active" : ""}" type="button" data-scenario-filter="all">All</button>
+        ${scenarioStatuses.map(status => `<button class="${scenarioFilter === status ? "active" : ""}" type="button" data-scenario-filter="${status}">${status}</button>`).join("")}
       </div>
       <div class="weakness-chip-row">
         ${weaknessList.length ? weaknessList.map(([tag, count]) => `<span class="weakness-chip">${tag} ${count}</span>`).join("") : `<span class="weakness-chip calm">아직 누적 약점 없음</span>`}
       </div>
     </section>
-    ${scenarios.map((item, index) => {
+    ${scenarioPool.map((item) => {
+      const index = scenarios.indexOf(item);
       const answer = scenarioAnswers[item.title];
       return `
         <button class="scenario-tab ${index === activeScenario ? "active" : ""} ${answer ? (answer.correct ? "solved-good" : "solved-bad") : ""}" data-scenario="${index}">
@@ -4950,6 +4964,15 @@ function renderScenarios() {
       </div>
       <button class="copy-report" type="button">문장 복사</button>
     </section>
+    <section class="case-report-coach">
+      <h3>내 보고 문장 만들기</h3>
+      <p>status, confirmed fact, risk, next action, ETA를 넣어 고객에게 말할 문장을 직접 적어보세요.</p>
+      <textarea id="scenario-report-input" placeholder="예: 현재 확인된 사실은 __입니다. 위험은 __이고, 다음 확인은 __입니다. __까지 업데이트하겠습니다.">${scenarioReports[scenario.title]?.text || ""}</textarea>
+      <div class="case-report-actions">
+        <button class="secondary" type="button" data-scenario-report-save>보고문 저장/비교</button>
+        <span id="scenario-report-score">${scenarioReports[scenario.title]?.feedback || "아직 저장된 보고문 없음"}</span>
+      </div>
+    </section>
     <section class="case-boundary">
       <strong>공개자료 기반 / 안전 경계</strong>
       <span>${scenario.publicBasis}</span>
@@ -4968,6 +4991,38 @@ function renderScenarios() {
       activeScenario = Number(btn.dataset.scenario);
       renderScenarios();
     });
+  });
+
+  document.querySelectorAll("[data-scenario-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.scenarioFilter = btn.dataset.scenarioFilter;
+      activeScenario = 0;
+      persistState();
+      renderScenarios();
+    });
+  });
+
+  document.querySelector("[data-scenario-report-save]")?.addEventListener("click", () => {
+    const text = document.querySelector("#scenario-report-input")?.value.trim() || "";
+    const required = ["risk", "next", "update", "확인", "위험", "다음", "업데이트"];
+    const hits = required.filter(word => text.toLowerCase().includes(word.toLowerCase())).length;
+    const feedback = text.length < 30
+      ? "보고문이 너무 짧습니다. fact, risk, next action, ETA를 넣어보세요."
+      : hits >= 3
+        ? "좋습니다. fact/risk/next action 흐름이 보입니다."
+        : "보강 필요: confirmed fact, risk, next action, update time 중 빠진 축을 채우세요.";
+    state.scenarioReports = state.scenarioReports || {};
+    state.scenarioReports[scenario.title] = {
+      text,
+      feedback,
+      status: scenario.status,
+      savedAt: new Date().toISOString()
+    };
+    state.scenarioWeakness = state.scenarioWeakness || {};
+    if (hits < 3) state.scenarioWeakness[`${scenario.status} / report`] = (state.scenarioWeakness[`${scenario.status} / report`] || 0) + 1;
+    persistState();
+    const score = document.querySelector("#scenario-report-score");
+    if (score) score.textContent = feedback;
   });
 
   document.querySelectorAll(".decision").forEach(btn => {

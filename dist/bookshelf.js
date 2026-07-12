@@ -14,6 +14,7 @@
   const FILE_INDEX_SCHEMA_VERSION = "life-file-index-v1";
   const LIFE_OS_TASK_KEY = "projectUniverseLifeOsTaskLogV2";
   const ACTIVE_GRAPH_NODE_KEY = "projectUniverseActiveGraphNode";
+  const ACTIVE_GRAPH_FILTER_KEY = "projectUniverseGraphFiltersV1";
   const LIFE_OS_UPGRADE_VERSION = "life-os-v3-transcendence";
   const LIFE_PACKET_CENTER_VERSION = "life-packet-center-v3";
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
@@ -614,15 +615,32 @@
         schemaVersion: FILE_INDEX_SCHEMA_VERSION,
         id: cleanText(file.id || `file-${uid()}`, 120),
         label: cleanText(file.label || file.name || "자료 색인", 120),
+        fileType: cleanText(file.fileType || file.type || inferFileType(file.label || file.name || file.locationHint || file.pathHint || ""), 80),
         storageTier: cleanText(file.storageTier || file.storage || "D-drive-vault-or-future-R2", 80),
+        storageTarget: cleanText(file.storageTarget || file.target || file.storageTier || "D-drive-vault-or-future-R2", 80),
         locationHint: cleanText(file.locationHint || file.pathHint || file.url || "", 500),
         contentHash: cleanText(file.contentHash || file.hash || "", 160),
         summary: cleanLongText(file.summary || "", 2000),
+        aiSummary: cleanLongText(file.aiSummary || file.summary || "", 2000),
         tags: normalizeTags(file.tags || []),
         privacyLevel: cleanText(file.privacyLevel || "sensitive-index", 80),
+        linkedBook: cleanText(file.linkedBook || file.bookId || activeBookId, 120),
+        linkedRecord: cleanText(file.linkedRecord || file.recordId || "", 160),
+        exportPolicy: cleanText(file.exportPolicy || "index-only-unless-user-approves", 100),
         createdAt: validIso(file.createdAt, new Date().toISOString())
       }))
       .slice(0, 8);
+  }
+
+  function inferFileType(value = "") {
+    const lower = String(value || "").toLowerCase();
+    if (lower.includes(".pdf")) return "pdf";
+    if (/\.(png|jpg|jpeg|webp|gif)\b/.test(lower)) return "image";
+    if (/\.(xlsx|csv|xls)\b/.test(lower)) return "spreadsheet";
+    if (/\.(docx|doc|txt|md)\b/.test(lower)) return "document";
+    if (lower.includes("검진") || lower.includes("health")) return "health-document";
+    if (lower.includes("논문") || lower.includes("paper")) return "paper";
+    return "indexed-file";
   }
 
   function redactPageForAi(page) {
@@ -648,10 +666,14 @@
       nextStep: normalized.nextStep || normalized.nextAction,
       fileIndex: normalized.fileIndex.map(file => ({
         label: file.label,
+        fileType: file.fileType,
         storageTier: file.storageTier,
+        storageTarget: file.storageTarget,
         contentHash: file.contentHash,
-        summary: file.summary,
-        privacyLevel: file.privacyLevel
+        summary: file.aiSummary || file.summary,
+        privacyLevel: file.privacyLevel,
+        exportPolicy: file.exportPolicy,
+        linkedBook: file.linkedBook
       })),
       integrityHash: normalized.integrityHash
     };
@@ -1753,6 +1775,38 @@
     };
   }
 
+  function buildGraphAnalysis() {
+    const patterns = buildPatternSignals();
+    const tagCounts = {};
+    const entityCounts = {};
+    const privacyCounts = {};
+    pages.forEach(page => {
+      (page.tags || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+      (page.entities || []).forEach(entity => { entityCounts[entity] = (entityCounts[entity] || 0) + 1; });
+      privacyCounts[page.privacyLevel || "unknown"] = (privacyCounts[page.privacyLevel || "unknown"] || 0) + 1;
+    });
+    const top = source => Object.entries(source)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([label, count]) => ({ label, count }));
+    return {
+      schema: "life-graph-analysis-v1",
+      generatedAt: new Date().toISOString(),
+      recurringPatternsTop10: [
+        ...top(tagCounts).map(item => ({ type: "tag", ...item })),
+        ...top(entityCounts).map(item => ({ type: "entity", ...item }))
+      ].slice(0, 10),
+      privacyCounts,
+      openLoops: patterns.openLoops,
+      missingEvidence: patterns.missingEvidence,
+      nextSevenDays: buildNextSevenDays(),
+      aiExportBoundary: {
+        allowed: "aiExportOk records, redacted summaries, index-only file metadata",
+        blocked: "passwords, seed phrases, account numbers, resident IDs, customer confidential materials, manuals, recipes, site-specific limits, raw medical documents"
+      }
+    };
+  }
+
   function buildTodayAgenda() {
     const english = localEnglishInsight();
     const cognitive = localCognitiveInsight();
@@ -1924,6 +1978,12 @@
   function buildOpsStatus() {
     const audit = buildBookshelfAudit();
     const lastRestore = restoreEvents()[0];
+    const security = window.ProjectUniverseAuth?.securityStatus?.() || {
+      unlocked: document.body.classList.contains("auth-unlocked"),
+      remainingMinutes: 0,
+      boundary: "Client-side lock status unavailable."
+    };
+    const sensitiveRecords = pages.filter(page => String(page.privacyLevel || "").startsWith("sensitive")).length;
     return {
       generatedAt: new Date().toISOString(),
       d1State: remoteState,
@@ -1935,9 +1995,11 @@
       syncPending: pages.filter(needsCloudSync).length,
       sourceDevices: audit.sourceDevices,
       fileIndexes: audit.fileIndexes,
+      sensitiveRecords,
       aiExport: buildExportClassCounts(),
       schemaMismatch: Math.max(0, pages.length - audit.validSchema),
       latestBackupOrRestore: lastRestore?.createdAt || "",
+      idleLock: security,
       mode: document.body.classList.contains("auth-unlocked") ? "private-bookshelf-unlocked" : "public-cognitive-or-locked",
       warnings: [
         "이 UI 비밀번호는 개인용 잠금 장치입니다. 진짜 계정·2FA·비밀키 보관소가 아닙니다.",
@@ -2309,6 +2371,7 @@
         fileRule: "D1 stores structured JSON and file indexes only. Large source files stay in R2 or the optional D-drive vault."
       },
       knowledgeGraph: buildKnowledgeGraph(),
+      graphAnalysis: buildGraphAnalysis(),
       patternSignals: buildPatternSignals(),
       nextSevenDays: buildNextSevenDays(),
       qualityAudit: {
@@ -2475,7 +2538,70 @@
 
   function relatedGraphEdges(graph, node) {
     if (!node) return [];
-    return graph.edges.filter(edge => edge.from === node.id || edge.to === node.id).slice(0, 12);
+    const filters = loadGraphFilters();
+    return graph.edges
+      .filter(edge => edge.from === node.id || edge.to === node.id)
+      .filter(edge => filters.edgeLabel === "all" || edge.label === filters.edgeLabel)
+      .slice(0, 12);
+  }
+
+  function loadGraphFilters() {
+    try {
+      return {
+        nodeType: "all",
+        bookId: "all",
+        privacy: "all",
+        exportPolicy: "all",
+        edgeLabel: "all",
+        ...(JSON.parse(localStorage.getItem(ACTIVE_GRAPH_FILTER_KEY) || "{}") || {})
+      };
+    } catch {
+      return { nodeType: "all", bookId: "all", privacy: "all", exportPolicy: "all", edgeLabel: "all" };
+    }
+  }
+
+  function saveGraphFilters(filters) {
+    localStorage.setItem(ACTIVE_GRAPH_FILTER_KEY, JSON.stringify(filters));
+  }
+
+  function nodeMatchesGraphFilter(node, filters) {
+    if (filters.nodeType !== "all" && node.type !== filters.nodeType) return false;
+    if (filters.bookId !== "all" && node.bookId !== filters.bookId && node.id !== `book:${filters.bookId}`) return false;
+    if (filters.privacy !== "all" && node.privacyLevel !== filters.privacy) return false;
+    if (filters.exportPolicy !== "all" && node.exportPolicy !== filters.exportPolicy) return false;
+    return true;
+  }
+
+  function graphFilterOptions(graph) {
+    const unique = (values) => [...new Set(values.filter(Boolean))].sort();
+    return {
+      nodeTypes: unique(graph.nodes.map(node => node.type)),
+      books: BOOKSHELF_BOOKS.map(book => [book.id, book.title]),
+      privacy: unique(graph.nodes.map(node => node.privacyLevel)),
+      exportPolicies: unique(graph.nodes.map(node => node.exportPolicy)),
+      edgeLabels: unique(graph.edges.map(edge => edge.label))
+    };
+  }
+
+  function renderGraphFilterControls(graph, filters) {
+    const options = graphFilterOptions(graph);
+    const selectOptions = (items, selected, allLabel = "all") => (
+      `<option value="all">${allLabel}</option>` + items.map(item => {
+        const value = Array.isArray(item) ? item[0] : item;
+        const label = Array.isArray(item) ? item[1] : item;
+        return `<option value="${escapeHtml(value)}" ${selected === value ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("")
+    );
+    return `
+      <div class="kg-filter-panel" aria-label="Knowledge graph filters">
+        <label>node<select data-kg-filter="nodeType">${selectOptions(options.nodeTypes, filters.nodeType, "all nodes")}</select></label>
+        <label>book<select data-kg-filter="bookId">${selectOptions(options.books, filters.bookId, "all books")}</select></label>
+        <label>privacy<select data-kg-filter="privacy">${selectOptions(options.privacy, filters.privacy, "all privacy")}</select></label>
+        <label>export<select data-kg-filter="exportPolicy">${selectOptions(options.exportPolicies, filters.exportPolicy, "all export")}</select></label>
+        <label>edge<select data-kg-filter="edgeLabel">${selectOptions(options.edgeLabels, filters.edgeLabel, "all edges")}</select></label>
+        <button class="secondary" type="button" data-kg-filter-reset>reset</button>
+      </div>
+    `;
   }
 
   function renderGraphNodeDetail(graph, node) {
@@ -2730,6 +2856,7 @@
       patternSignals: buildPatternSignals(),
       exportClassCounts: buildExportClassCounts(),
       knowledgeGraph: bookshelfExport.knowledgeGraph,
+      graphAnalysis: buildGraphAnalysis(),
       bookshelf: {
         audit: bookshelfExport.audit,
         books: bookshelfExport.books,
@@ -2814,12 +2941,17 @@
     const cognitive = localCognitiveInsight();
     const career = localCareerInsight();
     const entityPreview = graph.nodes.filter(node => node.type === "entity").slice(0, 10);
-    const selectedNode = getGraphSelection(graph);
+    const filters = loadGraphFilters();
+    const filteredNodes = graph.nodes.filter(node => nodeMatchesGraphFilter(node, filters));
+    const selectedNode = filteredNodes.some(node => node.id === activeGraphNodeId)
+      ? graph.nodes.find(node => node.id === activeGraphNodeId)
+      : (filteredNodes[0] || getGraphSelection(graph));
     const nodePreview = [
-      ...graph.nodes.filter(node => node.type === "record").slice(0, 10),
-      ...graph.nodes.filter(node => node.type === "book").slice(0, 8),
-      ...graph.nodes.filter(node => node.type === "entity").slice(0, 8),
-      ...graph.nodes.filter(node => node.type === "tag").slice(0, 8)
+      ...filteredNodes.filter(node => node.type === "record").slice(0, 10),
+      ...filteredNodes.filter(node => node.type === "book").slice(0, 8),
+      ...filteredNodes.filter(node => node.type === "entity").slice(0, 8),
+      ...filteredNodes.filter(node => node.type === "tag").slice(0, 8),
+      ...filteredNodes.filter(node => !["record", "book", "entity", "tag"].includes(node.type)).slice(0, 8)
     ].slice(0, 30);
     return `
       <section class="knowledge-graph-panel" aria-label="개인 지식 그래프">
@@ -2865,6 +2997,12 @@
             <strong>${graph.counts.entities}</strong>
             <small>${entityPreview.map(node => node.label).join(", ") || "기록에 관련 대상/entities를 붙이면 채워집니다."}</small>
           </article>
+        </div>
+        ${renderGraphFilterControls(graph, filters)}
+        <div class="kg-filter-summary">
+          <span><b>${filteredNodes.length}</b> filtered nodes</span>
+          <span><b>${filters.edgeLabel}</b> edge filter</span>
+          <span><b>${selectedNode?.type || "none"}</b> selected</span>
         </div>
         <div class="graph-explorer-grid">
           <div class="knowledge-graph-strip" aria-label="지식 그래프 node 선택">
@@ -2997,6 +3135,80 @@
     `;
   }
 
+  function buildFileVaultIndex() {
+    const files = pages.flatMap(page => (page.fileIndex || []).map(file => ({
+      ...file,
+      linkedBook: file.linkedBook || page.bookId,
+      linkedRecord: file.linkedRecord || page.id,
+      recordTitle: page.title,
+      bookTitle: page.bookTitle,
+      recordPrivacy: page.privacyLevel,
+      recordExportPolicy: page.exportPolicy
+    })));
+    const byTarget = files.reduce((acc, file) => {
+      const target = file.storageTarget || file.storageTier || "unassigned";
+      acc[target] = (acc[target] || 0) + 1;
+      return acc;
+    }, {});
+    const sensitive = files.filter(file => String(file.privacyLevel || "").startsWith("sensitive")).length;
+    const missingHash = files.filter(file => !file.contentHash).length;
+    const missingSummary = files.filter(file => !(file.aiSummary || file.summary)).length;
+    return {
+      schema: "life-file-vault-index-v2",
+      generatedAt: new Date().toISOString(),
+      total: files.length,
+      sensitive,
+      missingHash,
+      missingSummary,
+      byTarget,
+      files: files.slice(0, 24),
+      r2Status: "not-connected-placeholder",
+      rule: "D1 stores only file indexes, summaries, tags, hashes, and location hints. Raw files stay in R2 or D-drive vault."
+    };
+  }
+
+  function renderFileVaultPanel() {
+    const vault = buildFileVaultIndex();
+    const targetRows = Object.entries(vault.byTarget);
+    return `
+      <section class="file-vault-panel" aria-label="File Vault Index">
+        <div class="file-vault-head">
+          <div>
+            <p class="eyebrow">File Vault Index</p>
+            <h2>원문 파일은 D1 밖에 두고, 색인만 장기 기억으로 관리</h2>
+            <p>D1은 구조화 데이터 저장소입니다. PDF, 이미지, 검진표, 논문 원문, 설치 사진은 R2 또는 D-drive vault에 두고, 이 화면에는 label, type, hash, storageTarget, locationHint, aiSummary만 남깁니다.</p>
+          </div>
+          <span class="sync-pill">${vault.r2Status}</span>
+        </div>
+        <div class="file-vault-metrics">
+          <article><span>indexed files</span><strong>${vault.total}</strong><small>원문 저장이 아닌 색인 수</small></article>
+          <article><span>sensitive</span><strong>${vault.sensitive}</strong><small>AI export 기본 보수 처리</small></article>
+          <article><span>missing hash</span><strong>${vault.missingHash}</strong><small>나중에 무결성 확인 필요</small></article>
+          <article><span>missing summary</span><strong>${vault.missingSummary}</strong><small>AI가 읽을 요약 필요</small></article>
+        </div>
+        <div class="file-vault-boundary">
+          <span><b>R2 placeholder</b>R2 binding/API key가 준비되면 storageTarget=R2로 연결합니다. 지금은 mock data가 아니라 연결 필요 상태입니다.</span>
+          <span><b>D-drive mirror</b>D:\\FEP_EPI_ThinkTank_Vault 같은 로컬 vault는 같은 PC에서만 접근됩니다. D1에는 경로 힌트와 hash만 저장합니다.</span>
+          <span><b>금지</b>비밀번호, seed phrase, 계좌번호, 주민등록번호, 고객 비공개자료, manual 원문, recipe는 파일 색인에도 넣지 않습니다.</span>
+        </div>
+        <div class="file-vault-targets">
+          ${targetRows.length ? targetRows.map(([target, count]) => `<span><b>${escapeHtml(target)}</b>${count} files</span>`).join("") : `<span><b>empty</b>파일 색인을 추가하면 여기에 storageTarget별로 나타납니다.</span>`}
+        </div>
+        <div class="file-vault-list">
+          ${vault.files.length ? vault.files.map(file => `
+            <article>
+              <span>${escapeHtml(file.fileType || "indexed-file")} · ${escapeHtml(file.storageTarget || file.storageTier || "vault")}</span>
+              <strong>${escapeHtml(file.label || "자료 색인")}</strong>
+              <small>${escapeHtml(file.bookTitle || file.linkedBook || "")} / ${escapeHtml(file.recordTitle || file.linkedRecord || "")}</small>
+              <p>${escapeHtml(file.aiSummary || file.summary || "AI용 요약이 아직 없습니다.")}</p>
+              <em>${escapeHtml(file.contentHash || "hash pending")}</em>
+            </article>
+          `).join("") : `<article><strong>아직 파일 색인이 없습니다.</strong><p>기록 폼에서 자료명, 위치 힌트, hash, 요약을 넣으면 원문 없이 색인만 저장됩니다.</p></article>`}
+        </div>
+      </section>
+    `;
+  }
+
   function renderOpsAdminPanel() {
     const ops = buildOpsStatus();
     const ai = ops.aiExport;
@@ -3017,7 +3229,9 @@
           <article><span>Sync queue</span><strong>${ops.syncPending}</strong><small>${ops.syncPending ? "재시도 필요" : "대기 없음"}</small></article>
           <article><span>File index</span><strong>${ops.fileIndexes}</strong><small>${escapeHtml(ops.fileRole)}</small></article>
           <article><span>AI export</span><strong>${ai.included + ai.redacted + ai.indexOnly}</strong><small>included ${ai.included} · redacted ${ai.redacted} · index ${ai.indexOnly} · excluded ${ai.excluded}</small></article>
+          <article><span>Sensitive</span><strong>${ops.sensitiveRecords}</strong><small>건강, 자산, 가족, index-only 기록은 기본 보수 처리</small></article>
           <article><span>Schema</span><strong>${ops.schemaMismatch}</strong><small>mismatch count · source devices ${ops.sourceDevices}</small></article>
+          <article><span>Idle lock</span><strong>${ops.idleLock.unlocked ? `${ops.idleLock.remainingMinutes}m` : "LOCKED"}</strong><small>${escapeHtml(ops.idleLock.boundary)}</small></article>
           <article><span>Restore</span><strong>${ops.latestBackupOrRestore ? "RECENT" : "대기"}</strong><small>${escapeHtml(ops.latestBackupOrRestore || "복원/백업 이벤트 없음")}</small></article>
         </div>
         <div class="ops-warning-list">
@@ -3050,6 +3264,7 @@
       ${renderKnowledgeGraphPanel()}
       ${renderPacketCenterPanel()}
       ${renderLifetimeOpsPanel()}
+      ${renderFileVaultPanel()}
       ${renderOpsAdminPanel()}
       <section class="library-overview" aria-label="전체 책장">
         <div class="panel-title-row">
@@ -3218,6 +3433,22 @@
         renderBookshelf();
       });
     });
+    detail.querySelectorAll("[data-kg-filter]").forEach(select => {
+      select.addEventListener("change", () => {
+        const filters = loadGraphFilters();
+        filters[select.dataset.kgFilter] = select.value;
+        saveGraphFilters(filters);
+        activeGraphNodeId = "";
+        localStorage.removeItem(ACTIVE_GRAPH_NODE_KEY);
+        renderBookshelf();
+      });
+    });
+    detail.querySelector("[data-kg-filter-reset]")?.addEventListener("click", () => {
+      saveGraphFilters({ nodeType: "all", bookId: "all", privacy: "all", exportPolicy: "all", edgeLabel: "all" });
+      activeGraphNodeId = "";
+      localStorage.removeItem(ACTIVE_GRAPH_NODE_KEY);
+      renderBookshelf();
+    });
     detail.querySelectorAll("[data-packet-copy]").forEach(button => {
       button.addEventListener("click", () => {
         copyText(JSON.stringify(buildSpecializedPacket(button.dataset.packetCopy), null, 2), "#packet-center-status");
@@ -3309,6 +3540,26 @@
                 <input id="bookshelf-file-label" maxlength="120" placeholder="예: 건강검진표 PDF, 장비 공개 논문, 설치 사진 요약" />
               </label>
               <label>
+                파일 유형
+                <select id="bookshelf-file-type">
+                  <option value="indexed-file">일반 색인</option>
+                  <option value="pdf">PDF</option>
+                  <option value="image">이미지/사진</option>
+                  <option value="spreadsheet">표/스프레드시트</option>
+                  <option value="health-document">건강/검진 문서</option>
+                  <option value="paper">논문/공개자료</option>
+                </select>
+              </label>
+              <label>
+                저장 대상
+                <select id="bookshelf-file-storage-target">
+                  <option value="D-drive-vault">D-drive vault</option>
+                  <option value="future-R2">future R2</option>
+                  <option value="external-offline">external/offline</option>
+                  <option value="no-raw-file">원문 없음</option>
+                </select>
+              </label>
+              <label>
                 파일 위치 힌트
                 <input id="bookshelf-file-location" maxlength="240" placeholder="예: D:\\FEP_EPI_ThinkTank_Vault\\docs 또는 future R2 key" />
               </label>
@@ -3321,6 +3572,10 @@
               원문 파일 요약
               <textarea id="bookshelf-file-summary" placeholder="D1에는 파일 원문을 넣지 않습니다. AI가 읽어도 되는 요약, 태그, 위치 힌트, 해시만 남깁니다."></textarea>
             </label>
+            <div class="vault-form-boundary">
+              <span><b>D1 저장 범위</b>파일 원문이 아니라 label, fileType, storageTarget, hash, locationHint, aiSummary만 저장합니다.</span>
+              <span><b>저장 금지</b>비밀번호, seed phrase, 계좌번호, 주민등록번호, 고객 비공개자료, 장비 manual/recipe/site-specific limit은 기록하지 않습니다.</span>
+            </div>
             <label>
               요약
               <textarea id="bookshelf-summary" required placeholder="원문 전체가 아니라 핵심 상황, 배경, 판단 근거만 적습니다."></textarea>
@@ -3529,17 +3784,25 @@
       .filter(Boolean)
       .slice(0, 16);
     const fileLabel = document.querySelector("#bookshelf-file-label")?.value.trim() || "";
+    const fileType = document.querySelector("#bookshelf-file-type")?.value || "indexed-file";
+    const storageTarget = document.querySelector("#bookshelf-file-storage-target")?.value || "D-drive-vault";
     const fileLocation = document.querySelector("#bookshelf-file-location")?.value.trim() || "";
     const fileHash = document.querySelector("#bookshelf-file-hash")?.value.trim() || "";
     const fileSummary = document.querySelector("#bookshelf-file-summary")?.value.trim() || "";
     const fileIndex = fileLabel || fileLocation || fileHash || fileSummary
       ? normalizeFileIndex([{
           label: fileLabel || "자료 색인",
+          fileType,
           locationHint: fileLocation,
+          storageTarget,
+          storageTier: storageTarget,
           contentHash: fileHash,
           summary: fileSummary,
+          aiSummary: fileSummary,
           tags,
-          privacyLevel: document.querySelector("#bookshelf-privacy").value
+          privacyLevel: document.querySelector("#bookshelf-privacy").value,
+          linkedBook: book.id,
+          exportPolicy: "index-only-unless-user-approves"
         }])
       : [];
 
