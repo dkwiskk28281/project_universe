@@ -325,6 +325,15 @@ function hashText(value = "") {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+function exportPolicyForEntry(entry = {}) {
+  if (!entry.aiExportOk) return "excluded-unless-user-approves";
+  if (entry.privacyLevel === "sensitive-index") return "ai-index-only";
+  if (entry.privacyLevel === "sensitive-summary") return "ai-redacted-summary-only";
+  if (entry.privacyLevel === "controlled-export") return "ai-controlled-summary";
+  if (entry.privacyLevel === "work-learning") return "ai-summary-ok";
+  return "ai-private-summary-only";
+}
+
 function parsePayload(row) {
   try {
     return JSON.parse(row.payload);
@@ -345,7 +354,15 @@ function normalizeStoredEntry(entry, id, createdAt, updatedAt) {
     id,
     createdAt,
     updatedAt,
-    remoteSavedAt: updatedAt
+    remoteSavedAt: updatedAt,
+    schemaVersion: entry.schemaVersion || "server-normalized-entry-v1",
+    syncStatus: "D1 saved",
+    sourceDevice: entry.sourceDevice || "unknown-device",
+    privacyLevel: entry.privacyLevel || entry.severity || "private-summary",
+    storageTier: entry.storageTier || "d1-json",
+    recordKind: entry.recordKind || "structured-summary",
+    exportPolicy: entry.exportPolicy || exportPolicyForEntry(entry),
+    fileIndex: Array.isArray(entry.fileIndex) ? entry.fileIndex.slice(0, 12) : []
   };
   payload.serverIntegrityHash = hashText(stableJson({
     id: payload.id,
@@ -353,10 +370,14 @@ function normalizeStoredEntry(entry, id, createdAt, updatedAt) {
     title: payload.title || "",
     subsystem: payload.subsystem || "",
     severity: payload.severity || "",
+    privacyLevel: payload.privacyLevel || "",
+    sourceDevice: payload.sourceDevice || "",
+    exportPolicy: payload.exportPolicy || "",
     createdAt: payload.createdAt,
     summary: payload.summary || payload.context || "",
     evidence: payload.evidence || "",
-    nextAction: payload.nextAction || payload.nextStudy || ""
+    nextAction: payload.nextAction || payload.nextStudy || "",
+    fileIndex: payload.fileIndex
   }));
   return payload;
 }
@@ -453,10 +474,17 @@ function buildAiContext(entries) {
       byBook[key].latestPages.push({
         title: page.title || "",
         pageType: page.pageType || "",
+        chapter: page.chapter || "",
+        topic: page.topic || page.title || "",
         summary: page.summary || "",
         evidence: page.evidence || "",
+        action: page.action || "",
+        result: page.result || "",
         nextAction: page.nextAction || "",
+        nextStep: page.nextStep || page.nextAction || "",
         tags: page.tags || [],
+        entities: page.entities || [],
+        date: page.date || "",
         createdAt: page.createdAt || ""
       });
     }
@@ -496,10 +524,17 @@ function buildAiContext(entries) {
       latestResearch: investmentPages.slice(0, 20).map(page => ({
         title: page.title || "",
         pageType: page.pageType || "",
+        chapter: page.chapter || "",
+        topic: page.topic || page.title || "",
         summary: page.summary || "",
         evidence: page.evidence || "",
+        action: page.action || "",
+        result: page.result || "",
         nextAction: page.nextAction || "",
+        nextStep: page.nextStep || page.nextAction || "",
         tags: page.tags || [],
+        entities: page.entities || [],
+        date: page.date || "",
         createdAt: page.createdAt || ""
       }))
     },
@@ -526,10 +561,18 @@ function buildAiContext(entries) {
       subsystem: entry.subsystem || "",
       severity: entry.severity || "",
       createdAt: entry.createdAt || "",
+      bookId: entry.bookId || "",
+      bookTitle: entry.bookTitle || "",
+      chapter: entry.chapter || "",
+      topic: entry.topic || "",
       summary: entry.summary || entry.context || "",
       evidence: entry.evidence || "",
+      action: entry.action || "",
+      result: entry.result || "",
+      tags: entry.tags || [],
+      entities: entry.entities || [],
       integrityHash: entry.integrityHash || entry.serverIntegrityHash || "",
-      nextAction: entry.nextAction || entry.nextStudy || ""
+      nextAction: entry.nextAction || entry.nextStep || entry.nextStudy || ""
     }))
   };
 }

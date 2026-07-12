@@ -4638,6 +4638,72 @@ function renderSystems() {
   });
 }
 
+const lifeOsSystematicFailureCases = [
+  ["Gas cabinet ready는 ON인데 tool first-gas gate가 열리지 않는다", "Gas delivery / EHS", "First gas readiness", ["gas cabinet ready가 들어오지만 tool 쪽 ready chain은 불안정하다.", "abatement ready와 exhaust status 확인이 아직 owner witness로 닫히지 않았다.", "최근 gas line connection 또는 purge 관련 punch item이 있었다."], ["gas cabinet permissive, VMB/VMP status, tool gas box signal mismatch", "abatement/exhaust ready signal actual state 불일치", "POC wiring label 또는 dry contact polarity 이슈", "EHS hold item 미해소"], ["gas cabinet local status, tool I/O, abatement local panel, exhaust owner sign-off를 같은 시간축으로 묶는다.", "first gas 전에는 detector setting이나 interlock을 우회하지 않는다.", "as-built drawing revision과 실제 label을 고객 owner와 대조한다."], "gas/exhaust/abatement ready가 owner witness로 닫히지 않으면 first gas는 hold한다.", "Gas ready 신호는 cabinet 단독이 아니라 gas box, exhaust, abatement, tool permissive가 같은 상태인지 owner witness로 확인한 뒤 진행하겠습니다."],
+  ["PCW 온도는 정상인데 RTP zone trace가 특정 구간에서 흔들린다", "RTP thermal / facility", "Qualification thermal trace", ["facility PCW supply 온도는 정상 범위처럼 보인다.", "특정 zone의 measured temperature가 command를 늦게 따라간다.", "wafer type을 바꾸면 현상이 약해진다."], ["lamp/zone health", "pyrometry or optical path contamination", "PCW flow margin or cooling channel restriction", "wafer emissivity and centering effect"], ["golden trace와 current trace overlay", "same wafer type repeat / different wafer type split", "PCW flow/pressure trend와 chamber trace 동시 비교", "window/chamber history와 PM 변경점 확인"], "thermal runaway, cooling alarm, wafer damage risk가 보이면 qualification wafer 반복보다 hold와 escalation이 우선이다.", "RTP trace 흔들림은 평균 온도만 보지 않고 zone별 command/measured trace, PCW flow, wafer type, optical path를 분리해 확인하겠습니다."],
+  ["EFEM door는 열렸지만 FOUP unclamp 이후 wafer map이 흔들린다", "EFEM / Load port", "Factory interface", ["load port clamp/unclamp은 완료로 표시된다.", "slot map이 반복할 때마다 다른 slot에서 흔들린다.", "FOUP seating mark가 일정하지 않다."], ["FOUP seating repeatability", "load port kinematic pin/contact", "mapper sensor contamination or teach drift", "carrier condition"], ["same FOUP/same port 반복", "different FOUP/same port split", "mapper sensor state와 physical seating photo", "recent load port PM history"], "wafer skew, double wafer 의심, carrier damage가 보이면 반복 mapping으로 밀어붙이지 않는다.", "wafer map 불안정은 FOUP, load port seating, mapper sensor를 split해서 확인하고 wafer handling risk가 있으면 hold하겠습니다."],
+  ["Transfer robot home은 정상인데 PM handoff 직전에 alignment error가 난다", "Transfer module / robot", "Vacuum handoff", ["robot home과 vacuum 상태는 정상이다.", "특정 PM handoff 직전에서만 alignment error가 난다.", "최근 PM docking 또는 slit valve 작업이 있었다."], ["PM docking alignment", "slit valve opening clearance", "robot blade/end-effector teach drift", "wafer support/lift pin position"], ["same PM/different wafer path split", "dry run with dummy wafer under approved condition", "slit valve state, robot position log, PM docking witness mark", "contact/scrape inspection"], "wafer contact, scrape mark, slit valve mismatch가 보이면 robot speed 조정보다 hold한다.", "PM handoff error는 robot 단독이 아니라 docking, slit valve clearance, lift/support 상태를 같은 wafer path로 묶어 확인하겠습니다."],
+  ["EPI thickness는 맞는데 dopant 관련 metrology가 chamber별로 벌어진다", "EPI process / metrology", "Baseline matching", ["thickness 평균은 spec 근처지만 electrical metrology가 chamber별로 다르다.", "gas delivery alarm은 없었다.", "recent seasoning wafer count가 chamber별로 다르다."], ["dopant delivery response", "temperature calibration/matching", "seasoning history difference", "metrology tool or wafer lot split"], ["same incoming wafer lot chamber split", "tool trace and metrology same wafer ID correlation", "seasoning/baseline history", "metrology repeatability check"], "고객 acceptance limit이나 recipe 조건은 임의 판단하지 않고 process owner 승인 없이 변경하지 않는다.", "두께만 pass로 보지 않고 dopant 관련 metrology와 chamber history를 연결해 chamber matching 관점으로 확인하겠습니다."],
+  ["Exhaust flow alarm이 짧게 지나갔지만 tool alarm은 clear다", "Exhaust / abatement", "Safety and facility", ["tool main alarm은 clear로 보인다.", "local exhaust monitor에는 짧은 event가 남아 있다.", "first gas 또는 purge 단계 전후 시간대와 겹친다."], ["exhaust flow margin", "abatement transient", "facility sensor/event logging", "tool permissive masking or timing gap"], ["tool event log와 facility local log time sync", "abatement owner witness", "exhaust actual flow status", "gas phase and wafer state impact review"], "toxic/corrosive/flammable gas 관련 exhaust event는 tool clear만으로 계속 진행하지 않는다.", "Tool alarm이 clear여도 local exhaust event가 있어 facility/EHS owner와 event history를 확인한 뒤 wafer 영향과 진행 가능성을 판단하겠습니다."],
+  ["24V interlock rail이 무부하 정상인데 load on 때 sag가 난다", "Electrical / DVM", "Power-on diagnostic", ["DVM으로 무부하 측정하면 24V가 나온다.", "밸브나 relay coil이 붙는 순간 전압이 크게 떨어진다.", "최근 terminal 재체결 또는 케이블 routing 변경이 있었다."], ["high resistance terminal", "overload/shorted coil", "weak power supply", "fuse holder/contact issue"], ["expected value를 먼저 세우고 load-on voltage drop을 구간별 기록", "supply, fuse, terminal, load coil segment split", "LOTO/energized work approval boundary 확인", "heat/discoloration/loose terminal visual"], "승인 없는 energized work, 임의 jumper, interlock bypass는 금지한다.", "24V는 무부하 정상값보다 load-on voltage drop이 핵심이므로 supply부터 load까지 구간별 expected/actual로 분리하겠습니다."],
+  ["Pumpdown curve가 느려졌지만 base pressure는 결국 도달한다", "Vacuum / pump", "Pumpdown qualification", ["base pressure 도달은 되지만 시간이 길어졌다.", "특정 chamber 또는 load lock에서만 반복된다.", "최근 seal, foreline, pump PM 이력이 있다."], ["small leak or seal seating", "roughing path restriction", "pump performance degradation", "gauge response lag"], ["golden pumpdown curve overlay", "rate of rise or approved leak check evidence", "recent PM parts and witness marks", "gauge cross-check if approved"], "vacuum integrity가 불명확하면 process gas introduction이나 customer wafer 진행을 hold한다.", "최종 base pressure만 보지 않고 pumpdown curve shape, recent PM, seal/pump path를 비교해 vacuum margin을 확인하겠습니다."],
+  ["Seasoning 후 particle trend가 내려가지만 첫 wafer가 높다", "Maintenance / recovery", "PM recovery", ["PM 직후 첫 wafer particle이 높다.", "후속 wafer에서 감소 추세가 보인다.", "release 압박이 있으나 baseline count가 충분하지 않다."], ["post-PM residue", "chamber wall/source stabilization", "handling contact after PM", "metrology sampling variation"], ["wafer count vs particle trend", "wafer map location and PM work area", "seasoning history and baseline criteria", "customer/process owner release rule"], "release criteria가 닫히지 않았거나 toxic/exhaust/vacuum risk가 남으면 생산 wafer로 넘어가지 않는다.", "감소 추세는 보이지만 release 기준과 owner sign-off가 필요하므로 PM work area, wafer map, trend를 evidence packet으로 정리하겠습니다."],
+  ["Host가 recipe 다운로드 완료를 보냈지만 tool recipe revision이 다르다", "Automation / host", "Qualification handoff", ["host message에는 recipe download complete가 남아 있다.", "tool 화면의 revision 또는 parameter group 이름이 expected와 다르다.", "route 변경 직후 발생했다."], ["host route/revision mismatch", "local cached recipe", "operator selection error", "MES message timing issue"], ["wafer ID, route, host message, tool recipe name/revision capture", "automation owner witness", "local manual override 여부 확인", "previous lot/known-good route comparison"], "recipe mismatch는 process owner 승인 없이 진행하지 않는다.", "Host와 tool의 recipe revision이 다르므로 wafer ID, route, host message, tool screen evidence를 묶어 automation/process owner와 확인하겠습니다."],
+  ["Gas purge 완료 후 residual odor/report가 나온다", "Gas safety / purge", "Safety response", ["tool에서는 purge 완료로 보인다.", "현장 주변에서 odor 또는 detector 관련 report가 있었다.", "gas line 또는 chamber open 준비 단계와 시간대가 겹친다."], ["purge effectiveness concern", "exhaust/abatement capture issue", "gas cabinet or line residual", "non-tool source near area"], ["EHS response procedure and area status", "detector/alarm history", "gas cabinet and exhaust owner status", "tool log only as one evidence source"], "odor/detector report는 즉시 안전 owner 호출 전에는 작업 재개 판단을 하지 않는다.", "Tool purge complete만으로 결론내리지 않고 EHS/facility owner와 detector, exhaust, gas cabinet 상태를 확인한 뒤 재개 조건을 판단하겠습니다."],
+  ["Baseline wafer metrology가 pass지만 trend가 이전 install보다 불안정하다", "Qualification / metrology", "Handover readiness", ["single wafer pass 결과는 있다.", "run-to-run variation이 이전 baseline보다 커 보인다.", "customer는 release 여부를 묻고 있다."], ["insufficient sample size", "tool stabilization", "metrology repeatability", "facility drift"], ["same wafer type repeat count", "metrology repeat/correlation", "tool trace stability", "facility trend overlay"], "공식 acceptance sample과 owner sign-off 없이 single pass만으로 handover를 닫지 않는다.", "단일 pass는 확인했지만 trend 안정성과 sample count를 함께 보고 release 판단은 customer/process owner 기준으로 닫겠습니다."],
+  ["Chamber clean 후 byproduct residue가 view port 주변에 반복된다", "Process chamber / exhaust", "Maintenance observation", ["clean 후에도 특정 부위 residue가 반복 관찰된다.", "pressure trace는 큰 alarm이 없다.", "exhaust/temperature 조건의 변경 이력이 있다."], ["local cold spot", "exhaust conductance issue", "chemistry byproduct condensation", "clean endpoint or seasoning mismatch"], ["before/after photo with location", "temperature/exhaust trend", "PM parts and cleaning record", "metrology or particle correlation"], "chemical exposure 가능성, exhaust issue, unknown residue는 EHS/owner 승인 없이 접촉/청소하지 않는다.", "Residue는 단순 오염으로 단정하지 않고 위치, exhaust/temperature trend, PM 이력, wafer 영향 증거를 묶어 확인하겠습니다."],
+  ["Customer asks to continue despite unresolved alarm history", "Customer communication", "Escalation and report", ["현재 alarm은 clear 상태다.", "하지만 동일 alarm history가 반복적으로 남았다.", "고객은 일정 때문에 진행 가능 여부를 묻는다."], ["schedule pressure overriding risk", "unresolved intermittent fault", "missing owner sign-off", "insufficient evidence packet"], ["alarm history frequency", "impact assessment", "stop condition agreement", "owner/ETA for next check"], "safety, wafer damage, gas/vacuum/electrical risk가 닫히지 않으면 일정 이유로 진행하지 않는다.", "현재 화면은 clear지만 반복 history가 있어 위험도와 영향 범위를 분리해 보고드리고, owner sign-off 전에는 stop condition을 유지하겠습니다."]
+];
+
+lifeOsSystematicFailureCases.forEach(([title, status, phase, facts, suspects, evidence, stop, report]) => {
+  if (scenarios.some(item => item.title === title)) return;
+  scenarios.push({
+    title,
+    status,
+    phase,
+    facts,
+    suspects,
+    evidence,
+    stop,
+    report,
+    next: [
+      "scope를 chamber, wafer ID, time window, recent change로 좁힌다.",
+      "confirmed fact와 assumption을 분리한다.",
+      "owner witness가 필요한 evidence를 지정한다.",
+      "customer report는 status, risk, next action, ETA 순서로 짧게 말한다."
+    ],
+    publicBasis: "공개자료 기반의 일반 CE 사고 프레임입니다. recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 공식 교육/현장 승인 문서 범위입니다.",
+    good: "맞습니다. 빠른 결론보다 safety boundary, evidence ladder, owner sign-off를 먼저 닫는 판단이 senior CE 사고입니다.",
+    choices: [
+      ["tool 화면이 clear이면 일정 우선으로 바로 진행한다.", false],
+      ["위험도와 evidence를 분리하고 owner witness가 필요한 항목을 닫은 뒤 진행 판단한다.", true],
+      ["alarm을 줄이기 위해 임의로 threshold나 sequence를 조정한다.", false]
+    ]
+  });
+});
+
+while (scenarios.length < 40) {
+  const index = scenarios.length + 1;
+  scenarios.push({
+    title: `Evidence ladder drill ${index}: symptom만 있고 원인 단정 압박이 있다`,
+    status: "Senior CE reasoning / generic",
+    phase: "Troubleshooting discipline",
+    facts: ["증상은 재현되지만 아직 subsystem이 좁혀지지 않았다.", "일정 압박 때문에 원인 단정을 요구받고 있다.", "최근 변경점과 baseline 비교가 아직 정리되지 않았다."],
+    suspects: ["recent PM/install change", "facility marginal condition", "sensor/log interpretation gap", "wafer path or metrology split 필요"],
+    evidence: ["timeline", "known-good comparison", "recent change list", "owner-witnessed safety boundary", "wafer/metrology correlation"],
+    stop: "safety, gas, vacuum, exhaust, electrical, wafer damage risk가 불명확하면 단정이나 진행보다 hold/escalation이 먼저다.",
+    report: "현재는 원인 단정 전 단계입니다. 증상, 위험도, 후보 subsystem, 필요한 evidence, stop condition을 분리해 확인하고 다음 update 시간을 공유하겠습니다.",
+    next: ["symptom scope 작성", "risk level 지정", "evidence owner 배정", "customer update 문장 작성"],
+    publicBasis: "공개 안전자료와 field-service 일반 원칙 기반의 사고 훈련입니다. 비공개 장비 절차와 고객 site-specific limit은 포함하지 않습니다.",
+    good: "정답입니다. senior CE는 모를 때도 구조적으로 모른다고 말하고, 다음 evidence를 닫습니다.",
+    choices: [
+      ["추정 원인을 하나 정해 바로 part 교체로 간다.", false],
+      ["symptom -> risk -> subsystem -> evidence -> stop -> report 순서로 좁힌다.", true],
+      ["일정 때문에 stop condition 언급을 생략한다.", false]
+    ]
+  });
+}
+
 function renderScenarios() {
   document.querySelector("#scenario-list").innerHTML = scenarios.map((scenario, index) => `
     <button class="scenario-tab ${index === activeScenario ? "active" : ""}" data-scenario="${index}">

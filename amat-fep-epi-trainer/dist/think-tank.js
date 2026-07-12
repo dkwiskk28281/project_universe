@@ -5,16 +5,18 @@ const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 const isLocalBrowserHost = ["127.0.0.1", "localhost", "::1"].includes(location.hostname);
 const isPersonalServerProxy = location.pathname.startsWith("/personal-server");
 const isCloudflareWorkerHost = location.hostname.endsWith(".workers.dev");
+const isLocalWorkerPreview = isLocalBrowserHost && Boolean(location.port) && location.port !== "4180";
 const REMOTE_VAULT_API = "https://projectuniverse.chang2058.workers.dev";
 const THINK_TANK_API = EPI_VAULT_CONFIG.apiUrl ||
   (isPersonalServerProxy ? `${location.origin}/personal-server` : "") ||
-  (isCloudflareWorkerHost ? location.origin : "") ||
+  (isCloudflareWorkerHost || isLocalWorkerPreview ? location.origin : "") ||
   (location.port === "4180" ? location.origin : REMOTE_VAULT_API);
 const THINK_TANK_CLIENT_PASS = "ceTrainerPass";
 const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
 const LOCAL_VAULT_TOKEN = "epiThinkTankLocalToken";
 const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
+const THINK_TANK_DEVICE_KEY = "projectUniverseSourceDevice";
 let pendingPrivateView = "bookshelf";
 let privateSyncStarted = false;
 
@@ -69,10 +71,51 @@ function localVaultToken() {
   return sessionStorage.getItem(LOCAL_VAULT_TOKEN) || "";
 }
 
+function sourceDeviceId() {
+  try {
+    const existing = localStorage.getItem(THINK_TANK_DEVICE_KEY);
+    if (existing) return existing;
+    const next = `device-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+    localStorage.setItem(THINK_TANK_DEVICE_KEY, next);
+    return next;
+  } catch {
+    return "device-session-only";
+  }
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function hashText(value = "") {
+  let hash = 2166136261;
+  const text = String(value);
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
+
+function shouldUseLocalVault() {
+  return THINK_TANK_API === LOCAL_VAULT_API || Boolean(localVaultToken()) || EPI_VAULT_CONFIG.enableLocalMirror === true;
+}
+
 function clearClientAuthState() {
   sessionStorage.removeItem(THINK_TANK_CLIENT_PASS);
   sessionStorage.removeItem(THINK_TANK_REMOTE_TOKEN);
   sessionStorage.removeItem(LOCAL_VAULT_TOKEN);
+}
+
+function clearServerAuthState() {
+  fetch(`${THINK_TANK_API}/api/logout`, { credentials: "include" }).catch(() => {});
+  if (THINK_TANK_API !== LOCAL_VAULT_API && shouldUseLocalVault()) {
+    fetch(`${LOCAL_VAULT_API}/api/logout`, { credentials: "omit" }).catch(() => {});
+  }
 }
 
 async function purgeBrowserPrivacyCaches() {
@@ -256,7 +299,7 @@ async function loginToApi(base, password, tokenKey, timeoutMs = 2500) {
 
 async function remoteLogin(password) {
   const primaryOk = await loginToApi(THINK_TANK_API, password, THINK_TANK_REMOTE_TOKEN, 2500);
-  if (THINK_TANK_API !== LOCAL_VAULT_API) {
+  if (THINK_TANK_API !== LOCAL_VAULT_API && shouldUseLocalVault()) {
     await loginToApi(LOCAL_VAULT_API, password, LOCAL_VAULT_TOKEN, 900);
   }
   return primaryOk;
@@ -438,6 +481,115 @@ function entryTags(entry) {
     .slice(0, 10);
 }
 
+const trainerChapterLabels = {
+  "fab-intro": "Fab 입문",
+  "applied-platforms": "Applied 장비군과 platform",
+  "centura-vantage": "Centura/Vantage 구조",
+  "wafer-path": "EFEM/LL/TM/PM wafer path",
+  "epi-physics": "EPI 공정 원리",
+  "rtp-physics": "RTP 공정 원리",
+  "gas-vacuum": "Gas/Vacuum/Exhaust",
+  "facility-hookup": "Facility hook-up",
+  "electrical-dvm": "Electrical/DVM",
+  "install-sequence": "Install sequence",
+  "qualification": "Qualification/metrology",
+  "maintenance": "Maintenance/seasoning",
+  "failure-mode": "Failure mode troubleshooting",
+  "handover": "Customer communication/handover",
+  "thinktank-loop": "Think Tank 사고 루프"
+};
+
+function loadTrainerState() {
+  try {
+    return JSON.parse(localStorage.getItem("ceTrainerState") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function buildWeaknessSynthesis(entries = loadEntries()) {
+  const trainer = loadTrainerState();
+  const curriculumWrong = Object.entries(trainer.curriculumQuiz || {})
+    .filter(([, result]) => result === "wrong")
+    .map(([id]) => trainerChapterLabels[id] || id)
+    .slice(0, 6);
+  const scenarioWeakness = Object.entries(trainer.scenarioWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6);
+  const scenarioAnswers = Object.values(trainer.scenarioAnswers || {});
+  const scenarioAccuracy = scenarioAnswers.length
+    ? Math.round((scenarioAnswers.filter(item => item.correct).length / scenarioAnswers.length) * 100)
+    : 0;
+  const quizAttempts = trainer.quizAttempts || [];
+  const quizAccuracy = quizAttempts.length
+    ? Math.round((quizAttempts.filter(Boolean).length / quizAttempts.length) * 100)
+    : 0;
+  const subsystemCounts = entries.reduce((acc, entry) => {
+    const key = entry.subsystem || "Unclassified";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const topSubsystems = Object.entries(subsystemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const incompletePackets = entries.filter(entry =>
+    !entry.symptom || !entry.evidence || !entry.action || !entry.result || !entry.prevention || !entry.customerReport
+  ).length;
+  const nextActions = [];
+  if (scenarioWeakness[0]) nextActions.push(`${scenarioWeakness[0][0]} 케이스를 3개 더 풀고, stop condition 문장을 직접 써보기`);
+  if (curriculumWrong[0]) nextActions.push(`${curriculumWrong[0]} 챕터의 1분 요약을 다시 읽고 퀴즈 재시도`);
+  if (incompletePackets) nextActions.push(`불완전한 경험 기록 ${incompletePackets}개를 evidence/action/result/prevention/report 구조로 보강`);
+  if (!entries.length) nextActions.push("첫 현장/학습 경험을 symptom -> evidence -> action -> result 구조로 저장");
+  return {
+    curriculumWrong,
+    scenarioWeakness,
+    scenarioAccuracy,
+    quizAccuracy,
+    topSubsystems,
+    incompletePackets,
+    nextActions,
+    entriesCount: entries.length
+  };
+}
+
+function renderWeaknessSynthesis() {
+  const data = buildWeaknessSynthesis(loadEntries());
+  return `
+    <section class="thinktank-panel weakness-synthesis">
+      <div class="weakness-synthesis-head">
+        <div>
+          <p class="eyebrow">Personal CE Intelligence</p>
+          <h2>내가 약한 현장 사고 패턴</h2>
+          <p>커리큘럼 퀴즈, 현장 판단 훈련, 저장된 경험을 한 번에 묶어 다음 학습 방향을 만듭니다.</p>
+        </div>
+        <div class="synthesis-score-row">
+          <span><strong>${data.scenarioAccuracy}%</strong><small>판단훈련 정확도</small></span>
+          <span><strong>${data.quizAccuracy}%</strong><small>기초퀴즈 정확도</small></span>
+          <span><strong>${data.entriesCount}</strong><small>경험 기록</small></span>
+        </div>
+      </div>
+      <div class="synthesis-grid">
+        <article>
+          <strong>틀린 커리큘럼</strong>
+          ${data.curriculumWrong.length ? `<ul>${data.curriculumWrong.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : `<p>현재 누적 오답 없음</p>`}
+        </article>
+        <article>
+          <strong>반복 약점 subsystem</strong>
+          ${data.scenarioWeakness.length ? `<ul>${data.scenarioWeakness.map(([tag, count]) => `<li>${escapeHtml(tag)} <b>${count}</b></li>`).join("")}</ul>` : `<p>현장 판단 케이스를 풀면 자동 누적됩니다.</p>`}
+        </article>
+        <article>
+          <strong>내 경험이 많은 영역</strong>
+          ${data.topSubsystems.length ? `<ul>${data.topSubsystems.map(([tag, count]) => `<li>${escapeHtml(tag)} <b>${count}</b></li>`).join("")}</ul>` : `<p>아직 경험 기록이 없습니다.</p>`}
+        </article>
+        <article>
+          <strong>다음 성장 action</strong>
+          <ul>${data.nextActions.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
 function renderEntries() {
   const list = document.querySelector("#thinktank-entry-list");
   if (!list) return;
@@ -459,10 +611,14 @@ function renderEntries() {
       <p>${escapeHtml(entry.context || "").slice(0, 260)}</p>
       <ul>
         <li><strong>증상:</strong> ${escapeHtml(entry.symptom || "")}</li>
-        <li><strong>측정/증거:</strong> ${escapeHtml(entry.evidence || "")}</li>
-        <li><strong>원인/가설:</strong> ${escapeHtml(entry.rootCause || "")}</li>
-        <li><strong>다음 학습:</strong> ${escapeHtml(entry.nextStudy || "")}</li>
+        <li><strong>Evidence:</strong> ${escapeHtml(entry.evidence || "")}</li>
+        <li><strong>의심 원인:</strong> ${escapeHtml(entry.suspectedCause || entry.rootCause || "")}</li>
+        <li><strong>Action:</strong> ${escapeHtml(entry.action || "")}</li>
+        <li><strong>Result:</strong> ${escapeHtml(entry.result || "")}</li>
+        <li><strong>Prevention:</strong> ${escapeHtml(entry.prevention || "")}</li>
+        <li><strong>고객 보고:</strong> ${escapeHtml(entry.customerReport || "")}</li>
       </ul>
+      ${entry.summaryPacket ? `<details class="ai-summary-packet"><summary>AI summary packet</summary><pre>${escapeHtml(entry.summaryPacket)}</pre></details>` : ""}
       <div class="entry-tags">${entryTags(entry).map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>
     </article>
   `).join("") : `
@@ -471,6 +627,29 @@ function renderEntries() {
       <p>첫 install/troubleshooting 경험을 구조화해서 저장하면 이 공간이 개인 EPI 지식 엔진으로 자라기 시작합니다.</p>
     </article>
   `;
+}
+
+function buildSummaryPacket(data) {
+  const rows = [
+    ["Title", data.title],
+    ["Type", data.type],
+    ["Tool", data.tool],
+    ["Subsystem", data.subsystem],
+    ["Severity", data.severity],
+    ["Context", data.context],
+    ["Symptom", data.symptom],
+    ["Evidence", data.evidence],
+    ["Suspected Cause", data.suspectedCause || data.rootCause],
+    ["Action", data.action],
+    ["Result", data.result],
+    ["Prevention", data.prevention],
+    ["Customer Report", data.customerReport],
+    ["Next Study", data.nextStudy],
+    ["Tags", data.tags]
+  ];
+  return rows
+    .map(([label, value]) => `${label}: ${String(value || "").trim()}`)
+    .join("\n");
 }
 
 async function saveThinkTankEntry(event) {
@@ -482,12 +661,35 @@ async function saveThinkTankEntry(event) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     syncStatus: "syncing to D1",
+    schemaVersion: "ce-experience-v2",
+    sourceDevice: sourceDeviceId(),
+    privacyLevel: "work-learning",
+    storageTier: "d1-json-local-cache",
+    recordKind: "ce-experience-summary",
+    exportPolicy: "ai-summary-ok",
+    privacyBoundary: "No customer confidential drawings, recipes, setpoints, bypass instructions, passwords, or site-specific manual content.",
+    rootCause: data.suspectedCause || data.rootCause || "",
+    summaryPacket: buildSummaryPacket(data),
     ...data
   };
+  entry.integrityHash = hashText(stableJson({
+    id: entry.id,
+    type: entry.type,
+    subsystem: entry.subsystem,
+    symptom: entry.symptom,
+    evidence: entry.evidence,
+    action: entry.action,
+    result: entry.result,
+    prevention: entry.prevention,
+    customerReport: entry.customerReport,
+    createdAt: entry.createdAt
+  }));
   const entries = loadEntries();
   entries.push(entry);
   saveEntries(entries);
   renderEntries();
+  const synthesis = document.querySelector(".weakness-synthesis");
+  if (synthesis) synthesis.outerHTML = renderWeaknessSynthesis();
   form.reset();
 
   try {
@@ -506,7 +708,9 @@ async function exportThinkTank() {
     exportedAt: new Date().toISOString(),
     entries: loadEntries(),
     localStorage: getLocalStorageSnapshot(),
-    masteryDomains
+    masteryDomains,
+    trainerState: loadTrainerState(),
+    weaknessSynthesis: buildWeaknessSynthesis()
   };
   try {
     await apiFetch("/api/export", { method: "POST", body: JSON.stringify(payload) });
@@ -532,11 +736,12 @@ function renderThinkTank() {
   if (!root) return;
   root.innerHTML = `
     <section class="vault-status" id="vault-status-panel"></section>
+    ${renderWeaknessSynthesis()}
     <section class="thinktank-layout">
       <article class="thinktank-panel">
         <p class="eyebrow">Structured Experience Capture</p>
         <h2>경험 입력</h2>
-        <p>문제 경험을 “상황 -> 증상 -> 계측 -> 원인/가설 -> 조치 -> 배운 점”으로 저장합니다.</p>
+        <p>문제 경험을 “symptom -> evidence -> suspected cause -> action -> result -> prevention -> customer report” 구조로 저장합니다.</p>
         <form class="thinktank-form" id="thinktank-form">
           <label>제목<input name="title" required placeholder="예: PM 후 load lock pumpdown time 증가" /></label>
           <label>유형<select name="type">${experienceTypes.map(type => `<option>${type}</option>`).join("")}</select></label>
@@ -545,9 +750,12 @@ function renderThinkTank() {
           <label>심각도<select name="severity"><option>Learning</option><option>Tool Down</option><option>Safety Stop</option><option>Qualification Risk</option><option>Customer Escalation</option></select></label>
           <label>상황 / 배경<textarea name="context" placeholder="언제, 어떤 작업 후, 어떤 조건에서 발생했는지"></textarea></label>
           <label>증상<textarea name="symptom" placeholder="alarm, trend, wafer result, customer observation"></textarea></label>
-          <label>계측 / 증거<textarea name="evidence" placeholder="DVM 값, log, trace, pressure, MFC response, metrology"></textarea></label>
-          <label>원인 / 가설<textarea name="rootCause" placeholder="확인된 root cause 또는 현재 hypothesis"></textarea></label>
-          <label>조치 / 결과<textarea name="action" placeholder="무엇을 했고 어떤 결과가 나왔는지"></textarea></label>
+          <label>Evidence / 증거<textarea name="evidence" placeholder="DVM 값, log, trace, pressure, MFC response, metrology, witness"></textarea></label>
+          <label>Suspected cause / 의심 원인<textarea name="suspectedCause" placeholder="아직 확정 전이면 hypothesis로 기록. 확정 전에는 단정하지 않기"></textarea></label>
+          <label>Action / 조치<textarea name="action" placeholder="무엇을 확인했고, 누구 승인/입회로 어떤 조치를 했는지"></textarea></label>
+          <label>Result / 결과<textarea name="result" placeholder="alarm 변화, trace 변화, wafer/metrology 변화, 재현 여부"></textarea></label>
+          <label>Prevention / 재발 방지<textarea name="prevention" placeholder="checklist, baseline, PM 후 확인, training, handover에 추가할 항목"></textarea></label>
+          <label>Customer report / 고객 보고 문장<textarea name="customerReport" placeholder="확인된 사실, 영향 범위, 다음 action, ETA를 분리한 보고 문장"></textarea></label>
           <label>다음 학습<textarea name="nextStudy" placeholder="더 공부할 논문, 도면, 이론, 질문"></textarea></label>
           <label>태그<input name="tags" placeholder="pumpdown, relay, MFC, GAA, defect..." /></label>
           <div class="thinktank-actions">
@@ -604,7 +812,9 @@ function hidePasswordGate() {
 }
 
 function showEntryChoice() {
-  document.body.classList.remove("auth-locked");
+  clearClientAuthState();
+  clearServerAuthState();
+  document.body.classList.remove("auth-locked", "auth-unlocked");
   document.body.classList.add("auth-public", "entry-choice-open");
   document.body.classList.remove("entry-choice-closed");
   document.querySelector("#entry-choice-gate")?.classList.remove("hidden");
@@ -613,7 +823,9 @@ function showEntryChoice() {
 }
 
 function enterCognitivePublic() {
-  document.body.classList.remove("auth-locked", "entry-choice-open");
+  clearClientAuthState();
+  clearServerAuthState();
+  document.body.classList.remove("auth-locked", "auth-unlocked", "entry-choice-open");
   document.body.classList.add("auth-public", "entry-choice-closed");
   document.querySelector("#entry-choice-gate")?.classList.add("hidden");
   hidePasswordGate();
@@ -648,6 +860,7 @@ function unlockApp(targetView = pendingPrivateView || "bookshelf") {
       await pullRemoteEntries();
       await retryPendingEntries();
       await syncUnsavedLocalEntries("unlock");
+      if (window.ProjectUniverseBookshelf?.pullRemote) await window.ProjectUniverseBookshelf.pullRemote();
       if (window.refreshEnglishFromVault) await window.refreshEnglishFromVault();
     });
     syncAppStateV2("unlock");
@@ -705,10 +918,9 @@ async function initPasswordGate() {
     error.textContent = "";
     if (password === "9175") {
       sessionStorage.setItem(THINK_TANK_CLIENT_PASS, password);
+      const remoteOk = await remoteLogin(password);
+      if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
       unlockApp(pendingPrivateView);
-      remoteLogin(password).then(remoteOk => {
-        if (remoteOk) sessionStorage.setItem(THINK_TANK_CLIENT_PASS, "remote");
-      });
       return;
     }
     const remoteOk = await remoteLogin(password);

@@ -11436,3 +11436,329 @@ body[data-current-view="cognitive"] .learning-hud {
     overflow-wrap: anywhere !important;
   }
 }
+/* Life OS v2: operating briefing, graph explorer, packet center */
+.operating-briefing-panel,
+.packet-center-panel,
+.dyor-research-os {
+  position: relative;
+  margin: 18px 0;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid rgba(61, 220, 151, 0.3);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(6, 21, 18, 0.96), rgba(11, 28, 35, 0.94)),
+    radial-gradient(circle at 80% 0%, rgba(42, 255, 181, 0.12), transparent 35%);
+  color: #e8fff6;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.operating-briefing-head,
+.packet-center-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.operating-briefing-head h2,
+.packet-center-head h2,
+.dyor-research-os h3 {
+  margin: 4px 0 8px;
+  color: #f3fff9;
+  letter-spacing: 0;
+}
+
+.operating-briefing-head p,
+.packet-center-head p,
+.dyor-research-os p {
+  color: #b9d8ce;
+  line-height: 1.65;
+}
+
+.ops-readiness-ring {
+  width: 132px;
+  min-height: 132px;
+  border: 1px solid rgba(95, 255, 188, 0.45);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  text-align: center;
+}
+
+.ops-readiness-ring span,
+.ops-readiness-ring small {
+  color: #95f5c9;
+  font-size: 0.72rem;
+}
+
+.ops-readiness-ring strong {
+  color: #ffffff;
+  font-size: 2.3rem;
+  line-height: 1;
+}
+
+.ops-progress-line {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 8px 0 18px;
+}
+
+.ops-progress-line i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #3df59d, #8fffd2);
+}
+
+.operating-task-grid,
+.packet-grid,
+.dyor-template-grid,
+.dyor-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.life-task-card,
+.packet-card,
+.dyor-provider-grid article {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(158, 255, 207, 0.22);
+  border-radius: 8px;
+  background: rgba(1, 11, 10, 0.58);
+  color: #eafff7;
+}
+
+.life-task-card.done {
+  border-color: rgba(92, 255, 176, 0.68);
+  background: rgba(11, 75, 52, 0.52);
+}
+
+.life-task-card span,
+.packet-card span,
+.dyor-provider-grid span {
+  color: #7fffc4;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.life-task-card strong,
+.packet-card strong,
+.dyor-provider-grid strong {
+  display: block;
+  margin: 4px 0;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.life-task-card small,
+.packet-card small,
+.dyor-provider-grid small {
+  color: #a6cabc;
+}
+
+.life-task-card p,
+.packet-card p,
+.dyor-provider-grid p {
+  margin: 10px 0 0;
+  color: #cdeee3;
+  line-height: 1.55;
+}
+
+.life-task-actions,
+.packet-actions,
+.english-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.life-task-actions button,
+.packet-actions button,
+.dyor-template-grid button {
+  min-height: 38px;
+  white-space: normal;
+}
+
+.graph-explorer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.knowledge-graph-strip {
+  align-content: start;
+}
+
+.kg-node-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  max-width: 100%;
+  min-height: 54px;
+  margin: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(125, 255, 200, 0.24);
+  border-radius: 8px;
+  background: rgba(3, 20, 19, 0.72);
+  color: #ecfff8;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kg-node-button b {
+  color: #76ffc2;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+}
+
+.kg-node-button.active,
+.kg-node-button:hover {
+  border-color: rgba(82, 255, 173, 0.85);
+  background: rgba(14, 90, 61, 0.48);
+}
+
+.kg-node-detail {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(126, 255, 202, 0.24);
+  border-radius: 8px;
+  background: rgba(0, 7, 8, 0.72);
+  color: #effff9;
+}
+
+.kg-node-detail span {
+  color: #7fffc4;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+.kg-node-detail strong {
+  display: block;
+  color: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.kg-node-detail p {
+  color: #cceee3;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.kg-record-grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 10px;
+  margin: 12px 0;
+}
+
+.kg-record-grid dt {
+  color: #7fffc4;
+  font-size: 0.78rem;
+}
+
+.kg-record-grid dd {
+  margin: 0;
+  color: #eafef7;
+  overflow-wrap: anywhere;
+}
+
+.kg-edge-list {
+  display: grid;
+  gap: 6px;
+}
+
+.kg-edge-list span {
+  display: block;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d8fff0;
+  overflow-wrap: anywhere;
+}
+
+.packet-card {
+  min-height: 210px;
+}
+
+.dyor-template-grid button {
+  padding: 14px;
+  border: 1px solid rgba(102, 255, 193, 0.28);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #effff9;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dyor-template-grid button:hover {
+  border-color: rgba(102, 255, 193, 0.75);
+  background: rgba(22, 97, 66, 0.38);
+}
+
+.english-review-actions {
+  margin-top: 14px;
+}
+
+.english-review-actions small {
+  flex: 1 1 260px;
+  color: #50615b;
+  line-height: 1.45;
+}
+
+:root[data-theme="dark"] .operating-briefing-panel,
+:root[data-theme="dark"] .packet-center-panel,
+:root[data-theme="dark"] .dyor-research-os,
+:root[data-theme="dark"] .life-task-card,
+:root[data-theme="dark"] .packet-card,
+:root[data-theme="dark"] .kg-node-detail,
+:root[data-theme="dark"] .kg-node-button,
+:root[data-theme="dark"] .dyor-template-grid button,
+:root[data-theme="dark"] .dyor-provider-grid article {
+  background-color: rgba(1, 12, 12, 0.9);
+  color: #ecfff8;
+}
+
+:root[data-theme="dark"] .english-review-actions small {
+  color: #b9d8ce;
+}
+
+@media (max-width: 760px) {
+  .operating-briefing-head,
+  .packet-center-head,
+  .graph-explorer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-readiness-ring {
+    width: 100%;
+    min-height: 94px;
+  }
+
+  .operating-task-grid,
+  .packet-grid,
+  .dyor-template-grid,
+  .dyor-provider-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .kg-node-button {
+    width: 100%;
+    margin: 4px 0;
+  }
+}

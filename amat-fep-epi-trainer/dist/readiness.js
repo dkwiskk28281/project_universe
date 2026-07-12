@@ -1,5 +1,5 @@
 const readinessState = JSON.parse(localStorage.getItem("ceReadinessState") || "{}");
-let activeReadinessTab = "gates";
+let activeReadinessTab = "micro";
 
 const readinessLevels = [
   ["관찰자", "혼자 작업 금지", 0.2],
@@ -32,7 +32,13 @@ const readinessGates = [
   ["rg-019", "나는 install 단계별 pass evidence와 stop condition을 구분해 말할 수 있다."],
   ["rg-020", "나는 LL, TM, PM/CM, FI/EFEM 사이 wafer handoff와 pressure boundary를 설명할 수 있다."],
   ["rg-021", "나는 facility ready signal과 실제 physical state가 다를 때 작업을 보류하고 owner를 지정할 수 있다."],
-  ["rg-022", "나는 SAT/qualification sign-off 전에 필요한 evidence pack과 open punch item을 구분할 수 있다."]
+  ["rg-022", "나는 SAT/qualification sign-off 전에 필요한 evidence pack과 open punch item을 구분할 수 있다."],
+  ["rg-023", "나는 host/SECS-GEM, recipe permission, time sync, data export, change control을 임의 조작 금지 영역으로 설명할 수 있다."],
+  ["rg-024", "나는 고객 로그, recipe, 사진, wafer/result data를 외부로 옮기기 전 보안 승인이 필요함을 설명할 수 있다."],
+  ["rg-025", "나는 toxic hydride, chlorosilane, oxidizer, fuel, inert gas의 위험 분류를 site SDS와 official gas matrix로만 확정해야 함을 안다."],
+  ["rg-026", "나는 subfab pump/abatement/chiller/gas cabinet owner와 tool CE의 책임 경계를 witness/evidence로 묶을 수 있다."],
+  ["rg-027", "나는 deviation, waiver, rollback, MOC/change control이 필요한 상황을 일반 punch item과 구분할 수 있다."],
+  ["rg-028", "나는 process engineer와 handoff할 metrology, recipe, chamber matching, golden trace 질문을 준비할 수 있다."]
 ];
 
 const noSoloRules = [
@@ -120,6 +126,97 @@ const practicalSkillGates = [
   ["Housekeeping", "cleanroom contamination source를 만들지 않는 도구/부품/작업 자세"]
 ];
 
+const nonPublicReadinessGaps = [
+  "정확한 valve sequence, purge cycle, leak-check acceptance value, detector setpoint, interlock bypass policy",
+  "삼성 평택 특정 라인의 escort, photo, data export, 작업허가, tool access, emergency route, gas response rule",
+  "Applied 내부 install manual, chamber option BOM, field service bulletin, FMEA, official troubleshooting tree",
+  "고객 production recipe, acceptance limit, metrology spec, golden trace, chamber matching 기준",
+  "POC별 owner name, live facility status, subfab abatement/pump/chiller configuration, site-specific alarm mapping"
+];
+
+const microAuditDomains = [
+  {
+    title: "장비 정체성 / Scope",
+    pass: [
+      "FEP/EPI가 단일 장비명이 아니라 Front-End Process / Epitaxy 업무 영역임을 설명한다.",
+      "Centura Prime/Xtera/200mm Epi, Vantage RTP 계열처럼 platform과 chamber option을 나눠 본다.",
+      "Applied scope, customer facility scope, contractor scope를 punch item마다 owner로 분리한다."
+    ],
+    risk: "모델명만 외우면 실제 site option, chamber count, pre-clean/etch integration, 고객 scope를 놓친다.",
+    drill: "가상 장비 1대를 platform, PM/CM, LL/TM, FI/EFEM, gas option, customer facility POC로 쪼개서 그려본다."
+  },
+  {
+    title: "Safety / Permit / LOTO",
+    pass: [
+      "stop-work authority, permit, LOTO, stored energy, PPE, confined-like space, working-at-height를 장비 일정보다 우선한다.",
+      "전기뿐 아니라 mechanical, pneumatic, hydraulic, chemical, thermal stored energy도 hazardous energy로 본다.",
+      "gas introduction, interlock override, energized electrical work는 단독 수행 금지로 말할 수 있다."
+    ],
+    risk: "일정 압박에서 bypass나 informal reset을 하면 가장 빠르게 사고/징계/라인 중단으로 이어진다.",
+    drill: "작업 하나를 골라 필요한 permit, witness, energy isolation, re-energization 조건을 1장으로 쓴다."
+  },
+  {
+    title: "Facility Hook-up",
+    pass: [
+      "POC, P&ID, hook-up drawing, as-built/redline, flow direction, line label, owner를 같이 본다.",
+      "power, CDA/N2, gas, vacuum, exhaust, PCW/chiller, network, host를 각각 pass evidence로 분리한다.",
+      "facility ready signal과 실제 physical state가 다르면 작업을 보류하고 owner를 지정한다."
+    ],
+    risk: "ready bit만 보고 실제 exhaust/abatement/PCW/pump 상태를 확인하지 않으면 qualification에서 원인 분리가 무너진다.",
+    drill: "source-to-abatement 또는 PCW supply-to-return walkdown checklist를 작성한다."
+  },
+  {
+    title: "Gas / Chemistry",
+    pass: [
+      "silane, DCS/TCS/STC, H2, HCl, PH3, AsH3, B2H6, GeH4, O2/O3/N2O, NH3, N2/Ar/He를 hazard family로 분류한다.",
+      "toxic hydride, chlorosilane, fuel, oxidizer, inert gas는 detector/exhaust/abatement/purge 사고가 다름을 설명한다.",
+      "actual gas use는 app이나 구글이 아니라 official gas matrix, SDS, 장비 option, customer recipe로만 확정한다."
+    ],
+    risk: "가스 이름만 외우면 독성/가연성/부식성/산소결핍/압력/호환성 중 무엇이 핵심인지 놓친다.",
+    drill: "한 gas를 골라 cabinet -> VMB/VMP -> tool gas panel -> chamber/foreline -> abatement -> monitor까지 evidence를 나열한다."
+  },
+  {
+    title: "Vacuum / Automation / Wafer Flow",
+    pass: [
+      "FOUP/FI/EFEM/LL/TM/PM/CM의 pressure boundary와 wafer handoff를 순서대로 설명한다.",
+      "pumpdown delay를 seal, valve state, pump, foreline, gauge, recent PM, facility interface로 분리한다.",
+      "robot mis-pick은 teach, end-effector, cassette seating, sensor timing, vibration, slit valve timing으로 나눠 본다."
+    ],
+    risk: "wafer를 계속 넣어서 확인하는 방식은 scrap과 chamber damage risk를 키운다.",
+    drill: "wafer path 하나를 선택해 각 handoff에서 필요한 sensor, valve, pressure state를 적는다."
+  },
+  {
+    title: "Electrical / Controls / DVM",
+    pass: [
+      "DVM 전압/저항/연속성 측정 조건과 lead 위치, CAT rating, energized work 금지 경계를 말한다.",
+      "schematic에서 24V power path, 0V/common, relay coil/contact, sensor input, actuator output, interlock chain을 따라간다.",
+      "host communication, time sync, alarm history, trace data, recipe event를 증거 시간축으로 맞춘다."
+    ],
+    risk: "전원 상태를 모르는 저항 측정, 잘못 꽂은 current jack, 권한 밖 panel 측정은 사람과 장비를 동시에 위험하게 한다.",
+    drill: "가상 24V sensor fault를 open, short, blown fuse, bad common, failed sensor로 나눠 측정 계획을 쓴다."
+  },
+  {
+    title: "Qualification / Process Handoff",
+    pass: [
+      "SAT/qualification을 safety release, subsystem baseline, wafer transfer reliability, process/metrology evidence로 나눈다.",
+      "EPI에서는 thickness, Rs/resistivity, defect map, dopant response, chamber seasoning, pre-clean history를 연결한다.",
+      "RTP에서는 ramp, soak/spike, lamp command, pyrometry, emissivity, rotation, cooling trend를 연결한다."
+    ],
+    risk: "process result만 보고 safety/facility baseline을 놓치면 같은 문제가 early-life failure로 돌아온다.",
+    drill: "qualification fail 하나를 gas, vacuum, thermal, automation, metrology, recipe permission으로 분해한다."
+  },
+  {
+    title: "Customer / Security / Documentation",
+    pass: [
+      "고객 보고를 fact, impact, risk, next action, owner, ETA, next update로 말한다.",
+      "photo/log/recipe/wafer data export는 site 보안 승인 전 금지로 처리한다.",
+      "deviation, waiver, rollback, MOC/change control, open punch item을 구분한다."
+    ],
+    risk: "기술적으로 맞아도 보안/보고/승인 체계를 깨면 현장 신뢰를 잃는다.",
+    drill: "unsafe request를 받았을 때 멈추는 문장과 안전하게 확인 가능한 대안을 적는다."
+  }
+];
+
 function saveReadiness() {
   localStorage.setItem("ceReadinessState", JSON.stringify(readinessState));
   renderReadinessScore();
@@ -138,6 +235,7 @@ function renderReadinessScore() {
 
 function renderReadinessTabs() {
   const tabs = [
+    ["micro", "미세감사"],
     ["gates", "판정Gate"],
     ["nosolo", "단독금지"],
     ["supervised", "입회범위"],
@@ -163,6 +261,32 @@ function readinessGatePanel() {
       <span>${text}</span>
     </label>
   `).join("")}</div>`;
+}
+
+function microAuditPanel() {
+  return `
+    <div class="mastery-grid">
+      <article class="mastery-card">
+        <span class="level-pill">현실 판정</span>
+        <h2>이 웹 하나만으로 독립 현장투입은 불가</h2>
+        <p>공개자료 기반 학습은 방향과 언어를 만들 수 있지만, 실제 install 권한은 Applied 공식 교육, 고객 site orientation, 장비별 manual, permit, senior witness, 고객 sign-off가 있어야 생깁니다.</p>
+        <strong>웹으로 대체 불가한 비공개/현장 항목</strong>
+        <ul>${nonPublicReadinessGaps.map(item => `<li>${item}</li>`).join("")}</ul>
+      </article>
+      ${microAuditDomains.map(domain => `
+        <article class="mastery-card">
+          <span class="level-pill">AUDIT</span>
+          <h2>${domain.title}</h2>
+          <strong>Pass 조건</strong>
+          <ul>${domain.pass.map(item => `<li>${item}</li>`).join("")}</ul>
+          <strong>놓치면 위험한 점</strong>
+          <p>${domain.risk}</p>
+          <strong>훈련</strong>
+          <p>${domain.drill}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function noSoloPanel() {
@@ -217,6 +341,7 @@ function skillPanel() {
 function renderReadiness() {
   renderReadinessTabs();
   const renderers = {
+    micro: microAuditPanel,
     gates: readinessGatePanel,
     nosolo: noSoloPanel,
     supervised: supervisedPanel,

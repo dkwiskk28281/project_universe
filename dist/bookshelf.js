@@ -12,6 +12,9 @@
   const BOOKSHELF_D1_LIMIT_GB = 10;
   const LIFE_PACKET_SCHEMA_VERSION = "my-life-intelligence-packet-v1";
   const FILE_INDEX_SCHEMA_VERSION = "life-file-index-v1";
+  const LIFE_OS_TASK_KEY = "projectUniverseLifeOsTaskLogV2";
+  const ACTIVE_GRAPH_NODE_KEY = "projectUniverseActiveGraphNode";
+  const LIFE_PACKET_CENTER_VERSION = "life-packet-center-v2";
   const LOCAL_VAULT_API = "http://127.0.0.1:4180";
   const EPI_VAULT_CONFIG = window.EPI_VAULT_CONFIG || {};
 
@@ -504,6 +507,7 @@
   ];
 
   let activeBookId = localStorage.getItem(ACTIVE_BOOK_KEY) || BOOKSHELF_BOOKS[0].id;
+  let activeGraphNodeId = localStorage.getItem(ACTIVE_GRAPH_NODE_KEY) || "";
   let pages = loadPages();
   let remoteState = "로컬 우선";
   let latestAiPacketText = "";
@@ -1337,6 +1341,117 @@
     `;
   }
 
+  function dyorResearchTemplates() {
+    return [
+      {
+        id: "crypto-signal",
+        title: "Crypto signal note",
+        pageType: "DYOR signal",
+        chapter: "Crypto / On-chain",
+        topic: "fact-source-signal-risk-thesis",
+        tags: "crypto,on-chain,DYOR,risk",
+        summary: "Fact:\nSource:\nSignal:\nRisk:\nThesis:\nCounter-thesis:\nAction:\nReview date:",
+        evidence: "Use official project docs, explorer data, filings, reputable market data, and timestamped source links. Do not treat social hype as fact.",
+        nextAction: "다음 확인 데이터와 review date를 정한다."
+      },
+      {
+        id: "whale-movement",
+        title: "Whale movement review",
+        pageType: "On-chain review",
+        chapter: "Whale movement",
+        topic: "wallet-flow-exchange-risk",
+        tags: "whale,exchange-flow,on-chain,DYOR",
+        summary: "Observed movement:\nWallet/entity assumption:\nExchange in/out:\nPossible explanations:\nWhat would falsify this signal:\nAction:",
+        evidence: "Wallet labels are assumptions unless verified by a trusted provider. Cross-check explorer, exchange hot wallet tags, and repeated behavior.",
+        nextAction: "API/provider connection status를 확인하고, signal reliability를 낮음/중간/높음으로 표시한다."
+      },
+      {
+        id: "rwa-tokenization",
+        title: "RWA tokenization thesis",
+        pageType: "Tokenization research",
+        chapter: "RWA / ETH ecosystem",
+        topic: "asset-flow-yield-liquidity-risk",
+        tags: "RWA,tokenization,Ethereum,DYOR",
+        summary: "Asset category:\nIssuer/source:\nOn-chain venue:\nLiquidity/yield:\nRegulatory/credit risk:\nCounter-thesis:\nReview date:",
+        evidence: "Separate real-world asset claim, issuer risk, token smart contract risk, and market liquidity. Missing API keys should show as connection-needed.",
+        nextAction: "source reliability와 risk level을 기록한다."
+      },
+      {
+        id: "stock-etf",
+        title: "Stock/ETF research note",
+        pageType: "Equity or ETF research",
+        chapter: "US/KR stocks and ETFs",
+        topic: "filing-cashflow-valuation-risk",
+        tags: "stock,ETF,filing,DYOR",
+        summary: "Ticker:\nOfficial filing/source:\nRevenue/cash flow:\nValuation:\nETF holdings or exposure:\nRisk:\nCounter-thesis:\nReview date:",
+        evidence: "Use SEC EDGAR for US filings and OpenDART for Korean filings where available. This is research, not financial advice.",
+        nextAction: "반증 조건과 다음 review date를 정한다."
+      }
+    ];
+  }
+
+  function applyDyorTemplate(templateId) {
+    const template = dyorResearchTemplates().find(item => item.id === templateId);
+    if (!template) return;
+    activeBookId = "investment-dyor";
+    localStorage.setItem(ACTIVE_BOOK_KEY, activeBookId);
+    document.querySelector("#bookshelf-title")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const setValue = (selector, value) => {
+      const field = document.querySelector(selector);
+      if (field) field.value = value;
+    };
+    setValue("#bookshelf-title", template.title);
+    setValue("#bookshelf-page-type", template.pageType);
+    setValue("#bookshelf-chapter", template.chapter);
+    setValue("#bookshelf-topic", template.topic);
+    setValue("#bookshelf-tags", template.tags);
+    setValue("#bookshelf-summary", template.summary);
+    setValue("#bookshelf-evidence", template.evidence);
+    setValue("#bookshelf-next-action", template.nextAction);
+    const privacy = document.querySelector("#bookshelf-privacy");
+    if (privacy) privacy.value = "private-summary";
+    document.querySelector("#bookshelf-title")?.focus();
+  }
+
+  function renderDyorResearchOsPanel() {
+    const providers = [
+      ["Etherscan / explorer", "wallet, transaction, contract 확인", "API key 또는 수동 링크 연결 필요"],
+      ["Whale Alert / Arkham / Nansen류", "entity label과 whale movement", "provider 연결 필요"],
+      ["DefiLlama", "TVL, fees, stablecoin, chain flow", "일부 public endpoint 가능"],
+      ["RWA.xyz / issuer docs", "tokenized asset category와 issuer data", "API key/공식 문서 연결 필요"],
+      ["SEC EDGAR / OpenDART", "미국/한국 공식 공시", "공식 자료 우선"]
+    ];
+    return `
+      <section class="dyor-research-os">
+        <div class="panel-title-row">
+          <div>
+            <p class="eyebrow">Research OS</p>
+            <h3>투자 조언이 아니라 근거 분리형 DYOR 기록장</h3>
+            <p>fact, source, signal, risk, thesis, counter-thesis, action, reviewDate를 분리합니다. API가 없으면 mock 데이터가 아니라 연결 필요 상태로 남깁니다.</p>
+          </div>
+          <span class="sync-pill">not financial advice</span>
+        </div>
+        <div class="dyor-template-grid">
+          ${dyorResearchTemplates().map(template => `
+            <button type="button" data-dyor-template="${escapeHtml(template.id)}">
+              <strong>${escapeHtml(template.title)}</strong>
+              <small>${escapeHtml(template.chapter)}</small>
+            </button>
+          `).join("")}
+        </div>
+        <div class="dyor-provider-grid">
+          ${providers.map(([name, use, state]) => `
+            <article>
+              <span>${escapeHtml(state)}</span>
+              <strong>${escapeHtml(name)}</strong>
+              <p>${escapeHtml(use)}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderInvestmentDyorInterior(book) {
     return `
       ${renderBookBlueprint(book)}
@@ -1368,6 +1483,7 @@
         ${renderCryptoSnapshot()}
         ${renderOnchainIntelPanel()}
         ${renderTokenizationIntelPanel()}
+        ${renderDyorResearchOsPanel()}
         <div class="dyor-source-grid">
           ${DYOR_SOURCE_STACK.map(source => `
             <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">
@@ -1739,6 +1855,22 @@
     localStorage.setItem(BOOKSHELF_RESTORE_KEY, JSON.stringify(events.slice(0, 20)));
   }
 
+  function analyzeRestoreCandidates(candidates) {
+    const byId = new Map(pages.map(page => [page.id, normalizePage(page)]));
+    return candidates.reduce((acc, raw) => {
+      const incoming = normalizePage(raw);
+      const existing = byId.get(incoming.id);
+      if (!existing) {
+        acc.newPages += 1;
+        return acc;
+      }
+      acc.duplicates += 1;
+      if (pageSortValue(incoming) < pageSortValue(existing)) acc.older += 1;
+      if (incoming.integrityHash !== existing.integrityHash) acc.conflicts += 1;
+      return acc;
+    }, { newPages: 0, duplicates: 0, older: 0, conflicts: 0 });
+  }
+
   function buildExportClassCounts() {
     return pages.reduce((acc, page) => {
       const policy = page.exportPolicy || privacyExportPolicy(page.privacyLevel, page.aiExportOk);
@@ -1812,6 +1944,360 @@
         "D1은 대용량 파일 저장소가 아니므로 원문 파일은 R2 또는 로컬 vault에 두고 해시/요약만 색인합니다."
       ]
     };
+  }
+
+  function lifeTodayKey(date = new Date()) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  function loadLifeTaskLog() {
+    return safeJsonParse(LIFE_OS_TASK_KEY, {});
+  }
+
+  function saveLifeTaskLog(log) {
+    localStorage.setItem(LIFE_OS_TASK_KEY, JSON.stringify(log || {}));
+  }
+
+  function lifeTaskKey(task, date = lifeTodayKey()) {
+    return `${date}:${task.id}`;
+  }
+
+  function isLifeTaskDone(task) {
+    const log = loadLifeTaskLog();
+    return Boolean(log[lifeTaskKey(task)]?.done);
+  }
+
+  function toggleLifeTask(taskId) {
+    const briefing = buildOperatingBriefing();
+    const task = briefing.tasks.find(item => item.id === taskId);
+    if (!task) return;
+    const log = loadLifeTaskLog();
+    const key = lifeTaskKey(task);
+    const previous = log[key] || {};
+    log[key] = {
+      ...previous,
+      taskId,
+      title: task.title,
+      evidence: task.evidence,
+      bookId: task.bookId || "",
+      view: task.view || "",
+      done: !previous.done,
+      updatedAt: new Date().toISOString()
+    };
+    saveLifeTaskLog(log);
+    renderBookshelf();
+  }
+
+  function lifeTaskStreak() {
+    const log = loadLifeTaskLog();
+    let streak = 0;
+    for (let offset = 0; offset < 30; offset += 1) {
+      const day = new Date();
+      day.setDate(day.getDate() - offset);
+      const key = lifeTodayKey(day);
+      const done = Object.values(log).some(item => item?.done && String(item.updatedAt || "").startsWith(key));
+      if (!done) break;
+      streak += 1;
+    }
+    return streak;
+  }
+
+  function buildOperatingBriefing() {
+    const agenda = buildTodayAgenda();
+    const audit = buildBookshelfAudit();
+    const patterns = buildPatternSignals();
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const reviewQueue = safeJsonParse("amkEnglishSpacedReviewQueue", []);
+    const dueEnglish = reviewQueue.filter(item => new Date(item.dueAt || 0).getTime() <= Date.now()).length;
+    const openLoop = patterns.openLoops[0];
+    const weakBook = BOOKSHELF_BOOKS
+      .map(book => ({ book, stats: getBookStats(book) }))
+      .sort((a, b) => a.stats.score - b.stats.score)[0];
+    const tasks = [
+      {
+        id: "cognitive-routine",
+        lane: "인지",
+        title: cognitive.sessions ? "오늘 인지 루틴 1세트" : "인지 루틴 첫 세션 시작",
+        evidence: `sessions ${cognitive.sessions} / streak ${cognitive.streak}`,
+        why: "주의, 처리속도, 기억 회상은 짧고 꾸준한 retrieval practice가 효과적입니다.",
+        view: "cognitive",
+        bookId: "cognitive-resilience"
+      },
+      {
+        id: "english-review",
+        lane: "영어",
+        title: dueEnglish ? `영어 복습 큐 ${dueEnglish}개 처리` : "영어 CBT 10문항 즉시채점",
+        evidence: `${english.totalQuestions} questions / ${english.accuracy}% / due ${dueEnglish}`,
+        why: "오답 직후 해설과 간격 복습을 연결해야 실제 시험용 기억으로 남습니다.",
+        view: "english-test",
+        bookId: "learning-library"
+      },
+      {
+        id: "fep-evidence-drill",
+        lane: "직무",
+        title: career.quizAccuracy < 70 ? "FEP/EPI failure case 3개 재훈련" : "Install report 문장 1개 작성",
+        evidence: `CE quiz ${career.quizAccuracy}% / missions ${career.missions}`,
+        why: "시니어 CE 사고는 symptom -> risk -> evidence -> stop -> report 순서가 자동화되어야 합니다.",
+        view: "diagnostics",
+        bookId: "career-fep-epi"
+      },
+      {
+        id: "open-loop-close",
+        lane: "정리",
+        title: openLoop ? `열린 루프 닫기: ${openLoop.title}` : "새 기록 1개에 nextStep 추가",
+        evidence: openLoop ? `${openLoop.bookTitle}` : `${audit.withNext}/${audit.total || 0} records with next action`,
+        why: "다음 행동이 없는 기록은 AI가 실행 계획으로 바꾸기 어렵습니다.",
+        bookId: openLoop ? pages.find(page => page.id === openLoop.id)?.bookId : activeBookId
+      },
+      {
+        id: "backup-packet",
+        lane: "백업",
+        title: audit.localOnly ? "D1 재동기화 후 백업 packet 확인" : "민감정보 제외 AI packet 확인",
+        evidence: `${audit.localOnly} local-only / data quality ${audit.score}`,
+        why: "장기 OS의 핵심은 기록이 사라지지 않고, AI에게 넘길 수 있는 형태로 유지되는 것입니다.",
+        command: "download-life-packet",
+        bookId: "ai-briefing-desk"
+      },
+      {
+        id: "weak-book-nudge",
+        lane: "책장",
+        title: weakBook ? `${weakBook.book.title} 보강` : "책장 첫 기록 만들기",
+        evidence: weakBook ? `score ${weakBook.stats.score} / pages ${weakBook.stats.pages.length}` : "no records",
+        why: "책장별 데이터 밀도가 균형 잡혀야 나중에 생활, 학습, 자산 패턴을 종합할 수 있습니다.",
+        bookId: weakBook?.book?.id || activeBookId
+      }
+    ];
+    const done = tasks.filter(isLifeTaskDone).length;
+    const readiness = Math.round((audit.score * 0.45) + (Math.min(100, english.accuracy || 0) * 0.15) + (Math.min(100, career.quizAccuracy || 0) * 0.25) + (Math.min(100, cognitive.streak * 12) * 0.15));
+    return {
+      schema: "life-os-operating-briefing-v2",
+      generatedAt: new Date().toISOString(),
+      agenda,
+      tasks,
+      done,
+      total: tasks.length,
+      readiness,
+      streak: lifeTaskStreak(),
+      audit,
+      patterns,
+      warnings: [
+        "민감 원문, 비밀번호, seed phrase, 계좌번호, 주민등록번호, 고객 비공개자료는 저장하지 않습니다.",
+        "D1은 구조화 JSON 저장소이고, 큰 파일은 R2 또는 D 드라이브 vault에 두고 index만 기록합니다.",
+        "장비 recipe, valve sequence, detector setpoint, interlock bypass, site-specific limit은 공식 교육/승인 문서 우선입니다."
+      ]
+    };
+  }
+
+  function renderOperatingBriefingPanel(activeBook) {
+    const briefing = buildOperatingBriefing();
+    const percentDone = Math.round(briefing.done / briefing.total * 100);
+    return `
+      <section class="operating-briefing-panel" aria-label="오늘의 운영 브리핑">
+        <div class="operating-briefing-head">
+          <div>
+            <p class="eyebrow">Life OS v2 Briefing</p>
+            <h2>오늘의 운영 브리핑</h2>
+            <p>책장, 영어, 인지훈련, FEP/EPI 약점, 백업 상태를 한 화면에서 우선순위로 정렬합니다. 완료하면 오늘의 progress와 streak에 반영됩니다.</p>
+          </div>
+          <div class="ops-readiness-ring">
+            <span>READINESS</span>
+            <strong>${briefing.readiness}</strong>
+            <small>${briefing.done}/${briefing.total} done · streak ${briefing.streak}</small>
+          </div>
+        </div>
+        <div class="ops-progress-line"><i style="width:${percentDone}%"></i></div>
+        <div class="operating-task-grid">
+          ${briefing.tasks.map(task => {
+            const done = isLifeTaskDone(task);
+            return `
+              <article class="life-task-card ${done ? "done" : ""}">
+                <div>
+                  <span>${escapeHtml(task.lane)}</span>
+                  <strong>${escapeHtml(task.title)}</strong>
+                  <small>${escapeHtml(task.evidence)}</small>
+                  <p>${escapeHtml(task.why)}</p>
+                </div>
+                <div class="life-task-actions">
+                  <button class="secondary" type="button" data-life-task-toggle="${escapeHtml(task.id)}">${done ? "완료 취소" : "완료"}</button>
+                  <button class="secondary" type="button" data-life-task-open="${escapeHtml(task.id)}">열기</button>
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+        <div class="ops-warning-list">
+          ${briefing.warnings.map(item => `<span><b>BOUNDARY</b>${escapeHtml(item)}</span>`).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function buildSpecializedPacket(kind) {
+    const now = new Date().toISOString();
+    const pagePool = pages.map(normalizePage);
+    const careerPages = pagePool.filter(page => page.bookId === "career-fep-epi");
+    const englishQueue = safeJsonParse("amkEnglishSpacedReviewQueue", []);
+    const cognitiveState = safeJsonParse("cognitiveTrainerState", {});
+    const common = {
+      schema: LIFE_PACKET_CENTER_VERSION,
+      kind,
+      generatedAt: now,
+      boundary: {
+        neverInclude: ["password", "seed phrase", "account number", "resident ID", "customer confidential material", "recipe", "valve sequence", "detector setpoint", "interlock bypass"],
+        fileRule: "D1 stores structured JSON and file indexes only. Large source files stay in R2 or the optional D-drive vault."
+      },
+      knowledgeGraph: buildKnowledgeGraph(),
+      patternSignals: buildPatternSignals(),
+      nextSevenDays: buildNextSevenDays()
+    };
+    const redactedPages = pagePool.filter(page => page.aiExportOk).map(redactPageForAi);
+    if (kind === "full-backup") return buildBookshelfExport();
+    if (kind === "ai-redacted") return buildRedactedBookshelfExport();
+    if (kind === "no-health-assets") {
+      return {
+        ...common,
+        title: "AI packet excluding health, asset, and investment records",
+        includes: ["learning", "career", "ideas", "general life summaries"],
+        excludes: ["family-health", "assets-finance", "investment-dyor", "sensitive-index"],
+        pages: redactedPages.filter(page => !["family-health", "assets-finance", "investment-dyor"].includes(page.bookId))
+      };
+    }
+    if (kind === "career-growth") {
+      return {
+        ...common,
+        title: "Career growth packet",
+        includes: ["FEP/EPI learning records", "English weakness", "CE quiz and scenario signals"],
+        excludes: ["health", "asset", "family records"],
+        career: localCareerInsight(),
+        english: localEnglishInsight(),
+        pages: careerPages.filter(page => page.aiExportOk).map(redactPageForAi)
+      };
+    }
+    if (kind === "fep-ce") {
+      return {
+        ...common,
+        title: "FEP/EPI CE mastery packet",
+        includes: ["public-source tagged CE learning", "scenario weakness", "install/troubleshooting notes"],
+        excludes: ["recipe", "manual", "site-specific acceptance limits"],
+        career: localCareerInsight(),
+        ceTrainerState: safeJsonParse("ceTrainerState", {}),
+        verificationTags: FEP_EPI_EVIDENCE_TAGS,
+        pages: careerPages.map(page => page.aiExportOk ? redactPageForAi(page) : {
+          id: page.id,
+          title: page.title,
+          bookId: page.bookId,
+          exportPolicy: page.exportPolicy,
+          redacted: true
+        })
+      };
+    }
+    if (kind === "english-weakness") {
+      return {
+        ...common,
+        title: "English weakness packet",
+        includes: ["micro attempts", "spaced repetition queue", "weak skill tags"],
+        excludes: ["private life records"],
+        english: localEnglishInsight(),
+        reviewQueue: englishQueue.slice(0, 100)
+      };
+    }
+    if (kind === "cognitive-routine") {
+      return {
+        ...common,
+        title: "Cognitive routine packet",
+        includes: ["routine streak", "weak domains", "weekly non-medical training summary"],
+        excludes: ["diagnosis", "treatment", "raw medical documents"],
+        cognitive: localCognitiveInsight(),
+        cognitiveState
+      };
+    }
+    return buildMyLifeIntelligencePacket();
+  }
+
+  function renderPacketCenterPanel() {
+    const packets = [
+      ["full-backup", "전체 백업 JSON", "모든 구조화 기록, schema, graph, page 원문 요약을 백업합니다.", "민감정보가 포함될 수 있어 개인 보관 전용"],
+      ["ai-redacted", "민감정보 제외 AI packet", "aiExportOk=true 기록만 redaction 규칙으로 정리합니다.", "AI에게 가장 기본으로 보여줄 패킷"],
+      ["no-health-assets", "건강/자산 제외 packet", "건강, 자산, 투자 책을 제외한 학습/일/아이디어 중심 패킷입니다.", "외부 AI 공유용 안전 범위"],
+      ["career-growth", "직무 성장 packet", "FEP/EPI, 영어, CE 사고력 신호를 묶습니다.", "커리어 코칭용"],
+      ["fep-ce", "FEP/EPI CE packet", "장비 학습, failure case, 공개자료 검증 태그를 묶습니다.", "비공개 절차 제외"],
+      ["english-weakness", "영어 약점 packet", "오답, 복습 큐, 약한 skill tag를 정리합니다.", "영어 코치용"],
+      ["cognitive-routine", "인지훈련 packet", "비진단 루틴, streak, 약점 영역을 정리합니다.", "건강 원문 제외"]
+    ];
+    return `
+      <section class="packet-center-panel" aria-label="AI 분석 패킷 센터">
+        <div class="packet-center-head">
+          <div>
+            <p class="eyebrow">AI Packet Center</p>
+            <h2>AI 분석 패킷 센터</h2>
+            <p>AI에게 무엇을 보여줄지 목적별로 분리합니다. 전체 백업은 개인 보관용이고, AI 공유용은 민감 범위를 제외하거나 redacted 상태로 생성합니다.</p>
+          </div>
+          <span class="sync-pill">${LIFE_PACKET_CENTER_VERSION}</span>
+        </div>
+        <div class="packet-grid">
+          ${packets.map(([kind, title, desc, boundary]) => `
+            <article class="packet-card">
+              <span>${escapeHtml(kind)}</span>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(desc)}</p>
+              <small>${escapeHtml(boundary)}</small>
+              <div class="packet-actions">
+                <button class="secondary" type="button" data-packet-copy="${escapeHtml(kind)}">복사</button>
+                <button class="secondary" type="button" data-packet-download="${escapeHtml(kind)}">다운로드</button>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+        <p class="copy-status" id="packet-center-status"></p>
+      </section>
+    `;
+  }
+
+  function getGraphSelection(graph) {
+    if (!activeGraphNodeId || !graph.nodes.some(node => node.id === activeGraphNodeId)) {
+      activeGraphNodeId = graph.nodes.find(node => node.type === "record")?.id || graph.nodes[0]?.id || "";
+      if (activeGraphNodeId) localStorage.setItem(ACTIVE_GRAPH_NODE_KEY, activeGraphNodeId);
+    }
+    return graph.nodes.find(node => node.id === activeGraphNodeId) || graph.nodes[0] || null;
+  }
+
+  function relatedGraphEdges(graph, node) {
+    if (!node) return [];
+    return graph.edges.filter(edge => edge.from === node.id || edge.to === node.id).slice(0, 12);
+  }
+
+  function renderGraphNodeDetail(graph, node) {
+    if (!node) return `<article class="kg-node-detail"><strong>아직 graph node가 없습니다.</strong></article>`;
+    const edges = relatedGraphEdges(graph, node);
+    const record = node.type === "record" ? pages.find(page => `page:${page.id}` === node.id) : null;
+    const redacted = record && !record.aiExportOk && String(record.privacyLevel || "").startsWith("sensitive");
+    return `
+      <article class="kg-node-detail">
+        <div>
+          <span>${escapeHtml(node.type)}</span>
+          <strong>${escapeHtml(node.label)}</strong>
+          <small>${escapeHtml(node.bookId || node.privacyLevel || node.shelf || "")}</small>
+        </div>
+        ${record ? `
+          <dl class="kg-record-grid">
+            <dt>chapter</dt><dd>${escapeHtml(record.chapter || "-")}</dd>
+            <dt>topic</dt><dd>${escapeHtml(record.topic || "-")}</dd>
+            <dt>privacy</dt><dd>${escapeHtml(record.privacyLevel || "-")}</dd>
+            <dt>export</dt><dd>${escapeHtml(record.exportPolicy || "-")}</dd>
+            <dt>files</dt><dd>${record.fileIndex?.length || 0}</dd>
+            <dt>next</dt><dd>${escapeHtml(record.nextAction || record.nextStep || "nextStep 필요")}</dd>
+          </dl>
+          <p>${redacted ? "이 기록은 민감 index로 표시됩니다. AI packet에는 원문이 아니라 redacted/index 형태만 들어갑니다." : escapeHtml(record.summary || "")}</p>
+        ` : `
+          <p>${escapeHtml(node.todayAction || "이 node와 연결된 기록, 태그, entity를 누르면 관련 행동과 export 가능 여부를 확인할 수 있습니다.")}</p>
+        `}
+        <div class="kg-edge-list">
+          ${edges.length ? edges.map(edge => `<span><b>${escapeHtml(edge.label)}</b>${escapeHtml(edge.from)} -> ${escapeHtml(edge.to)}</span>`).join("") : `<span><b>edge</b>연결된 edge가 아직 없습니다.</span>`}
+        </div>
+      </article>
+    `;
   }
 
   function daysSince(value) {
@@ -2105,6 +2591,85 @@
     `;
   }
 
+  function renderKnowledgeGraphPanel() {
+    const graph = buildKnowledgeGraph();
+    const agenda = buildTodayAgenda();
+    const english = localEnglishInsight();
+    const cognitive = localCognitiveInsight();
+    const career = localCareerInsight();
+    const entityPreview = graph.nodes.filter(node => node.type === "entity").slice(0, 10);
+    const selectedNode = getGraphSelection(graph);
+    const nodePreview = [
+      ...graph.nodes.filter(node => node.type === "record").slice(0, 10),
+      ...graph.nodes.filter(node => node.type === "book").slice(0, 8),
+      ...graph.nodes.filter(node => node.type === "entity").slice(0, 8),
+      ...graph.nodes.filter(node => node.type === "tag").slice(0, 8)
+    ].slice(0, 30);
+    return `
+      <section class="knowledge-graph-panel" aria-label="개인 지식 그래프">
+        <div class="knowledge-graph-head">
+          <div>
+            <p class="eyebrow">Personal Knowledge Graph</p>
+            <h2>기록이 지식 그래프와 실행 그래프로 연결됩니다</h2>
+            <p>각 기록은 book, chapter, topic, tags, entities, evidence, action, result, nextStep을 가진 node가 됩니다. 클릭하면 AI export 가능 여부와 다음 행동까지 확인할 수 있습니다.</p>
+          </div>
+          <div class="knowledge-score-ring">
+            <span>GRAPH</span>
+            <strong>${graph.counts.nodes}</strong>
+            <small>${graph.counts.edges} links</small>
+          </div>
+        </div>
+        <div class="knowledge-agenda-grid">
+          ${agenda.map(item => `
+            <article>
+              <span>${escapeHtml(item.lane)}</span>
+              <strong>${escapeHtml(item.action)}</strong>
+              <small>${escapeHtml(item.evidence)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="knowledge-signal-grid">
+          <article>
+            <span>영어 약점</span>
+            <strong>${escapeHtml(english.weaknesses[0]?.skill || "데이터 대기")}</strong>
+            <small>${english.totalQuestions} questions · ${english.accuracy}%</small>
+          </article>
+          <article>
+            <span>인지 루틴</span>
+            <strong>${cognitive.streak}일</strong>
+            <small>${cognitive.sessions} sessions · latest ${cognitive.latestScore}</small>
+          </article>
+          <article>
+            <span>CE 학습</span>
+            <strong>${career.quizAccuracy}%</strong>
+            <small>${career.quizAttempts} quiz · missions ${career.missions}</small>
+          </article>
+          <article>
+            <span>Entities</span>
+            <strong>${graph.counts.entities}</strong>
+            <small>${entityPreview.map(node => node.label).join(", ") || "기록에 관련 대상/entities를 붙이면 채워집니다."}</small>
+          </article>
+        </div>
+        <div class="graph-explorer-grid">
+          <div class="knowledge-graph-strip" aria-label="지식 그래프 node 선택">
+            ${nodePreview.map(node => `
+              <button type="button" data-kg-node="${escapeHtml(node.id)}" class="kg-node-button node-${escapeHtml(node.type)} ${node.id === selectedNode?.id ? "active" : ""}">
+                <b>${escapeHtml(node.type)}</b>${escapeHtml(node.label)}
+              </button>
+            `).join("") || `<span><b>empty</b>첫 기록을 저장하면 node가 생깁니다.</span>`}
+          </div>
+          ${renderGraphNodeDetail(graph, selectedNode)}
+        </div>
+        <div class="knowledge-actions">
+          <button class="primary" type="button" data-command-action="copy-life-packet">My Life Packet 복사</button>
+          <button class="secondary" type="button" data-command-action="focus-capture">구조화 기록 추가</button>
+          <button class="secondary" type="button" data-command-action="open-ai-desk">AI 브리핑 책 열기</button>
+          <span class="copy-status" id="life-packet-copy-status"></span>
+        </div>
+      </section>
+    `;
+  }
+
   function downloadJsonPacket(packet, prefix) {
     const blob = new Blob([JSON.stringify(packet, null, 2)], { type: "application/json;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2149,8 +2714,9 @@
         syncStatus: "local saved / restored",
         remoteSavedAt: page.remoteSavedAt || ""
       }));
+      const restoreAnalysis = analyzeRestoreCandidates(normalized);
       mergePages(normalized);
-      appendRestoreEvent({ fileName: file.name, restoredPages: normalized.length, source: parsed.schema || "unknown-json" });
+      appendRestoreEvent({ fileName: file.name, restoredPages: normalized.length, source: parsed.schema || "unknown-json", analysis: restoreAnalysis });
       remoteState = `${normalized.length}개 복원됨 · D1 재동기화 대기`;
       if (status) status.textContent = `${normalized.length}개 페이지를 병합했습니다. DB 재시도를 누르면 D1로 올라갑니다.`;
       renderBookshelf();
@@ -2262,8 +2828,10 @@
           <span><strong>${stats.overallScore}</strong> 정리도</span>
         </div>
       </section>
+      ${renderOperatingBriefingPanel(activeBook)}
       ${renderIntelBriefingPanel(activeBook, activeStats)}
       ${renderKnowledgeGraphPanel()}
+      ${renderPacketCenterPanel()}
       ${renderLifetimeOpsPanel()}
       ${renderOpsAdminPanel()}
       <section class="library-overview" aria-label="전체 책장">
@@ -2409,6 +2977,42 @@
           renderBookshelf();
         }
       });
+    });
+    detail.querySelectorAll("[data-life-task-toggle]").forEach(button => {
+      button.addEventListener("click", () => toggleLifeTask(button.dataset.lifeTaskToggle));
+    });
+    detail.querySelectorAll("[data-life-task-open]").forEach(button => {
+      button.addEventListener("click", () => {
+        const task = buildOperatingBriefing().tasks.find(item => item.id === button.dataset.lifeTaskOpen);
+        if (!task) return;
+        if (task.bookId) {
+          activeBookId = task.bookId;
+          localStorage.setItem(ACTIVE_BOOK_KEY, activeBookId);
+        }
+        if (task.view && window.showView) window.showView(task.view);
+        else if (task.view) document.querySelector(`[data-view="${task.view}"]`)?.click();
+        renderBookshelf();
+      });
+    });
+    detail.querySelectorAll("[data-kg-node]").forEach(button => {
+      button.addEventListener("click", () => {
+        activeGraphNodeId = button.dataset.kgNode;
+        localStorage.setItem(ACTIVE_GRAPH_NODE_KEY, activeGraphNodeId);
+        renderBookshelf();
+      });
+    });
+    detail.querySelectorAll("[data-packet-copy]").forEach(button => {
+      button.addEventListener("click", () => {
+        copyText(JSON.stringify(buildSpecializedPacket(button.dataset.packetCopy), null, 2), "#packet-center-status");
+      });
+    });
+    detail.querySelectorAll("[data-packet-download]").forEach(button => {
+      button.addEventListener("click", () => {
+        downloadJsonPacket(buildSpecializedPacket(button.dataset.packetDownload), `life-os-${button.dataset.packetDownload}`);
+      });
+    });
+    detail.querySelectorAll("[data-dyor-template]").forEach(button => {
+      button.addEventListener("click", () => applyDyorTemplate(button.dataset.dyorTemplate));
     });
     detail.querySelector("#bookshelf-retry-sync")?.addEventListener("click", () => retryUnsyncedPages());
     detail.querySelector("#bookshelf-download-export")?.addEventListener("click", downloadBookshelfExport);

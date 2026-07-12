@@ -18,7 +18,7 @@
       document.documentElement.style.colorScheme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260629-cognitive1" />
+  <link rel="stylesheet" href="styles.css?v=20260712-lifeosv2" />
 </head>
 <body class="auth-public entry-choice-open">
   <div id="entry-choice-gate" class="entry-choice-gate" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
@@ -65,8 +65,10 @@
       <button class="nav-btn global-only" id="open-command-search" type="button">검색</button>
       <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="true">콘솔</button>
       <button class="nav-btn" data-view="dashboard">EPI 홈</button>
+      <button class="nav-btn" data-view="curriculum">커리큘럼</button>
       <button class="nav-btn" data-view="roadmap">로드맵</button>
       <button class="nav-btn" data-view="systems">장비/공정</button>
+      <button class="nav-btn" data-view="process-visual">공정 시각화</button>
       <button class="nav-btn" data-view="equipment">장비군</button>
       <button class="nav-btn" data-view="cluster">구성게임</button>
       <button class="nav-btn" data-view="install">설치</button>
@@ -117,7 +119,7 @@
           <h1>현장에서 질문을 잘 던지는 CE가 되기 위한 학습 공간</h1>
           <p>공정 원리, 장비 서브시스템, 설치 플로우, 안전, 고객 커뮤니케이션을 한 화면에서 반복 학습합니다.</p>
           <div class="hero-actions">
-            <button class="primary" data-view-jump="roadmap">오늘 학습 시작</button>
+            <button class="primary" data-view-jump="curriculum">오늘 학습 시작</button>
             <button class="secondary" data-view-jump="diagnostics">고장 시나리오 풀기</button>
           </div>
         </div>
@@ -177,6 +179,23 @@
       </section>
     </section>
 
+    <section id="curriculum" class="view">
+      <div class="page-title">
+        <p>CE Growth Curriculum</p>
+        <h1>초보자에서 시니어 CE 사고력까지 이어지는 FEP/EPI/RTP 책</h1>
+      </div>
+      <article class="source-note">
+        <h2>이 장의 사용법</h2>
+        <p>각 챕터를 위에서 아래로 따라가면 개념, 실제 장비 위치, wafer 변화, CE evidence, 중지 조건, 고객 보고 문장이 하나의 사고 흐름으로 연결됩니다. 공개자료로 확인 가능한 원리만 넣고, recipe, valve sequence, detector setpoint, interlock bypass, 고객 site-specific acceptance limit은 현장 승인 문서 우선으로 분리합니다.</p>
+      </article>
+      <section id="curriculum-dashboard" class="curriculum-dashboard no-term"></section>
+      <section class="curriculum-layout">
+        <aside id="curriculum-rail" class="curriculum-rail no-term" aria-label="커리큘럼 챕터"></aside>
+        <article id="curriculum-detail" class="curriculum-detail"></article>
+      </section>
+      <section id="curriculum-audit" class="curriculum-audit no-term"></section>
+    </section>
+
     <section id="roadmap" class="view">
       <div class="page-title">
         <p>Learning Roadmap</p>
@@ -201,6 +220,50 @@
         <a href="https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html" target="_blank" rel="noreferrer">Centura Prime Epi 공개 페이지</a>
         <a href="https://www.appliedmaterials.com/us/en/glossary.html" target="_blank" rel="noreferrer">Applied Glossary</a>
       </div>
+    </section>
+
+    <section id="process-visual" class="view">
+      <div class="page-title">
+        <p>Wafer Process Visualizer</p>
+        <h1>EPI/RTP가 웨이퍼에 실제로 하는 일을 눈으로 보기</h1>
+      </div>
+      <article class="source-note">
+        <h2>대표 공개자료 기반의 개념 애니메이션</h2>
+        <p>이 페이지는 Applied 공식 제품 페이지, 공개 장비 운영 자료, 공개 CVD/Epitaxy 원리 자료를 바탕으로 만든 학습용 시각화입니다. 실제 고객 라인의 gas matrix, pressure, temperature, flow, purge cycle, valve sequence, detector setpoint, recipe limit, acceptance 기준은 공개자료로 확정할 수 없으며 반드시 회사 교육, 고객 site spec, SDS, install manual, senior witness를 따라야 합니다.</p>
+      </article>
+      <section class="process-visual-shell">
+        <aside class="process-rail" id="process-flow-tabs" aria-label="공정 흐름 선택"></aside>
+        <article class="process-visual-stage">
+          <div class="process-stage-head">
+            <div>
+              <p class="eyebrow" id="process-flow-kicker"></p>
+              <h2 id="process-flow-title"></h2>
+              <p id="process-flow-summary"></p>
+            </div>
+            <div class="process-stage-actions">
+              <button class="secondary" type="button" id="process-prev-step">이전</button>
+              <button class="primary" type="button" id="process-next-step">다음 단계</button>
+            </div>
+          </div>
+          <div class="process-timeline" id="process-step-list" aria-label="공정 단계 선택"></div>
+          <div class="process-animation-grid">
+            <section class="process-chamber-panel">
+              <div class="process-chamber" id="process-chamber-visual"></div>
+              <div class="process-state-grid" id="process-state-grid"></div>
+            </section>
+            <section class="wafer-layer-panel">
+              <div class="wafer-layer-view" id="wafer-layer-view"></div>
+              <div class="process-step-detail" id="process-step-detail"></div>
+            </section>
+          </div>
+          <div class="process-gas-matrix" id="process-gas-matrix"></div>
+          <div class="process-source-strip" id="process-source-strip"></div>
+          <section class="process-bridge-grid">
+            <article class="process-bridge-panel" id="process-evidence-ladder"></article>
+            <article class="process-bridge-panel" id="process-risk-translator"></article>
+          </section>
+        </article>
+      </section>
     </section>
 
     <section id="equipment" class="view">
@@ -314,7 +377,7 @@
         <h2>먼저 지켜야 할 경계</h2>
         <p>이 화면은 CE가 전기 회로를 안전하게 이해하고 선임에게 좋은 질문을 던지기 위한 학습용입니다. 실제 energized work, panel 개방, interlock 확인, LOTO, arc-flash PPE, live measurement는 반드시 회사 교육, 고객 site rule, 자격 권한, 작업허가, 공식 매뉴얼을 따릅니다. 모르면 멈추고 선임/EHS/전기 owner에게 escalation합니다.</p>
       </article>
-      <section class="electrical-hero no-term" id="electrical-hero"></section>
+      <section class="electrical-hero" id="electrical-hero"></section>
       <div class="electrical-grid" id="electrical-path"></div>
       <section class="meter-lab no-term">
         <aside class="meter-selector" id="meter-selector"></aside>
@@ -415,7 +478,7 @@
       <div class="mastery-panel" id="readiness-panel"></div>
     </section>
 
-    <section id="runbook" class="view no-term">
+    <section id="runbook" class="view">
       <div class="page-title">
         <p>Senior CE Field Runbook</p>
         <h1>현장에 들어가기 전 머릿속에서 돌리는 설치 운영 런북</h1>
@@ -484,6 +547,10 @@
         <h1>공개 자료 기반 심화 학습 라이브러리</h1>
       </div>
       <div class="deep-layout">
+        <article class="deep-panel" id="source-quality-map"></article>
+        <article class="deep-panel" id="public-evidence-dossier"></article>
+        <article class="deep-panel" id="field-translation-rules"></article>
+        <article class="deep-panel" id="public-boundary-rules"></article>
         <article class="deep-panel" id="public-facts"></article>
         <article class="deep-panel" id="diagnostic-matrix"></article>
         <article class="deep-panel" id="install-deliverables"></article>
@@ -584,15 +651,15 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260629-cognitive1"></script>
+  <script src="app.js?v=20260712-lifeosv2"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
-  <script src="cluster-sim.js?v=20260620-flow5"></script>
+  <script src="cluster-sim.js?v=20260711-simulator1"></script>
   <script src="english-test-expansion.js?v=20260624-english2"></script>
-  <script src="english-test.js?v=20260625-english-instant1"></script>
-  <script src="term-helper.js?v=20260621-elec1"></script>
-  <script src="cognitive.js?v=20260629-cognitive1"></script>
-  <script src="bookshelf.js?v=20260629-cognitive1"></script>
-  <script src="think-tank.js?v=20260625-commercial2"></script>
+  <script src="english-test.js?v=20260712-lifeosv2"></script>
+  <script src="term-helper.js?v=20260712-lifeosv2"></script>
+  <script src="cognitive.js?v=20260712-lifeosv2"></script>
+  <script src="bookshelf.js?v=20260712-lifeosv2"></script>
+  <script src="think-tank.js?v=20260712-lifeosv2"></script>
 </body>
 </html>
