@@ -325,6 +325,15 @@ function hashText(value = "") {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
+function exportPolicyForEntry(entry = {}) {
+  if (!entry.aiExportOk) return "excluded-unless-user-approves";
+  if (entry.privacyLevel === "sensitive-index") return "ai-index-only";
+  if (entry.privacyLevel === "sensitive-summary") return "ai-redacted-summary-only";
+  if (entry.privacyLevel === "controlled-export") return "ai-controlled-summary";
+  if (entry.privacyLevel === "work-learning") return "ai-summary-ok";
+  return "ai-private-summary-only";
+}
+
 function parsePayload(row) {
   try {
     return JSON.parse(row.payload);
@@ -345,7 +354,15 @@ function normalizeStoredEntry(entry, id, createdAt, updatedAt) {
     id,
     createdAt,
     updatedAt,
-    remoteSavedAt: updatedAt
+    remoteSavedAt: updatedAt,
+    schemaVersion: entry.schemaVersion || "server-normalized-entry-v1",
+    syncStatus: "D1 saved",
+    sourceDevice: entry.sourceDevice || "unknown-device",
+    privacyLevel: entry.privacyLevel || entry.severity || "private-summary",
+    storageTier: entry.storageTier || "d1-json",
+    recordKind: entry.recordKind || "structured-summary",
+    exportPolicy: entry.exportPolicy || exportPolicyForEntry(entry),
+    fileIndex: Array.isArray(entry.fileIndex) ? entry.fileIndex.slice(0, 12) : []
   };
   payload.serverIntegrityHash = hashText(stableJson({
     id: payload.id,
@@ -353,10 +370,14 @@ function normalizeStoredEntry(entry, id, createdAt, updatedAt) {
     title: payload.title || "",
     subsystem: payload.subsystem || "",
     severity: payload.severity || "",
+    privacyLevel: payload.privacyLevel || "",
+    sourceDevice: payload.sourceDevice || "",
+    exportPolicy: payload.exportPolicy || "",
     createdAt: payload.createdAt,
     summary: payload.summary || payload.context || "",
     evidence: payload.evidence || "",
-    nextAction: payload.nextAction || payload.nextStudy || ""
+    nextAction: payload.nextAction || payload.nextStudy || "",
+    fileIndex: payload.fileIndex
   }));
   return payload;
 }

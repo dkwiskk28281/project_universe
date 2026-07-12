@@ -539,6 +539,47 @@
     `;
   }
 
+  function renderWeeklyReport() {
+    const recent = state.sessions.slice(0, 7);
+    const average = recent.length
+      ? Math.round(recent.reduce((sum, session) => sum + Number(session.totalScore || 0), 0) / recent.length)
+      : 0;
+    const weakCounter = {};
+    const protectorCounter = {};
+    recent.forEach(session => {
+      (session.weakSpots || []).forEach(spot => {
+        weakCounter[spot] = (weakCounter[spot] || 0) + 1;
+      });
+      (session.protectors || []).forEach(item => {
+        protectorCounter[item] = (protectorCounter[item] || 0) + 1;
+      });
+    });
+    const weakRows = Object.entries(weakCounter).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const protectorRows = Object.entries(protectorCounter).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    const next = weakRows[0]
+      ? `${weakRows[0][0]}이 반복됩니다. 다음 세션은 이 영역을 첫 과제로 두고 성공 기준을 낮게 시작하세요.`
+      : "큰 반복 약점이 보이지 않습니다. 난이도는 유지하고 운동·수면·사회 연결을 계속 묶으세요.";
+    return `
+      <section class="cognitive-weekly-report">
+        <div>
+          <p class="eyebrow">Weekly Brain Report</p>
+          <h2>최근 7회 루틴 패턴</h2>
+          <p>인지훈련은 단일 점수보다 반복 패턴이 중요합니다. 약점, 보호요인, 다음 행동을 한 번에 봅니다.</p>
+        </div>
+        <div class="cognitive-week-grid">
+          <article><span>평균 점수</span><strong>${average}</strong><small>${recent.length} sessions</small></article>
+          <article><span>streak</span><strong>${getStreak()}일</strong><small>중단보다 재개가 우선</small></article>
+          <article><span>반복 약점</span><strong>${escapeHtml(weakRows[0]?.[0] || "대기")}</strong><small>${weakRows[0] ? `${weakRows[0][1]}회 관찰` : "세션 저장 후 분석"}</small></article>
+        </div>
+        <div class="cognitive-week-lists">
+          <span><b>약점</b>${weakRows.map(([spot, count]) => `${escapeHtml(spot)} ${count}회`).join(" · ") || "아직 충분한 데이터 없음"}</span>
+          <span><b>보호요인</b>${protectorRows.map(([item, count]) => `${escapeHtml(item)} ${count}회`).join(" · ") || "운동/수면/사회 연결 체크 대기"}</span>
+          <span><b>다음 7일</b>${escapeHtml(next)}</span>
+        </div>
+      </section>
+    `;
+  }
+
   function buildSessionRecord() {
     const scores = scoreByTask();
     const stroop = stroopStats();
@@ -1022,6 +1063,8 @@
         ${renderAdaptiveRoutine()}
 
         ${started ? `${renderTaskNav()}${renderCurrentTask()}` : renderOverview()}
+
+        ${renderWeeklyReport()}
 
         <section class="cognitive-history-panel">
           <div>

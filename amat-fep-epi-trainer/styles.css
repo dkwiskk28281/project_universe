@@ -8503,6 +8503,222 @@ main {
   color: var(--ink) !important;
 }
 
+/* Lifetime OS reliability panels */
+.ops-admin-panel,
+.verification-boundary-panel,
+.english-review-queue,
+.cognitive-weekly-report {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 3vw, 28px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.ops-admin-head,
+.verification-boundary-panel > div:first-child,
+.english-review-queue > div:first-child,
+.cognitive-weekly-report > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.ops-admin-head p,
+.verification-boundary-panel p,
+.english-review-queue p,
+.cognitive-weekly-report p {
+  max-width: 900px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.ops-admin-grid,
+.verification-tag-grid,
+.english-review-grid,
+.cognitive-week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.ops-admin-grid article,
+.verification-tag-grid article,
+.english-review-grid article,
+.cognitive-week-grid article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.ops-admin-grid span,
+.english-review-grid span,
+.cognitive-week-grid span {
+  color: var(--console-cyan);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ops-admin-grid strong,
+.english-review-grid strong,
+.cognitive-week-grid strong,
+.verification-tag-grid strong {
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  color: var(--ink);
+}
+
+.ops-admin-grid small,
+.english-review-grid small,
+.cognitive-week-grid small,
+.verification-tag-grid small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.ops-warning-list,
+.english-review-list,
+.cognitive-week-lists,
+.file-index-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-warning-list span,
+.english-review-list span,
+.cognitive-week-lists span,
+.file-index-list span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 184, 107, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 184, 107, 0.08);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.ops-warning-list b,
+.english-review-list b,
+.cognitive-week-lists b,
+.file-index-list b {
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.ops-export-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.restore-drop {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.restore-drop span {
+  color: var(--console-cyan);
+  font-weight: 900;
+}
+
+.restore-drop input {
+  width: 100%;
+}
+
+.file-index-list {
+  margin: 8px 0;
+}
+
+.file-index-list span {
+  border-color: rgba(94, 231, 255, 0.24);
+  background: rgba(94, 231, 255, 0.06);
+}
+
+.file-index-list small {
+  color: var(--muted);
+}
+
+main,
+.view,
+.thinktank-panel,
+.weakness-synthesis,
+.synthesis-grid,
+.synthesis-grid article,
+.thinktank-panel p,
+.thinktank-panel li,
+.thinktank-panel h2,
+.thinktank-panel textarea,
+.thinktank-panel input,
+.ops-admin-panel,
+.english-review-queue,
+.cognitive-weekly-report,
+.verification-boundary-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.synthesis-grid,
+.thinktank-grid,
+.thinktank-form,
+.bookshelf-capture-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+:root[data-theme="dark"] .ops-admin-panel,
+:root[data-theme="dark"] .verification-boundary-panel,
+:root[data-theme="dark"] .english-review-queue,
+:root[data-theme="dark"] .cognitive-weekly-report,
+:root[data-theme="dark"] .ops-admin-grid article,
+:root[data-theme="dark"] .verification-tag-grid article,
+:root[data-theme="dark"] .english-review-grid article,
+:root[data-theme="dark"] .cognitive-week-grid article,
+:root[data-theme="dark"] .restore-drop {
+  background: var(--surface-2) !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
+}
+
+@media (max-width: 720px) {
+  .ops-export-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-admin-head,
+  .verification-boundary-panel > div:first-child,
+  .english-review-queue > div:first-child,
+  .cognitive-weekly-report > div:first-child {
+    display: grid;
+  }
+}
+
 /* Intelligence console skin */
 :root,
 :root[data-theme="light"],

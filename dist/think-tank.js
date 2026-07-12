@@ -16,6 +16,7 @@ const THINK_TANK_REMOTE_TOKEN = "epiThinkTankRemoteToken";
 const LOCAL_VAULT_API = EPI_VAULT_CONFIG.localApiUrl || "http://127.0.0.1:4180";
 const LOCAL_VAULT_TOKEN = "epiThinkTankLocalToken";
 const PRIVATE_CACHE_PURGED = "epiPrivateCachePurgedStrictV2";
+const THINK_TANK_DEVICE_KEY = "projectUniverseSourceDevice";
 let pendingPrivateView = "bookshelf";
 let privateSyncStarted = false;
 
@@ -68,6 +69,36 @@ function vaultToken() {
 
 function localVaultToken() {
   return sessionStorage.getItem(LOCAL_VAULT_TOKEN) || "";
+}
+
+function sourceDeviceId() {
+  try {
+    const existing = localStorage.getItem(THINK_TANK_DEVICE_KEY);
+    if (existing) return existing;
+    const next = `device-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
+    localStorage.setItem(THINK_TANK_DEVICE_KEY, next);
+    return next;
+  } catch {
+    return "device-session-only";
+  }
+}
+
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function hashText(value = "") {
+  let hash = 2166136261;
+  const text = String(value);
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function shouldUseLocalVault() {
@@ -631,10 +662,28 @@ async function saveThinkTankEntry(event) {
     updatedAt: new Date().toISOString(),
     syncStatus: "syncing to D1",
     schemaVersion: "ce-experience-v2",
+    sourceDevice: sourceDeviceId(),
+    privacyLevel: "work-learning",
+    storageTier: "d1-json-local-cache",
+    recordKind: "ce-experience-summary",
+    exportPolicy: "ai-summary-ok",
+    privacyBoundary: "No customer confidential drawings, recipes, setpoints, bypass instructions, passwords, or site-specific manual content.",
     rootCause: data.suspectedCause || data.rootCause || "",
     summaryPacket: buildSummaryPacket(data),
     ...data
   };
+  entry.integrityHash = hashText(stableJson({
+    id: entry.id,
+    type: entry.type,
+    subsystem: entry.subsystem,
+    symptom: entry.symptom,
+    evidence: entry.evidence,
+    action: entry.action,
+    result: entry.result,
+    prevention: entry.prevention,
+    customerReport: entry.customerReport,
+    createdAt: entry.createdAt
+  }));
   const entries = loadEntries();
   entries.push(entry);
   saveEntries(entries);

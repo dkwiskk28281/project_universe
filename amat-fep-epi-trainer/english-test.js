@@ -222,6 +222,7 @@ const ENGLISH_ATTEMPTS_KEY = "amkEnglishAttempts";
 const ENGLISH_MICRO_ATTEMPTS_KEY = "amkEnglishMicroAttempts";
 const ENGLISH_RECORDS_KEY = "amkEnglishSessionRecords";
 const ENGLISH_PENDING_RECORDS_KEY = "amkEnglishPendingRecords";
+const ENGLISH_REVIEW_QUEUE_KEY = "amkEnglishSpacedReviewQueue";
 const ENGLISH_REMOTE_API = "https://projectuniverse.chang2058.workers.dev";
 const ENGLISH_REMOTE_TOKEN_KEY = "epiThinkTankRemoteToken";
 const amkEnglishExpansion = window.AMK_ENGLISH_EXPANSION || {};
@@ -410,6 +411,83 @@ function saveEnglishMicroAttempt(item, selectedIndex) {
   localStorage.setItem(ENGLISH_MICRO_ATTEMPTS_KEY, JSON.stringify([...byId.values()].slice(-500)));
 }
 
+function getEnglishReviewQueue() {
+  try {
+    return JSON.parse(localStorage.getItem(ENGLISH_REVIEW_QUEUE_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveEnglishReviewQueue(queue) {
+  localStorage.setItem(ENGLISH_REVIEW_QUEUE_KEY, JSON.stringify(queue.slice(0, 500)));
+}
+
+function scheduleEnglishReview(item, selectedIndex) {
+  const [skillTag, skillNote] = classifyEnglishQuestion(item);
+  const correct = selectedIndex === item.answer;
+  const now = new Date();
+  const due = new Date(now);
+  due.setDate(due.getDate() + (correct ? 3 : 1));
+  const queue = getEnglishReviewQueue();
+  const previous = queue.find(record => record.questionKey === getEnglishQuestionKey(item) && record.skillTag === skillTag);
+  const review = {
+    id: previous?.id || `review-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    questionKey: getEnglishQuestionKey(item),
+    type: item.type,
+    prompt: item.question || item.stem || item.title || "",
+    correctAnswer: item.options?.[item.answer] || item.answer || "",
+    lastSelected: Number.isInteger(selectedIndex) ? item.options[selectedIndex] : "",
+    lastCorrect: correct,
+    skillTag,
+    skillNote,
+    ease: Math.max(1, Number(previous?.ease || 2) + (correct ? 0.2 : -0.4)),
+    lapses: Number(previous?.lapses || 0) + (correct ? 0 : 1),
+    reviews: Number(previous?.reviews || 0) + 1,
+    lastReviewedAt: now.toISOString(),
+    dueAt: due.toISOString(),
+    nextAction: correct
+      ? "3일 뒤 같은 문법/어휘를 다른 문장으로 재확인"
+      : "내일 같은 약점 태그의 유사 문제 5문항 풀기"
+  };
+  const next = [review, ...queue.filter(record => record.id !== review.id)]
+    .sort((a, b) => String(a.dueAt || "").localeCompare(String(b.dueAt || "")));
+  saveEnglishReviewQueue(next);
+}
+
+function renderEnglishSpacedReviewPanel() {
+  const queue = getEnglishReviewQueue();
+  const now = Date.now();
+  const due = queue.filter(item => new Date(item.dueAt || 0).getTime() <= now);
+  const upcoming = queue.filter(item => new Date(item.dueAt || 0).getTime() > now).slice(0, 5);
+  const weak = {};
+  queue.forEach(item => {
+    if (!weak[item.skillTag]) weak[item.skillTag] = { skill: item.skillTag, due: 0, lapses: 0 };
+    if (new Date(item.dueAt || 0).getTime() <= now) weak[item.skillTag].due += 1;
+    weak[item.skillTag].lapses += Number(item.lapses || 0);
+  });
+  const weakRows = Object.values(weak).sort((a, b) => b.lapses - a.lapses || b.due - a.due).slice(0, 4);
+  return `
+    <section class="english-review-queue">
+      <div>
+        <p class="eyebrow">Spaced Review Queue</p>
+        <h2>틀린 문제는 자동으로 복습 대기열에 쌓입니다</h2>
+        <p>간격 반복과 retrieval practice를 합친 방식입니다. 정답만 보는 대신, 같은 약점을 다른 문장으로 다시 꺼내는 루틴을 만듭니다.</p>
+      </div>
+      <div class="english-review-grid">
+        <article><span>오늘 복습</span><strong>${due.length}</strong><small>${due[0]?.skillTag || "대기 없음"}</small></article>
+        <article><span>전체 큐</span><strong>${queue.length}</strong><small>오답·정답 모두 간격 관리</small></article>
+        <article><span>반복 약점</span><strong>${weakRows[0]?.skill || "데이터 대기"}</strong><small>${weakRows[0] ? `${weakRows[0].lapses}회 lapse` : "문제를 풀면 채워짐"}</small></article>
+      </div>
+      <div class="english-review-list">
+        ${(due.length ? due : upcoming).slice(0, 6).map(item => `
+          <span><b>${escapeEnglishTest(item.skillTag || item.type)}</b>${escapeEnglishTest(item.prompt || "")}<small>${escapeEnglishTest(item.nextAction || "")}</small></span>
+        `).join("") || `<span><b>READY</b>아직 복습 큐가 없습니다.<small>객관식 문제를 하나 풀면 자동으로 생성됩니다.</small></span>`}
+      </div>
+    </section>
+  `;
+}
+
 function isEnglishQuestionGraded(item) {
   return Boolean(englishTestState.graded[item.id] || englishTestState.checked);
 }
@@ -436,6 +514,7 @@ function markEnglishQuestionAnswered(item, selectedIndex) {
   if (!englishTestState.attemptLogged[item.id]) {
     saveEnglishAttempt(selectedIndex === item.answer);
     saveEnglishMicroAttempt(item, selectedIndex);
+    scheduleEnglishReview(item, selectedIndex);
     englishTestState.attemptLogged[item.id] = true;
   }
 }
@@ -1103,6 +1182,7 @@ function renderEnglishTestMain() {
     ${renderEnglishSimilarityPanel()}
     ${renderEnglishQualityPanel(objectiveItems)}
     ${renderEnglishWeaknessPanel(objectiveItems)}
+    ${renderEnglishSpacedReviewPanel()}
     <section class="english-section-band">
       <h2>객관식 CBT</h2>
       <p>문법·어휘·독해·듣기가 한 세트 안에 섞여 나옵니다. 이제 끝까지 기다릴 필요 없이 한 문제를 선택하는 순간 공부가 시작됩니다. 틀리면 바로 해설을 읽고, 정답 문장을 소리 내어 한 번 말한 뒤 다음 문제로 넘어가세요.</p>
@@ -1223,6 +1303,7 @@ function resetEnglishScore() {
   localStorage.removeItem(ENGLISH_ATTEMPTS_KEY);
   localStorage.removeItem(ENGLISH_MICRO_ATTEMPTS_KEY);
   localStorage.removeItem(ENGLISH_RECORDS_KEY);
+  localStorage.removeItem(ENGLISH_REVIEW_QUEUE_KEY);
   englishTestState.lastSync = "브라우저 연습 통계 초기화 완료";
   englishTestState.selected = {};
   englishTestState.graded = {};
