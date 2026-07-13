@@ -521,6 +521,16 @@
   let tokenizationIntel = null;
   let tokenizationIntelState = "아직 불러오지 않음";
   let tokenizationMonitorTimer = 0;
+  let v4KernelState = {
+    status: "idle",
+    message: "Life OS v4 kernel not loaded yet.",
+    ops: null,
+    graph: null,
+    briefing: null,
+    fileIndex: null,
+    packet: null,
+    lastLoadedAt: ""
+  };
 
   function escapeHtml(value = "") {
     return String(value)
@@ -837,6 +847,117 @@
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
+  }
+
+  async function fetchV4KernelState(options = {}) {
+    const panel = document.querySelector("#v4-kernel-readout");
+    v4KernelState.status = "loading";
+    v4KernelState.message = options.reindex ? "Reindexing legacy records into Life OS v4..." : "Loading Life OS v4 kernel...";
+    updateV4KernelPanel();
+    try {
+      if (options.reindex) {
+        await apiFetch("/api/v4/reindex", { method: "POST", body: JSON.stringify({ limit: 1000 }) });
+      }
+      const [opsData, graphData, briefingData, fileData, packetData] = await Promise.all([
+        apiFetch("/api/v4/ops-status"),
+        apiFetch("/api/v4/life-graph"),
+        apiFetch("/api/v4/coach-briefing"),
+        apiFetch("/api/v4/file-index"),
+        apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence")
+      ]);
+      v4KernelState = {
+        status: "ready",
+        message: "Life OS v4 kernel is online.",
+        ops: opsData.status,
+        graph: graphData.graph,
+        briefing: briefingData.briefing,
+        fileIndex: fileData.fileIndex,
+        packet: packetData.packet,
+        lastLoadedAt: new Date().toISOString()
+      };
+      latestAiPacketText = JSON.stringify(packetData.packet || {}, null, 2);
+    } catch (error) {
+      v4KernelState = {
+        ...v4KernelState,
+        status: "offline",
+        message: `Life OS v4 kernel unavailable: ${error.message || "unknown error"}`,
+        lastLoadedAt: new Date().toISOString()
+      };
+      if (panel) panel.dataset.state = "offline";
+    }
+    updateV4KernelPanel();
+  }
+
+  function v4ReadinessLabel(score = 0) {
+    if (score >= 85) return "operational";
+    if (score >= 65) return "hardening";
+    if (score >= 40) return "foundation";
+    return "bootstrap";
+  }
+
+  function updateV4KernelPanel() {
+    const target = document.querySelector("#v4-kernel-readout");
+    if (!target) return;
+    const ops = v4KernelState.ops || {};
+    const graph = v4KernelState.graph || {};
+    const briefing = v4KernelState.briefing || {};
+    const fileIndex = v4KernelState.fileIndex || {};
+    const counts = ops.counts || {};
+    const graphCounts = graph.counts || {};
+    target.dataset.state = v4KernelState.status;
+    target.innerHTML = `
+      <div class="v4-kernel-status-line">
+        <span class="sync-pill">${escapeHtml(v4KernelState.status)}</span>
+        <strong>${escapeHtml(v4KernelState.message)}</strong>
+        <small>${v4KernelState.lastLoadedAt ? escapeHtml(v4KernelState.lastLoadedAt.slice(0, 19).replace("T", " ")) : "not loaded"}</small>
+      </div>
+      <div class="v4-kernel-metrics">
+        <article>
+          <span>Kernel score</span>
+          <strong>${ops.score ?? 0}</strong>
+          <small>${escapeHtml(v4ReadinessLabel(ops.score || 0))}</small>
+        </article>
+        <article>
+          <span>Normalized records</span>
+          <strong>${counts.life_records ?? 0}</strong>
+          <small>${counts.entries ?? 0} legacy entries</small>
+        </article>
+        <article>
+          <span>Graph</span>
+          <strong>${graphCounts.nodes ?? 0}</strong>
+          <small>${graphCounts.edges ?? 0} edges</small>
+        </article>
+        <article>
+          <span>File index</span>
+          <strong>${fileIndex.total ?? counts.file_index ?? 0}</strong>
+          <small>${escapeHtml(ops.storage?.r2State || "placeholder")}</small>
+        </article>
+        <article>
+          <span>Weakness</span>
+          <strong>${counts.weakness_events ?? 0}</strong>
+          <small>auto review signals</small>
+        </article>
+        <article>
+          <span>Audit</span>
+          <strong>${counts.audit_events ?? 0}</strong>
+          <small>server events</small>
+        </article>
+      </div>
+      <div class="v4-kernel-actions-list">
+        ${(briefing.actions || []).map(action => `
+          <span>
+            <b>${escapeHtml(action.lane)}</b>
+            ${escapeHtml(action.action)}
+            <small>${escapeHtml(action.why)}</small>
+          </span>
+        `).join("") || `<span><b>대기</b>v4 데이터를 불러오면 오늘의 운영 action이 표시됩니다.</span>`}
+      </div>
+      <div class="v4-kernel-boundary">
+        <strong>보안 경계</strong>
+        <p>${escapeHtml(ops.auth?.boundary || "Client lock is not enterprise authentication. Cloudflare Access/Passkey hardening remains the next security jump.")}</p>
+        <p>${escapeHtml(ops.storage?.rawFileRule || "D1 stores index and structured records only.")}</p>
+      </div>
+    `;
   }
 
   async function copyText(text, statusSelector) {
@@ -3241,6 +3362,74 @@
     `;
   }
 
+  function renderV4KernelPanel() {
+    return `
+      <section class="v4-kernel-panel" aria-label="Life OS v4 operating kernel">
+        <div class="v4-kernel-head">
+          <div>
+            <p class="eyebrow">Life OS v4 Kernel</p>
+            <h2>장기 기억을 실제 운영 가능한 구조로 정규화하는 서버 커널</h2>
+            <p>기존 기록은 그대로 두고, 서버에서 Life Graph, File Vault Index, Weakness Queue, Audit Log, AI Packet으로 다시 색인합니다. 이것이 다음 단계 AI 분석 엔진의 뼈대입니다.</p>
+          </div>
+          <div class="v4-kernel-controls">
+            <button class="secondary" type="button" data-v4-kernel-refresh>상태 새로고침</button>
+            <button class="secondary" type="button" data-v4-kernel-reindex>기존 기록 재색인</button>
+            <button class="primary" type="button" data-v4-kernel-copy>v4 AI Packet 복사</button>
+          </div>
+        </div>
+        <div class="v4-architecture-grid">
+          <article>
+            <span>Server Memory</span>
+            <strong>D1 normalized graph</strong>
+            <small>entries -> life_records / life_edges / weakness_events / audit_events</small>
+          </article>
+          <article>
+            <span>File Vault</span>
+            <strong>Index only in D1</strong>
+            <small>raw files stay in future R2 or D-drive vault</small>
+          </article>
+          <article>
+            <span>AI Boundary</span>
+            <strong>redacted packet</strong>
+            <small>health/assets/family default to conservative export</small>
+          </article>
+          <article>
+            <span>Security jump</span>
+            <strong>Access/Passkey ready</strong>
+            <small>current lock remains compatibility layer, not enterprise identity</small>
+          </article>
+        </div>
+        <div id="v4-kernel-readout" class="v4-kernel-readout" data-state="${escapeHtml(v4KernelState.status)}">
+          <div class="v4-kernel-status-line">
+            <span class="sync-pill">${escapeHtml(v4KernelState.status)}</span>
+            <strong>${escapeHtml(v4KernelState.message)}</strong>
+            <small>loading after unlock</small>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function bindV4KernelPanel() {
+    document.querySelector("[data-v4-kernel-refresh]")?.addEventListener("click", () => fetchV4KernelState());
+    document.querySelector("[data-v4-kernel-reindex]")?.addEventListener("click", () => fetchV4KernelState({ reindex: true }));
+    document.querySelector("[data-v4-kernel-copy]")?.addEventListener("click", () => {
+      const copyPacket = () => copyText(JSON.stringify(v4KernelState.packet || {}, null, 2), "#bookshelf-ai-context-copy-status");
+      if (!v4KernelState.packet) fetchV4KernelState().then(copyPacket);
+      else copyPacket();
+    });
+    if (!document.body.classList.contains("auth-unlocked")) {
+      v4KernelState = {
+        ...v4KernelState,
+        status: "locked",
+        message: "Unlock the private bookshelf to load the server-side v4 kernel."
+      };
+      updateV4KernelPanel();
+      return;
+    }
+    fetchV4KernelState();
+  }
+
   function renderLibraryOverview(activeBook) {
     const stats = libraryStats();
     const activeStats = getBookStats(activeBook);
@@ -3259,6 +3448,7 @@
         </div>
       </section>
       ${renderOperatingBriefingPanel(activeBook)}
+      ${renderV4KernelPanel()}
       ${renderLifeOsAuditPanel()}
       ${renderIntelBriefingPanel(activeBook, activeStats)}
       ${renderKnowledgeGraphPanel()}
@@ -3478,6 +3668,7 @@
     detail.querySelector("#onchain-toggle-monitor")?.addEventListener("click", toggleOnchainMonitor);
     detail.querySelector("#tokenization-refresh-intel")?.addEventListener("click", loadTokenizationIntel);
     detail.querySelector("#tokenization-toggle-monitor")?.addEventListener("click", toggleTokenizationMonitor);
+    bindV4KernelPanel();
   }
 
   function renderCapture() {
@@ -3837,6 +4028,7 @@
     event.target.reset();
     renderBookshelf();
     await pushPageToVault(page);
+    fetchV4KernelState().catch(() => {});
   }
 
   function renderBookshelf() {
