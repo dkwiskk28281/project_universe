@@ -337,12 +337,312 @@ const curriculumChapters = [
 
 const curriculumPublicSourceLinks = [
   { label: "Applied Centura Prime Epi", url: "https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html" },
+  { label: "Applied Centura Xtera Epi", url: "https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html" },
+  { label: "Applied Epitaxy", url: "https://www.appliedmaterials.com/us/en/semiconductor/products/processes/epitaxy.html" },
   { label: "Applied Vantage Vulcan RTP", url: "https://www.appliedmaterials.com/us/en/product-library/vantage-vulcan-rtp.html" },
   { label: "Applied Vantage Radiance Plus RTP", url: "https://www.appliedmaterials.com/us/en/product-library/vantage-radiance-plus-rtp.html" },
+  { label: "Applied RTP", url: "https://www.appliedmaterials.com/us/en/semiconductor/products/processes/rapid-thermal-processing-treatments.html" },
   { label: "OSHA Semiconductor Fabrication Hazards", url: "https://www.osha.gov/semiconductors/silicon/device-fabrication" },
   { label: "NIOSH Hazardous Energy Control", url: "https://www.cdc.gov/niosh/manufacturing/hazardous-energy-control/index.html" },
   { label: "SEMI Safety Standards", url: "https://www.semi.org/en/products-services/standards/safety" },
   { label: "Public Cluster Tool Patent", url: "https://patents.google.com/patent/US20070196011A1/en" }
+];
+
+const fepBigBangPillars = [
+  {
+    id: "structure",
+    label: "구조",
+    title: "장비를 방 단위로 본다",
+    text: "FOUP, EFEM/FI, Load Lock, TM, PM/CM, gas box, pump, exhaust, abatement를 하나의 압력/오염/안전 경계로 연결합니다.",
+    action: "구성게임",
+    view: "cluster",
+    evidence: "module map, wafer path, door/slit valve, pumpdown curve"
+  },
+  {
+    id: "process",
+    label: "공정",
+    title: "wafer 위 변화를 말한다",
+    text: "EPI는 결정성 막 성장, RTP는 열 이력으로 물성 변화입니다. gas/pump/purge/exhaust를 wafer effect와 같은 시간축에 둡니다.",
+    action: "공정 시각화",
+    view: "process-visual",
+    evidence: "temperature trace, MFC actual, pressure, metrology map"
+  },
+  {
+    id: "install",
+    label: "설치",
+    title: "pass evidence로 handover한다",
+    text: "move-in부터 qualification까지는 일정표가 아니라 risk를 제거하는 gate입니다. 각 gate마다 owner, evidence, stop condition이 있어야 합니다.",
+    action: "설치 런북",
+    view: "runbook",
+    evidence: "owner sign-off, utility label, interlock check, baseline wafer"
+  },
+  {
+    id: "judgement",
+    label: "판단",
+    title: "증상에서 보고 문장까지",
+    text: "증상 -> 위험도 -> subsystem -> evidence -> 멈출 조건 -> 고객 보고 -> 재발 방지 순서로 같은 프레임을 반복합니다.",
+    action: "진단 훈련",
+    view: "diagnostics",
+    evidence: "alarm, trend, witness, wafer map, action/result/prevention"
+  }
+];
+
+const fepProcessTwinSteps = [
+  {
+    id: "epi-interface",
+    mode: "EPI",
+    title: "계면 준비: native oxide와 contamination을 줄이는 단계",
+    publicTag: "공개자료로 확인됨",
+    source: "Applied Centura Prime Epi는 vacuum break 없는 integrated pre-clean이 계면 오염과 queue time을 줄이는 방향이라고 설명합니다.",
+    area: "Pre-clean / vacuum transfer",
+    wafer: "wafer 표면은 막을 쌓기 전 성장 가능한 깨끗한 결정 표면으로 준비됩니다.",
+    gasState: "H2 또는 option별 pre-clean chemistry, purge, pumpdown, exhaust readiness를 개념적으로 봅니다.",
+    ceEvidence: ["pre-clean path", "queue time", "pumpdown curve", "detector/exhaust ready", "baseline wafer split"],
+    stop: "pre-clean chamber alarm, exhaust abnormal, unknown gas release, wafer break/particle burst가 있으면 hold.",
+    report: "Pre-clean 포함 path에서 interface risk를 분리해 확인하겠습니다. queue time, vacuum transfer, baseline wafer split을 evidence로 묶겠습니다.",
+    layers: [
+      ["Si substrate", "결정 기판", "#667685"],
+      ["native oxide", "제거/관리 대상", "#cbdde6"],
+      ["clean interface", "성장 준비 표면", "#70f0c0"]
+    ]
+  },
+  {
+    id: "epi-growth",
+    mode: "EPI",
+    title: "성장: precursor가 표면에서 결정성 layer가 되는 단계",
+    publicTag: "공개자료 기반 합리적 추론",
+    source: "OSHA는 CVD/EPI에서 silicon source gas와 dopant gas가 wafer 표면 반응으로 layer를 형성한다고 설명합니다.",
+    area: "EPI Process Module / gas delivery",
+    wafer: "Si 또는 SiGe 계열 layer가 substrate 결정 구조를 따라 성장하고, dopant가 전기 특성에 영향을 줄 수 있습니다.",
+    gasState: "SiH4/DCS/TCS, GeH4, PH3/B2H6/AsH3 후보는 공개 문헌상 gas family입니다. 실제 사용 여부는 tool option과 승인 문서 기준입니다.",
+    ceEvidence: ["MFC setpoint vs actual", "pressure response", "temperature trace", "thickness/Rs/defect map", "chamber history"],
+    stop: "toxic hydride, pyrophoric precursor, corrosive gas, abatement abnormal, unexplained drift는 임의 반복 전 hold.",
+    report: "EPI drift는 gas delivery, thermal stability, chamber condition, metrology를 같은 wafer ID로 대조해 보고하겠습니다.",
+    layers: [
+      ["Si substrate", "기판", "#667685"],
+      ["Si seed", "첫 결정성 성장층", "#5ee7ff"],
+      ["SiGe / doped epi", "strain 또는 전기특성 layer", "#b98cff"],
+      ["cap / contact layer", "저항 최적화 후보층", "#00ff95"]
+    ]
+  },
+  {
+    id: "rtp-thermal",
+    mode: "RTP",
+    title: "열 이력: ramp, soak, spike로 물성을 바꾸는 단계",
+    publicTag: "공개자료로 확인됨",
+    source: "Applied RTP 페이지는 soak, spike, millisecond anneal과 thermal budget reduction을 공개적으로 설명합니다.",
+    area: "RTP chamber / lamp zone / pyrometry",
+    wafer: "두꺼운 막을 쌓기보다 기존 film/dopant/interface의 전기적·물리적 성질이 온도-시간 이력으로 바뀝니다.",
+    gasState: "N2/Ar purge, O2/O3/N2O/NH3/H2 같은 ambient 후보는 option별로 달라집니다. 실제 recipe ambient는 공식 문서 기준입니다.",
+    ceEvidence: ["temperature trace overlay", "lamp command", "pyrometer signal", "wafer rotation", "metrology trend"],
+    stop: "temperature runaway, wafer slip/break, oxidizer/fuel gas boundary 불명확, unauthorized energized work는 즉시 stop.",
+    report: "RTP 이상은 정상 trace와 overlay해 command, measured temperature, ambient readiness, metrology 결과를 분리해 설명하겠습니다.",
+    layers: [
+      ["Si substrate", "기판", "#667685"],
+      ["implanted/existing film", "열처리 대상", "#ffcf7a"],
+      ["activated / modified layer", "물성 변화 결과", "#00ff95"],
+      ["thin oxide/interface", "option별 계면막", "#d8f6ff"]
+    ]
+  },
+  {
+    id: "exit-metrology",
+    mode: "Qualification",
+    title: "증명: purge, unload, baseline wafer, metrology로 pass를 설명",
+    publicTag: "공식 교육/현장 승인 문서 필요",
+    source: "공개자료는 qualification의 일반 사고 프레임까지만 설명할 수 있고, site acceptance limit은 고객/공식 문서 영역입니다.",
+    area: "Unload / metrology / customer handover",
+    wafer: "결과는 thickness, Rs, defect, particle, slip, thermal trace, chamber matching으로 나타납니다.",
+    gasState: "purge complete, residual exhaust, abatement trend, post-run alarm history를 묶어 봅니다.",
+    ceEvidence: ["baseline wafer ID", "metrology map", "golden trace", "alarm history", "open punch owner"],
+    stop: "spec out 반복, acceptance 기준 불명확, safety/facility open item unresolved이면 release를 단정하지 않습니다.",
+    report: "Pass/fail은 승인 기준과 evidence packet으로 분리해 보고하겠습니다. 공개 학습 웹에는 site-specific limit을 넣지 않겠습니다.",
+    layers: [
+      ["Si substrate", "기판", "#667685"],
+      ["processed layer", "공정 결과층", "#00ff95"],
+      ["metrology map", "두께/Rs/defect evidence", "#5ee7ff"],
+      ["handover packet", "보고/재발방지", "#f09a57"]
+    ]
+  }
+];
+
+const fepInstallGates = [
+  {
+    id: "day0-readiness",
+    title: "Day 0: site readiness",
+    owner: "Customer tool owner / facility / EHS / senior CE",
+    evidence: ["approved install window", "drawing revision", "route/floor/service clearance", "utility POC list"],
+    stop: "route, floor load, EHS permit, line identity가 불명확하면 move-in 금지.",
+    report: "Day 0 readiness는 route, utility, EHS, owner sign-off 기준으로 open item을 분리해 공유하겠습니다."
+  },
+  {
+    id: "move-in",
+    title: "Move-in / rigging / set in place",
+    owner: "Rigging owner / CE / customer escort",
+    evidence: ["crate/shock/tilt photo", "move path witness", "tool damage check", "leveling/position evidence"],
+    stop: "damage, collision risk, route deviation, clean protocol 불일치가 있으면 hold.",
+    report: "Move-in evidence와 damage/punch list를 먼저 고정한 뒤 다음 boundary로 넘기겠습니다."
+  },
+  {
+    id: "facility-hookup",
+    title: "Facility hook-up",
+    owner: "Facility owner / gas owner / electrical owner",
+    evidence: ["POC label", "as-built/redline", "power/ground", "CDA/N2/PCW/exhaust/abatement ready"],
+    stop: "line label, flow direction, exhaust/abatement actual state, LOTO boundary가 불명확하면 energization 금지.",
+    report: "Hook-up은 POC identity, owner witness, readiness evidence 순서로 진행하며 mismatch는 punch list로 격리하겠습니다."
+  },
+  {
+    id: "power-on",
+    title: "Power-on / interlock check",
+    owner: "CE / controls owner / senior witness",
+    evidence: ["EMO/E-stop", "door/interlock matrix", "PLC I/O state", "authorized electrical scope"],
+    stop: "승인 없는 energized work, interlock bypass, stored energy 불명확, CAT rating 불일치.",
+    report: "전원 투입 전 안전 chain과 승인 범위를 먼저 확인하겠습니다. interlock은 우회하지 않고 원인을 좁히겠습니다."
+  },
+  {
+    id: "vacuum-gas",
+    title: "Pumpdown / first gas readiness",
+    owner: "CE / gas owner / EHS / abatement owner",
+    evidence: ["pumpdown curve", "leak check record", "MFC response", "detector/exhaust/abatement ready"],
+    stop: "toxic/flammable/corrosive gas identity, purge, detector, abatement가 불명확하면 first gas 금지.",
+    report: "First gas는 process result보다 safety envelope가 우선입니다. gas/EHS/abatement evidence가 완성될 때까지 hold하겠습니다."
+  },
+  {
+    id: "dry-run",
+    title: "Dry run / wafer path",
+    owner: "CE / automation owner / customer tool owner",
+    evidence: ["slot map", "robot teach", "LL pump/vent", "transfer retry 0", "alarm history"],
+    stop: "wafer scrape, double wafer, mapping mismatch, pressure mismatch, repeated retry.",
+    report: "Dry run은 생산성이 아니라 wafer path와 boundary evidence를 확인하는 단계로 진행하겠습니다."
+  },
+  {
+    id: "baseline",
+    title: "Baseline wafer / metrology",
+    owner: "Process owner / metrology / CE",
+    evidence: ["baseline wafer ID", "golden trace", "metrology map", "chamber matching", "alarm-free run"],
+    stop: "metrology inconsistency, chamber drift, unresolved safety/facility punch, acceptance 기준 불명확.",
+    report: "Baseline 결과는 tool trace와 metrology를 같은 wafer ID로 묶어 pass 근거와 남은 risk를 분리해 설명하겠습니다."
+  },
+  {
+    id: "handover",
+    title: "Customer handover",
+    owner: "Customer owner / CE / senior CE",
+    evidence: ["closed checklist", "open punch owner", "next monitoring plan", "customer report packet"],
+    stop: "root cause/pass/fail을 evidence 없이 단정하거나 site-specific 기준을 구두로 대체하지 않습니다.",
+    report: "Handover는 완료 선언이 아니라 risk retired evidence, open item, owner, next update가 포함된 packet으로 진행하겠습니다."
+  }
+];
+
+const fepGasHazardMatrix = [
+  { group: "silicon", name: "SiH4 / DCS / TCS / SiCl4", role: "Si source 후보", hazards: ["pyrophoric/flammable", "corrosive byproduct", "moisture reactive"], evidence: "gas matrix, SDS, MFC trend, purge, exhaust/abatement", boundary: "실제 사용 gas와 농도/flow/sequence는 tool option과 승인 문서 기준" },
+  { group: "dopant", name: "PH3 / AsH3 / B2H6", role: "dopant 후보", hazards: ["highly toxic", "flammable", "hydride risk"], evidence: "gas cabinet, detector health, purge release, abatement ready, EHS witness", boundary: "detector setpoint, valve sequence, purge cycle은 공개 웹에 넣지 않음" },
+  { group: "carrier", name: "H2 / N2 / Ar / He", role: "carrier/purge/support", hazards: ["flammable(H2)", "asphyxiation", "pressure energy"], evidence: "line label, regulator, purge complete, ventilation/exhaust, pressure trend", boundary: "불활성 gas도 산소결핍/압력 에너지 위험이 있음" },
+  { group: "reactive", name: "HCl / NH3 / O2 / O3 / N2O / NO", role: "etch/selectivity/oxidation/nitridation 후보", hazards: ["toxic/corrosive", "oxidizer", "respiratory irritant"], evidence: "material compatibility, scrubber ready, detector/analyzer, gas segregation", boundary: "RTP/EPI option별 실제 ambient는 공식 문서와 process owner 기준" },
+  { group: "exhaust", name: "Pump / foreline / exhaust / abatement", role: "byproduct removal and treatment", hazards: ["corrosion", "condensation", "flammable/toxic byproduct", "pressure drop"], evidence: "ready signal plus actual state, owner witness, alarm trend, maintenance lock boundary", boundary: "ready input만 믿지 말고 실제 facility state와 대조" }
+];
+
+const fepFailureCases = [
+  {
+    id: "epi-defect-after-preclean",
+    subsystem: "EPI interface",
+    title: "Pre-clean 이후 첫 EPI baseline defect 증가",
+    symptom: "Pumpdown과 transfer는 pass인데 pre-clean 포함 path의 baseline wafer defect map이 edge-heavy로 증가한다.",
+    risk: "계면 오염, particle burst, chamber open 이후 상태 미확인. 생산 wafer 투입 전 scope 분리가 필요.",
+    evidence: ["pre-clean only / EPI only / combined path split", "defect map vs PM work area", "queue time", "backside/contact inspection"],
+    wrongAction: "같은 recipe를 많이 돌려 평균이 좋아지는지 본다.",
+    stop: "particle burst, wafer break, toxic/corrosive gas abnormal, exhaust abnormal이면 hold.",
+    report: "Defect 증가는 pre-clean 포함 path에서 집중됩니다. path split baseline과 PM 변경점, wafer map correlation을 확인하겠습니다.",
+    prevention: "PM 후 baseline split template, chamber open history, pre-clean transfer delay 기록을 Think Tank packet으로 저장.",
+    choices: [
+      { label: "pre-clean only/EPI only/combined path로 baseline split을 설계한다.", correct: true, why: "경로를 쪼개야 interface, transfer, chamber 원인 후보가 줄어듭니다." },
+      { label: "incoming wafer 문제로 단정하고 tool 확인을 멈춘다.", correct: false, why: "path-dependent defect이면 tool path evidence를 먼저 봐야 합니다." },
+      { label: "고객 lot으로 결과를 빨리 확인한다.", correct: false, why: "baseline evidence와 safety envelope가 먼저입니다." }
+    ]
+  },
+  {
+    id: "mfc-actual-mismatch",
+    subsystem: "Gas delivery",
+    title: "EPI gas MFC actual이 setpoint를 따라가지 못함",
+    symptom: "특정 line에서만 flow actual이 늦고 최근 cylinder/line work 이력이 있다.",
+    risk: "toxic/flammable/corrosive gas일 수 있어 임의 조작 금지. gas owner와 EHS boundary가 필요.",
+    evidence: ["gas identity and SDS", "supply pressure", "regulator/MFC trend", "purge/release record", "abatement ready"],
+    wrongAction: "setpoint를 크게 올려 반응을 본다.",
+    stop: "gas identity, purge, detector, exhaust/abatement가 불명확하면 line state 조작 금지.",
+    report: "MFC mismatch는 gas supply, regulator, valve, purge, MFC health를 owner witness 안에서 분리하겠습니다.",
+    prevention: "cylinder change 후 trend capture와 gas owner sign-off를 qualification packet에 포함.",
+    choices: [
+      { label: "gas owner/EHS witness로 supply-pressure-MFC trend를 확인한다.", correct: true, why: "gas 안전 경계와 계측 evidence를 함께 지킵니다." },
+      { label: "MFC setpoint를 키워 line이 뚫리는지 본다.", correct: false, why: "위험 gas에서 임의 조작은 금지입니다." },
+      { label: "software alarm만 지우고 dry run으로 넘어간다.", correct: false, why: "root cause와 safety readiness를 가립니다." }
+    ]
+  },
+  {
+    id: "rtp-overshoot",
+    subsystem: "RTP thermal",
+    title: "RTP trace overshoot와 wafer-to-wafer 편차 증가",
+    symptom: "Lamp command가 평소보다 높고 measured temperature가 target 위로 흔들린다.",
+    risk: "thermal budget 초과, wafer slip/break, dopant/profile shift 가능성.",
+    evidence: ["golden trace overlay", "lamp zone command", "pyrometer/window", "wafer rotation", "cooling/exhaust trend"],
+    wrongAction: "recipe target을 낮춰 alarm만 제거한다.",
+    stop: "temperature runaway, wafer damage, unauthorized control change는 hold 및 escalation.",
+    report: "RTP overshoot는 command와 measured temperature overlay, pyrometry, rotation, cooling evidence로 분리하겠습니다.",
+    prevention: "정상 trace library와 chamber별 thermal health summary를 유지.",
+    choices: [
+      { label: "정상 trace와 command/measured temperature를 overlay한다.", correct: true, why: "RTP는 trace 자체가 핵심 evidence입니다." },
+      { label: "target만 임의 조정해 pass처럼 보이게 한다.", correct: false, why: "recipe/control 임의 변경은 비공개 승인 영역이며 위험합니다." },
+      { label: "공정팀 문제로 넘기고 tool trace는 보지 않는다.", correct: false, why: "tool thermal evidence를 먼저 분리해야 합니다." }
+    ]
+  },
+  {
+    id: "abatement-ready-fail",
+    subsystem: "Exhaust / abatement",
+    title: "First gas 전 abatement ready가 간헐 fail",
+    symptom: "tool input은 간헐적으로 ready를 잃고 facility contractor 작업 직후다.",
+    risk: "toxic/flammable/corrosive byproduct 처리 경계 불명확. first gas 금지.",
+    evidence: ["actual exhaust flow", "abatement local status", "ready contact mapping", "alarm history", "owner witness"],
+    wrongAction: "interlock을 임시 우회하고 gas readiness를 진행한다.",
+    stop: "ready input과 actual facility state가 대조되지 않으면 first gas hold.",
+    report: "Abatement ready가 불안정하므로 gas introduction은 hold하고 facility actual state와 tool input을 owner witness로 대조하겠습니다.",
+    prevention: "facility work 이후 ready-signal regression check를 install gate에 추가.",
+    choices: [
+      { label: "facility owner와 actual state/readiness signal을 대조한다.", correct: true, why: "ready input만이 아니라 실제 처리 상태가 중요합니다." },
+      { label: "ready가 들어온 순간만 골라 gas를 연다.", correct: false, why: "간헐 fail은 safety envelope가 안정되지 않았다는 신호입니다." },
+      { label: "interlock을 우회해 원인을 좁힌다.", correct: false, why: "interlock bypass는 금지 경계입니다." }
+    ]
+  },
+  {
+    id: "loadlock-pressure-mismatch",
+    subsystem: "Wafer path / vacuum",
+    title: "Load Lock pressure mismatch와 transfer retry",
+    symptom: "LL vent/pump 후 slit valve 조건이 늦고 같은 boundary에서 transfer retry가 반복된다.",
+    risk: "wafer scrape, pressure equalization 실패, robot/door/sensor mismatch.",
+    evidence: ["LL pump/vent curve", "door/slit valve I/O", "robot handoff log", "pressure equalization", "slot map"],
+    wrongAction: "robot speed를 올려 cycle time을 맞춘다.",
+    stop: "pressure not equalized, wafer present mismatch, repeated retry, scrape mark가 있으면 dry run hold.",
+    report: "LL boundary에서 pressure/I/O/robot evidence를 같은 wafer path로 묶어 mismatch 원인을 좁히겠습니다.",
+    prevention: "wafer path dry-run checklist에 LL pressure curve와 I/O timing overlay 추가.",
+    choices: [
+      { label: "LL pressure curve와 slit/door I/O, robot handoff를 같은 시간축으로 본다.", correct: true, why: "boundary 문제가 transfer 문제처럼 보일 수 있습니다." },
+      { label: "retry가 간헐이면 production wafer로 평균을 본다.", correct: false, why: "wafer damage risk가 있어 hold가 먼저입니다." },
+      { label: "sensor 하나만 교체하고 path split은 하지 않는다.", correct: false, why: "물리 동작과 I/O timing을 함께 봐야 합니다." }
+    ]
+  },
+  {
+    id: "baseline-metrology-conflict",
+    subsystem: "Qualification",
+    title: "Baseline wafer는 pass처럼 보이지만 metrology repeatability가 흔들림",
+    symptom: "tool trace는 안정이나 metrology map repeat가 불안정해 pass 설명이 어려운 상태.",
+    risk: "tool 문제와 measurement 문제를 분리하지 못하면 잘못된 release 또는 과잉 조치 가능.",
+    evidence: ["same wafer repeat", "metrology recipe", "reference tool comparison", "wafer ID trace", "chamber matching"],
+    wrongAction: "한 번 좋은 결과만 골라 pass로 보고한다.",
+    stop: "acceptance 기준과 measurement repeatability가 불명확하면 customer release 단정 금지.",
+    report: "Baseline pass 여부는 metrology repeatability와 tool trace를 분리해 확인한 뒤 공식 기준으로 설명하겠습니다.",
+    prevention: "qualification packet에 metrology condition lock과 repeat check를 포함.",
+    choices: [
+      { label: "metrology 조건을 고정하고 repeatability와 tool trace를 분리한다.", correct: true, why: "pass evidence는 측정 자체의 신뢰도도 포함합니다." },
+      { label: "좋은 map 하나만 골라 handover한다.", correct: false, why: "선택적 보고는 장기 신뢰를 무너뜨립니다." },
+      { label: "tool trace가 좋으니 metrology는 무시한다.", correct: false, why: "고객 acceptance는 wafer 결과 evidence와 연결됩니다." }
+    ]
+  }
 ];
 
 const roadmap = [
@@ -3714,6 +4014,10 @@ let activeRunbookStage = fieldRunbookStages[0].id;
 let activeProcessFlow = processVisualFlows[0].id;
 let activeProcessStep = 0;
 let activeCurriculumChapter = state.activeCurriculumChapter || curriculumChapters[0].id;
+let activeFepProcessTwin = state.activeFepProcessTwin || fepProcessTwinSteps[0].id;
+let activeFepInstallGate = state.activeFepInstallGate || fepInstallGates[0].id;
+let activeFepGasGroup = state.activeFepGasGroup || "all";
+let activeFepCase = state.activeFepCase || fepFailureCases[0].id;
 const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
@@ -4052,6 +4356,56 @@ function getUxSearchItems() {
       renderRunbook();
     }
   }));
+  const fepBigBangItems = [
+    ...fepProcessTwinSteps.map(item => ({
+      title: item.title,
+      meta: `FEP/EPI Big Bang / ${item.mode}`,
+      body: `${item.area} ${item.wafer} ${item.gasState} ${item.ceEvidence.join(" ")} ${item.stop}`,
+      view: "curriculum",
+      onOpen: () => {
+        activeFepProcessTwin = item.id;
+        state.activeFepProcessTwin = item.id;
+        persistState();
+        renderCurriculum();
+      }
+    })),
+    ...fepInstallGates.map(item => ({
+      title: item.title,
+      meta: "FEP/EPI Install Gate",
+      body: `${item.owner} ${item.evidence.join(" ")} ${item.stop} ${item.report}`,
+      view: "curriculum",
+      onOpen: () => {
+        activeFepInstallGate = item.id;
+        state.activeFepInstallGate = item.id;
+        persistState();
+        renderCurriculum();
+      }
+    })),
+    ...fepFailureCases.map(item => ({
+      title: item.title,
+      meta: `FEP/EPI Case / ${item.subsystem}`,
+      body: `${item.symptom} ${item.risk} ${item.evidence.join(" ")} ${item.stop} ${item.report}`,
+      view: "curriculum",
+      onOpen: () => {
+        activeFepCase = item.id;
+        state.activeFepCase = item.id;
+        persistState();
+        renderCurriculum();
+      }
+    })),
+    ...fepGasHazardMatrix.map(item => ({
+      title: item.name,
+      meta: `FEP/EPI Gas / ${item.group}`,
+      body: `${item.role} ${item.hazards.join(" ")} ${item.evidence} ${item.boundary}`,
+      view: "curriculum",
+      onOpen: () => {
+        activeFepGasGroup = item.group;
+        state.activeFepGasGroup = item.group;
+        persistState();
+        renderCurriculum();
+      }
+    }))
+  ];
   const curriculumItems = curriculumChapters.map(item => ({
     title: item.title,
     meta: `커리큘럼 / ${item.level}`,
@@ -4064,7 +4418,7 @@ function getUxSearchItems() {
       renderCurriculum();
     }
   }));
-  return [...navItems, ...commandItems, ...curriculumItems, ...roadmapItems, ...systemItems, ...processItems, ...equipmentItems, ...gasItems, ...runbookItems];
+  return [...navItems, ...commandItems, ...fepBigBangItems, ...curriculumItems, ...roadmapItems, ...systemItems, ...processItems, ...equipmentItems, ...gasItems, ...runbookItems];
 }
 
 function scoreUxSearchItem(item, query) {
@@ -4364,6 +4718,216 @@ function renderLearningUX() {
   }
 }
 
+function getFepBigBangStats() {
+  const answers = Object.values(state.fepBigBangCaseAnswers || {});
+  const correct = answers.filter(item => item.correct).length;
+  const weak = Object.entries(state.fepBigBangWeaknesses || {})
+    .map(([subsystem, count]) => ({ subsystem, count }))
+    .sort((a, b) => b.count - a.count);
+  return {
+    answered: answers.length,
+    correct,
+    casePercent: answers.length ? Math.round(correct / answers.length * 100) : 0,
+    weak,
+    readiness: Math.min(100, Math.round(
+      (answers.length / fepFailureCases.length) * 40 +
+      (correct / Math.max(1, fepFailureCases.length)) * 35 +
+      (Object.values(state.curriculumDone || {}).filter(Boolean).length / curriculumChapters.length) * 25
+    ))
+  };
+}
+
+function getActiveFepTwin() {
+  return fepProcessTwinSteps.find(item => item.id === activeFepProcessTwin) || fepProcessTwinSteps[0];
+}
+
+function getActiveFepGate() {
+  return fepInstallGates.find(item => item.id === activeFepInstallGate) || fepInstallGates[0];
+}
+
+function getActiveFepCase() {
+  return fepFailureCases.find(item => item.id === activeFepCase) || fepFailureCases[0];
+}
+
+function renderFepBigBangLab(progress) {
+  const stats = getFepBigBangStats();
+  const twin = getActiveFepTwin();
+  const gate = getActiveFepGate();
+  const caseItem = getActiveFepCase();
+  const answer = state.fepBigBangCaseAnswers?.[caseItem.id];
+  const filteredGas = activeFepGasGroup === "all"
+    ? fepGasHazardMatrix
+    : fepGasHazardMatrix.filter(item => item.group === activeFepGasGroup);
+  const gasGroups = ["all", ...new Set(fepGasHazardMatrix.map(item => item.group))];
+  const topWeak = stats.weak[0]?.subsystem || progress.weak[0]?.title || "첫 case를 풀어 약점을 만들기";
+
+  return `
+    <section class="fep-bigbang-console no-term" aria-label="FEP/EPI Big Bang Lab">
+      <div class="fep-bigbang-head">
+        <div>
+          <p class="eyebrow">FEP/EPI Big Bang Lab</p>
+          <h2>장비 구조, 공정 변화, 설치 gate, 고장 판단을 한 번에 훈련</h2>
+          <p>이 화면은 FEP/EPI 책의 전술실입니다. 공개자료로 설명 가능한 원리와 현장 사고 프레임만 넣고, recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 의도적으로 제외합니다.</p>
+        </div>
+        <div class="fep-bigbang-score">
+          <span>CE readiness</span>
+          <strong>${stats.readiness}</strong>
+          <small>case ${stats.correct}/${stats.answered || 0} · weakest ${topWeak}</small>
+        </div>
+      </div>
+
+      <div class="fep-pillar-grid">
+        ${fepBigBangPillars.map(item => `
+          <button class="fep-pillar-card" type="button" data-fep-view="${item.view}">
+            <span>${item.label}</span>
+            <strong>${item.title}</strong>
+            <p>${item.text}</p>
+            <small>${item.evidence}</small>
+            <b>${item.action}</b>
+          </button>
+        `).join("")}
+      </div>
+
+      <div class="fep-bigbang-layout">
+        <section class="fep-process-twin">
+          <div class="fep-panel-head">
+            <div>
+              <p class="eyebrow">Process Twin</p>
+              <h3>wafer 위에서 실제로 무슨 일이 일어나는지</h3>
+            </div>
+            <button class="secondary" type="button" data-fep-view="process-visual">전체 공정 극장</button>
+          </div>
+          <div class="fep-twin-tabs">
+            ${fepProcessTwinSteps.map(item => `
+              <button class="${item.id === twin.id ? "active" : ""}" type="button" data-fep-twin="${item.id}">
+                <span>${item.mode}</span>${item.title}
+              </button>
+            `).join("")}
+          </div>
+          <div class="fep-twin-stage">
+            <div class="fep-wafer-stack" aria-label="${twin.title}">
+              ${twin.layers.map((layer, index) => `
+                <span style="--layer-color:${layer[2]}; --layer:${index};">
+                  <b>${layer[0]}</b><em>${layer[1]}</em>
+                </span>
+              `).join("")}
+            </div>
+            <div class="fep-twin-detail">
+              <span class="fep-source-tag">${twin.publicTag}</span>
+              <h4>${twin.title}</h4>
+              <dl>
+                <dt>장비 위치</dt><dd>${twin.area}</dd>
+                <dt>wafer 변화</dt><dd>${twin.wafer}</dd>
+                <dt>gas / pump / purge / exhaust</dt><dd>${twin.gasState}</dd>
+                <dt>CE evidence</dt><dd>${twin.ceEvidence.join(" · ")}</dd>
+                <dt>멈출 조건</dt><dd>${twin.stop}</dd>
+              </dl>
+              <p>${twin.source}</p>
+              <button class="secondary" type="button" data-fep-copy="${twin.report}">보고 문장 복사</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="fep-install-gates">
+          <div class="fep-panel-head">
+            <div>
+              <p class="eyebrow">Install Gate</p>
+              <h3>move-in부터 handover까지 evidence로 통과</h3>
+            </div>
+            <button class="secondary" type="button" data-fep-view="runbook">런북 열기</button>
+          </div>
+          <div class="fep-gate-rail">
+            ${fepInstallGates.map((item, index) => `
+              <button class="${item.id === gate.id ? "active" : ""}" type="button" data-fep-gate="${item.id}">
+                <span>${String(index + 1).padStart(2, "0")}</span>${item.title}
+              </button>
+            `).join("")}
+          </div>
+          <article class="fep-gate-detail">
+            <span class="fep-source-tag">공식 교육/현장 승인 문서 우선</span>
+            <h4>${gate.title}</h4>
+            <p><strong>Owner:</strong> ${gate.owner}</p>
+            <ul>${gate.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+            <p class="fep-stop"><strong>Stop:</strong> ${gate.stop}</p>
+            <button class="secondary" type="button" data-fep-copy="${gate.report}">handover 문장 복사</button>
+          </article>
+        </section>
+      </div>
+
+      <div class="fep-bigbang-layout">
+        <section class="fep-gas-console">
+          <div class="fep-panel-head">
+            <div>
+              <p class="eyebrow">Gas / Vacuum / Exhaust</p>
+              <h3>위험군을 먼저 보고, 실제 사용 여부는 문서로 확인</h3>
+            </div>
+            <button class="secondary" type="button" data-fep-view="gases">가스안전 전체</button>
+          </div>
+          <div class="fep-filter-row">
+            ${gasGroups.map(group => `<button class="${group === activeFepGasGroup ? "active" : ""}" type="button" data-fep-gas="${group}">${group}</button>`).join("")}
+          </div>
+          <div class="fep-gas-grid">
+            ${filteredGas.map(item => `
+              <article>
+                <span>${item.role}</span>
+                <strong>${item.name}</strong>
+                <div>${item.hazards.map(hazard => `<b>${hazard}</b>`).join("")}</div>
+                <p>${item.evidence}</p>
+                <small>${item.boundary}</small>
+              </article>
+            `).join("")}
+          </div>
+        </section>
+
+        <section class="fep-case-lab">
+          <div class="fep-panel-head">
+            <div>
+              <p class="eyebrow">Failure Case Lab</p>
+              <h3>증상 -> 위험 -> evidence -> stop -> report</h3>
+            </div>
+            <button class="secondary" type="button" data-fep-view="diagnostics">진단 훈련 전체</button>
+          </div>
+          <div class="fep-case-picker">
+            ${fepFailureCases.map(item => {
+              const saved = state.fepBigBangCaseAnswers?.[item.id];
+              return `
+                <button class="${item.id === caseItem.id ? "active" : ""} ${saved?.correct ? "solved" : saved ? "review" : ""}" type="button" data-fep-case="${item.id}">
+                  <span>${item.subsystem}</span>${item.title}
+                </button>
+              `;
+            }).join("")}
+          </div>
+          <article class="fep-case-board">
+            <span class="fep-source-tag">${caseItem.subsystem}</span>
+            <h4>${caseItem.title}</h4>
+            <div class="fep-case-flow">
+              <span><b>증상</b>${caseItem.symptom}</span>
+              <span><b>위험</b>${caseItem.risk}</span>
+              <span><b>Evidence</b>${caseItem.evidence.join(" · ")}</span>
+              <span><b>피할 행동</b>${caseItem.wrongAction}</span>
+              <span><b>Stop</b>${caseItem.stop}</span>
+              <span><b>Prevention</b>${caseItem.prevention}</span>
+            </div>
+            <div class="decision-grid fep-case-choices">
+              ${caseItem.choices.map((choice, index) => `
+                <button class="decision ${answer && index === answer.selected ? "picked" : ""} ${answer && choice.correct ? "good" : ""} ${answer && index === answer.selected && !choice.correct ? "bad" : ""}" type="button" data-fep-case-choice="${index}">
+                  ${choice.label}
+                </button>
+              `).join("")}
+            </div>
+            <p class="explain">${answer ? caseItem.choices[answer.selected].why : "하나를 고르면 즉시 채점되고 약점 dashboard에 쌓입니다."}</p>
+            <textarea class="fep-report-template" readonly>${caseItem.report}</textarea>
+            <div class="fep-case-actions">
+              <button class="primary" type="button" data-fep-copy="${caseItem.report}">보고 문장 복사</button>
+              <button class="secondary" type="button" data-fep-view="thinktank">이 케이스를 Think Tank에 기록</button>
+            </div>
+          </article>
+        </section>
+      </div>
+    </section>
+  `;
+}
+
 function renderCurriculum() {
   const dashboard = document.querySelector("#curriculum-dashboard");
   const rail = document.querySelector("#curriculum-rail");
@@ -4380,6 +4944,7 @@ function renderCurriculum() {
   const answerState = state.curriculumQuiz?.[active.id];
 
   dashboard.innerHTML = `
+    ${renderFepBigBangLab(progress)}
     <div class="curriculum-score-card">
       <span>전체 진행률</span>
       <strong>${progress.percent}%</strong>
@@ -4522,6 +5087,81 @@ function renderCurriculum() {
       `).join("")}
     </div>
   `;
+
+  dashboard.querySelectorAll("[data-fep-view]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.fepView));
+  });
+
+  dashboard.querySelectorAll("[data-fep-twin]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFepProcessTwin = button.dataset.fepTwin;
+      state.activeFepProcessTwin = activeFepProcessTwin;
+      persistState();
+      renderCurriculum();
+    });
+  });
+
+  dashboard.querySelectorAll("[data-fep-gate]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFepInstallGate = button.dataset.fepGate;
+      state.activeFepInstallGate = activeFepInstallGate;
+      persistState();
+      renderCurriculum();
+    });
+  });
+
+  dashboard.querySelectorAll("[data-fep-gas]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFepGasGroup = button.dataset.fepGas;
+      state.activeFepGasGroup = activeFepGasGroup;
+      persistState();
+      renderCurriculum();
+    });
+  });
+
+  dashboard.querySelectorAll("[data-fep-case]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeFepCase = button.dataset.fepCase;
+      state.activeFepCase = activeFepCase;
+      persistState();
+      renderCurriculum();
+    });
+  });
+
+  dashboard.querySelectorAll("[data-fep-case-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const activeCase = getActiveFepCase();
+      const selected = Number(button.dataset.fepCaseChoice);
+      const choice = activeCase.choices[selected];
+      state.fepBigBangCaseAnswers = state.fepBigBangCaseAnswers || {};
+      state.fepBigBangCaseAnswers[activeCase.id] = {
+        selected,
+        correct: Boolean(choice?.correct),
+        subsystem: activeCase.subsystem,
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice?.correct) {
+        state.fepBigBangWeaknesses = state.fepBigBangWeaknesses || {};
+        state.fepBigBangWeaknesses[activeCase.subsystem] = (state.fepBigBangWeaknesses[activeCase.subsystem] || 0) + 1;
+      }
+      save();
+      renderCurriculum();
+    });
+  });
+
+  dashboard.querySelectorAll("[data-fep-copy]").forEach(button => {
+    button.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(button.dataset.fepCopy || "");
+        const original = button.textContent;
+        button.textContent = "복사됨";
+        setTimeout(() => { button.textContent = original; }, 1200);
+      } catch {
+        const explain = dashboard.querySelector(".fep-case-board .explain");
+        if (explain) explain.textContent = "브라우저 권한 때문에 자동 복사는 실패했습니다. 보고 문장은 화면에서 직접 선택할 수 있습니다.";
+      }
+    });
+  });
 
   document.querySelectorAll("[data-curriculum-open]").forEach(button => {
     button.addEventListener("click", () => {
