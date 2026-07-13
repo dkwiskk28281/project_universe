@@ -529,8 +529,26 @@
     briefing: null,
     fileIndex: null,
     packet: null,
+    security: null,
+    r2: null,
+    caseGame: null,
     lastLoadedAt: ""
   };
+  let v4GraphFilters = { book: "all", privacy: "all", type: "all", query: "" };
+  let activeV4GraphNodeId = "";
+  let v4CaseSubsystemFilter = "all";
+  let v4CaseGameSession = null;
+  let v4CaseGameStep = null;
+  let v4CaseGameFeedback = "";
+  let v5CommandBriefing = null;
+  let v5CampaignStatus = null;
+  let v5CampaignSession = null;
+  let v5CampaignStep = null;
+  let v5CampaignFeedback = "";
+  let v5EvidenceBoard = null;
+  let v5ActiveBoardId = "";
+  let v5GraphQuery = null;
+  let v5GraphQuestion = "weekly-action";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -849,6 +867,550 @@
     return response.json();
   }
 
+  function base64UrlToArrayBuffer(value = "") {
+    const base64 = String(value).replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes.buffer;
+  }
+
+  function arrayBufferToBase64Url(buffer) {
+    const bytes = new Uint8Array(buffer || new ArrayBuffer(0));
+    let binary = "";
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function parsePublicKeyOptions(options, mode) {
+    if (mode === "create" && PublicKeyCredential.parseCreationOptionsFromJSON) {
+      return PublicKeyCredential.parseCreationOptionsFromJSON(options);
+    }
+    if (mode === "get" && PublicKeyCredential.parseRequestOptionsFromJSON) {
+      return PublicKeyCredential.parseRequestOptionsFromJSON(options);
+    }
+    const publicKey = structuredClone(options);
+    publicKey.challenge = base64UrlToArrayBuffer(publicKey.challenge);
+    if (publicKey.user?.id) publicKey.user.id = base64UrlToArrayBuffer(publicKey.user.id);
+    if (Array.isArray(publicKey.excludeCredentials)) {
+      publicKey.excludeCredentials = publicKey.excludeCredentials.map(item => ({ ...item, id: base64UrlToArrayBuffer(item.id) }));
+    }
+    if (Array.isArray(publicKey.allowCredentials)) {
+      publicKey.allowCredentials = publicKey.allowCredentials.map(item => ({ ...item, id: base64UrlToArrayBuffer(item.id) }));
+    }
+    return publicKey;
+  }
+
+  function credentialToJSON(credential) {
+    if (credential?.toJSON) return credential.toJSON();
+    const response = credential.response || {};
+    const json = {
+      id: credential.id,
+      rawId: arrayBufferToBase64Url(credential.rawId),
+      type: credential.type,
+      clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+      response: {}
+    };
+    ["clientDataJSON", "attestationObject", "authenticatorData", "signature", "userHandle"].forEach(key => {
+      if (response[key]) json.response[key] = arrayBufferToBase64Url(response[key]);
+    });
+    return json;
+  }
+
+  async function registerPasskey() {
+    const status = document.querySelector("#v4-passkey-status");
+    try {
+      if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("이 브라우저는 WebAuthn을 지원하지 않습니다.");
+      const data = await apiFetch("/api/passkey/register/options");
+      const publicKey = parsePublicKeyOptions(data.options, "create");
+      const credential = await navigator.credentials.create({ publicKey });
+      const verify = await apiFetch("/api/passkey/register/verify", {
+        method: "POST",
+        body: JSON.stringify({ username: "owner", response: credentialToJSON(credential) })
+      });
+      if (!verify.ok) throw new Error(verify.error || "등록 검증 실패");
+      if (status) status.textContent = "Passkey 등록 완료. 다음 접속부터 Passkey 로그인을 사용할 수 있습니다.";
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `Passkey 등록 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function loginWithPasskeyFromApp() {
+    const status = document.querySelector("#v4-passkey-status");
+    try {
+      if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("이 브라우저는 WebAuthn을 지원하지 않습니다.");
+      const data = await apiFetch("/api/passkey/auth/options", {}, BOOKSHELF_API);
+      if (!data.hasPasskeys) throw new Error("등록된 Passkey가 없습니다. 먼저 private mode에서 등록하세요.");
+      const publicKey = parsePublicKeyOptions(data.options, "get");
+      const credential = await navigator.credentials.get({ publicKey });
+      const verify = await apiFetch("/api/passkey/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({ username: "owner", response: credentialToJSON(credential) })
+      });
+      if (!verify.ok) throw new Error(verify.error || "로그인 검증 실패");
+      if (verify.token) sessionStorage.setItem(REMOTE_TOKEN_KEY, verify.token);
+      if (status) status.textContent = "Passkey 로그인 검증 완료.";
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `Passkey 로그인 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function uploadR2File() {
+    const status = document.querySelector("#v4-r2-status");
+    const file = document.querySelector("#v4-r2-file")?.files?.[0];
+    const label = document.querySelector("#v4-r2-label")?.value || file?.name || "vault-object";
+    if (!file) {
+      if (status) status.textContent = "업로드할 파일을 먼저 선택하세요.";
+      return;
+    }
+    try {
+      if (status) status.textContent = "파일 무결성 hash 계산 중...";
+      const contentHash = await fileSha256(file);
+      const token = tokenForApi(BOOKSHELF_API);
+      const response = await fetch(`${BOOKSHELF_API}/api/v4/r2/upload?label=${encodeURIComponent(label)}&privacyLevel=sensitive-index`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-Content-SHA256": contentHash,
+          "X-Original-Size": String(file.size || 0),
+          "X-ThinkTank-Password": sessionStorage.getItem(CLIENT_PASS_KEY) || "",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: file
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      if (status) status.textContent = `R2 업로드 완료: ${data.key} / sha256 ${contentHash.slice(0, 16)}...`;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `R2 업로드 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  function downloadR2Object(key) {
+    if (!key) return;
+    window.open(`${BOOKSHELF_API}/api/v4/r2/download?key=${encodeURIComponent(key)}`, "_blank", "noopener");
+  }
+
+  async function fileSha256(file) {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buffer);
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  function updateV4GraphFilterFromDom() {
+    v4GraphFilters = {
+      type: document.querySelector("#v4-graph-type")?.value || "all",
+      book: document.querySelector("#v4-graph-book")?.value || "all",
+      privacy: document.querySelector("#v4-graph-privacy")?.value || "all",
+      query: document.querySelector("#v4-graph-query")?.value || ""
+    };
+    const { nodes } = filteredV4Graph();
+    if (activeV4GraphNodeId && !nodes.some(node => node.id === activeV4GraphNodeId)) activeV4GraphNodeId = "";
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  function selectV4GraphNode(nodeId) {
+    activeV4GraphNodeId = nodeId || "";
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  function updateCaseSubsystemFilter() {
+    v4CaseSubsystemFilter = document.querySelector("#v4-case-subsystem-filter")?.value || "all";
+    v4CaseGameStep = null;
+    v4CaseGameFeedback = "";
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  async function startCaseGame() {
+    const caseId = document.querySelector("#v4-case-select")?.value || "";
+    const status = document.querySelector("#v4-case-status");
+    try {
+      const data = await apiFetch("/api/v4/case-game/start", {
+        method: "POST",
+        body: JSON.stringify({ caseId })
+      });
+      v4CaseGameSession = data.session;
+      v4CaseGameStep = data.step;
+      v4CaseGameFeedback = "케이스 시작. 첫 단계는 immediate risk 판단입니다.";
+      if (status) status.textContent = v4CaseGameFeedback;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `케이스 시작 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function answerCaseGame(answer) {
+    const status = document.querySelector("#v4-case-status");
+    if (!v4CaseGameSession?.id) {
+      if (status) status.textContent = "먼저 케이스를 시작하세요.";
+      return;
+    }
+    try {
+      const data = await apiFetch("/api/v4/case-game/answer", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: v4CaseGameSession.id, answer })
+      });
+      v4CaseGameStep = data.next;
+      v4CaseGameSession = {
+        ...v4CaseGameSession,
+        score: data.score,
+        completed: data.completed
+      };
+      v4CaseGameFeedback = `${data.correct ? "정답" : "재훈련 필요"} · ${data.feedback || ""} · score ${data.score}`;
+      if (data.completed) v4CaseGameFeedback = `${v4CaseGameFeedback} · 케이스 완료`;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `답변 제출 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function startV5Campaign() {
+    const campaignId = document.querySelector("#v5-campaign-select")?.value || "";
+    const status = document.querySelector("#v5-campaign-status");
+    try {
+      const data = await apiFetch("/api/v5/ce-campaign/start", {
+        method: "POST",
+        body: JSON.stringify({ campaignId })
+      });
+      v5CampaignSession = data.session;
+      v5CampaignStep = data.step;
+      v5CampaignFeedback = "Campaign started. 첫 판단은 행동이 아니라 risk/evidence/owner boundary입니다.";
+      if (status) status.textContent = v5CampaignFeedback;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Campaign start failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function answerV5Campaign(answer) {
+    const status = document.querySelector("#v5-campaign-status");
+    if (!v5CampaignSession?.id) {
+      if (status) status.textContent = "먼저 campaign을 시작하세요.";
+      return;
+    }
+    try {
+      const data = await apiFetch("/api/v5/ce-campaign/answer", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: v5CampaignSession.id, answer })
+      });
+      v5CampaignStep = data.next;
+      v5CampaignSession = { ...v5CampaignSession, score: data.score, completed: data.completed };
+      v5CampaignFeedback = `${data.correct ? "정답" : "재훈련 필요"} · ${data.feedback || ""} · score ${data.score}`;
+      if (data.completed) v5CampaignFeedback = `${v5CampaignFeedback} · campaign complete`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Campaign answer failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function createV5EvidenceBoard() {
+    const status = document.querySelector("#v5-board-status");
+    const title = document.querySelector("#v5-board-title")?.value || "CE Evidence Board";
+    const linkedCampaignId = document.querySelector("#v5-campaign-select")?.value || v5CampaignSession?.campaignId || "";
+    try {
+      const data = await apiFetch("/api/v5/evidence-board", {
+        method: "POST",
+        body: JSON.stringify({ title, linkedCampaignId, selectedCards: [] })
+      });
+      v5ActiveBoardId = data.id;
+      if (status) status.textContent = `Evidence Board created: ${data.id.slice(0, 8)}`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Board create failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function toggleV5EvidenceCard(cardId) {
+    const status = document.querySelector("#v5-board-status");
+    const board = (v5EvidenceBoard?.boards || []).find(item => item.id === v5ActiveBoardId) || (v5EvidenceBoard?.boards || [])[0];
+    if (!board?.id) {
+      if (status) status.textContent = "먼저 Evidence Board를 생성하세요.";
+      return;
+    }
+    try {
+      v5ActiveBoardId = board.id;
+      const data = await apiFetch("/api/v5/evidence-board/select", {
+        method: "POST",
+        body: JSON.stringify({ boardId: board.id, cardId })
+      });
+      if (status) status.textContent = `${data.selected ? "selected" : "removed"} · ${cardId}`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Card update failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function runV5GraphQuery(question = "") {
+    const status = document.querySelector("#v5-graph-query-status");
+    v5GraphQuestion = question || document.querySelector("#v5-graph-question")?.value || v5GraphQuestion;
+    try {
+      const data = await apiFetch(`/api/v5/graph-query?q=${encodeURIComponent(v5GraphQuestion)}`);
+      v5GraphQuery = data;
+      if (status) status.textContent = `Query ready: ${data.answer?.title || "result"}`;
+      updateV4KernelPanel();
+    } catch (error) {
+      if (status) status.textContent = `Graph query failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  function renderV5OpsChecklist() {
+    const briefing = v5CommandBriefing || {};
+    const items = briefing.opsChecklist || [];
+    const ready = items.filter(item => /configured|registered|bound|active|available/.test(item.state || "")).length;
+    return `
+      <section class="v5-module-card v5-ops-checklist" aria-label="v5 operating checklist">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">v5 Operating Checklist</p>
+            <h3>Cloudflare Access / Passkey / R2 필수 연결 상태</h3>
+            <p>미연결 항목은 “정확히 무엇을 해야 하는지”를 보여줍니다. 이 영역은 보안 환상이 아니라 실제 장기 운영 준비도입니다.</p>
+          </div>
+          <span class="sync-pill">${ready}/${items.length || 5} ready</span>
+        </div>
+        <div class="v5-check-grid">
+          ${items.map(item => `
+            <article class="${String(item.state || "").includes("need") || String(item.state || "").includes("create") ? "needs-work" : "ready"}">
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.state)}</strong>
+              <small>${escapeHtml(item.action)}</small>
+            </article>
+          `).join("") || `<article class="needs-work"><span>v5</span><strong>locked</strong><small>Private bookshelf unlock 후 서버 checklist를 불러옵니다.</small></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CommandBriefing() {
+    const briefing = v5CommandBriefing || {};
+    const actions = briefing.actions || [];
+    const signals = briefing.operatingSignals || {};
+    return `
+      <section class="v5-command-panel" aria-label="Project Universe OS v5 command briefing">
+        <div class="v5-command-head">
+          <div>
+            <p class="eyebrow">Project Universe OS v5</p>
+            <h2>자가운영 AI Think Tank Command Briefing</h2>
+            <p>영어 오답, CE 오답, 인지 약점, 기록 nextStep, 백업/export, 투자 DYOR review를 합쳐 오늘의 우선순위를 산출합니다.</p>
+          </div>
+          <div class="v5-command-score">
+            <strong>${actions[0]?.priority || 0}</strong>
+            <span>top priority</span>
+          </div>
+        </div>
+        <div class="v5-signal-grid">
+          <article><span>CE Campaign</span><strong>${signals.ceCampaignSessions || 0}</strong><small>install flow sessions</small></article>
+          <article><span>CE Review</span><strong>${signals.caseGameReviewCount || 0}</strong><small>case game review queue</small></article>
+          <article><span>Missing nextStep</span><strong>${signals.recordsMissingNextStep || 0}</strong><small>AI 실행 코치 약점</small></article>
+          <article><span>AI Packets</span><strong>${signals.aiPackets || 0}</strong><small>${escapeHtml(signals.latestPacketAt || "create first packet")}</small></article>
+        </div>
+        <div class="v5-priority-stack">
+          ${actions.map(action => `
+            <article>
+              <span>${escapeHtml(action.lane)} · P${escapeHtml(action.priority)}</span>
+              <strong>${escapeHtml(action.title)}</strong>
+              <p>${escapeHtml(action.action)}</p>
+              <small>${escapeHtml(action.why)} · ${escapeHtml(action.source)}</small>
+            </article>
+          `).join("") || `<article><span>locked</span><strong>v5 data pending</strong><p>책장 잠금을 풀고 서버 커널을 불러오면 오늘의 action이 표시됩니다.</p></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CampaignSimulator() {
+    const status = v5CampaignStatus || {};
+    const campaigns = status.campaigns || [];
+    const reviewQueue = status.reviewQueue || [];
+    const activeStep = v5CampaignStep;
+    const activeCampaignId = v5CampaignSession?.campaignId || campaigns[0]?.id || "";
+    return `
+      <section class="v5-module-card v5-campaign-simulator" aria-label="v5 CE campaign simulator">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">CE Campaign Simulator</p>
+            <h3>Install Day 0/1/2를 하나의 분기형 훈련으로 연결</h3>
+            <p>move-in, facility hook-up, pumpdown, gas readiness, dry run, baseline wafer, qualification, handover를 evidence 중심으로 판단합니다.</p>
+          </div>
+          <span class="sync-pill">${campaigns.length || 3} campaigns</span>
+        </div>
+        <div class="v5-campaign-layout">
+          <div class="v5-campaign-picker">
+            <label>
+              <span>Campaign</span>
+              <select id="v5-campaign-select">
+                ${campaigns.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCampaignId ? "selected" : ""}>${escapeHtml(item.title)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="primary" type="button" data-v5-campaign-start>Campaign 시작</button>
+            <div class="v5-review-list">
+              <span>Campaign review queue</span>
+              ${reviewQueue.slice(0, 5).map(item => `
+                <button type="button" data-v5-campaign-review="${escapeHtml(item.campaignId)}">
+                  <b>${escapeHtml(item.label)}</b>
+                  ${escapeHtml(item.campaignTitle)}
+                  <small>${item.count} misses · ${escapeHtml(item.nextAction)}</small>
+                </button>
+              `).join("") || `<p>아직 campaign 오답이 없습니다. Install Day 0부터 한 번 시작해 보세요.</p>`}
+            </div>
+          </div>
+          <div class="v5-campaign-stage">
+            ${activeStep ? `
+              <div class="v5-stage-head">
+                <span>${escapeHtml(activeStep.campaignTitle)} · ${escapeHtml(activeStep.progress)}</span>
+                <strong>${escapeHtml(activeStep.label)}</strong>
+                <p>${escapeHtml(activeStep.prompt)}</p>
+              </div>
+              <div class="v5-choice-grid">
+                ${(activeStep.choices || []).map(choice => `<button class="secondary" type="button" data-v5-campaign-answer="${escapeHtml(choice)}">${escapeHtml(choice)}</button>`).join("")}
+              </div>
+              <div class="v5-evidence-strip">
+                ${(activeStep.evidence || []).map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+              </div>
+              <label class="v4-report-input">
+                <span>직접 판단/보고 문장</span>
+                <textarea id="v5-campaign-free-answer" placeholder="예: We are holding gas readiness until gas/EHS owner and abatement evidence are complete."></textarea>
+              </label>
+              <div class="v4-action-row">
+                <button class="primary" type="button" data-v5-campaign-free-answer>직접 답변 제출</button>
+                <span class="copy-status" id="v5-campaign-status">${escapeHtml(v5CampaignFeedback || "단계별 판단 대기")}</span>
+              </div>
+              <div class="v4-boundary-note"><strong>Stop condition</strong><p>${escapeHtml(activeStep.stop || "")}</p></div>
+            ` : `
+              <div class="v4-empty-state">Campaign을 시작하면 Install Day 흐름이 stage별로 열립니다.</div>
+            `}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5EvidenceBoard() {
+    const data = v5EvidenceBoard || {};
+    const boards = data.boards || [];
+    const activeBoard = boards.find(item => item.id === v5ActiveBoardId) || boards[0] || null;
+    const selected = new Set(activeBoard?.selectedCards || []);
+    const deck = data.deck || [];
+    const grouped = data.thinkingFrame || ["symptom", "risk", "subsystem", "evidence", "owner", "stop", "report"];
+    return `
+      <section class="v5-module-card v5-evidence-board" aria-label="v5 evidence board">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Evidence Board</p>
+            <h3>증상 → 위험 → subsystem → evidence → owner → stop → report</h3>
+            <p>정답을 외우는 화면이 아니라 현장 CE가 머릿속에서 카드를 배치하듯 사고하는 보드입니다.</p>
+          </div>
+          <span class="sync-pill">${selected.size} selected</span>
+        </div>
+        <div class="v5-board-toolbar">
+          <label>
+            <span>Board title</span>
+            <input id="v5-board-title" type="text" value="${escapeHtml(activeBoard?.title || "CE Evidence Board")}" />
+          </label>
+          <button class="primary" type="button" data-v5-board-create>보드 생성</button>
+          <span class="copy-status" id="v5-board-status">${activeBoard ? `active ${activeBoard.id.slice(0, 8)}` : "보드 생성 대기"}</span>
+        </div>
+        <div class="v5-board-lanes">
+          ${grouped.map(type => {
+            const cards = deck.filter(card => card.type === type);
+            return `
+              <div class="v5-board-lane">
+                <strong>${escapeHtml(type)}</strong>
+                ${cards.map(card => `
+                  <button type="button" class="${selected.has(card.id) ? "selected" : ""}" data-v5-evidence-card="${escapeHtml(card.id)}">
+                    <span>${escapeHtml(card.label)}</span>
+                    <small>${escapeHtml(card.detail)}</small>
+                  </button>
+                `).join("")}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5GraphQuestionExplorer() {
+    const insights = v5CommandBriefing?.graphInsights || {};
+    const result = v5GraphQuery?.answer || {};
+    const items = Array.isArray(result.items) ? result.items : [];
+    return `
+      <section class="v5-module-card v5-graph-question" aria-label="v5 graph question explorer">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Question Graph Explorer</p>
+            <h3>그래프를 질문으로 탐색</h3>
+            <p>약점 top 10, 반복 패턴, 다음 7일 action, AI export 가능/불가 경계를 버튼으로 바로 확인합니다.</p>
+          </div>
+          <span class="sync-pill">${(insights.weaknessesTop10 || []).length} weakness nodes</span>
+        </div>
+        <div class="v5-query-row">
+          <button class="secondary" type="button" data-v5-graph-query="weakness-top10">약점 top 10</button>
+          <button class="secondary" type="button" data-v5-graph-query="weekly-action">다음 7일 action</button>
+          <button class="secondary" type="button" data-v5-graph-query="ai-export-boundary">AI export 경계</button>
+          <label><span>Custom</span><input id="v5-graph-question" type="text" value="${escapeHtml(v5GraphQuestion)}" /></label>
+          <button class="primary" type="button" data-v5-graph-query-run>질문 실행</button>
+          <span class="copy-status" id="v5-graph-query-status">${escapeHtml(result.title || "query ready")}</span>
+        </div>
+        <div class="v5-query-result">
+          <strong>${escapeHtml(result.title || "Graph briefing")}</strong>
+          ${items.length ? items.slice(0, 10).map(item => `
+            <span>
+              <b>${escapeHtml(item.lane || item.type || item.bookId || item.label || "item")}</b>
+              ${escapeHtml(item.skill || item.action || item.title || item.count || JSON.stringify(item).slice(0, 160))}
+            </span>
+          `).join("") : `
+            ${(insights.recurringPatternsTop10 || []).slice(0, 6).map(item => `<span><b>${escapeHtml(item.type)}</b>${escapeHtml(item.label)} · ${item.count}</span>`).join("")}
+          `}
+          <p>${escapeHtml(result.nextAction || "질문을 실행하면 AI에게 넘기기 좋은 graph summary가 정리됩니다.")}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CommandLoop() {
+    return `
+      ${renderV5CommandBriefing()}
+      <div class="v5-module-grid">
+        ${renderV5OpsChecklist()}
+        ${renderV5CampaignSimulator()}
+      </div>
+      ${renderV5EvidenceBoard()}
+      ${renderV5GraphQuestionExplorer()}
+    `;
+  }
+
+  function bindV5Controls() {
+    document.querySelector("[data-v5-campaign-start]")?.addEventListener("click", startV5Campaign);
+    document.querySelectorAll("[data-v5-campaign-answer]").forEach(button => {
+      button.addEventListener("click", () => answerV5Campaign(button.dataset.v5CampaignAnswer));
+    });
+    document.querySelector("[data-v5-campaign-free-answer]")?.addEventListener("click", () => {
+      answerV5Campaign(document.querySelector("#v5-campaign-free-answer")?.value || "");
+    });
+    document.querySelectorAll("[data-v5-campaign-review]").forEach(button => {
+      button.addEventListener("click", () => {
+        const select = document.querySelector("#v5-campaign-select");
+        if (select) select.value = button.dataset.v5CampaignReview || select.value;
+      });
+    });
+    document.querySelector("[data-v5-board-create]")?.addEventListener("click", createV5EvidenceBoard);
+    document.querySelectorAll("[data-v5-evidence-card]").forEach(button => {
+      button.addEventListener("click", () => toggleV5EvidenceCard(button.dataset.v5EvidenceCard));
+    });
+    document.querySelectorAll("[data-v5-graph-query]").forEach(button => {
+      button.addEventListener("click", () => runV5GraphQuery(button.dataset.v5GraphQuery));
+    });
+    document.querySelector("[data-v5-graph-query-run]")?.addEventListener("click", () => runV5GraphQuery());
+  }
+
   async function fetchV4KernelState(options = {}) {
     const panel = document.querySelector("#v4-kernel-readout");
     v4KernelState.status = "loading";
@@ -858,13 +1420,25 @@
       if (options.reindex) {
         await apiFetch("/api/v4/reindex", { method: "POST", body: JSON.stringify({ limit: 1000 }) });
       }
-      const [opsData, graphData, briefingData, fileData, packetData] = await Promise.all([
+      const [opsData, graphData, briefingData, fileData, packetData, securityData, r2Data, caseGameData, v5BriefingData, v5CampaignData, v5BoardData, v5QueryData] = await Promise.all([
         apiFetch("/api/v4/ops-status"),
         apiFetch("/api/v4/life-graph"),
         apiFetch("/api/v4/coach-briefing"),
         apiFetch("/api/v4/file-index"),
-        apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence")
+        apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence"),
+        apiFetch("/api/v4/security-center"),
+        apiFetch("/api/v4/r2/objects"),
+        apiFetch("/api/v4/case-game/status"),
+        apiFetch("/api/v5/command-briefing").catch(error => ({ ok: false, error: error.message, briefing: null })),
+        apiFetch("/api/v5/ce-campaign/status").catch(error => ({ ok: false, error: error.message, campaigns: [], sessions: [], reviewQueue: [] })),
+        apiFetch("/api/v5/evidence-board").catch(error => ({ ok: false, error: error.message, deck: [], boards: [], thinkingFrame: [] })),
+        apiFetch(`/api/v5/graph-query?q=${encodeURIComponent(v5GraphQuestion)}`).catch(error => ({ ok: false, error: error.message, answer: null }))
       ]);
+      v5CommandBriefing = v5BriefingData.briefing || null;
+      v5CampaignStatus = v5CampaignData || null;
+      v5EvidenceBoard = v5BoardData || null;
+      v5GraphQuery = v5QueryData?.ok === false ? v5GraphQuery : v5QueryData;
+      if (!v5ActiveBoardId && v5EvidenceBoard?.boards?.[0]?.id) v5ActiveBoardId = v5EvidenceBoard.boards[0].id;
       v4KernelState = {
         status: "ready",
         message: "Life OS v4 kernel is online.",
@@ -873,6 +1447,9 @@
         briefing: briefingData.briefing,
         fileIndex: fileData.fileIndex,
         packet: packetData.packet,
+        security: securityData.security,
+        r2: r2Data,
+        caseGame: caseGameData,
         lastLoadedAt: new Date().toISOString()
       };
       latestAiPacketText = JSON.stringify(packetData.packet || {}, null, 2);
@@ -893,6 +1470,261 @@
     if (score >= 65) return "hardening";
     if (score >= 40) return "foundation";
     return "bootstrap";
+  }
+
+  function v4StatusText(ok, yes = "ACTIVE", no = "READY") {
+    return ok ? yes : no;
+  }
+
+  function v4Pills(items = []) {
+    return items.filter(Boolean).map(item => `<span>${escapeHtml(item)}</span>`).join("");
+  }
+
+  function renderV4SecurityCenter() {
+    const security = v4KernelState.security || {};
+    const access = security.cloudflareAccess || {};
+    const passkeys = security.passkeys || {};
+    return `
+      <section class="v4-module-card v4-security-center" aria-label="v4 security center">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Security Center</p>
+            <h3>실인증 전환 준비 상태</h3>
+            <p>Cloudflare Access JWT가 들어오면 서버에서 검증하고, Passkey는 WebAuthn 등록/로그인 ceremony를 D1 challenge와 credential 테이블로 관리합니다.</p>
+          </div>
+          <span class="sync-pill">${escapeHtml(v4StatusText(access.configured && access.verified, "ACCESS VERIFIED", "HARDENING"))}</span>
+        </div>
+        <div class="v4-mini-grid">
+          <article><span>Cloudflare Access</span><strong>${access.configured ? "configured" : "not configured"}</strong><small>${access.verified ? `verified ${access.email || access.sub || ""}` : "TEAM_DOMAIN / POLICY_AUD 필요"}</small></article>
+          <article><span>Passkey</span><strong>${passkeys.registered ?? 0}</strong><small>${escapeHtml(passkeys.boundary || "등록 후 passwordless login 가능")}</small></article>
+          <article><span>Legacy lock</span><strong>${security.legacyPassword?.enabled ? "enabled" : "off"}</strong><small>호환용 잠금이며 기업용 실인증은 Access/Passkey가 담당</small></article>
+        </div>
+        <div class="v4-action-row">
+          <button class="primary" type="button" data-passkey-register>이 기기에 Passkey 등록</button>
+          <button class="secondary" type="button" data-passkey-login>Passkey 로그인 테스트</button>
+          <span class="copy-status" id="v4-passkey-status">HTTPS와 브라우저 인증장치가 필요합니다.</span>
+        </div>
+        <div class="v4-boundary-note">
+          <strong>저장 금지 경계</strong>
+          <p>비밀번호, seed phrase, 계좌번호, 주민등록번호, 고객 비공개자료, 장비 manual 원문, recipe, valve sequence, detector setpoint, interlock bypass, site-specific limit은 기록하지 않습니다.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV4R2Vault() {
+    const r2 = v4KernelState.r2 || {};
+    const objects = r2.objects || [];
+    return `
+      <section class="v4-module-card v4-r2-vault" aria-label="R2 raw file vault">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">R2 File Vault</p>
+            <h3>원문 파일은 R2, D1에는 색인만</h3>
+            <p>PDF, 이미지, 검진표, 논문 원문, 설치 사진은 D1에 넣지 않고 R2 object로 저장합니다. D1에는 file index, summary, hash, linked record만 남깁니다.</p>
+          </div>
+          <span class="sync-pill">${r2.configured ? "R2 BOUND" : "BINDING NEEDED"}</span>
+        </div>
+        <div class="v4-mini-grid">
+          <article><span>Binding</span><strong>${escapeHtml(r2.binding || "FILE_VAULT")}</strong><small>${r2.configured ? "Worker R2 bucket detected" : "wrangler r2_buckets 설정 필요"}</small></article>
+          <article><span>Objects</span><strong>${objects.length}</strong><small>최근 R2 index rows</small></article>
+          <article><span>Rule</span><strong>index-only D1</strong><small>원문 파일은 R2/D-drive, D1은 메타데이터</small></article>
+        </div>
+        <div class="v4-upload-strip">
+          <label>
+            <span>업로드할 원문 파일</span>
+            <input id="v4-r2-file" type="file" />
+          </label>
+          <label>
+            <span>라벨</span>
+            <input id="v4-r2-label" type="text" placeholder="예: EPI 논문 PDF / 건강검진표 요약 원문" />
+          </label>
+          <button class="primary" type="button" data-r2-upload ${r2.configured ? "" : "disabled"}>R2 업로드</button>
+          <span class="copy-status" id="v4-r2-status">${r2.configured ? "업로드 대기" : "R2 bucket binding(FILE_VAULT)을 먼저 연결해야 합니다."}</span>
+        </div>
+        <div class="v4-object-list">
+          ${objects.length ? objects.slice(0, 8).map(object => `
+            <article>
+              <div>
+                <strong>${escapeHtml(object.label || object.key)}</strong>
+                <p>${escapeHtml(object.key)} / ${escapeHtml(object.contentType || object.fileType || "object")} / ${object.size || 0} bytes</p>
+                <small>${escapeHtml(object.privacyLevel || "sensitive-index")} · ${escapeHtml(object.exportPolicy || "index-only")}</small>
+              </div>
+              <button class="secondary" type="button" data-r2-download="${escapeHtml(object.key)}" ${r2.configured ? "" : "disabled"}>다운로드</button>
+            </article>
+          `).join("") : `<article><div><strong>아직 R2 object index가 없습니다.</strong><p>R2 binding 후 업로드하면 여기에 원문 파일 index가 남습니다.</p></div></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function filteredV4Graph() {
+    const graph = v4KernelState.graph || {};
+    const nodes = graph.nodes || [];
+    const edges = graph.edges || [];
+    const query = String(v4GraphFilters.query || "").toLowerCase().trim();
+    const filteredNodes = nodes.filter(node => {
+      if (v4GraphFilters.type !== "all" && node.type !== v4GraphFilters.type) return false;
+      if (v4GraphFilters.book !== "all" && node.bookId !== v4GraphFilters.book && node.id !== `book:${v4GraphFilters.book}`) return false;
+      if (v4GraphFilters.privacy !== "all" && node.privacyLevel !== v4GraphFilters.privacy) return false;
+      if (query && !`${node.label || ""} ${node.id || ""} ${node.bookId || ""} ${node.privacyLevel || ""}`.toLowerCase().includes(query)) return false;
+      return true;
+    });
+    const nodeIds = new Set(filteredNodes.map(node => node.id));
+    const filteredEdges = edges.filter(edge => nodeIds.has(edge.from) || nodeIds.has(edge.to));
+    return { graph, nodes: filteredNodes, edges: filteredEdges };
+  }
+
+  function renderV4GraphExplorer() {
+    const { graph, nodes, edges } = filteredV4Graph();
+    const nodeTypes = [...new Set((graph.nodes || []).map(node => node.type).filter(Boolean))].sort();
+    const bookIds = [...new Set((graph.nodes || []).map(node => node.bookId).filter(Boolean))].sort();
+    const privacyLevels = [...new Set((graph.nodes || []).map(node => node.privacyLevel).filter(Boolean))].sort();
+    const selected = nodes.find(node => node.id === activeV4GraphNodeId) || nodes[0] || (graph.nodes || [])[0] || null;
+    const related = selected ? edges.filter(edge => edge.from === selected.id || edge.to === selected.id).slice(0, 8) : [];
+    const visualNodes = nodes.slice(0, 18);
+    const visualEdges = edges.filter(edge => visualNodes.some(node => node.id === edge.from) && visualNodes.some(node => node.id === edge.to)).slice(0, 28);
+    return `
+      <section class="v4-module-card v4-graph-explorer" aria-label="v4 graph explorer">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">v4 Graph Explorer</p>
+            <h3>D1 지식 그래프 직접 탐색</h3>
+            <p>book, topic, tag, entity, privacy, exportPolicy 단위로 서버 graph를 탐색합니다. AI에게 넘길 수 있는 것과 숨겨야 하는 것을 같은 화면에서 구분합니다.</p>
+          </div>
+          <span class="sync-pill">${nodes.length} nodes / ${edges.length} edges</span>
+        </div>
+        <div class="v4-filter-bar">
+          <label><span>Type</span><select id="v4-graph-type"><option value="all">all</option>${nodeTypes.map(type => `<option value="${escapeHtml(type)}" ${v4GraphFilters.type === type ? "selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></label>
+          <label><span>Book</span><select id="v4-graph-book"><option value="all">all</option>${bookIds.map(book => `<option value="${escapeHtml(book)}" ${v4GraphFilters.book === book ? "selected" : ""}>${escapeHtml(book)}</option>`).join("")}</select></label>
+          <label><span>Privacy</span><select id="v4-graph-privacy"><option value="all">all</option>${privacyLevels.map(level => `<option value="${escapeHtml(level)}" ${v4GraphFilters.privacy === level ? "selected" : ""}>${escapeHtml(level)}</option>`).join("")}</select></label>
+          <label><span>Search</span><input id="v4-graph-query" type="search" value="${escapeHtml(v4GraphFilters.query)}" placeholder="tag, entity, record 검색" /></label>
+        </div>
+        <div class="v4-graph-map">
+          <div class="v4-node-column">
+            ${nodes.slice(0, 34).map(node => `
+              <button type="button" class="v4-node-chip ${node.id === selected?.id ? "active" : ""}" data-v4-node="${escapeHtml(node.id)}">
+                <b>${escapeHtml(node.type || "node")}</b>
+                ${escapeHtml(node.label || node.id)}
+                <small>${escapeHtml(node.bookId || node.privacyLevel || node.exportPolicy || "")}</small>
+              </button>
+            `).join("") || `<span class="v4-empty-state">필터 결과가 없습니다.</span>`}
+          </div>
+          <article class="v4-node-inspector">
+            <span>Selected node</span>
+            <strong>${escapeHtml(selected?.label || "no node")}</strong>
+            <p>${escapeHtml(selected ? `${selected.type || "node"} · ${selected.bookId || "book n/a"} · ${selected.privacyLevel || "privacy n/a"} · ${selected.exportPolicy || "export n/a"}` : "필터를 조정하거나 기록을 추가하세요.")}</p>
+            <div class="v4-graph-visual" aria-label="selected graph visual">
+              ${visualNodes.map((node, index) => {
+                const angle = (Math.PI * 2 * index) / Math.max(1, visualNodes.length);
+                const radius = node.id === selected?.id ? 0 : 38;
+                const x = 50 + Math.cos(angle) * radius;
+                const y = 50 + Math.sin(angle) * radius;
+                return `<button type="button" class="v4-graph-dot ${node.id === selected?.id ? "active" : ""} dot-${escapeHtml(node.type || "node")}" style="left:${x}%;top:${y}%;" data-v4-node="${escapeHtml(node.id)}" title="${escapeHtml(node.label || node.id)}"><span>${escapeHtml((node.label || node.type || "?").slice(0, 2))}</span></button>`;
+              }).join("")}
+              ${visualEdges.map(edge => `<i title="${escapeHtml(edge.label || "edge")}"></i>`).join("")}
+            </div>
+            <div class="v4-related-list">
+              ${related.map(edge => `<span><b>${escapeHtml(edge.label || "edge")}</b>${escapeHtml(edge.from)} → ${escapeHtml(edge.to)}</span>`).join("") || `<span><b>related</b>아직 연결 edge가 없습니다.</span>`}
+            </div>
+          </article>
+        </div>
+        <div class="v4-boundary-note">
+          <strong>AI export 경계</strong>
+          <p>${escapeHtml(graph.exportBoundary?.allowed || "redacted summaries and metadata only")} / 차단: ${escapeHtml(graph.exportBoundary?.blocked || "secrets and confidential data")}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV4CaseGameEngine() {
+    const data = v4KernelState.caseGame || {};
+    const cases = data.cases || [];
+    const sessions = data.sessions || [];
+    const subsystems = data.subsystems || [];
+    const reviewQueue = data.reviewQueue || [];
+    const filteredCases = v4CaseSubsystemFilter === "all"
+      ? cases
+      : cases.filter(item => item.subsystem === v4CaseSubsystemFilter);
+    const activeCase = filteredCases.find(item => item.id === v4CaseGameSession?.caseId) || filteredCases[0] || cases[0] || {};
+    const step = v4CaseGameStep;
+    return `
+      <section class="v4-module-card v4-case-game" aria-label="CE case game engine">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">CE Case Game Engine</p>
+            <h3>증상 → 위험 → evidence → stop → report 훈련</h3>
+            <p>케이스를 시작하면 서버가 session/event/weakness를 저장합니다. 틀린 판단은 weakness queue에 들어가고, CE 사고 패턴이 장기적으로 누적됩니다.</p>
+          </div>
+          <span class="sync-pill">${data.bank?.totalCases || cases.length} cases / ${sessions.length} sessions</span>
+        </div>
+        <div class="v4-case-bank-grid">
+          ${(subsystems.length ? subsystems : [{ subsystem: "all", cases: cases.length, sessions: sessions.length, avgScore: 0 }]).map(item => `
+            <button type="button" class="v4-case-bank-chip ${v4CaseSubsystemFilter === item.subsystem ? "active" : ""}" data-case-subsystem="${escapeHtml(item.subsystem)}">
+              <b>${escapeHtml(item.subsystem)}</b>
+              <span>${item.cases} cases</span>
+              <small>${item.sessions || 0} sessions · avg ${item.avgScore || 0}</small>
+            </button>
+          `).join("")}
+        </div>
+        <div class="v4-case-layout">
+          <div class="v4-case-picker">
+            <label>
+              <span>Subsystem filter</span>
+              <select id="v4-case-subsystem-filter">
+                <option value="all">all subsystems</option>
+                ${subsystems.map(item => `<option value="${escapeHtml(item.subsystem)}" ${v4CaseSubsystemFilter === item.subsystem ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${item.cases} cases</option>`).join("")}
+              </select>
+            </label>
+            <label>
+              <span>Subsystem case</span>
+              <select id="v4-case-select">
+                ${filteredCases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${escapeHtml(item.title)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="primary" type="button" data-case-game-start>케이스 시작</button>
+            <div class="v4-case-summary">
+              <strong>${escapeHtml(activeCase.title || "case ready")}</strong>
+              <p>${escapeHtml(activeCase.symptom || "케이스를 선택하면 현장 증상과 위험 판단 흐름을 훈련합니다.")}</p>
+              <small>${v4Pills([activeCase.subsystem, activeCase.status, activeCase.stop])}</small>
+            </div>
+          </div>
+          <div class="v4-review-queue">
+            <span>Review queue</span>
+            ${reviewQueue.length ? reviewQueue.slice(0, 6).map(item => `
+              <button type="button" data-case-review="${escapeHtml(item.caseId)}">
+                <b>${escapeHtml(item.subsystem)} / ${escapeHtml(item.step)}</b>
+                ${escapeHtml(item.title)}
+                <small>${item.count} misses · ${escapeHtml(item.nextAction)}</small>
+              </button>
+            `).join("") : `<p>아직 누적 오답이 없습니다. 일부러 빠르게 풀지 말고 stop condition을 말로 써보세요.</p>`}
+          </div>
+          <div class="v4-case-play">
+            ${step ? `
+              <div class="v4-step-head">
+                <span>${escapeHtml(step.step)} · ${escapeHtml(step.progress)}</span>
+                <strong>${escapeHtml(step.question)}</strong>
+              </div>
+              <div class="v4-choice-grid">
+                ${(step.choices || []).map(choice => `<button class="secondary" type="button" data-case-game-answer="${escapeHtml(choice)}">${escapeHtml(choice)}</button>`).join("")}
+              </div>
+              <label class="v4-report-input">
+                <span>직접 보고 문장/판단 문장 입력</span>
+                <textarea id="v4-case-free-answer" placeholder="예: Evidence shows pumpdown instability; we will hold qualification until owner review confirms safe readiness."></textarea>
+              </label>
+              <div class="v4-action-row">
+                <button class="primary" type="button" data-case-game-free-answer>직접 답변 제출</button>
+                <span class="copy-status" id="v4-case-status">${escapeHtml(v4CaseGameFeedback || "단계별로 답하면 즉시 채점됩니다.")}</span>
+              </div>
+            ` : `
+              <div class="v4-empty-state">
+                케이스를 시작하세요. 각 단계는 안전 경계와 고객 보고까지 연결됩니다.
+              </div>
+            `}
+          </div>
+        </div>
+      </section>
+    `;
   }
 
   function updateV4KernelPanel() {
@@ -933,6 +1765,31 @@
           <small>${escapeHtml(ops.storage?.r2State || "placeholder")}</small>
         </article>
         <article>
+          <span>Passkeys</span>
+          <strong>${counts.passkey_credentials ?? v4KernelState.security?.passkeys?.registered ?? 0}</strong>
+          <small>${escapeHtml(ops.auth?.cloudflareAccessConfigured ? "Access config present" : "Access config needed")}</small>
+        </article>
+        <article>
+          <span>R2 objects</span>
+          <strong>${counts.r2_objects ?? v4KernelState.r2?.objects?.length ?? 0}</strong>
+          <small>${escapeHtml(v4KernelState.r2?.configured ? "FILE_VAULT bound" : "binding needed")}</small>
+        </article>
+        <article>
+          <span>CE game</span>
+          <strong>${counts.case_game_sessions ?? 0}</strong>
+          <small>${counts.case_game_events ?? 0} judgment events</small>
+        </article>
+        <article>
+          <span>CE campaign</span>
+          <strong>${counts.ce_campaign_sessions ?? 0}</strong>
+          <small>${counts.ce_campaign_events ?? 0} campaign events</small>
+        </article>
+        <article>
+          <span>Evidence boards</span>
+          <strong>${counts.evidence_boards ?? 0}</strong>
+          <small>${counts.evidence_board_events ?? 0} board events</small>
+        </article>
+        <article>
           <span>Weakness</span>
           <strong>${counts.weakness_events ?? 0}</strong>
           <small>auto review signals</small>
@@ -957,7 +1814,58 @@
         <p>${escapeHtml(ops.auth?.boundary || "Client lock is not enterprise authentication. Cloudflare Access/Passkey hardening remains the next security jump.")}</p>
         <p>${escapeHtml(ops.storage?.rawFileRule || "D1 stores index and structured records only.")}</p>
       </div>
+      ${renderV5CommandLoop()}
+      <div class="v4-module-grid">
+        ${renderV4SecurityCenter()}
+        ${renderV4R2Vault()}
+      </div>
+      ${renderV4GraphExplorer()}
+      ${renderV4CaseGameEngine()}
     `;
+    bindV4KernelDynamicControls();
+    bindV5Controls();
+  }
+
+  function bindV4KernelDynamicControls() {
+    document.querySelector("[data-passkey-register]")?.addEventListener("click", registerPasskey);
+    document.querySelector("[data-passkey-login]")?.addEventListener("click", loginWithPasskeyFromApp);
+    document.querySelector("[data-r2-upload]")?.addEventListener("click", uploadR2File);
+    document.querySelectorAll("[data-r2-download]").forEach(button => {
+      button.addEventListener("click", () => downloadR2Object(button.dataset.r2Download));
+    });
+    ["#v4-graph-type", "#v4-graph-book", "#v4-graph-privacy"].forEach(selector => {
+      document.querySelector(selector)?.addEventListener("change", updateV4GraphFilterFromDom);
+    });
+    document.querySelector("#v4-graph-query")?.addEventListener("input", updateV4GraphFilterFromDom);
+    document.querySelectorAll("[data-v4-node]").forEach(button => {
+      button.addEventListener("click", () => selectV4GraphNode(button.dataset.v4Node));
+    });
+    document.querySelector("#v4-case-subsystem-filter")?.addEventListener("change", updateCaseSubsystemFilter);
+    document.querySelectorAll("[data-case-subsystem]").forEach(button => {
+      button.addEventListener("click", () => {
+        v4CaseSubsystemFilter = button.dataset.caseSubsystem || "all";
+        v4CaseGameStep = null;
+        v4CaseGameFeedback = "";
+        updateV4KernelPanel();
+      });
+    });
+    document.querySelectorAll("[data-case-review]").forEach(button => {
+      button.addEventListener("click", () => {
+        const select = document.querySelector("#v4-case-select");
+        const targetCase = (v4KernelState.caseGame?.cases || []).find(item => item.id === button.dataset.caseReview);
+        if (targetCase) v4CaseSubsystemFilter = targetCase.subsystem;
+        updateV4KernelPanel();
+        const refreshedSelect = document.querySelector("#v4-case-select");
+        if (refreshedSelect) refreshedSelect.value = button.dataset.caseReview || refreshedSelect.value;
+      });
+    });
+    document.querySelector("[data-case-game-start]")?.addEventListener("click", startCaseGame);
+    document.querySelectorAll("[data-case-game-answer]").forEach(button => {
+      button.addEventListener("click", () => answerCaseGame(button.dataset.caseGameAnswer));
+    });
+    document.querySelector("[data-case-game-free-answer]")?.addEventListener("click", () => {
+      answerCaseGame(document.querySelector("#v4-case-free-answer")?.value || "");
+    });
   }
 
   async function copyText(text, statusSelector) {

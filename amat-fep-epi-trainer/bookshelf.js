@@ -540,6 +540,15 @@
   let v4CaseGameSession = null;
   let v4CaseGameStep = null;
   let v4CaseGameFeedback = "";
+  let v5CommandBriefing = null;
+  let v5CampaignStatus = null;
+  let v5CampaignSession = null;
+  let v5CampaignStep = null;
+  let v5CampaignFeedback = "";
+  let v5EvidenceBoard = null;
+  let v5ActiveBoardId = "";
+  let v5GraphQuery = null;
+  let v5GraphQuestion = "weekly-action";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -583,6 +592,11 @@
 
   function cleanLongText(value = "", max = 12000) {
     return String(value || "").replace(/\r\n/g, "\n").trim().slice(0, max);
+  }
+
+  function compactLabel(value = "", max = 42) {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    return text.length > max ? `${text.slice(0, Math.max(0, max - 1))}…` : text;
   }
 
   function validIso(value, fallback = new Date().toISOString()) {
@@ -1063,6 +1077,345 @@
     }
   }
 
+  async function startV5Campaign() {
+    const campaignId = document.querySelector("#v5-campaign-select")?.value || "";
+    const status = document.querySelector("#v5-campaign-status");
+    try {
+      const data = await apiFetch("/api/v5/ce-campaign/start", {
+        method: "POST",
+        body: JSON.stringify({ campaignId })
+      });
+      v5CampaignSession = data.session;
+      v5CampaignStep = data.step;
+      v5CampaignFeedback = "Campaign started. 첫 판단은 행동이 아니라 risk/evidence/owner boundary입니다.";
+      if (status) status.textContent = v5CampaignFeedback;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Campaign start failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function answerV5Campaign(answer) {
+    const status = document.querySelector("#v5-campaign-status");
+    if (!v5CampaignSession?.id) {
+      if (status) status.textContent = "먼저 campaign을 시작하세요.";
+      return;
+    }
+    try {
+      const data = await apiFetch("/api/v5/ce-campaign/answer", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: v5CampaignSession.id, answer })
+      });
+      v5CampaignStep = data.next;
+      v5CampaignSession = { ...v5CampaignSession, score: data.score, completed: data.completed };
+      v5CampaignFeedback = `${data.correct ? "정답" : "재훈련 필요"} · ${data.feedback || ""} · score ${data.score}`;
+      if (data.completed) v5CampaignFeedback = `${v5CampaignFeedback} · campaign complete`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Campaign answer failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function createV5EvidenceBoard() {
+    const status = document.querySelector("#v5-board-status");
+    const title = document.querySelector("#v5-board-title")?.value || "CE Evidence Board";
+    const linkedCampaignId = document.querySelector("#v5-campaign-select")?.value || v5CampaignSession?.campaignId || "";
+    try {
+      const data = await apiFetch("/api/v5/evidence-board", {
+        method: "POST",
+        body: JSON.stringify({ title, linkedCampaignId, selectedCards: [] })
+      });
+      v5ActiveBoardId = data.id;
+      if (status) status.textContent = `Evidence Board created: ${data.id.slice(0, 8)}`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Board create failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function toggleV5EvidenceCard(cardId) {
+    const status = document.querySelector("#v5-board-status");
+    const board = (v5EvidenceBoard?.boards || []).find(item => item.id === v5ActiveBoardId) || (v5EvidenceBoard?.boards || [])[0];
+    if (!board?.id) {
+      if (status) status.textContent = "먼저 Evidence Board를 생성하세요.";
+      return;
+    }
+    try {
+      v5ActiveBoardId = board.id;
+      const data = await apiFetch("/api/v5/evidence-board/select", {
+        method: "POST",
+        body: JSON.stringify({ boardId: board.id, cardId })
+      });
+      if (status) status.textContent = `${data.selected ? "selected" : "removed"} · ${cardId}`;
+      await fetchV4KernelState({ preserveMessage: true });
+    } catch (error) {
+      if (status) status.textContent = `Card update failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function runV5GraphQuery(question = "") {
+    const status = document.querySelector("#v5-graph-query-status");
+    v5GraphQuestion = question || document.querySelector("#v5-graph-question")?.value || v5GraphQuestion;
+    try {
+      const data = await apiFetch(`/api/v5/graph-query?q=${encodeURIComponent(v5GraphQuestion)}`);
+      v5GraphQuery = data;
+      if (status) status.textContent = `Query ready: ${data.answer?.title || "result"}`;
+      updateV4KernelPanel();
+    } catch (error) {
+      if (status) status.textContent = `Graph query failed: ${error.message || "unknown"}`;
+    }
+  }
+
+  function renderV5OpsChecklist() {
+    const briefing = v5CommandBriefing || {};
+    const items = briefing.opsChecklist || [];
+    const ready = items.filter(item => /configured|registered|bound|active|available/.test(item.state || "")).length;
+    return `
+      <section class="v5-module-card v5-ops-checklist" aria-label="v5 operating checklist">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">v5 Operating Checklist</p>
+            <h3>Cloudflare Access / Passkey / R2 필수 연결 상태</h3>
+            <p>미연결 항목은 “정확히 무엇을 해야 하는지”를 보여줍니다. 이 영역은 보안 환상이 아니라 실제 장기 운영 준비도입니다.</p>
+          </div>
+          <span class="sync-pill">${ready}/${items.length || 5} ready</span>
+        </div>
+        <div class="v5-check-grid">
+          ${items.map(item => `
+            <article class="${String(item.state || "").includes("need") || String(item.state || "").includes("create") ? "needs-work" : "ready"}">
+              <span>${escapeHtml(item.label)}</span>
+              <strong>${escapeHtml(item.state)}</strong>
+              <small>${escapeHtml(item.action)}</small>
+            </article>
+          `).join("") || `<article class="needs-work"><span>v5</span><strong>locked</strong><small>Private bookshelf unlock 후 서버 checklist를 불러옵니다.</small></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CommandBriefing() {
+    const briefing = v5CommandBriefing || {};
+    const actions = briefing.actions || [];
+    const signals = briefing.operatingSignals || {};
+    return `
+      <section class="v5-command-panel" aria-label="Project Universe OS v5 command briefing">
+        <div class="v5-command-head">
+          <div>
+            <p class="eyebrow">Project Universe OS v5</p>
+            <h2>자가운영 AI Think Tank Command Briefing</h2>
+            <p>영어 오답, CE 오답, 인지 약점, 기록 nextStep, 백업/export, 투자 DYOR review를 합쳐 오늘의 우선순위를 산출합니다.</p>
+          </div>
+          <div class="v5-command-score">
+            <strong>${actions[0]?.priority || 0}</strong>
+            <span>top priority</span>
+          </div>
+        </div>
+        <div class="v5-signal-grid">
+          <article><span>CE Campaign</span><strong>${signals.ceCampaignSessions || 0}</strong><small>install flow sessions</small></article>
+          <article><span>CE Review</span><strong>${signals.caseGameReviewCount || 0}</strong><small>case game review queue</small></article>
+          <article><span>Missing nextStep</span><strong>${signals.recordsMissingNextStep || 0}</strong><small>AI 실행 코치 약점</small></article>
+          <article><span>AI Packets</span><strong>${signals.aiPackets || 0}</strong><small>${escapeHtml(signals.latestPacketAt || "create first packet")}</small></article>
+        </div>
+        <div class="v5-priority-stack">
+          ${actions.map(action => `
+            <article>
+              <span>${escapeHtml(action.lane)} · P${escapeHtml(action.priority)}</span>
+              <strong>${escapeHtml(action.title)}</strong>
+              <p>${escapeHtml(action.action)}</p>
+              <small>${escapeHtml(action.why)} · ${escapeHtml(action.source)}</small>
+            </article>
+          `).join("") || `<article><span>locked</span><strong>v5 data pending</strong><p>책장 잠금을 풀고 서버 커널을 불러오면 오늘의 action이 표시됩니다.</p></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CampaignSimulator() {
+    const status = v5CampaignStatus || {};
+    const campaigns = status.campaigns || [];
+    const reviewQueue = status.reviewQueue || [];
+    const activeStep = v5CampaignStep;
+    const activeCampaignId = v5CampaignSession?.campaignId || campaigns[0]?.id || "";
+    return `
+      <section class="v5-module-card v5-campaign-simulator" aria-label="v5 CE campaign simulator">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">CE Campaign Simulator</p>
+            <h3>Install Day 0/1/2를 하나의 분기형 훈련으로 연결</h3>
+            <p>move-in, facility hook-up, pumpdown, gas readiness, dry run, baseline wafer, qualification, handover를 evidence 중심으로 판단합니다.</p>
+          </div>
+          <span class="sync-pill">${campaigns.length || 3} campaigns</span>
+        </div>
+        <div class="v5-campaign-layout">
+          <div class="v5-campaign-picker">
+            <label>
+              <span>Campaign</span>
+              <select id="v5-campaign-select">
+                ${campaigns.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCampaignId ? "selected" : ""}>${escapeHtml(compactLabel(item.title, 34))}</option>`).join("")}
+              </select>
+            </label>
+            <button class="primary" type="button" data-v5-campaign-start>Campaign 시작</button>
+            <div class="v5-review-list">
+              <span>Campaign review queue</span>
+              ${reviewQueue.slice(0, 5).map(item => `
+                <button type="button" data-v5-campaign-review="${escapeHtml(item.campaignId)}">
+                  <b>${escapeHtml(item.label)}</b>
+                  ${escapeHtml(item.campaignTitle)}
+                  <small>${item.count} misses · ${escapeHtml(item.nextAction)}</small>
+                </button>
+              `).join("") || `<p>아직 campaign 오답이 없습니다. Install Day 0부터 한 번 시작해 보세요.</p>`}
+            </div>
+          </div>
+          <div class="v5-campaign-stage">
+            ${activeStep ? `
+              <div class="v5-stage-head">
+                <span>${escapeHtml(activeStep.campaignTitle)} · ${escapeHtml(activeStep.progress)}</span>
+                <strong>${escapeHtml(activeStep.label)}</strong>
+                <p>${escapeHtml(activeStep.prompt)}</p>
+              </div>
+              <div class="v5-choice-grid">
+                ${(activeStep.choices || []).map(choice => `<button class="secondary" type="button" data-v5-campaign-answer="${escapeHtml(choice)}">${escapeHtml(choice)}</button>`).join("")}
+              </div>
+              <div class="v5-evidence-strip">
+                ${(activeStep.evidence || []).map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+              </div>
+              <label class="v4-report-input">
+                <span>직접 판단/보고 문장</span>
+                <textarea id="v5-campaign-free-answer" placeholder="예: We are holding gas readiness until gas/EHS owner and abatement evidence are complete."></textarea>
+              </label>
+              <div class="v4-action-row">
+                <button class="primary" type="button" data-v5-campaign-free-answer>직접 답변 제출</button>
+                <span class="copy-status" id="v5-campaign-status">${escapeHtml(v5CampaignFeedback || "단계별 판단 대기")}</span>
+              </div>
+              <div class="v4-boundary-note"><strong>Stop condition</strong><p>${escapeHtml(activeStep.stop || "")}</p></div>
+            ` : `
+              <div class="v4-empty-state">Campaign을 시작하면 Install Day 흐름이 stage별로 열립니다.</div>
+            `}
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5EvidenceBoard() {
+    const data = v5EvidenceBoard || {};
+    const boards = data.boards || [];
+    const activeBoard = boards.find(item => item.id === v5ActiveBoardId) || boards[0] || null;
+    const selected = new Set(activeBoard?.selectedCards || []);
+    const deck = data.deck || [];
+    const grouped = data.thinkingFrame || ["symptom", "risk", "subsystem", "evidence", "owner", "stop", "report"];
+    return `
+      <section class="v5-module-card v5-evidence-board" aria-label="v5 evidence board">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Evidence Board</p>
+            <h3>증상 → 위험 → subsystem → evidence → owner → stop → report</h3>
+            <p>정답을 외우는 화면이 아니라 현장 CE가 머릿속에서 카드를 배치하듯 사고하는 보드입니다.</p>
+          </div>
+          <span class="sync-pill">${selected.size} selected</span>
+        </div>
+        <div class="v5-board-toolbar">
+          <label>
+            <span>Board title</span>
+            <input id="v5-board-title" type="text" value="${escapeHtml(activeBoard?.title || "CE Evidence Board")}" />
+          </label>
+          <button class="primary" type="button" data-v5-board-create>보드 생성</button>
+          <span class="copy-status" id="v5-board-status">${activeBoard ? `active ${activeBoard.id.slice(0, 8)}` : "보드 생성 대기"}</span>
+        </div>
+        <div class="v5-board-lanes">
+          ${grouped.map(type => {
+            const cards = deck.filter(card => card.type === type);
+            return `
+              <div class="v5-board-lane">
+                <strong>${escapeHtml(type)}</strong>
+                ${cards.map(card => `
+                  <button type="button" class="${selected.has(card.id) ? "selected" : ""}" data-v5-evidence-card="${escapeHtml(card.id)}">
+                    <span>${escapeHtml(card.label)}</span>
+                    <small>${escapeHtml(card.detail)}</small>
+                  </button>
+                `).join("")}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5GraphQuestionExplorer() {
+    const insights = v5CommandBriefing?.graphInsights || {};
+    const result = v5GraphQuery?.answer || {};
+    const items = Array.isArray(result.items) ? result.items : [];
+    return `
+      <section class="v5-module-card v5-graph-question" aria-label="v5 graph question explorer">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Question Graph Explorer</p>
+            <h3>그래프를 질문으로 탐색</h3>
+            <p>약점 top 10, 반복 패턴, 다음 7일 action, AI export 가능/불가 경계를 버튼으로 바로 확인합니다.</p>
+          </div>
+          <span class="sync-pill">${(insights.weaknessesTop10 || []).length} weakness nodes</span>
+        </div>
+        <div class="v5-query-row">
+          <button class="secondary" type="button" data-v5-graph-query="weakness-top10">약점 top 10</button>
+          <button class="secondary" type="button" data-v5-graph-query="weekly-action">다음 7일 action</button>
+          <button class="secondary" type="button" data-v5-graph-query="ai-export-boundary">AI export 경계</button>
+          <label><span>Custom</span><input id="v5-graph-question" type="text" value="${escapeHtml(v5GraphQuestion)}" /></label>
+          <button class="primary" type="button" data-v5-graph-query-run>질문 실행</button>
+          <span class="copy-status" id="v5-graph-query-status">${escapeHtml(result.title || "query ready")}</span>
+        </div>
+        <div class="v5-query-result">
+          <strong>${escapeHtml(result.title || "Graph briefing")}</strong>
+          ${items.length ? items.slice(0, 10).map(item => `
+            <span>
+              <b>${escapeHtml(item.lane || item.type || item.bookId || item.label || "item")}</b>
+              ${escapeHtml(item.skill || item.action || item.title || item.count || JSON.stringify(item).slice(0, 160))}
+            </span>
+          `).join("") : `
+            ${(insights.recurringPatternsTop10 || []).slice(0, 6).map(item => `<span><b>${escapeHtml(item.type)}</b>${escapeHtml(item.label)} · ${item.count}</span>`).join("")}
+          `}
+          <p>${escapeHtml(result.nextAction || "질문을 실행하면 AI에게 넘기기 좋은 graph summary가 정리됩니다.")}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV5CommandLoop() {
+    return `
+      ${renderV5CommandBriefing()}
+      <div class="v5-module-grid">
+        ${renderV5OpsChecklist()}
+        ${renderV5CampaignSimulator()}
+      </div>
+      ${renderV5EvidenceBoard()}
+      ${renderV5GraphQuestionExplorer()}
+    `;
+  }
+
+  function bindV5Controls() {
+    document.querySelector("[data-v5-campaign-start]")?.addEventListener("click", startV5Campaign);
+    document.querySelectorAll("[data-v5-campaign-answer]").forEach(button => {
+      button.addEventListener("click", () => answerV5Campaign(button.dataset.v5CampaignAnswer));
+    });
+    document.querySelector("[data-v5-campaign-free-answer]")?.addEventListener("click", () => {
+      answerV5Campaign(document.querySelector("#v5-campaign-free-answer")?.value || "");
+    });
+    document.querySelectorAll("[data-v5-campaign-review]").forEach(button => {
+      button.addEventListener("click", () => {
+        const select = document.querySelector("#v5-campaign-select");
+        if (select) select.value = button.dataset.v5CampaignReview || select.value;
+      });
+    });
+    document.querySelector("[data-v5-board-create]")?.addEventListener("click", createV5EvidenceBoard);
+    document.querySelectorAll("[data-v5-evidence-card]").forEach(button => {
+      button.addEventListener("click", () => toggleV5EvidenceCard(button.dataset.v5EvidenceCard));
+    });
+    document.querySelectorAll("[data-v5-graph-query]").forEach(button => {
+      button.addEventListener("click", () => runV5GraphQuery(button.dataset.v5GraphQuery));
+    });
+    document.querySelector("[data-v5-graph-query-run]")?.addEventListener("click", () => runV5GraphQuery());
+  }
+
   async function fetchV4KernelState(options = {}) {
     const panel = document.querySelector("#v4-kernel-readout");
     v4KernelState.status = "loading";
@@ -1072,7 +1425,7 @@
       if (options.reindex) {
         await apiFetch("/api/v4/reindex", { method: "POST", body: JSON.stringify({ limit: 1000 }) });
       }
-      const [opsData, graphData, briefingData, fileData, packetData, securityData, r2Data, caseGameData] = await Promise.all([
+      const [opsData, graphData, briefingData, fileData, packetData, securityData, r2Data, caseGameData, v5BriefingData, v5CampaignData, v5BoardData, v5QueryData] = await Promise.all([
         apiFetch("/api/v4/ops-status"),
         apiFetch("/api/v4/life-graph"),
         apiFetch("/api/v4/coach-briefing"),
@@ -1080,8 +1433,17 @@
         apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence"),
         apiFetch("/api/v4/security-center"),
         apiFetch("/api/v4/r2/objects"),
-        apiFetch("/api/v4/case-game/status")
+        apiFetch("/api/v4/case-game/status"),
+        apiFetch("/api/v5/command-briefing").catch(error => ({ ok: false, error: error.message, briefing: null })),
+        apiFetch("/api/v5/ce-campaign/status").catch(error => ({ ok: false, error: error.message, campaigns: [], sessions: [], reviewQueue: [] })),
+        apiFetch("/api/v5/evidence-board").catch(error => ({ ok: false, error: error.message, deck: [], boards: [], thinkingFrame: [] })),
+        apiFetch(`/api/v5/graph-query?q=${encodeURIComponent(v5GraphQuestion)}`).catch(error => ({ ok: false, error: error.message, answer: null }))
       ]);
+      v5CommandBriefing = v5BriefingData.briefing || null;
+      v5CampaignStatus = v5CampaignData || null;
+      v5EvidenceBoard = v5BoardData || null;
+      v5GraphQuery = v5QueryData?.ok === false ? v5GraphQuery : v5QueryData;
+      if (!v5ActiveBoardId && v5EvidenceBoard?.boards?.[0]?.id) v5ActiveBoardId = v5EvidenceBoard.boards[0].id;
       v4KernelState = {
         status: "ready",
         message: "Life OS v4 kernel is online.",
@@ -1322,7 +1684,7 @@
             <label>
               <span>Subsystem case</span>
               <select id="v4-case-select">
-                ${filteredCases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${escapeHtml(item.title)}</option>`).join("")}
+                ${filteredCases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(compactLabel(`${item.subsystem} · ${item.title}`, 38))}</option>`).join("")}
               </select>
             </label>
             <button class="primary" type="button" data-case-game-start>케이스 시작</button>
@@ -1423,6 +1785,16 @@
           <small>${counts.case_game_events ?? 0} judgment events</small>
         </article>
         <article>
+          <span>CE campaign</span>
+          <strong>${counts.ce_campaign_sessions ?? 0}</strong>
+          <small>${counts.ce_campaign_events ?? 0} campaign events</small>
+        </article>
+        <article>
+          <span>Evidence boards</span>
+          <strong>${counts.evidence_boards ?? 0}</strong>
+          <small>${counts.evidence_board_events ?? 0} board events</small>
+        </article>
+        <article>
           <span>Weakness</span>
           <strong>${counts.weakness_events ?? 0}</strong>
           <small>auto review signals</small>
@@ -1447,6 +1819,7 @@
         <p>${escapeHtml(ops.auth?.boundary || "Client lock is not enterprise authentication. Cloudflare Access/Passkey hardening remains the next security jump.")}</p>
         <p>${escapeHtml(ops.storage?.rawFileRule || "D1 stores index and structured records only.")}</p>
       </div>
+      ${renderV5CommandLoop()}
       <div class="v4-module-grid">
         ${renderV4SecurityCenter()}
         ${renderV4R2Vault()}
@@ -1455,6 +1828,7 @@
       ${renderV4CaseGameEngine()}
     `;
     bindV4KernelDynamicControls();
+    bindV5Controls();
   }
 
   function bindV4KernelDynamicControls() {

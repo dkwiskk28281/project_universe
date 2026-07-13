@@ -12849,13 +12849,270 @@ body[data-current-view="cognitive"] .learning-hud {
   place-content: center;
 }
 
+/* Project Universe OS v5 command loop */
+.v5-command-panel,
+.v5-module-card {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: clamp(15px, 2.4vw, 22px);
+  border: 1px solid rgba(50, 255, 173, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 22, 18, 0.9), rgba(2, 9, 12, 0.82)),
+    linear-gradient(90deg, rgba(50, 255, 173, 0.08), transparent 62%);
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.v5-command-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.18fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.v5-command-head h2,
+.v5-module-card h3,
+.v5-stage-head strong,
+.v5-query-result strong {
+  margin: 0;
+  color: #ffffff;
+  letter-spacing: 0;
+}
+
+.v5-command-head p,
+.v5-module-card p,
+.v5-query-result p {
+  margin: 0;
+  color: #bfe4d8;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.v5-command-score {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-height: 112px;
+  border: 1px solid rgba(50, 255, 173, 0.32);
+  border-radius: 8px;
+  background: rgba(50, 255, 173, 0.11);
+}
+
+.v5-command-score strong {
+  color: #32ffad;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  line-height: 1;
+}
+
+.v5-command-score span,
+.v5-check-grid span,
+.v5-signal-grid span,
+.v5-priority-stack span,
+.v5-campaign-picker label span,
+.v5-review-list span,
+.v5-stage-head span,
+.v5-board-toolbar span,
+.v5-query-row span {
+  color: #84ffd0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.v5-module-grid,
+.v5-signal-grid,
+.v5-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.v5-signal-grid article,
+.v5-check-grid article,
+.v5-priority-stack article,
+.v5-review-list,
+.v5-stage-head,
+.v5-query-result {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  overflow-wrap: anywhere;
+}
+
+.v5-check-grid article.ready {
+  border-color: rgba(50, 255, 173, 0.28);
+  background: rgba(50, 255, 173, 0.08);
+}
+
+.v5-check-grid article.needs-work {
+  border-color: rgba(255, 211, 138, 0.34);
+  background: rgba(80, 44, 0, 0.16);
+}
+
+.v5-signal-grid strong,
+.v5-check-grid strong,
+.v5-priority-stack strong {
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.v5-signal-grid small,
+.v5-check-grid small,
+.v5-priority-stack small,
+.v5-review-list small,
+.v5-evidence-strip span,
+.v5-board-lane small,
+.v5-query-result span {
+  color: #b9dacf;
+  line-height: 1.45;
+}
+
+.v5-priority-stack {
+  display: grid;
+  gap: 9px;
+}
+
+.v5-campaign-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.34fr) minmax(0, 0.66fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.v5-campaign-picker,
+.v5-campaign-stage,
+.v5-review-list {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  align-content: start;
+}
+
+.v5-campaign-picker label,
+.v5-board-toolbar label,
+.v5-query-row label {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 190px);
+}
+
+.v5-campaign-picker select,
+.v5-board-toolbar input,
+.v5-query-row input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(127, 255, 196, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 18, 18, 0.82);
+  color: #ecfff8;
+  padding: 9px 10px;
+}
+
+.v5-review-list button,
+.v5-choice-grid button,
+.v5-board-lane button {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(127, 255, 196, 0.16);
+  border-radius: 8px;
+  background: rgba(1, 31, 29, 0.82);
+  color: #ecfff8;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.v5-review-list b,
+.v5-board-lane strong,
+.v5-query-result b {
+  color: #84ffd0;
+}
+
+.v5-stage-head {
+  border-color: rgba(50, 255, 173, 0.24);
+  background: rgba(50, 255, 173, 0.07);
+}
+
+.v5-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.v5-evidence-strip,
+.v5-query-row,
+.v5-board-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: end;
+  min-width: 0;
+}
+
+.v5-evidence-strip span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid rgba(127, 255, 196, 0.14);
+  border-radius: 999px;
+  background: rgba(0, 18, 18, 0.62);
+}
+
+.v5-board-lanes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.v5-board-lane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  align-content: start;
+}
+
+.v5-board-lane button.selected {
+  border-color: rgba(50, 255, 173, 0.7);
+  background: rgba(50, 255, 173, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(50, 255, 173, 0.14);
+}
+
+.v5-board-lane span {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.v5-query-result {
+  border-color: rgba(127, 255, 196, 0.16);
+}
+
+.v5-query-result span {
+  display: block;
+  padding: 8px 9px;
+  border: 1px solid rgba(127, 255, 196, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 18, 18, 0.52);
+}
+
 @media (max-width: 760px) {
   .life-os-audit-head,
   .english-clinic-head,
   .cognitive-director-head,
   .file-vault-head,
   .cognitive-trend-head,
-  .v4-kernel-head {
+  .v4-kernel-head,
+  .v5-command-head,
+  .v5-campaign-layout {
     grid-template-columns: 1fr;
   }
 
@@ -12875,6 +13132,10 @@ body[data-current-view="cognitive"] .learning-hud {
   .cognitive-trend-grid,
   .v4-architecture-grid,
   .v4-kernel-metrics,
+  .v5-module-grid,
+  .v5-signal-grid,
+  .v5-check-grid,
+  .v5-board-lanes,
   .transcendence-loop-grid,
   .bottleneck-board,
   .english-template-strip,
@@ -12906,9 +13167,17 @@ body[data-current-view="cognitive"] .learning-hud {
   .v4-action-row button,
   .v4-upload-strip button,
   .v4-upload-strip label,
-  .v4-filter-bar label {
+  .v4-filter-bar label,
+  .v5-board-toolbar label,
+  .v5-board-toolbar button,
+  .v5-query-row label,
+  .v5-query-row button {
     width: 100%;
     flex-basis: 100%;
+  }
+
+  .v5-command-score {
+    min-height: 92px;
   }
 
   .file-vault-list article {

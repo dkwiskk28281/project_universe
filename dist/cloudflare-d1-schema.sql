@@ -184,6 +184,51 @@ CREATE TABLE IF NOT EXISTS case_game_events (
   payload TEXT
 );
 
+CREATE TABLE IF NOT EXISTS ce_campaign_sessions (
+  id TEXT PRIMARY KEY,
+  campaign_id TEXT,
+  status TEXT,
+  score INTEGER,
+  current_stage TEXT,
+  completed INTEGER,
+  created_at TEXT,
+  updated_at TEXT,
+  payload TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ce_campaign_events (
+  id TEXT PRIMARY KEY,
+  session_id TEXT,
+  campaign_id TEXT,
+  stage_id TEXT,
+  answer TEXT,
+  correct INTEGER,
+  feedback TEXT,
+  created_at TEXT,
+  payload TEXT
+);
+
+CREATE TABLE IF NOT EXISTS evidence_boards (
+  id TEXT PRIMARY KEY,
+  title TEXT,
+  linked_campaign_id TEXT,
+  status TEXT,
+  selected_cards TEXT,
+  created_at TEXT,
+  updated_at TEXT,
+  payload TEXT
+);
+
+CREATE TABLE IF NOT EXISTS evidence_board_events (
+  id TEXT PRIMARY KEY,
+  board_id TEXT,
+  card_id TEXT,
+  card_type TEXT,
+  selected INTEGER,
+  created_at TEXT,
+  payload TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_life_records_book_updated ON life_records(book_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_life_records_privacy_updated ON life_records(privacy_level, updated_at);
 CREATE INDEX IF NOT EXISTS idx_life_edges_from_label ON life_edges(from_id, label);
@@ -196,3 +241,7 @@ CREATE INDEX IF NOT EXISTS idx_passkey_challenges_user_kind ON passkey_challenge
 CREATE INDEX IF NOT EXISTS idx_r2_objects_record ON r2_objects(record_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_case_game_sessions_case ON case_game_sessions(case_id, updated_at);
 CREATE INDEX IF NOT EXISTS idx_case_game_events_session ON case_game_events(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_ce_campaign_sessions_campaign ON ce_campaign_sessions(campaign_id, updated_at);
+CREATE INDEX IF NOT EXISTS idx_ce_campaign_events_session ON ce_campaign_events(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_evidence_boards_updated ON evidence_boards(updated_at);
+CREATE INDEX IF NOT EXISTS idx_evidence_board_events_board ON evidence_board_events(board_id, created_at);

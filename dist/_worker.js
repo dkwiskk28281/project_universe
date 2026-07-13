@@ -24,7 +24,7 @@ function jsonResponse(request, data, status = 200, headers = {}) {
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password, X-Content-SHA256, X-Content-Hash, X-Original-Size",
       "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
       ...headers
     }
@@ -562,6 +562,47 @@ async function ensureSchema(env) {
     created_at TEXT,
     payload TEXT
   )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ce_campaign_sessions (
+    id TEXT PRIMARY KEY,
+    campaign_id TEXT,
+    status TEXT,
+    score INTEGER,
+    current_stage TEXT,
+    completed INTEGER,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ce_campaign_events (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    campaign_id TEXT,
+    stage_id TEXT,
+    answer TEXT,
+    correct INTEGER,
+    feedback TEXT,
+    created_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS evidence_boards (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    linked_campaign_id TEXT,
+    status TEXT,
+    selected_cards TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS evidence_board_events (
+    id TEXT PRIMARY KEY,
+    board_id TEXT,
+    card_id TEXT,
+    card_type TEXT,
+    selected INTEGER,
+    created_at TEXT,
+    payload TEXT
+  )`).run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_records_book_updated ON life_records(book_id, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_records_privacy_updated ON life_records(privacy_level, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_edges_from_label ON life_edges(from_id, label)").run();
@@ -574,6 +615,10 @@ async function ensureSchema(env) {
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_r2_objects_record ON r2_objects(record_id, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_case_game_sessions_case ON case_game_sessions(case_id, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_case_game_events_session ON case_game_events(session_id, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_ce_campaign_sessions_campaign ON ce_campaign_sessions(campaign_id, updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_ce_campaign_events_session ON ce_campaign_events(session_id, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_evidence_boards_updated ON evidence_boards(updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_evidence_board_events_board ON evidence_board_events(board_id, created_at)").run();
 }
 
 function requireDb(env) {
@@ -1347,7 +1392,11 @@ async function buildV4OpsStatus(request, env, db) {
     "passkey_credentials",
     "r2_objects",
     "case_game_sessions",
-    "case_game_events"
+    "case_game_events",
+    "ce_campaign_sessions",
+    "ce_campaign_events",
+    "evidence_boards",
+    "evidence_board_events"
   ]) {
     counts[table] = await countTable(db, table);
   }
@@ -2425,6 +2474,555 @@ async function handleCaseGameStatus(request, db) {
   });
 }
 
+const V5_CE_CAMPAIGNS = [
+  {
+    id: "install-day-0-readiness",
+    title: "Install Day 0: readiness war-room",
+    mission: "장비가 Fab에 들어오기 전, 문서/owner/utility/evidence가 준비됐는지 판단한다.",
+    stages: [
+      {
+        id: "owner-map",
+        label: "Owner map",
+        prompt: "Move-in 전 가장 먼저 고정해야 할 것은?",
+        correct: ["owner matrix", "raci", "owner"],
+        choices: ["owner matrix와 RACI를 확정한다", "바로 qualification 날짜부터 약속한다", "recipe 조건을 먼저 추측한다"],
+        evidence: ["facility owner", "EHS owner", "gas owner", "customer contact", "vendor/CE contact"],
+        stop: "owner가 불명확한 utility나 안전 항목이 있으면 move-in readiness를 pass로 말하지 않는다.",
+        report: "We are confirming the owner matrix and open readiness evidence before move-in commitment."
+      },
+      {
+        id: "rigging-boundary",
+        label: "Rigging boundary",
+        prompt: "Rigging/move-in 판단에서 CE가 절대 단정하면 안 되는 것은?",
+        correct: ["approved rigging plan", "site procedure", "owner signoff"],
+        choices: ["승인된 rigging plan과 site procedure를 우선한다", "현장에서 보기에 가능하면 바로 이동한다", "장비 manual 원문을 복사해 공유한다"],
+        evidence: ["approved lift/move plan", "path clearance", "floor/load limit owner", "crate condition"],
+        stop: "승인된 rigging plan, path clearance, EHS 경계가 없으면 이동을 진행하지 않는다.",
+        report: "Move-in remains on hold until approved rigging/path evidence is complete."
+      },
+      {
+        id: "pre-hookup-package",
+        label: "Pre hook-up",
+        prompt: "Facility hook-up 전에 패킷으로 묶어야 할 evidence는?",
+        correct: ["utility label", "punch list", "signoff"],
+        choices: ["utility label, punch list, owner signoff", "공정 결과만", "누가 했는지 모르는 사진 몇 장"],
+        evidence: ["utility labels", "as-built/punch list", "owner signoff", "pre-power walkdown"],
+        stop: "utility identity나 punch impact가 불명확하면 energization/first run을 보류한다.",
+        report: "Facility pre-hookup package is being separated into labels, punch items, and owner signoff."
+      }
+    ]
+  },
+  {
+    id: "install-day-1-movein-hookup",
+    title: "Install Day 1: move-in, set-in-place, hook-up",
+    mission: "장비 배치와 시설 연결을 진행하되, 안전 경계와 evidence를 잃지 않는다.",
+    stages: [
+      {
+        id: "set-in-place",
+        label: "Set in place",
+        prompt: "Set-in-place 후 바로 남겨야 할 설치 evidence는?",
+        correct: ["leveling", "position", "handover"],
+        choices: ["position/leveling evidence와 open punch를 남긴다", "외관만 깨끗하면 pass", "불명확한 항목은 나중에 기억으로 처리"],
+        evidence: ["position check", "leveling evidence", "open punch", "owner handoff"],
+        stop: "설치 위치/leveling/punch impact가 불명확하면 다음 boundary로 넘기지 않는다.",
+        report: "Set-in-place evidence is captured; open punch items are separated before next boundary."
+      },
+      {
+        id: "facility-hookup",
+        label: "Facility hook-up",
+        prompt: "CDA/PCW/exhaust/power hook-up에서 사고 순서는?",
+        correct: ["identity", "owner", "readiness"],
+        choices: ["utility identity → owner signoff → readiness evidence", "스케줄 우선으로 동시에 전부 진행", "알람이 없으면 owner 확인 생략"],
+        evidence: ["utility identity", "owner signoff", "readiness status", "punch impact"],
+        stop: "utility identity, flow/exhaust readiness, owner signoff가 불명확하면 power-on/first activity를 중지한다.",
+        report: "Hook-up is being gated by utility identity, owner signoff, and readiness evidence."
+      },
+      {
+        id: "power-on-boundary",
+        label: "Power-on boundary",
+        prompt: "Power-on 전 전기/제어 관점의 안전 문장은?",
+        correct: ["authorized", "LOTO", "energized"],
+        choices: ["승인 범위/LOTO/energized work 경계를 먼저 확인한다", "DVM으로 아무 지점이나 측정해 본다", "interlock을 우회해 원인을 좁힌다"],
+        evidence: ["approved work scope", "LOTO state", "stored energy boundary", "PLC/interlock status"],
+        stop: "승인 없는 live measurement, panel opening, interlock bypass는 금지한다.",
+        report: "Power-on work will remain inside approved electrical scope; no unauthorized energized work or bypass will be performed."
+      }
+    ]
+  },
+  {
+    id: "install-day-2-first-readiness",
+    title: "Install Day 2: pumpdown, gas readiness, dry run, baseline wafer",
+    mission: "첫 공정성 활동 전에 vacuum/gas/exhaust/abatement/metrology evidence를 하나의 판단 흐름으로 묶는다.",
+    stages: [
+      {
+        id: "pumpdown",
+        label: "Pumpdown",
+        prompt: "Pumpdown이 baseline보다 느리면 첫 판단은?",
+        correct: ["hold", "trend", "owner"],
+        choices: ["qualification을 보류하고 trend/change point/owner evidence를 모은다", "시간이 걸려도 결국 내려가면 pass", "gas readiness를 먼저 진행한다"],
+        evidence: ["pressure trend", "recent change point", "foreline/exhaust status", "approved leak-check record"],
+        stop: "vacuum recovery 원인이 불명확하거나 gas readiness에 영향을 주면 hold한다.",
+        report: "Pumpdown trend is outside baseline comparison; qualification is on hold while evidence is reviewed."
+      },
+      {
+        id: "gas-readiness",
+        label: "Gas readiness",
+        prompt: "Gas readiness에서 toxic/flammable boundary를 다룰 때 맞는 행동은?",
+        correct: ["EHS", "gas owner", "abatement"],
+        choices: ["gas/EHS owner, detector, purge, abatement readiness를 확인한다", "MFC 응답이 이상하면 수동 조작으로 맞춘다", "가스 종류는 옵션이라 대충 넘어간다"],
+        evidence: ["gas owner confirmation", "purge readiness", "detector status", "abatement readiness", "FDC trend"],
+        stop: "gas identity, purge, detector, abatement readiness가 불명확하면 gas state를 조작하지 않는다.",
+        report: "Gas readiness is held until gas/EHS owner and abatement readiness evidence are complete."
+      },
+      {
+        id: "dry-run",
+        label: "Dry run",
+        prompt: "Dry run의 목적을 가장 잘 설명한 것은?",
+        correct: ["alarm-free", "wafer handling", "boundary"],
+        choices: ["공정 전 wafer path, alarms, boundary evidence를 확인한다", "공정 성능을 최종 보증한다", "site-specific acceptance limit을 추측한다"],
+        evidence: ["alarm history", "wafer path status", "robot/slot map", "interlock state"],
+        stop: "반복 alarm, wafer handling retry, unresolved interlock이 있으면 baseline wafer 전 중지한다.",
+        report: "Dry run is used to verify transfer/alarm readiness before baseline wafer activity."
+      },
+      {
+        id: "baseline-wafer",
+        label: "Baseline wafer",
+        prompt: "Baseline wafer 결과가 흔들릴 때 CE 사고 순서는?",
+        correct: ["metrology", "trace", "baseline", "hold"],
+        choices: ["metrology/trace/alarm history를 baseline과 비교하고 hold 조건을 판단한다", "한 장 결과로 root cause를 확정한다", "고객에게 pass를 먼저 약속한다"],
+        evidence: ["baseline wafer result", "metrology map", "thermal/process trace", "alarm history", "owner signoff"],
+        stop: "공식 acceptance criteria나 site-specific limit은 승인 문서 없이 단정하지 않는다.",
+        report: "Baseline wafer evidence is under review; we will separate tool readiness evidence from site-specific acceptance criteria."
+      },
+      {
+        id: "handover",
+        label: "Customer handover",
+        prompt: "고객 handover 문장에서 반드시 분리해야 하는 것은?",
+        correct: ["symptom", "evidence", "next update"],
+        choices: ["symptom/risk/evidence/owner/next update/prevention", "root cause 단정과 일정 약속", "문제가 없다는 안심 문장만"],
+        evidence: ["symptom statement", "risk boundary", "evidence list", "owner action log", "prevention"],
+        stop: "evidence 없이 root cause 또는 pass/fail을 단정하지 않는다.",
+        report: "We will provide symptom, risk boundary, collected evidence, owner actions, next update time, and prevention items."
+      }
+    ]
+  }
+];
+
+const V5_EVIDENCE_DECK = [
+  { id: "symptom-pumpdown-slow", type: "symptom", label: "Pumpdown slow", detail: "압력 회복이 baseline 비교보다 느리다." },
+  { id: "symptom-transfer-retry", type: "symptom", label: "Transfer retry", detail: "EFEM/LL/TM 사이 wafer transfer retry가 반복된다." },
+  { id: "symptom-mfc-mismatch", type: "symptom", label: "MFC mismatch", detail: "flow command와 feedback trend가 맞지 않는다." },
+  { id: "risk-toxic-gas", type: "risk", label: "Toxic/flammable gas", detail: "gas identity, purge, detector, abatement가 불명확하면 중지한다." },
+  { id: "risk-wafer-damage", type: "risk", label: "Wafer damage", detail: "반복 motion/retry로 wafer scratch/drop/particle 위험이 있다." },
+  { id: "risk-energized-work", type: "risk", label: "Energized boundary", detail: "승인 없는 live measurement/panel opening/bypass 금지." },
+  { id: "subsystem-vacuum", type: "subsystem", label: "Vacuum", detail: "load lock, chamber, pump, foreline, exhaust readiness." },
+  { id: "subsystem-gas", type: "subsystem", label: "Gas delivery", detail: "gas box, MFC, purge, detector, abatement owner." },
+  { id: "subsystem-wafer", type: "subsystem", label: "Wafer handling", detail: "FOUP, EFEM, load lock, robot, slot map, alignment." },
+  { id: "evidence-trend", type: "evidence", label: "Trend log", detail: "FDC/alarm/pressure/thermal trend와 최근 change point." },
+  { id: "evidence-owner", type: "evidence", label: "Owner signoff", detail: "facility/gas/EHS/customer owner 확인 기록." },
+  { id: "evidence-metrology", type: "evidence", label: "Metrology map", detail: "baseline wafer와 결과 map 비교." },
+  { id: "owner-ehs", type: "owner", label: "EHS / Gas owner", detail: "가스/독성/배기/검지기 readiness owner." },
+  { id: "owner-facility", type: "owner", label: "Facility owner", detail: "CDA/PCW/exhaust/power/abatement 연결 owner." },
+  { id: "stop-unclear-readiness", type: "stop", label: "Readiness unclear", detail: "identity, owner, evidence가 불명확하면 다음 단계 중지." },
+  { id: "stop-no-bypass", type: "stop", label: "No bypass", detail: "interlock bypass, detector setpoint 추측, valve sequence 단정 금지." },
+  { id: "report-safe-update", type: "report", label: "Safe customer update", detail: "symptom, risk, evidence, owner action, next update를 분리한다." },
+  { id: "report-no-overpromise", type: "report", label: "No overpromise", detail: "evidence 없이 root cause/pass/fail/일정을 단정하지 않는다." }
+];
+
+function campaignById(id) {
+  return V5_CE_CAMPAIGNS.find(item => item.id === id) || V5_CE_CAMPAIGNS[0];
+}
+
+function campaignStageById(campaign, stageId) {
+  return campaign.stages.find(stage => stage.id === stageId) || campaign.stages[0];
+}
+
+function buildCampaignStep(campaign, stageId) {
+  const stage = campaignStageById(campaign, stageId);
+  const index = campaign.stages.findIndex(item => item.id === stage.id);
+  const next = campaign.stages[index + 1]?.id || "complete";
+  return {
+    campaignId: campaign.id,
+    campaignTitle: campaign.title,
+    mission: campaign.mission,
+    stageId: stage.id,
+    label: stage.label,
+    prompt: stage.prompt,
+    choices: stage.choices,
+    evidence: stage.evidence,
+    stop: stage.stop,
+    report: stage.report,
+    progress: `${index + 1}/${campaign.stages.length}`,
+    nextStage: next
+  };
+}
+
+function campaignAnswerCorrect(answer = "", stage = {}) {
+  const lower = String(answer || "").toLowerCase();
+  if ((stage.choices || []).includes(answer) && (stage.choices || [])[0] === answer) return true;
+  return (stage.correct || []).some(word => lower.includes(String(word).toLowerCase()));
+}
+
+async function handleV5CampaignStart(request, db) {
+  const body = await readBody(request);
+  const campaign = campaignById(body.campaignId);
+  const now = new Date().toISOString();
+  const session = {
+    id: crypto.randomUUID(),
+    campaignId: campaign.id,
+    status: "active",
+    score: 0,
+    currentStage: campaign.stages[0].id,
+    completed: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  await db.prepare(`INSERT INTO ce_campaign_sessions
+    (id, campaign_id, status, score, current_stage, completed, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(session.id, session.campaignId, session.status, 0, session.currentStage, 0, now, now, JSON.stringify(session))
+    .run();
+  await insertAuditEvent(db, "v5-campaign-start", session.id, "info", "Started CE campaign simulator session.", { campaignId: campaign.id });
+  return jsonResponse(request, { ok: true, session, campaign, step: buildCampaignStep(campaign, session.currentStage) });
+}
+
+async function handleV5CampaignAnswer(request, db) {
+  const body = await readBody(request);
+  const session = await db.prepare("SELECT * FROM ce_campaign_sessions WHERE id = ?").bind(body.sessionId || "").first();
+  if (!session) return jsonResponse(request, { ok: false, error: "campaign session not found" }, 404);
+  const campaign = campaignById(session.campaign_id);
+  const stage = campaignStageById(campaign, session.current_stage);
+  const answer = compactText(body.answer || "", 1600);
+  const correct = campaignAnswerCorrect(answer, stage);
+  const nextStage = correct ? buildCampaignStep(campaign, stage.id).nextStage : stage.id;
+  const completed = nextStage === "complete";
+  const score = Number(session.score || 0) + (correct ? Math.round(100 / campaign.stages.length) : 0);
+  const now = new Date().toISOString();
+  const feedback = correct
+    ? "좋습니다. 행동보다 evidence, owner, stop condition을 먼저 세우는 CE 사고 순서가 유지됐습니다."
+    : "재훈련 필요. 현장에서는 속도보다 안전 경계, owner 확인, evidence 보존이 우선입니다.";
+  await db.prepare(`INSERT INTO ce_campaign_events
+    (id, session_id, campaign_id, stage_id, answer, correct, feedback, created_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), session.id, campaign.id, stage.id, answer, correct ? 1 : 0, feedback, now, JSON.stringify({ expected: stage.correct, evidence: stage.evidence, stop: stage.stop }))
+    .run();
+  await db.prepare("UPDATE ce_campaign_sessions SET score = ?, current_stage = ?, completed = ?, status = ?, updated_at = ?, payload = ? WHERE id = ?")
+    .bind(score, completed ? "complete" : nextStage, completed ? 1 : 0, completed ? "completed" : "active", now, JSON.stringify({ campaignId: campaign.id, score, currentStage: nextStage, completed }), session.id)
+    .run();
+  if (!correct) {
+    await db.prepare(`INSERT INTO weakness_events
+      (id, record_id, lane, skill, severity, evidence, next_action, created_at, payload)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(crypto.randomUUID(), session.id, "ce-campaign", `${campaign.id}/${stage.id}`, "safety-review", answer, "Replay the campaign stage and write evidence + stop condition before action.", now, JSON.stringify({ campaignId: campaign.id, stageId: stage.id }))
+      .run();
+  }
+  return jsonResponse(request, {
+    ok: true,
+    correct,
+    feedback,
+    score,
+    completed,
+    next: completed ? null : buildCampaignStep(campaign, nextStage)
+  });
+}
+
+async function handleV5CampaignStatus(request, db) {
+  const sessions = await db.prepare("SELECT * FROM ce_campaign_sessions ORDER BY updated_at DESC LIMIT 30").all().catch(() => ({ results: [] }));
+  const misses = await db.prepare(`
+    SELECT campaign_id, stage_id, COUNT(*) AS count, MAX(created_at) AS latest
+    FROM ce_campaign_events
+    WHERE correct = 0
+    GROUP BY campaign_id, stage_id
+    ORDER BY count DESC, latest DESC
+    LIMIT 10
+  `).all().catch(() => ({ results: [] }));
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-ce-campaign",
+    generatedAt: new Date().toISOString(),
+    campaigns: V5_CE_CAMPAIGNS,
+    sessions: (sessions.results || []).map(row => ({
+      id: row.id,
+      campaignId: row.campaign_id,
+      status: row.status,
+      score: Number(row.score || 0),
+      currentStage: row.current_stage,
+      completed: Boolean(row.completed),
+      updatedAt: row.updated_at
+    })),
+    reviewQueue: (misses.results || []).map(row => {
+      const campaign = campaignById(row.campaign_id);
+      const stage = campaignStageById(campaign, row.stage_id);
+      return {
+        campaignId: row.campaign_id,
+        campaignTitle: campaign.title,
+        stageId: row.stage_id,
+        label: stage.label,
+        count: Number(row.count || 0),
+        latest: row.latest,
+        nextAction: "Replay this stage and state symptom, risk, evidence, owner, stop condition, report."
+      };
+    }),
+    safetyBoundary: "Generic public-training simulator only. No recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit, or customer confidential data."
+  });
+}
+
+function v5PriorityScore(item = {}) {
+  const base = {
+    security: 95,
+    storage: 90,
+    ce: 84,
+    english: 72,
+    cognitive: 68,
+    records: 64,
+    investment: 56,
+    backup: 52
+  }[item.lane] || 50;
+  return Math.min(99, base + Number(item.weight || 0));
+}
+
+async function buildV5CommandBriefing(request, env, db) {
+  const [ops, graph, caseStatus, campaignRows, packetCount, latestExport, missingNext, dyorReview] = await Promise.all([
+    buildV4OpsStatus(request, env, db),
+    buildV4LifeGraph(db),
+    handleCaseGameStatus(request, db).then(response => response.json()).catch(() => ({})),
+    db.prepare("SELECT COUNT(*) AS total, MAX(updated_at) AS latest FROM ce_campaign_sessions").first().catch(() => ({})),
+    countTable(db, "ai_packets"),
+    db.prepare("SELECT MAX(created_at) AS latest FROM ai_packets").first().catch(() => ({})),
+    db.prepare(`SELECT id, book_id, title, updated_at FROM life_records
+      WHERE next_step IS NULL OR TRIM(next_step) = ''
+      ORDER BY updated_at DESC LIMIT 8`).all().catch(() => ({ results: [] })),
+    db.prepare(`SELECT id, title, next_step, updated_at FROM life_records
+      WHERE book_id = 'investment-dyor' AND (next_step LIKE '%review%' OR next_step LIKE '%검토%' OR next_step LIKE '%재검%')
+      ORDER BY updated_at DESC LIMIT 6`).all().catch(() => ({ results: [] }))
+  ]);
+  const weak = graph.recurringWeaknesses || [];
+  const englishWeak = weak.find(item => `${item.lane} ${item.skill}`.toLowerCase().includes("english")) || null;
+  const ceWeak = weak.find(item => `${item.lane}`.includes("ce-")) || weak.find(item => `${item.skill}`.includes("ce")) || null;
+  const cognitiveWeak = weak.find(item => `${item.lane} ${item.skill}`.toLowerCase().includes("cognitive")) || null;
+  const caseMisses = caseStatus.reviewQueue || [];
+  const actions = [
+    !ops.auth.cloudflareAccessConfigured ? {
+      lane: "security",
+      title: "Cloudflare Access를 private route 앞에 세우기",
+      action: "TEAM_DOMAIN/POLICY_AUD를 설정하고 Access JWT가 들어오는지 확인합니다.",
+      why: "현재 client password/HMAC cookie는 편의 잠금이지 장기 실인증 레이어가 아닙니다.",
+      evidence: ops.auth.boundary,
+      source: "ops-status"
+    } : null,
+    !(ops.counts?.passkey_credentials) ? {
+      lane: "security",
+      title: "Passkey 등록",
+      action: "현재 기기에서 WebAuthn passkey를 1개 이상 등록합니다.",
+      why: "비밀번호 입력 의존도를 줄이고 개인 장기 운영성을 높입니다.",
+      evidence: "passkey_credentials = 0",
+      source: "security-center"
+    } : null,
+    !ops.storage.r2Binding ? {
+      lane: "storage",
+      title: "R2 FILE_VAULT binding 연결",
+      action: "wrangler에 R2 bucket binding(FILE_VAULT)을 추가합니다.",
+      why: "D1은 구조화 데이터용입니다. PDF/이미지/검진표/논문/설치 사진 원문은 R2/D-drive vault로 분리해야 합니다.",
+      evidence: ops.storage.rawFileRule,
+      source: "r2-status"
+    } : null,
+    ceWeak || caseMisses[0] ? {
+      lane: "ce",
+      title: "CE 판단 약점 복습",
+      action: caseMisses[0]?.nextAction || `${ceWeak.lane}/${ceWeak.skill} 복습 큐를 진행합니다.`,
+      why: caseMisses[0] ? `${caseMisses[0].count} misses in ${caseMisses[0].subsystem}/${caseMisses[0].step}` : `${ceWeak.count} repeated misses`,
+      evidence: caseMisses[0]?.title || ceWeak.skill,
+      source: "case-game/weakness"
+    } : {
+      lane: "ce",
+      title: "Install Day campaign 1회 진행",
+      action: "Day 0/1/2 중 하나를 골라 evidence board와 함께 훈련합니다.",
+      why: "케이스 게임을 캠페인 흐름으로 연결해야 현장 install 사고가 생깁니다.",
+      evidence: "no active CE weakness, keep streak",
+      source: "ce-campaign"
+    },
+    englishWeak ? {
+      lane: "english",
+      title: "영어 오답 기반 복습",
+      action: `${englishWeak.skill} 변형 문제와 customer update 말하기 문장을 10분 연습합니다.`,
+      why: `${englishWeak.count} repeated weakness events`,
+      evidence: englishWeak.latest || "weakness queue",
+      source: "weakness-events"
+    } : {
+      lane: "english",
+      title: "영어 CBT 5문제 즉시채점 루틴",
+      action: "grammar/vocabulary/reading/speaking 중 5문제를 풀고 틀린 태그를 저장합니다.",
+      why: "오답 데이터가 쌓여야 자동 복습 큐가 정확해집니다.",
+      evidence: "no current English weakness detected",
+      source: "routine"
+    },
+    cognitiveWeak ? {
+      lane: "cognitive",
+      title: "인지 약점 루틴",
+      action: `${cognitiveWeak.skill} 영역을 오늘 루틴에 우선 배치합니다.`,
+      why: `${cognitiveWeak.count} repeated signals`,
+      evidence: cognitiveWeak.latest || "cognitive weakness",
+      source: "weakness-events"
+    } : null,
+    (missingNext.results || []).length ? {
+      lane: "records",
+      title: "nextStep 없는 기록 정리",
+      action: `${(missingNext.results || []).length}개 기록에 다음 행동을 추가합니다.`,
+      why: "AI가 실행 코치가 되려면 모든 기록에 nextStep이 있어야 합니다.",
+      evidence: (missingNext.results || []).slice(0, 3).map(row => row.title).join(" / "),
+      source: "life-records"
+    } : null,
+    (dyorReview.results || []).length ? {
+      lane: "investment",
+      title: "투자 DYOR review",
+      action: "review date가 있는 투자 메모를 fact/source/risk/counter-thesis 기준으로 재검토합니다.",
+      why: "투자 판단은 조언이 아니라 timestamped research note로 관리합니다.",
+      evidence: (dyorReview.results || []).slice(0, 3).map(row => row.title).join(" / "),
+      source: "investment-dyor"
+    } : null,
+    !latestExport?.latest ? {
+      lane: "backup",
+      title: "AI packet/export 생성",
+      action: "민감정보 제외 packet과 전체 백업 JSON을 생성합니다.",
+      why: "장기 기억 OS는 백업/복원/export 루틴이 있어야 합니다.",
+      evidence: `ai_packets=${packetCount}`,
+      source: "ai-packet"
+    } : null
+  ].filter(Boolean).map(item => ({ ...item, priority: v5PriorityScore(item) }))
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 9);
+  return {
+    schema: "project-universe-os-v5-command-briefing",
+    generatedAt: new Date().toISOString(),
+    mode: "self-operating-ai-think-tank",
+    opsChecklist: [
+      { id: "access", label: "Cloudflare Access", state: ops.auth.cloudflareAccessConfigured ? "configured" : "needs-setup", action: "Set TEAM_DOMAIN and POLICY_AUD, then verify cf-access-jwt-assertion on private routes." },
+      { id: "passkey", label: "Passkey", state: ops.counts?.passkey_credentials ? "registered" : "needs-registration", action: "Register at least one WebAuthn passkey from the Security Center." },
+      { id: "r2", label: "R2 File Vault", state: ops.storage.r2Binding ? "bound" : "binding-needed", action: "Bind an R2 bucket as FILE_VAULT. D1 keeps only index/hash/summary." },
+      { id: "d1", label: "D1 structured memory", state: ops.counts?.life_records ? "active" : "needs-records", action: "Keep book/chapter/topic/evidence/action/result/nextStep structured." },
+      { id: "packet", label: "AI Packet", state: packetCount ? "available" : "create-first-packet", action: "Generate redacted AI packet after meaningful records are saved." }
+    ],
+    actions,
+    graphInsights: {
+      weaknessesTop10: (graph.recurringWeaknesses || []).slice(0, 10),
+      recurringPatternsTop10: (graph.recurringPatternsTop10 || []).slice(0, 10),
+      nextSevenDays: graph.nextSevenDays || [],
+      exportBoundary: graph.exportBoundary
+    },
+    operatingSignals: {
+      ceCampaignSessions: Number(campaignRows?.total || 0),
+      latestCampaignAt: campaignRows?.latest || null,
+      caseGameReviewCount: caseMisses.length,
+      recordsMissingNextStep: (missingNext.results || []).length,
+      aiPackets: packetCount,
+      latestPacketAt: latestExport?.latest || null
+    },
+    safetyBoundary: "No recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit, equipment manual text, or customer confidential data."
+  };
+}
+
+async function handleV5EvidenceBoardStatus(request, db) {
+  const result = await db.prepare("SELECT * FROM evidence_boards ORDER BY updated_at DESC LIMIT 12").all().catch(() => ({ results: [] }));
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-evidence-board",
+    generatedAt: new Date().toISOString(),
+    deck: V5_EVIDENCE_DECK,
+    boards: (result.results || []).map(row => ({
+      id: row.id,
+      title: row.title,
+      linkedCampaignId: row.linked_campaign_id,
+      status: row.status,
+      selectedCards: parseJsonValue(row.selected_cards, []),
+      updatedAt: row.updated_at
+    })),
+    thinkingFrame: ["symptom", "risk", "subsystem", "evidence", "owner", "stop", "report"]
+  });
+}
+
+async function handleV5EvidenceBoardCreate(request, db) {
+  const payload = await readBody(request);
+  const now = new Date().toISOString();
+  const id = String(payload.id || crypto.randomUUID());
+  const selected = safeArray(payload.selectedCards || []);
+  await db.prepare(`INSERT OR REPLACE INTO evidence_boards
+    (id, title, linked_campaign_id, status, selected_cards, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      id,
+      compactText(payload.title || "CE Evidence Board", 180),
+      compactText(payload.linkedCampaignId || "", 120),
+      compactText(payload.status || "active", 80),
+      JSON.stringify(selected),
+      payload.createdAt || now,
+      now,
+      JSON.stringify(payload)
+    )
+    .run();
+  await insertAuditEvent(db, "v5-evidence-board-upsert", id, "info", "Evidence board saved.", { selectedCount: selected.length });
+  return jsonResponse(request, { ok: true, id, updatedAt: now, selectedCards: selected });
+}
+
+async function handleV5EvidenceBoardSelect(request, db) {
+  const payload = await readBody(request);
+  const boardId = String(payload.boardId || "");
+  const cardId = String(payload.cardId || "");
+  if (!boardId || !cardId) return jsonResponse(request, { ok: false, error: "boardId and cardId required" }, 400);
+  const board = await db.prepare("SELECT * FROM evidence_boards WHERE id = ?").bind(boardId).first();
+  if (!board) return jsonResponse(request, { ok: false, error: "evidence board not found" }, 404);
+  const selected = new Set(parseJsonValue(board.selected_cards, []));
+  const isSelected = payload.selected === undefined ? !selected.has(cardId) : Boolean(payload.selected);
+  if (isSelected) selected.add(cardId);
+  else selected.delete(cardId);
+  const card = V5_EVIDENCE_DECK.find(item => item.id === cardId) || {};
+  const now = new Date().toISOString();
+  await db.prepare("UPDATE evidence_boards SET selected_cards = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify([...selected]), now, boardId)
+    .run();
+  await db.prepare(`INSERT INTO evidence_board_events
+    (id, board_id, card_id, card_type, selected, created_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), boardId, cardId, card.type || "", isSelected ? 1 : 0, now, JSON.stringify({ label: card.label || "", selected: isSelected }))
+    .run();
+  return jsonResponse(request, { ok: true, boardId, cardId, selected: isSelected, selectedCards: [...selected], updatedAt: now });
+}
+
+async function handleV5GraphQuery(request, env, db, url) {
+  const question = compactText(url.searchParams.get("q") || "weekly-action", 240);
+  const briefing = await buildV5CommandBriefing(request, env, db);
+  const graph = briefing.graphInsights || {};
+  const query = question.toLowerCase();
+  let answer;
+  if (query.includes("weak") || query.includes("약점")) {
+    answer = {
+      title: "약점 top 10",
+      items: graph.weaknessesTop10,
+      nextAction: "상위 1개 약점을 오늘의 10분 복습 또는 CE campaign stage로 전환합니다."
+    };
+  } else if (query.includes("export") || query.includes("ai")) {
+    answer = {
+      title: "AI export 가능/불가 경계",
+      items: [graph.exportBoundary],
+      nextAction: "민감정보 제외 packet을 우선 사용하고, 건강/자산/가족 record는 redacted/index-only로 유지합니다."
+    };
+  } else {
+    answer = {
+      title: "다음 7일 action",
+      items: graph.nextSevenDays,
+      nextAction: "가장 높은 priority action 1개를 완료하고 기록에 result/nextStep을 갱신합니다."
+    };
+  }
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-graph-query",
+    generatedAt: new Date().toISOString(),
+    question,
+    answer,
+    priorityActions: briefing.actions.slice(0, 5),
+    redactionBoundary: briefing.safetyBoundary
+  });
+}
+
 async function handleLogin(request, env, formMode = false) {
   const body = await readBody(request);
   const password = String(body.password || "");
@@ -2547,6 +3145,38 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/v4/case-game/answer" && request.method === "POST") {
     return handleCaseGameAnswer(request, db);
+  }
+
+  if (url.pathname === "/api/v5/command-briefing" && request.method === "GET") {
+    return jsonResponse(request, { ok: true, briefing: await buildV5CommandBriefing(request, env, db) });
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/status" && request.method === "GET") {
+    return handleV5CampaignStatus(request, db);
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/start" && request.method === "POST") {
+    return handleV5CampaignStart(request, db);
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/answer" && request.method === "POST") {
+    return handleV5CampaignAnswer(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board" && request.method === "GET") {
+    return handleV5EvidenceBoardStatus(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board" && request.method === "POST") {
+    return handleV5EvidenceBoardCreate(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board/select" && request.method === "POST") {
+    return handleV5EvidenceBoardSelect(request, db);
+  }
+
+  if (url.pathname === "/api/v5/graph-query" && request.method === "GET") {
+    return handleV5GraphQuery(request, env, db, url);
   }
 
   if (url.pathname === "/api/v4/ops-status" && request.method === "GET") {

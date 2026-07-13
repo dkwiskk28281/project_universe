@@ -1,3 +1,11 @@
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse
+} from "@simplewebauthn/server";
+
 const COOKIE_NAME = "epi_vault_session_strict_v2";
 const LEGACY_COOKIE_NAMES = ["epi_vault_session"];
 const SESSION_SECONDS = 2 * 60 * 60;
@@ -16,8 +24,8 @@ function jsonResponse(request, data, status = 200, headers = {}) {
       "Cache-Control": "no-store",
       "Access-Control-Allow-Origin": origin,
       "Access-Control-Allow-Credentials": "true",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-ThinkTank-Password, X-Content-SHA256, X-Content-Hash, X-Original-Size",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
       ...headers
     }
   });
@@ -73,6 +81,20 @@ function decodeBase64Url(value) {
   return atob(padded);
 }
 
+function base64UrlToBytes(value = "") {
+  const binary = decodeBase64Url(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
+}
+
+function bytesToBase64Url(bytes) {
+  if (!bytes) return "";
+  if (bytes instanceof ArrayBuffer) return base64Url(bytes);
+  if (ArrayBuffer.isView(bytes)) return base64Url(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  return base64Url(new Uint8Array(bytes));
+}
+
 async function hmac(secret, value) {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -114,6 +136,35 @@ async function verifyToken(env, token) {
   }
 }
 
+function accessConfig(env) {
+  const teamDomain = String(env.TEAM_DOMAIN || "").replace(/\/$/, "");
+  const aud = String(env.POLICY_AUD || "");
+  return {
+    configured: Boolean(teamDomain && aud),
+    teamDomain,
+    aud
+  };
+}
+
+async function verifyAccessJwt(request, env) {
+  const config = accessConfig(env);
+  if (!config.configured) return null;
+  const token = request.headers.get("cf-access-jwt-assertion");
+  if (!token) return null;
+  const JWKS = createRemoteJWKSet(new URL(`${config.teamDomain}/cdn-cgi/access/certs`));
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: config.teamDomain,
+    audience: config.aud
+  });
+  return {
+    provider: "cloudflare-access",
+    email: payload.email || "",
+    sub: payload.sub || "",
+    aud: payload.aud || "",
+    exp: payload.exp || 0
+  };
+}
+
 function cookieToken(request) {
   const cookie = request.headers.get("Cookie") || "";
   const match = cookie.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
@@ -126,7 +177,12 @@ function bearerToken(request) {
 }
 
 async function isAuthenticated(request, env) {
-  return verifyToken(env, bearerToken(request) || cookieToken(request));
+  if (await verifyToken(env, bearerToken(request) || cookieToken(request))) return true;
+  try {
+    return Boolean(await verifyAccessJwt(request, env));
+  } catch {
+    return false;
+  }
 }
 
 function loginPage(message = "") {
@@ -135,25 +191,84 @@ function loginPage(message = "") {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FEP/EPI Vault Login</title>
+  <title>Project Universe Login</title>
   <style>
-    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#16232d;font-family:Segoe UI,Malgun Gothic,Arial,sans-serif;color:#17232d}
-    form{width:min(420px,calc(100vw - 32px));display:grid;gap:14px;padding:28px;border-radius:8px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.32)}
-    .mark{display:grid;place-items:center;width:42px;height:42px;border-radius:8px;background:#007f86;color:#fff;font-weight:900}
-    p{margin:0;color:#617080;line-height:1.55} h1{margin:0} label{display:grid;gap:6px;font-weight:800}
-    input{min-height:44px;padding:0 12px;border:1px solid #d8e1e8;border-radius:8px} button{min-height:44px;border:0;border-radius:8px;background:#007f86;color:#fff;font-weight:850}
-    small{color:#b35a16}
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(circle at 20% 15%,rgba(69,255,188,.16),transparent 34%),#03100f;font-family:Segoe UI,Malgun Gothic,Arial,sans-serif;color:#ecfff8}
+    main{width:min(460px,calc(100vw - 28px));display:grid;gap:14px;padding:28px;border:1px solid rgba(127,255,196,.28);border-radius:10px;background:rgba(2,18,18,.94);box-shadow:0 30px 80px rgba(0,0,0,.45)}
+    .mark{display:grid;place-items:center;width:44px;height:44px;border-radius:8px;background:#32ffad;color:#021110;font-weight:950}
+    p{margin:0;color:#b9dacf;line-height:1.55} h1{margin:0;color:#fff} label{display:grid;gap:6px;font-weight:850;color:#dffff2}
+    input{min-height:44px;padding:0 12px;border:1px solid rgba(127,255,196,.28);border-radius:8px;background:#061f1d;color:#fff}
+    button{min-height:44px;border:0;border-radius:8px;background:#32ffad;color:#03110f;font-weight:900;cursor:pointer}
+    button.secondary{background:transparent;color:#ecfff8;border:1px solid rgba(127,255,196,.34)}
+    small{color:#ffd38a;line-height:1.45}.split{display:grid;gap:10px}.status{min-height:20px;color:#9cffd8}
   </style>
 </head>
 <body>
-  <form method="post" action="/api/login-form">
-    <span class="mark">FE</span>
-    <h1>FEP/EPI Vault Login</h1>
-    <p>비밀번호를 입력하면 개인 학습 웹과 원격 저장소가 열립니다.</p>
+  <main>
+    <span class="mark">PU</span>
+    <h1>Project Universe</h1>
+    <p>개인 책장과 장기 기억 영역입니다. Cloudflare Access가 연결되어 있으면 Access JWT로, 등록된 기기에서는 Passkey로, 호환 모드에서는 비밀번호로 잠금을 해제합니다.</p>
+    <form class="split" method="post" action="/api/login-form">
     <label>Password<input name="password" type="password" inputmode="numeric" autocomplete="current-password" autofocus /></label>
-    <button type="submit">열기</button>
+    <button type="submit">비밀번호로 열기</button>
+    </form>
+    <button class="secondary" type="button" id="passkey-login">Passkey로 열기</button>
+    <small class="status" id="passkey-status">${message}</small>
     <small>${message}</small>
-  </form>
+  </main>
+  <script>
+    function b64ToBuffer(value){
+      const base64=String(value||"").replace(/-/g,"+").replace(/_/g,"/");
+      const padded=base64+"===".slice((base64.length+3)%4);
+      const binary=atob(padded);
+      const bytes=new Uint8Array(binary.length);
+      for(let i=0;i<binary.length;i+=1)bytes[i]=binary.charCodeAt(i);
+      return bytes.buffer;
+    }
+    function bufferToB64(buffer){
+      const bytes=new Uint8Array(buffer||new ArrayBuffer(0));
+      let binary="";
+      bytes.forEach(byte=>{binary+=String.fromCharCode(byte);});
+      return btoa(binary).replace(/\\+/g,"-").replace(/\\//g,"_").replace(/=+$/,"");
+    }
+    function parseOptions(options){
+      if(window.PublicKeyCredential&&PublicKeyCredential.parseRequestOptionsFromJSON){
+        return PublicKeyCredential.parseRequestOptionsFromJSON(options);
+      }
+      const publicKey=structuredClone(options);
+      publicKey.challenge=b64ToBuffer(publicKey.challenge);
+      if(Array.isArray(publicKey.allowCredentials)){
+        publicKey.allowCredentials=publicKey.allowCredentials.map(item=>({...item,id:b64ToBuffer(item.id)}));
+      }
+      return publicKey;
+    }
+    function credentialJson(credential){
+      if(credential&&credential.toJSON)return credential.toJSON();
+      const response=credential.response||{};
+      const out={id:credential.id,rawId:bufferToB64(credential.rawId),type:credential.type,clientExtensionResults:credential.getClientExtensionResults?credential.getClientExtensionResults():{},response:{}};
+      ["clientDataJSON","authenticatorData","signature","userHandle"].forEach(key=>{if(response[key])out.response[key]=bufferToB64(response[key]);});
+      return out;
+    }
+    document.getElementById("passkey-login").addEventListener("click",async()=>{
+      const status=document.getElementById("passkey-status");
+      try{
+        if(!window.PublicKeyCredential||!navigator.credentials)throw new Error("이 브라우저는 Passkey/WebAuthn을 지원하지 않습니다.");
+        const optionsResponse=await fetch("/api/passkey/auth/options",{credentials:"include"});
+        const optionsData=await optionsResponse.json();
+        if(!optionsResponse.ok||!optionsData.ok)throw new Error(optionsData.error||"Passkey option 생성 실패");
+        if(!optionsData.hasPasskeys)throw new Error("아직 등록된 Passkey가 없습니다. 비밀번호로 들어간 뒤 Security Center에서 등록하세요.");
+        const credential=await navigator.credentials.get({publicKey:parseOptions(optionsData.options)});
+        const verifyResponse=await fetch("/api/passkey/auth/verify",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:"owner",response:credentialJson(credential)})});
+        const verifyData=await verifyResponse.json();
+        if(!verifyResponse.ok||!verifyData.ok)throw new Error(verifyData.error||"Passkey 검증 실패");
+        location.href="/";
+      }catch(error){
+        status.textContent="Passkey 실패: "+(error.message||"unknown");
+      }
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -376,6 +491,118 @@ async function ensureSchema(env) {
     privacy_scope TEXT,
     payload TEXT NOT NULL
   )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS passkey_users (
+    id TEXT PRIMARY KEY,
+    username TEXT UNIQUE,
+    display_name TEXT,
+    webauthn_user_id TEXT UNIQUE,
+    created_at TEXT,
+    updated_at TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS passkey_credentials (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    webauthn_user_id TEXT,
+    public_key TEXT NOT NULL,
+    counter INTEGER,
+    transports TEXT,
+    device_type TEXT,
+    backed_up INTEGER,
+    nickname TEXT,
+    created_at TEXT,
+    last_used_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS passkey_challenges (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    kind TEXT,
+    challenge TEXT,
+    created_at TEXT,
+    expires_at TEXT,
+    options TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS r2_objects (
+    key TEXT PRIMARY KEY,
+    label TEXT,
+    record_id TEXT,
+    file_type TEXT,
+    size INTEGER,
+    content_type TEXT,
+    etag TEXT,
+    content_hash TEXT,
+    privacy_level TEXT,
+    export_policy TEXT,
+    ai_summary TEXT,
+    tags TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS case_game_sessions (
+    id TEXT PRIMARY KEY,
+    case_id TEXT,
+    subsystem TEXT,
+    status TEXT,
+    score INTEGER,
+    current_step TEXT,
+    completed INTEGER,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS case_game_events (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    case_id TEXT,
+    step TEXT,
+    answer TEXT,
+    correct INTEGER,
+    feedback TEXT,
+    created_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ce_campaign_sessions (
+    id TEXT PRIMARY KEY,
+    campaign_id TEXT,
+    status TEXT,
+    score INTEGER,
+    current_stage TEXT,
+    completed INTEGER,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS ce_campaign_events (
+    id TEXT PRIMARY KEY,
+    session_id TEXT,
+    campaign_id TEXT,
+    stage_id TEXT,
+    answer TEXT,
+    correct INTEGER,
+    feedback TEXT,
+    created_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS evidence_boards (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    linked_campaign_id TEXT,
+    status TEXT,
+    selected_cards TEXT,
+    created_at TEXT,
+    updated_at TEXT,
+    payload TEXT
+  )`).run();
+  await db.prepare(`CREATE TABLE IF NOT EXISTS evidence_board_events (
+    id TEXT PRIMARY KEY,
+    board_id TEXT,
+    card_id TEXT,
+    card_type TEXT,
+    selected INTEGER,
+    created_at TEXT,
+    payload TEXT
+  )`).run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_records_book_updated ON life_records(book_id, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_records_privacy_updated ON life_records(privacy_level, updated_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_life_edges_from_label ON life_edges(from_id, label)").run();
@@ -383,6 +610,15 @@ async function ensureSchema(env) {
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_file_index_record ON file_index(record_id, created_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_weakness_lane_created ON weakness_events(lane, created_at)").run();
   await db.prepare("CREATE INDEX IF NOT EXISTS idx_audit_events_created ON audit_events(created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_passkey_credentials_user ON passkey_credentials(user_id, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_passkey_challenges_user_kind ON passkey_challenges(user_id, kind)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_r2_objects_record ON r2_objects(record_id, updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_case_game_sessions_case ON case_game_sessions(case_id, updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_case_game_events_session ON case_game_events(session_id, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_ce_campaign_sessions_campaign ON ce_campaign_sessions(campaign_id, updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_ce_campaign_events_session ON ce_campaign_events(session_id, created_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_evidence_boards_updated ON evidence_boards(updated_at)").run();
+  await db.prepare("CREATE INDEX IF NOT EXISTS idx_evidence_board_events_board ON evidence_board_events(board_id, created_at)").run();
 }
 
 function requireDb(env) {
@@ -1145,7 +1381,23 @@ function r2BindingName(env) {
 
 async function buildV4OpsStatus(request, env, db) {
   const counts = {};
-  for (const table of ["entries", "life_records", "life_edges", "file_index", "weakness_events", "audit_events", "ai_packets"]) {
+  for (const table of [
+    "entries",
+    "life_records",
+    "life_edges",
+    "file_index",
+    "weakness_events",
+    "audit_events",
+    "ai_packets",
+    "passkey_credentials",
+    "r2_objects",
+    "case_game_sessions",
+    "case_game_events",
+    "ce_campaign_sessions",
+    "ce_campaign_events",
+    "evidence_boards",
+    "evidence_board_events"
+  ]) {
     counts[table] = await countTable(db, table);
   }
   const latest = await db.prepare(`
@@ -1179,6 +1431,7 @@ async function buildV4OpsStatus(request, env, db) {
     },
     auth: {
       cookieSession: true,
+      passkeysRegistered: counts.passkey_credentials || 0,
       sessionSeconds: SESSION_SECONDS,
       clientIdleLockMinutes: 30,
       cloudflareAccessJwtPresent: accessJwtPresent,
@@ -1508,6 +1761,1268 @@ async function reindexV4FromEntries(db, limit = 1000) {
   return { indexed, scanned: (result.results || []).length };
 }
 
+function r2Binding(env) {
+  return env.FILE_VAULT || env.R2 || env.file_vault || null;
+}
+
+function relyingParty(request, env) {
+  const url = new URL(request.url);
+  const configuredId = String(env.PASSKEY_RP_ID || "").trim();
+  const rpID = configuredId || url.hostname;
+  const origin = String(env.PASSKEY_ORIGIN || `${url.protocol}//${url.host}`).replace(/\/$/, "");
+  return {
+    rpName: String(env.PASSKEY_RP_NAME || "Project Universe"),
+    rpID,
+    origin
+  };
+}
+
+async function ensurePasskeyUser(db, username = "owner") {
+  const cleanUsername = compactText(username || "owner", 120);
+  const existing = await db.prepare("SELECT * FROM passkey_users WHERE username = ?").bind(cleanUsername).first();
+  if (existing) return existing;
+  const now = new Date().toISOString();
+  const id = `user-${hashText(cleanUsername)}`;
+  const webauthnUserID = base64UrlText(`${cleanUsername}:${crypto.randomUUID()}`);
+  await db.prepare(`INSERT INTO passkey_users
+    (id, username, display_name, webauthn_user_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?)`)
+    .bind(id, cleanUsername, cleanUsername, webauthnUserID, now, now)
+    .run();
+  return { id, username: cleanUsername, display_name: cleanUsername, webauthn_user_id: webauthnUserID, created_at: now, updated_at: now };
+}
+
+async function listUserPasskeys(db, userId) {
+  const result = await db.prepare("SELECT * FROM passkey_credentials WHERE user_id = ? ORDER BY created_at DESC").bind(userId).all();
+  return (result.results || []).map(row => ({
+    id: row.id,
+    publicKey: base64UrlToBytes(row.public_key),
+    counter: Number(row.counter || 0),
+    transports: parseJsonValue(row.transports, []),
+    deviceType: row.device_type || "",
+    backedUp: Boolean(row.backed_up),
+    webauthnUserID: row.webauthn_user_id,
+    nickname: row.nickname || "",
+    createdAt: row.created_at || "",
+    lastUsedAt: row.last_used_at || ""
+  }));
+}
+
+async function storePasskeyChallenge(db, userId, kind, options) {
+  const now = new Date();
+  const expires = new Date(now.getTime() + 5 * 60 * 1000).toISOString();
+  await db.prepare(`INSERT INTO passkey_challenges
+    (id, user_id, kind, challenge, created_at, expires_at, options)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), userId, kind, options.challenge, now.toISOString(), expires, JSON.stringify(options))
+    .run();
+}
+
+async function latestPasskeyChallenge(db, userId, kind) {
+  return db.prepare(`SELECT * FROM passkey_challenges
+    WHERE user_id = ? AND kind = ?
+    ORDER BY created_at DESC
+    LIMIT 1`)
+    .bind(userId, kind)
+    .first();
+}
+
+async function sessionJson(request, env, data = {}) {
+  const token = await createToken(env);
+  return jsonResponse(request, { ok: true, token, ...data }, 200, { "Set-Cookie": sessionCookie(token) });
+}
+
+async function handlePasskeyRegistrationOptions(request, env, db) {
+  const { rpName, rpID } = relyingParty(request, env);
+  const user = await ensurePasskeyUser(db, "owner");
+  const passkeys = await listUserPasskeys(db, user.id);
+  const options = await generateRegistrationOptions({
+    rpName,
+    rpID,
+    userID: base64UrlToBytes(user.webauthn_user_id),
+    userName: user.username,
+    userDisplayName: user.display_name || user.username,
+    attestationType: "none",
+    supportedAlgorithmIDs: [-7, -257],
+    excludeCredentials: passkeys.map(passkey => ({
+      id: passkey.id,
+      transports: passkey.transports
+    })),
+    authenticatorSelection: {
+      residentKey: "preferred",
+      userVerification: "preferred"
+    }
+  });
+  await storePasskeyChallenge(db, user.id, "registration", options);
+  return jsonResponse(request, { ok: true, options, user: { id: user.id, username: user.username }, rpID });
+}
+
+async function handlePasskeyRegistrationVerify(request, env, db) {
+  const body = await readBody(request);
+  const { rpID, origin } = relyingParty(request, env);
+  const user = await ensurePasskeyUser(db, body.username || "owner");
+  const challenge = await latestPasskeyChallenge(db, user.id, "registration");
+  if (!challenge || new Date(challenge.expires_at).getTime() < Date.now()) {
+    return jsonResponse(request, { ok: false, error: "passkey registration challenge expired" }, 400);
+  }
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: body.response || body,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID
+    });
+  } catch (error) {
+    await insertAuditEvent(db, "passkey-registration-failed", user.id, "warning", error.message || "Passkey registration verification failed");
+    return jsonResponse(request, { ok: false, error: error.message || "passkey verification failed" }, 400);
+  }
+  if (!verification.verified || !verification.registrationInfo) {
+    return jsonResponse(request, { ok: false, error: "passkey registration was not verified" }, 400);
+  }
+  const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT OR REPLACE INTO passkey_credentials
+    (id, user_id, webauthn_user_id, public_key, counter, transports, device_type, backed_up, nickname, created_at, last_used_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      credential.id,
+      user.id,
+      user.webauthn_user_id,
+      bytesToBase64Url(credential.publicKey),
+      Number(credential.counter || 0),
+      JSON.stringify(credential.transports || []),
+      credentialDeviceType || "",
+      credentialBackedUp ? 1 : 0,
+      compactText(body.nickname || "Primary passkey", 120),
+      now,
+      "",
+      JSON.stringify({ credentialDeviceType, credentialBackedUp })
+    )
+    .run();
+  await insertAuditEvent(db, "passkey-registered", credential.id, "info", "Passkey registered for private bookshelf.", { userId: user.id, rpID });
+  return sessionJson(request, env, { verified: true, credentialId: credential.id });
+}
+
+async function handlePasskeyAuthenticationOptions(request, env, db, url) {
+  const { rpID } = relyingParty(request, env);
+  const user = await ensurePasskeyUser(db, url.searchParams.get("username") || "owner");
+  const passkeys = await listUserPasskeys(db, user.id);
+  const options = await generateAuthenticationOptions({
+    rpID,
+    allowCredentials: passkeys.map(passkey => ({
+      id: passkey.id,
+      transports: passkey.transports
+    })),
+    userVerification: "preferred"
+  });
+  await storePasskeyChallenge(db, user.id, "authentication", options);
+  return jsonResponse(request, { ok: true, options, user: { id: user.id, username: user.username }, hasPasskeys: passkeys.length > 0 });
+}
+
+async function handlePasskeyAuthenticationVerify(request, env, db) {
+  const body = await readBody(request);
+  const { rpID, origin } = relyingParty(request, env);
+  const user = await ensurePasskeyUser(db, body.username || "owner");
+  const passkey = await db.prepare("SELECT * FROM passkey_credentials WHERE id = ? AND user_id = ?")
+    .bind(body.response?.id || body.id || "", user.id)
+    .first();
+  if (!passkey) return jsonResponse(request, { ok: false, error: "passkey not found" }, 400);
+  const challenge = await latestPasskeyChallenge(db, user.id, "authentication");
+  if (!challenge || new Date(challenge.expires_at).getTime() < Date.now()) {
+    return jsonResponse(request, { ok: false, error: "passkey authentication challenge expired" }, 400);
+  }
+  let verification;
+  try {
+    verification = await verifyAuthenticationResponse({
+      response: body.response || body,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: origin,
+      expectedRPID: rpID,
+      credential: {
+        id: passkey.id,
+        publicKey: base64UrlToBytes(passkey.public_key),
+        counter: Number(passkey.counter || 0),
+        transports: parseJsonValue(passkey.transports, [])
+      }
+    });
+  } catch (error) {
+    await insertAuditEvent(db, "passkey-authentication-failed", passkey.id, "warning", error.message || "Passkey authentication failed");
+    return jsonResponse(request, { ok: false, error: error.message || "passkey authentication failed" }, 400);
+  }
+  if (!verification.verified) return jsonResponse(request, { ok: false, error: "passkey authentication was not verified" }, 400);
+  await db.prepare("UPDATE passkey_credentials SET counter = ?, last_used_at = ? WHERE id = ?")
+    .bind(Number(verification.authenticationInfo?.newCounter || passkey.counter || 0), new Date().toISOString(), passkey.id)
+    .run();
+  await insertAuditEvent(db, "passkey-authenticated", passkey.id, "info", "Passkey login succeeded.", { userId: user.id, rpID });
+  return sessionJson(request, env, { verified: true, credentialId: passkey.id });
+}
+
+async function buildSecurityCenter(request, env, db) {
+  const config = accessConfig(env);
+  let accessIdentity = null;
+  try {
+    accessIdentity = await verifyAccessJwt(request, env);
+  } catch {
+    accessIdentity = null;
+  }
+  const passkeyCount = await countTable(db, "passkey_credentials");
+  const latestPasskey = await db.prepare("SELECT MAX(created_at) AS created_at, MAX(last_used_at) AS last_used_at FROM passkey_credentials").first().catch(() => ({}));
+  return {
+    schema: "life-os-security-center-v1",
+    generatedAt: new Date().toISOString(),
+    cloudflareAccess: {
+      configured: config.configured,
+      jwtPresent: Boolean(request.headers.get("cf-access-jwt-assertion")),
+      verified: Boolean(accessIdentity),
+      identity: accessIdentity ? { email: accessIdentity.email, sub: accessIdentity.sub, exp: accessIdentity.exp } : null,
+      requiredEnv: ["TEAM_DOMAIN", "POLICY_AUD"],
+      boundary: config.configured
+        ? "Access JWT verification is enabled for requests that include Cf-Access-Jwt-Assertion."
+        : "Configure a Cloudflare Access application and set TEAM_DOMAIN/POLICY_AUD to make this the primary identity gate."
+    },
+    passkeys: {
+      supportedByBrowserHint: "Use browser WebAuthn APIs. Registration requires an unlocked private session; authentication can create a private session.",
+      registered: passkeyCount,
+      latestRegisteredAt: latestPasskey?.created_at || "",
+      latestUsedAt: latestPasskey?.last_used_at || ""
+    },
+    legacyPassword: {
+      enabled: true,
+      role: "Compatibility and emergency fallback. Not equivalent to enterprise identity or passkeys."
+    }
+  };
+}
+
+function r2KeyFromName(name = "") {
+  const safe = String(name || "file").replace(/[^a-zA-Z0-9._/-]+/g, "-").replace(/-+/g, "-").slice(0, 160);
+  return `vault/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safe || "file"}`;
+}
+
+async function handleR2Upload(request, env, db, url) {
+  const bucket = r2Binding(env);
+  if (!bucket) return jsonResponse(request, { ok: false, error: "R2 binding FILE_VAULT is not configured" }, 501);
+  const contentType = request.headers.get("Content-Type") || "application/octet-stream";
+  const label = url.searchParams.get("label") || request.headers.get("X-File-Label") || "vault-object";
+  const key = url.searchParams.get("key") || r2KeyFromName(label);
+  const recordId = url.searchParams.get("recordId") || request.headers.get("X-Record-Id") || "";
+  const privacyLevel = url.searchParams.get("privacyLevel") || "sensitive-index";
+  const exportPolicy = url.searchParams.get("exportPolicy") || "index-only-unless-user-approves";
+  const contentHash = request.headers.get("X-Content-SHA256") || request.headers.get("X-Content-Hash") || "";
+  const originalSize = Number(request.headers.get("X-Original-Size") || request.headers.get("Content-Length") || 0);
+  const object = await bucket.put(key, request.body, {
+    httpMetadata: { contentType },
+    customMetadata: {
+      label: compactText(label, 120),
+      recordId: compactText(recordId, 160),
+      contentHash: compactText(contentHash, 180),
+      originalSize: String(originalSize || ""),
+      privacyLevel,
+      exportPolicy
+    }
+  });
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT OR REPLACE INTO r2_objects
+    (key, label, record_id, file_type, size, content_type, etag, content_hash, privacy_level, export_policy, ai_summary, tags, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      key,
+      compactText(label, 160),
+      recordId,
+      contentType.split("/")[1] || "binary",
+      Number(object?.size || request.headers.get("Content-Length") || 0),
+      contentType,
+      object?.etag || "",
+      contentHash,
+      privacyLevel,
+      exportPolicy,
+      compactText(request.headers.get("X-AI-Summary") || "", 1600),
+      JSON.stringify(safeArray(request.headers.get("X-Tags") || "")),
+      now,
+      now,
+      JSON.stringify({ uploadedVia: "worker-r2-api", key })
+    )
+    .run();
+  await db.prepare(`INSERT OR REPLACE INTO file_index
+    (id, record_id, label, file_type, content_hash, location_hint, storage_target, privacy_level, export_policy, ai_summary, tags, linked_book, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      `r2:${key}`,
+      recordId,
+      compactText(label, 160),
+      contentType.split("/")[1] || "binary",
+      contentHash || object?.etag || "",
+      key,
+      "R2:FILE_VAULT",
+      privacyLevel,
+      exportPolicy,
+      compactText(request.headers.get("X-AI-Summary") || "", 1600),
+      JSON.stringify(safeArray(request.headers.get("X-Tags") || "")),
+      url.searchParams.get("linkedBook") || "",
+      now,
+      now,
+      JSON.stringify({ r2Key: key, etag: object?.etag || "", contentHash, originalSize })
+    )
+    .run();
+  await insertAuditEvent(db, "r2-upload", key, "info", "Uploaded raw object to R2 and stored index in D1.", { key, recordId, contentType, contentHash });
+  return jsonResponse(request, { ok: true, key, etag: object?.etag || "", size: object?.size || null, contentHash });
+}
+
+async function handleR2Download(request, env, db, url) {
+  const bucket = r2Binding(env);
+  if (!bucket) return jsonResponse(request, { ok: false, error: "R2 binding FILE_VAULT is not configured" }, 501);
+  const key = url.searchParams.get("key") || url.pathname.split("/api/v4/r2/object/")[1] || "";
+  if (!key) return jsonResponse(request, { ok: false, error: "missing key" }, 400);
+  const object = await bucket.get(key);
+  if (!object) return jsonResponse(request, { ok: false, error: "not found" }, 404);
+  await insertAuditEvent(db, "r2-download", key, "info", "Downloaded R2 object through authenticated Worker.", { key });
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("Cache-Control", "private, no-store");
+  headers.set("X-R2-Key", key);
+  return new Response(object.body, { headers });
+}
+
+async function handleR2List(request, env, db) {
+  const bucket = r2Binding(env);
+  const result = await db.prepare("SELECT * FROM r2_objects ORDER BY updated_at DESC LIMIT 200").all().catch(() => ({ results: [] }));
+  return jsonResponse(request, {
+    ok: true,
+    configured: Boolean(bucket),
+    binding: r2BindingName(env) || null,
+    objects: (result.results || []).map(row => ({
+      key: row.key,
+      label: row.label,
+      recordId: row.record_id,
+      fileType: row.file_type,
+      size: Number(row.size || 0),
+      contentType: row.content_type,
+      etag: row.etag,
+      privacyLevel: row.privacy_level,
+      exportPolicy: row.export_policy,
+      aiSummary: row.ai_summary,
+      tags: parseJsonValue(row.tags, []),
+      updatedAt: row.updated_at
+    }))
+  });
+}
+
+const CASE_GAME_BANK = [
+  {
+    id: "epi-pumpdown-stall",
+    title: "Pumpdown이 기준 시간보다 느리다",
+    subsystem: "vacuum",
+    status: "safety-hold",
+    symptom: "Load lock 또는 process module pumpdown 시간이 평소보다 길고 baseline readiness가 흔들린다.",
+    risk: ["air/moisture contamination", "particle risk", "unsafe gas readiness"],
+    evidence: ["trend log", "recent maintenance/change point", "foreline/exhaust status", "door seal condition", "approved leak check result"],
+    stop: "압력 회복 원인이 확인되지 않거나 gas readiness와 qualification에 영향을 주면 선임/EHS/owner 승인 전 진행하지 않는다.",
+    report: "Pumpdown trend is slower than baseline. We are holding qualification, collecting vacuum trend and recent-change evidence, and will update after owner review.",
+    prevention: "baseline trend를 보존하고 PM recovery 후 first wafer 전 vacuum health gate를 체크한다."
+  },
+  {
+    id: "epi-mfc-response",
+    title: "MFC response가 명령과 다르게 보인다",
+    subsystem: "gas-delivery",
+    status: "toxic-gas-boundary",
+    symptom: "가스 flow command와 feedback trend가 맞지 않거나 readiness check에서 deviation이 보인다.",
+    risk: ["toxic/flammable gas exposure", "wrong process condition", "abatement overload"],
+    evidence: ["FDC trend", "gas box status", "approved gas panel state", "alarm history", "MFC calibration/PM history"],
+    stop: "gas species, purge, detector, abatement readiness가 명확하지 않으면 조작하지 않고 gas/EHS owner에게 escalate한다.",
+    report: "Gas flow feedback is not matching expected response. We are not changing gas state manually; we are collecting trend evidence and escalating to gas/EHS owner.",
+    prevention: "gas readiness checklist와 post-maintenance response trend comparison을 표준화한다."
+  },
+  {
+    id: "rtp-temperature-nonuniform",
+    title: "RTP thermal uniformity가 흔들린다",
+    subsystem: "thermal",
+    status: "quality-risk",
+    symptom: "RTP ramp/soak/cool profile 이후 wafer 결과가 center-edge 또는 repeatability 관점에서 흔들린다.",
+    risk: ["wafer damage", "process excursion", "metrology mismatch"],
+    evidence: ["pyrometry trend", "lamp zone status", "wafer history", "metrology map", "recent chamber clean/PM"],
+    stop: "thermal trace와 metrology가 baseline에서 벗어나면 production-like qualification을 멈추고 baseline wafer로 확인한다.",
+    report: "Thermal uniformity evidence is outside the expected comparison window. We are holding the next step until trace and metrology evidence are reviewed.",
+    prevention: "thermal baseline, lamp/pyrometry health, metrology correlation을 handover packet에 포함한다."
+  },
+  {
+    id: "robot-transfer-retry",
+    title: "Transfer robot retry가 반복된다",
+    subsystem: "wafer-handling",
+    status: "wafer-safety",
+    symptom: "EFEM/load lock/TM 사이 wafer transfer retry 또는 alignment warning이 반복된다.",
+    risk: ["wafer drop/scratch", "particle generation", "module contamination"],
+    evidence: ["robot alarm", "slot map", "alignment history", "door state", "recent teaching/maintenance"],
+    stop: "wafer damage 위험이 있으면 반복 retry로 밀어붙이지 않고 wafer handling owner와 선임 입회가 필요하다.",
+    report: "Robot transfer retries are repeating. We are stopping repeated motion attempts and collecting alignment, slot map, and alarm evidence.",
+    prevention: "move-in/PM 후 teaching evidence와 dry transfer verification을 handover에 남긴다."
+  },
+  {
+    id: "dvm-24v-drop",
+    title: "24V control line voltage drop 의심",
+    subsystem: "electrical-controls",
+    status: "energized-work-boundary",
+    symptom: "sensor/relay/PLC input 상태가 간헐적으로 떨어지고 interlock chain 판단이 불안정하다.",
+    risk: ["unexpected motion", "interlock misread", "energized work injury"],
+    evidence: ["expected value statement", "LOTO/work permit status", "PLC I/O status", "relay coil/contact logic", "approved DVM measurement plan"],
+    stop: "승인 없는 live measurement, panel 개방, interlock bypass는 금지한다.",
+    report: "The symptom suggests a control-voltage evidence gap. We will not perform unauthorized energized work; we need approved measurement scope and owner review.",
+    prevention: "DVM 측정 전 expected value, reference point, allowed work boundary를 먼저 적는다."
+  }
+];
+
+function makeCaseGameExpansion() {
+  const groups = [
+    {
+      subsystem: "vacuum",
+      status: "safety-hold",
+      risk: ["air/moisture contamination", "particle excursion", "unsafe gas readiness"],
+      evidence: ["pressure trend", "recent change point", "foreline/exhaust state", "door/seal visual status", "approved leak-check record"],
+      stop: "If vacuum recovery is not understood or affects gas readiness, stop qualification and wait for owner review.",
+      report: "Vacuum behavior is outside the expected comparison window. We are holding the next step while collecting trend, change-point, and owner-review evidence.",
+      prevention: "Keep baseline pumpdown trends, PM recovery evidence, and owner signoff in the handover packet.",
+      titles: [
+        ["ll-base-pressure-drift", "Load lock base pressure drift", "Load lock base pressure does not return to the usual comparison band after dry cycling."],
+        ["pm-pressure-bounce", "Process module pressure bounce", "Process module pressure appears to recover and then bounces during readiness checks."],
+        ["foreline-health-gap", "Foreline health evidence gap", "Foreline or backing-pump status is unclear during install readiness review."],
+        ["door-seal-suspect", "Door seal condition suspect", "Door or slit valve boundary looks like a possible source of recovery delay."],
+        ["pump-restart-after-pm", "Pump restart after PM looks unstable", "After maintenance, pump recovery trend is not repeatable enough for baseline wafer work."]
+      ]
+    },
+    {
+      subsystem: "gas-delivery",
+      status: "toxic-gas-boundary",
+      risk: ["toxic/flammable gas exposure", "wrong process condition", "abatement overload"],
+      evidence: ["FDC flow trend", "gas box state", "alarm history", "approved purge readiness", "gas/EHS owner confirmation"],
+      stop: "If gas identity, purge readiness, detector state, or abatement readiness is unclear, do not manipulate gas state and escalate.",
+      report: "Gas delivery evidence is incomplete. We are not changing gas state manually and are escalating to the gas/EHS owner with trend evidence.",
+      prevention: "Standardize gas readiness evidence, purge confirmation, and post-maintenance response comparison before qualification.",
+      titles: [
+        ["mfc-feedback-lag", "MFC feedback lag", "Flow feedback lags command during a readiness check."],
+        ["purge-readiness-unknown", "Purge readiness unknown", "Purge status cannot be confidently tied to approved readiness documentation."],
+        ["gas-panel-state-mismatch", "Gas panel state mismatch", "Panel state and expected tool readiness state appear inconsistent."],
+        ["abatement-ready-gap", "Abatement readiness gap", "Abatement status is not clearly linked to the planned first-gas activity."],
+        ["gas-alarm-after-hookup", "Gas alarm after hook-up", "A gas-related alarm appears after facility hook-up or post-maintenance checks."]
+      ]
+    },
+    {
+      subsystem: "thermal",
+      status: "quality-risk",
+      risk: ["wafer damage", "process excursion", "metrology mismatch"],
+      evidence: ["thermal trace", "lamp/zone status", "pyrometry signal", "wafer history", "metrology map"],
+      stop: "If thermal trace or metrology is outside baseline comparison, hold production-like qualification until evidence is reviewed.",
+      report: "Thermal evidence is outside the expected comparison window. We are holding the next run until trace and metrology evidence are reviewed.",
+      prevention: "Maintain thermal baseline, lamp/pyrometry health evidence, and metrology correlation in handover.",
+      titles: [
+        ["rtp-ramp-rate-drift", "RTP ramp-rate drift", "Ramp behavior looks different from the accepted comparison trend."],
+        ["soak-stability-gap", "Soak stability gap", "Soak plateau appears less stable than the baseline reference."],
+        ["cooldown-repeatability", "Cooldown repeatability issue", "Cooldown behavior changes run to run."],
+        ["pyrometry-signal-noisy", "Pyrometry signal noisy", "Pyrometry signal is noisy enough to question trace confidence."],
+        ["edge-center-map-shift", "Center-edge map shift", "Metrology map suggests center-edge behavior shifted after PM or install."]
+      ]
+    },
+    {
+      subsystem: "wafer-handling",
+      status: "wafer-safety",
+      risk: ["wafer drop/scratch", "particle generation", "module contamination"],
+      evidence: ["robot alarm", "slot map", "alignment history", "door state", "approved teaching record"],
+      stop: "If wafer damage risk exists, stop repeated motion attempts and bring in wafer-handling owner review.",
+      report: "Wafer transfer evidence shows repeated retries. We are stopping repeated motion attempts and collecting alignment, slot-map, and alarm evidence.",
+      prevention: "Preserve teaching evidence, dry-transfer verification, and slot-map checks in install/PM handover.",
+      titles: [
+        ["slot-map-disagreement", "Slot map disagreement", "FOUP or load lock slot map does not match expected wafer state."],
+        ["efem-align-repeat", "EFEM alignment repeats", "EFEM alignment warning repeats during transfer preparation."],
+        ["tm-robot-retry", "TM robot retry", "Transfer module robot requires repeated retry to complete a movement."],
+        ["load-port-door-gap", "Load port door state gap", "Load port door state is not confidently aligned with transfer readiness."],
+        ["cooldown-wafer-handoff", "Cooldown handoff uncertainty", "Wafer handoff after cooldown has uncertain alignment evidence."]
+      ]
+    },
+    {
+      subsystem: "electrical-controls",
+      status: "energized-work-boundary",
+      risk: ["unexpected motion", "interlock misread", "energized work injury"],
+      evidence: ["expected value statement", "LOTO/work permit status", "PLC I/O state", "relay coil/contact logic", "approved DVM measurement plan"],
+      stop: "Unauthorized live measurement, panel opening, or interlock bypass is prohibited. Stop until approved scope exists.",
+      report: "The symptom suggests a controls evidence gap. We will not perform unauthorized energized work and need approved measurement scope and owner review.",
+      prevention: "Write expected value, reference point, allowed work boundary, and LOTO state before DVM work.",
+      titles: [
+        ["sensor-input-flicker", "Sensor input flicker", "A sensor input appears intermittent in the control chain."],
+        ["relay-state-unclear", "Relay state unclear", "Relay coil/contact state does not match the expected control story."],
+        ["plc-io-mismatch", "PLC I/O mismatch", "PLC input/output state and field symptom do not agree."],
+        ["interlock-chain-ambiguous", "Interlock chain ambiguous", "Interlock chain status is unclear after install or PM."],
+        ["voltage-drop-under-load", "Voltage drop under load", "Control voltage appears to sag when load changes."]
+      ]
+    },
+    {
+      subsystem: "facility-hookup",
+      status: "owner-interface",
+      risk: ["wrong utility state", "unsafe start-up", "customer handover gap"],
+      evidence: ["facility checklist", "owner signoff", "utility label verification", "as-built/punch-list item", "pre-power walkdown"],
+      stop: "If utility identity, ownership, or punch-list impact is unclear, stop energization or first-run activity until resolved.",
+      report: "Facility readiness evidence has an open item. We are holding the next step until owner signoff and punch-list impact are clear.",
+      prevention: "Tie every utility hook-up to owner, evidence, punch-list status, and handover documentation.",
+      titles: [
+        ["pcw-readiness-gap", "PCW readiness gap", "Cooling-water readiness or owner signoff is not clear before start-up."],
+        ["cda-label-unclear", "CDA label unclear", "Clean dry air label/state is not confidently matched to the tool connection."],
+        ["exhaust-owner-gap", "Exhaust owner gap", "Exhaust readiness evidence is not linked to a facility owner."],
+        ["power-turnon-punch", "Power turn-on punch item", "A punch-list item may affect safe power-on readiness."],
+        ["movein-leveling-handoff", "Move-in leveling handoff gap", "Set-in-place or leveling evidence is not ready for handover."]
+      ]
+    },
+    {
+      subsystem: "qualification",
+      status: "baseline-evidence",
+      risk: ["false pass", "customer acceptance gap", "process excursion"],
+      evidence: ["baseline wafer result", "metrology comparison", "alarm history", "recipe-independent readiness evidence", "customer/owner signoff"],
+      stop: "If baseline evidence is missing or acceptance criteria are site-specific and unapproved, do not claim qualification pass.",
+      report: "Qualification evidence is not yet sufficient for acceptance. We are separating readiness evidence from site-specific acceptance criteria and will report after owner review.",
+      prevention: "Keep baseline wafer, metrology, alarm history, and handover decision log together.",
+      titles: [
+        ["baseline-wafer-shift", "Baseline wafer result shifted", "Baseline wafer result changed after install or PM recovery."],
+        ["metrology-correlation-gap", "Metrology correlation gap", "Tool trend and metrology result do not tell the same story."],
+        ["alarm-free-run-gap", "Alarm-free run gap", "A dry run or readiness run is not clean enough for handover confidence."],
+        ["acceptance-limit-unknown", "Acceptance limit unknown", "Acceptance limit appears site-specific and is not confirmed in approved documents."],
+        ["handover-packet-incomplete", "Handover packet incomplete", "Evidence needed for customer handover is scattered or incomplete."]
+      ]
+    },
+    {
+      subsystem: "customer-communication",
+      status: "reporting-discipline",
+      risk: ["overpromising", "lost evidence", "owner confusion"],
+      evidence: ["symptom statement", "risk statement", "evidence list", "owner/action log", "next update time"],
+      stop: "Do not state root cause as fact before evidence confirms it. Do not promise timing without owner agreement.",
+      report: "We have observed a symptom and are separating risk, evidence, owner actions, and next update timing before giving a root-cause statement.",
+      prevention: "Use symptom-risk-evidence-stop-next-update format for every customer update.",
+      titles: [
+        ["root-cause-too-early", "Root cause stated too early", "A report draft jumps to root cause before evidence is complete."],
+        ["next-update-missing", "Next update time missing", "Customer update lacks the next update time or owner."],
+        ["risk-not-separated", "Risk not separated", "The report mixes quality risk, safety risk, and schedule impact."],
+        ["handover-no-prevention", "Handover lacks prevention", "The handover note does not include recurrence prevention."],
+        ["customer-reassurance-overpromise", "Reassurance overpromises", "The message reassures the customer without a defensible evidence boundary."]
+      ]
+    }
+  ];
+
+  return groups.flatMap(group => group.titles.map(([id, title, symptom]) => ({
+    id,
+    title,
+    subsystem: group.subsystem,
+    status: group.status,
+    symptom,
+    risk: group.risk,
+    evidence: group.evidence,
+    stop: group.stop,
+    report: group.report,
+    prevention: group.prevention
+  })));
+}
+
+CASE_GAME_BANK.push(...makeCaseGameExpansion().filter(item => !CASE_GAME_BANK.some(existing => existing.id === item.id)));
+
+function gameCaseById(id) {
+  return CASE_GAME_BANK.find(item => item.id === id) || CASE_GAME_BANK[0];
+}
+
+function scoreChoice(selected = "", answers = []) {
+  const lower = String(selected || "").toLowerCase();
+  return answers.some(item => lower.includes(String(item || "").toLowerCase()));
+}
+
+function buildCaseGameStep(gameCase, step = "risk") {
+  const steps = ["risk", "evidence", "stop", "report", "prevention"];
+  const current = steps.includes(step) ? step : "risk";
+  const index = steps.indexOf(current);
+  const next = steps[index + 1] || "complete";
+  const prompts = {
+    risk: { question: "가장 먼저 잡아야 할 immediate risk는?", expected: gameCase.risk, choices: [...gameCase.risk, "speed up qualification", "ignore until production"].sort() },
+    evidence: { question: "원인 단정 전에 모아야 할 evidence는?", expected: gameCase.evidence, choices: [...gameCase.evidence, "interlock bypass", "recipe edit"].sort() },
+    stop: { question: "멈춰야 하는 조건을 한 문장으로 말하면?", expected: [gameCase.stop], choices: [gameCase.stop, "Proceed if schedule is tight.", "Ask customer to accept without baseline." ] },
+    report: { question: "고객 보고 문장의 핵심은?", expected: [gameCase.report], choices: [gameCase.report, "We know the exact root cause already.", "No issue, continue qualification." ] },
+    prevention: { question: "재발 방지/인수인계에 넣을 항목은?", expected: [gameCase.prevention], choices: [gameCase.prevention, "Remove evidence to reduce paperwork.", "Skip baseline comparison next time." ] }
+  };
+  return {
+    caseId: gameCase.id,
+    step: current,
+    nextStep: next,
+    progress: `${index + 1}/${steps.length}`,
+    ...prompts[current]
+  };
+}
+
+async function handleCaseGameStart(request, db) {
+  const body = request.method === "POST" ? await readBody(request) : {};
+  const gameCase = gameCaseById(body.caseId);
+  const now = new Date().toISOString();
+  const session = {
+    id: crypto.randomUUID(),
+    caseId: gameCase.id,
+    subsystem: gameCase.subsystem,
+    status: gameCase.status,
+    score: 0,
+    currentStep: "risk",
+    completed: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  await db.prepare(`INSERT INTO case_game_sessions
+    (id, case_id, subsystem, status, score, current_step, completed, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(session.id, session.caseId, session.subsystem, session.status, 0, "risk", 0, now, now, JSON.stringify(session))
+    .run();
+  return jsonResponse(request, { ok: true, session, case: gameCase, step: buildCaseGameStep(gameCase, "risk") });
+}
+
+async function handleCaseGameAnswer(request, db) {
+  const body = await readBody(request);
+  const session = await db.prepare("SELECT * FROM case_game_sessions WHERE id = ?").bind(body.sessionId || "").first();
+  if (!session) return jsonResponse(request, { ok: false, error: "game session not found" }, 404);
+  const gameCase = gameCaseById(session.case_id);
+  const step = buildCaseGameStep(gameCase, session.current_step);
+  const answer = compactText(body.answer || "", 1200);
+  const correct = step.step === "report"
+    ? ["risk", "evidence", "update", "hold", "확인", "위험", "업데이트", "보류"].some(word => answer.toLowerCase().includes(word))
+    : scoreChoice(answer, step.expected);
+  const feedback = correct
+    ? "좋습니다. 증상에서 바로 조작으로 뛰지 않고 risk/evidence/stop/report 흐름을 유지했습니다."
+    : "위험합니다. 현장에서는 속도보다 안전 경계, evidence, owner review가 우선입니다.";
+  const nextStep = correct ? step.nextStep : step.step;
+  const completed = nextStep === "complete";
+  const score = Number(session.score || 0) + (correct ? 20 : 0);
+  const now = new Date().toISOString();
+  await db.prepare(`INSERT INTO case_game_events
+    (id, session_id, case_id, step, answer, correct, feedback, created_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), session.id, gameCase.id, step.step, answer, correct ? 1 : 0, feedback, now, JSON.stringify({ expected: step.expected }))
+    .run();
+  await db.prepare("UPDATE case_game_sessions SET score = ?, current_step = ?, completed = ?, updated_at = ?, payload = ? WHERE id = ?")
+    .bind(score, completed ? "complete" : nextStep, completed ? 1 : 0, now, JSON.stringify({ ...session, score, currentStep: nextStep, completed }), session.id)
+    .run();
+  if (!correct) {
+    await db.prepare(`INSERT INTO weakness_events
+      (id, record_id, lane, skill, severity, evidence, next_action, created_at, payload)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(crypto.randomUUID(), session.id, "ce-game", `${gameCase.subsystem}/${step.step}`, "safety-review", answer, "Repeat the CE case step and state the stop condition before action.", now, JSON.stringify({ caseId: gameCase.id, step: step.step }))
+      .run();
+  }
+  return jsonResponse(request, {
+    ok: true,
+    correct,
+    feedback,
+    score,
+    completed,
+    next: completed ? null : buildCaseGameStep(gameCase, nextStep)
+  });
+}
+
+async function handleCaseGameStatus(request, db) {
+  const sessions = await db.prepare("SELECT * FROM case_game_sessions ORDER BY updated_at DESC LIMIT 50").all().catch(() => ({ results: [] }));
+  const events = await db.prepare("SELECT subsystem, status, COUNT(*) AS count, AVG(score) AS avg_score FROM case_game_sessions GROUP BY subsystem, status").all().catch(() => ({ results: [] }));
+  const mistakes = await db.prepare(`
+    SELECT case_id, step, COUNT(*) AS count, MAX(created_at) AS latest
+    FROM case_game_events
+    WHERE correct = 0
+    GROUP BY case_id, step
+    ORDER BY count DESC, latest DESC
+    LIMIT 12
+  `).all().catch(() => ({ results: [] }));
+  const subsystems = [...new Set(CASE_GAME_BANK.map(item => item.subsystem))].sort().map(subsystem => ({
+    subsystem,
+    cases: CASE_GAME_BANK.filter(item => item.subsystem === subsystem).length,
+    sessions: (sessions.results || []).filter(row => row.subsystem === subsystem).length,
+    avgScore: Math.round(Number((events.results || []).find(row => row.subsystem === subsystem)?.avg_score || 0))
+  }));
+  return jsonResponse(request, {
+    ok: true,
+    schema: "ce-case-game-engine-v4.1",
+    generatedAt: new Date().toISOString(),
+    bank: {
+      totalCases: CASE_GAME_BANK.length,
+      subsystemCount: subsystems.length,
+      sequence: ["symptom", "risk", "evidence", "stop", "report", "prevention"],
+      safetyBoundary: "Generic public-training cases only. No recipe, valve sequence, detector setpoint, interlock bypass, or site-specific acceptance limit."
+    },
+    cases: CASE_GAME_BANK,
+    subsystems,
+    sessions: (sessions.results || []).map(row => ({
+      id: row.id,
+      caseId: row.case_id,
+      subsystem: row.subsystem,
+      status: row.status,
+      score: Number(row.score || 0),
+      currentStep: row.current_step,
+      completed: Boolean(row.completed),
+      updatedAt: row.updated_at
+    })),
+    summary: (events.results || []).map(row => ({
+      subsystem: row.subsystem,
+      status: row.status,
+      count: Number(row.count || 0),
+      avgScore: Math.round(Number(row.avg_score || 0))
+    })),
+    reviewQueue: (mistakes.results || []).map(row => {
+      const gameCase = gameCaseById(row.case_id);
+      return {
+        caseId: row.case_id,
+        title: gameCase.title,
+        subsystem: gameCase.subsystem,
+        step: row.step,
+        count: Number(row.count || 0),
+        latest: row.latest,
+        nextAction: `Repeat ${gameCase.subsystem}/${row.step} and write the stop condition before action.`
+      };
+    })
+  });
+}
+
+const V5_CE_CAMPAIGNS = [
+  {
+    id: "install-day-0-readiness",
+    title: "Install Day 0: readiness war-room",
+    mission: "장비가 Fab에 들어오기 전, 문서/owner/utility/evidence가 준비됐는지 판단한다.",
+    stages: [
+      {
+        id: "owner-map",
+        label: "Owner map",
+        prompt: "Move-in 전 가장 먼저 고정해야 할 것은?",
+        correct: ["owner matrix", "raci", "owner"],
+        choices: ["owner matrix와 RACI를 확정한다", "바로 qualification 날짜부터 약속한다", "recipe 조건을 먼저 추측한다"],
+        evidence: ["facility owner", "EHS owner", "gas owner", "customer contact", "vendor/CE contact"],
+        stop: "owner가 불명확한 utility나 안전 항목이 있으면 move-in readiness를 pass로 말하지 않는다.",
+        report: "We are confirming the owner matrix and open readiness evidence before move-in commitment."
+      },
+      {
+        id: "rigging-boundary",
+        label: "Rigging boundary",
+        prompt: "Rigging/move-in 판단에서 CE가 절대 단정하면 안 되는 것은?",
+        correct: ["approved rigging plan", "site procedure", "owner signoff"],
+        choices: ["승인된 rigging plan과 site procedure를 우선한다", "현장에서 보기에 가능하면 바로 이동한다", "장비 manual 원문을 복사해 공유한다"],
+        evidence: ["approved lift/move plan", "path clearance", "floor/load limit owner", "crate condition"],
+        stop: "승인된 rigging plan, path clearance, EHS 경계가 없으면 이동을 진행하지 않는다.",
+        report: "Move-in remains on hold until approved rigging/path evidence is complete."
+      },
+      {
+        id: "pre-hookup-package",
+        label: "Pre hook-up",
+        prompt: "Facility hook-up 전에 패킷으로 묶어야 할 evidence는?",
+        correct: ["utility label", "punch list", "signoff"],
+        choices: ["utility label, punch list, owner signoff", "공정 결과만", "누가 했는지 모르는 사진 몇 장"],
+        evidence: ["utility labels", "as-built/punch list", "owner signoff", "pre-power walkdown"],
+        stop: "utility identity나 punch impact가 불명확하면 energization/first run을 보류한다.",
+        report: "Facility pre-hookup package is being separated into labels, punch items, and owner signoff."
+      }
+    ]
+  },
+  {
+    id: "install-day-1-movein-hookup",
+    title: "Install Day 1: move-in, set-in-place, hook-up",
+    mission: "장비 배치와 시설 연결을 진행하되, 안전 경계와 evidence를 잃지 않는다.",
+    stages: [
+      {
+        id: "set-in-place",
+        label: "Set in place",
+        prompt: "Set-in-place 후 바로 남겨야 할 설치 evidence는?",
+        correct: ["leveling", "position", "handover"],
+        choices: ["position/leveling evidence와 open punch를 남긴다", "외관만 깨끗하면 pass", "불명확한 항목은 나중에 기억으로 처리"],
+        evidence: ["position check", "leveling evidence", "open punch", "owner handoff"],
+        stop: "설치 위치/leveling/punch impact가 불명확하면 다음 boundary로 넘기지 않는다.",
+        report: "Set-in-place evidence is captured; open punch items are separated before next boundary."
+      },
+      {
+        id: "facility-hookup",
+        label: "Facility hook-up",
+        prompt: "CDA/PCW/exhaust/power hook-up에서 사고 순서는?",
+        correct: ["identity", "owner", "readiness"],
+        choices: ["utility identity → owner signoff → readiness evidence", "스케줄 우선으로 동시에 전부 진행", "알람이 없으면 owner 확인 생략"],
+        evidence: ["utility identity", "owner signoff", "readiness status", "punch impact"],
+        stop: "utility identity, flow/exhaust readiness, owner signoff가 불명확하면 power-on/first activity를 중지한다.",
+        report: "Hook-up is being gated by utility identity, owner signoff, and readiness evidence."
+      },
+      {
+        id: "power-on-boundary",
+        label: "Power-on boundary",
+        prompt: "Power-on 전 전기/제어 관점의 안전 문장은?",
+        correct: ["authorized", "LOTO", "energized"],
+        choices: ["승인 범위/LOTO/energized work 경계를 먼저 확인한다", "DVM으로 아무 지점이나 측정해 본다", "interlock을 우회해 원인을 좁힌다"],
+        evidence: ["approved work scope", "LOTO state", "stored energy boundary", "PLC/interlock status"],
+        stop: "승인 없는 live measurement, panel opening, interlock bypass는 금지한다.",
+        report: "Power-on work will remain inside approved electrical scope; no unauthorized energized work or bypass will be performed."
+      }
+    ]
+  },
+  {
+    id: "install-day-2-first-readiness",
+    title: "Install Day 2: pumpdown, gas readiness, dry run, baseline wafer",
+    mission: "첫 공정성 활동 전에 vacuum/gas/exhaust/abatement/metrology evidence를 하나의 판단 흐름으로 묶는다.",
+    stages: [
+      {
+        id: "pumpdown",
+        label: "Pumpdown",
+        prompt: "Pumpdown이 baseline보다 느리면 첫 판단은?",
+        correct: ["hold", "trend", "owner"],
+        choices: ["qualification을 보류하고 trend/change point/owner evidence를 모은다", "시간이 걸려도 결국 내려가면 pass", "gas readiness를 먼저 진행한다"],
+        evidence: ["pressure trend", "recent change point", "foreline/exhaust status", "approved leak-check record"],
+        stop: "vacuum recovery 원인이 불명확하거나 gas readiness에 영향을 주면 hold한다.",
+        report: "Pumpdown trend is outside baseline comparison; qualification is on hold while evidence is reviewed."
+      },
+      {
+        id: "gas-readiness",
+        label: "Gas readiness",
+        prompt: "Gas readiness에서 toxic/flammable boundary를 다룰 때 맞는 행동은?",
+        correct: ["EHS", "gas owner", "abatement"],
+        choices: ["gas/EHS owner, detector, purge, abatement readiness를 확인한다", "MFC 응답이 이상하면 수동 조작으로 맞춘다", "가스 종류는 옵션이라 대충 넘어간다"],
+        evidence: ["gas owner confirmation", "purge readiness", "detector status", "abatement readiness", "FDC trend"],
+        stop: "gas identity, purge, detector, abatement readiness가 불명확하면 gas state를 조작하지 않는다.",
+        report: "Gas readiness is held until gas/EHS owner and abatement readiness evidence are complete."
+      },
+      {
+        id: "dry-run",
+        label: "Dry run",
+        prompt: "Dry run의 목적을 가장 잘 설명한 것은?",
+        correct: ["alarm-free", "wafer handling", "boundary"],
+        choices: ["공정 전 wafer path, alarms, boundary evidence를 확인한다", "공정 성능을 최종 보증한다", "site-specific acceptance limit을 추측한다"],
+        evidence: ["alarm history", "wafer path status", "robot/slot map", "interlock state"],
+        stop: "반복 alarm, wafer handling retry, unresolved interlock이 있으면 baseline wafer 전 중지한다.",
+        report: "Dry run is used to verify transfer/alarm readiness before baseline wafer activity."
+      },
+      {
+        id: "baseline-wafer",
+        label: "Baseline wafer",
+        prompt: "Baseline wafer 결과가 흔들릴 때 CE 사고 순서는?",
+        correct: ["metrology", "trace", "baseline", "hold"],
+        choices: ["metrology/trace/alarm history를 baseline과 비교하고 hold 조건을 판단한다", "한 장 결과로 root cause를 확정한다", "고객에게 pass를 먼저 약속한다"],
+        evidence: ["baseline wafer result", "metrology map", "thermal/process trace", "alarm history", "owner signoff"],
+        stop: "공식 acceptance criteria나 site-specific limit은 승인 문서 없이 단정하지 않는다.",
+        report: "Baseline wafer evidence is under review; we will separate tool readiness evidence from site-specific acceptance criteria."
+      },
+      {
+        id: "handover",
+        label: "Customer handover",
+        prompt: "고객 handover 문장에서 반드시 분리해야 하는 것은?",
+        correct: ["symptom", "evidence", "next update"],
+        choices: ["symptom/risk/evidence/owner/next update/prevention", "root cause 단정과 일정 약속", "문제가 없다는 안심 문장만"],
+        evidence: ["symptom statement", "risk boundary", "evidence list", "owner action log", "prevention"],
+        stop: "evidence 없이 root cause 또는 pass/fail을 단정하지 않는다.",
+        report: "We will provide symptom, risk boundary, collected evidence, owner actions, next update time, and prevention items."
+      }
+    ]
+  }
+];
+
+const V5_EVIDENCE_DECK = [
+  { id: "symptom-pumpdown-slow", type: "symptom", label: "Pumpdown slow", detail: "압력 회복이 baseline 비교보다 느리다." },
+  { id: "symptom-transfer-retry", type: "symptom", label: "Transfer retry", detail: "EFEM/LL/TM 사이 wafer transfer retry가 반복된다." },
+  { id: "symptom-mfc-mismatch", type: "symptom", label: "MFC mismatch", detail: "flow command와 feedback trend가 맞지 않는다." },
+  { id: "risk-toxic-gas", type: "risk", label: "Toxic/flammable gas", detail: "gas identity, purge, detector, abatement가 불명확하면 중지한다." },
+  { id: "risk-wafer-damage", type: "risk", label: "Wafer damage", detail: "반복 motion/retry로 wafer scratch/drop/particle 위험이 있다." },
+  { id: "risk-energized-work", type: "risk", label: "Energized boundary", detail: "승인 없는 live measurement/panel opening/bypass 금지." },
+  { id: "subsystem-vacuum", type: "subsystem", label: "Vacuum", detail: "load lock, chamber, pump, foreline, exhaust readiness." },
+  { id: "subsystem-gas", type: "subsystem", label: "Gas delivery", detail: "gas box, MFC, purge, detector, abatement owner." },
+  { id: "subsystem-wafer", type: "subsystem", label: "Wafer handling", detail: "FOUP, EFEM, load lock, robot, slot map, alignment." },
+  { id: "evidence-trend", type: "evidence", label: "Trend log", detail: "FDC/alarm/pressure/thermal trend와 최근 change point." },
+  { id: "evidence-owner", type: "evidence", label: "Owner signoff", detail: "facility/gas/EHS/customer owner 확인 기록." },
+  { id: "evidence-metrology", type: "evidence", label: "Metrology map", detail: "baseline wafer와 결과 map 비교." },
+  { id: "owner-ehs", type: "owner", label: "EHS / Gas owner", detail: "가스/독성/배기/검지기 readiness owner." },
+  { id: "owner-facility", type: "owner", label: "Facility owner", detail: "CDA/PCW/exhaust/power/abatement 연결 owner." },
+  { id: "stop-unclear-readiness", type: "stop", label: "Readiness unclear", detail: "identity, owner, evidence가 불명확하면 다음 단계 중지." },
+  { id: "stop-no-bypass", type: "stop", label: "No bypass", detail: "interlock bypass, detector setpoint 추측, valve sequence 단정 금지." },
+  { id: "report-safe-update", type: "report", label: "Safe customer update", detail: "symptom, risk, evidence, owner action, next update를 분리한다." },
+  { id: "report-no-overpromise", type: "report", label: "No overpromise", detail: "evidence 없이 root cause/pass/fail/일정을 단정하지 않는다." }
+];
+
+function campaignById(id) {
+  return V5_CE_CAMPAIGNS.find(item => item.id === id) || V5_CE_CAMPAIGNS[0];
+}
+
+function campaignStageById(campaign, stageId) {
+  return campaign.stages.find(stage => stage.id === stageId) || campaign.stages[0];
+}
+
+function buildCampaignStep(campaign, stageId) {
+  const stage = campaignStageById(campaign, stageId);
+  const index = campaign.stages.findIndex(item => item.id === stage.id);
+  const next = campaign.stages[index + 1]?.id || "complete";
+  return {
+    campaignId: campaign.id,
+    campaignTitle: campaign.title,
+    mission: campaign.mission,
+    stageId: stage.id,
+    label: stage.label,
+    prompt: stage.prompt,
+    choices: stage.choices,
+    evidence: stage.evidence,
+    stop: stage.stop,
+    report: stage.report,
+    progress: `${index + 1}/${campaign.stages.length}`,
+    nextStage: next
+  };
+}
+
+function campaignAnswerCorrect(answer = "", stage = {}) {
+  const lower = String(answer || "").toLowerCase();
+  if ((stage.choices || []).includes(answer) && (stage.choices || [])[0] === answer) return true;
+  return (stage.correct || []).some(word => lower.includes(String(word).toLowerCase()));
+}
+
+async function handleV5CampaignStart(request, db) {
+  const body = await readBody(request);
+  const campaign = campaignById(body.campaignId);
+  const now = new Date().toISOString();
+  const session = {
+    id: crypto.randomUUID(),
+    campaignId: campaign.id,
+    status: "active",
+    score: 0,
+    currentStage: campaign.stages[0].id,
+    completed: false,
+    createdAt: now,
+    updatedAt: now
+  };
+  await db.prepare(`INSERT INTO ce_campaign_sessions
+    (id, campaign_id, status, score, current_stage, completed, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(session.id, session.campaignId, session.status, 0, session.currentStage, 0, now, now, JSON.stringify(session))
+    .run();
+  await insertAuditEvent(db, "v5-campaign-start", session.id, "info", "Started CE campaign simulator session.", { campaignId: campaign.id });
+  return jsonResponse(request, { ok: true, session, campaign, step: buildCampaignStep(campaign, session.currentStage) });
+}
+
+async function handleV5CampaignAnswer(request, db) {
+  const body = await readBody(request);
+  const session = await db.prepare("SELECT * FROM ce_campaign_sessions WHERE id = ?").bind(body.sessionId || "").first();
+  if (!session) return jsonResponse(request, { ok: false, error: "campaign session not found" }, 404);
+  const campaign = campaignById(session.campaign_id);
+  const stage = campaignStageById(campaign, session.current_stage);
+  const answer = compactText(body.answer || "", 1600);
+  const correct = campaignAnswerCorrect(answer, stage);
+  const nextStage = correct ? buildCampaignStep(campaign, stage.id).nextStage : stage.id;
+  const completed = nextStage === "complete";
+  const score = Number(session.score || 0) + (correct ? Math.round(100 / campaign.stages.length) : 0);
+  const now = new Date().toISOString();
+  const feedback = correct
+    ? "좋습니다. 행동보다 evidence, owner, stop condition을 먼저 세우는 CE 사고 순서가 유지됐습니다."
+    : "재훈련 필요. 현장에서는 속도보다 안전 경계, owner 확인, evidence 보존이 우선입니다.";
+  await db.prepare(`INSERT INTO ce_campaign_events
+    (id, session_id, campaign_id, stage_id, answer, correct, feedback, created_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), session.id, campaign.id, stage.id, answer, correct ? 1 : 0, feedback, now, JSON.stringify({ expected: stage.correct, evidence: stage.evidence, stop: stage.stop }))
+    .run();
+  await db.prepare("UPDATE ce_campaign_sessions SET score = ?, current_stage = ?, completed = ?, status = ?, updated_at = ?, payload = ? WHERE id = ?")
+    .bind(score, completed ? "complete" : nextStage, completed ? 1 : 0, completed ? "completed" : "active", now, JSON.stringify({ campaignId: campaign.id, score, currentStage: nextStage, completed }), session.id)
+    .run();
+  if (!correct) {
+    await db.prepare(`INSERT INTO weakness_events
+      (id, record_id, lane, skill, severity, evidence, next_action, created_at, payload)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .bind(crypto.randomUUID(), session.id, "ce-campaign", `${campaign.id}/${stage.id}`, "safety-review", answer, "Replay the campaign stage and write evidence + stop condition before action.", now, JSON.stringify({ campaignId: campaign.id, stageId: stage.id }))
+      .run();
+  }
+  return jsonResponse(request, {
+    ok: true,
+    correct,
+    feedback,
+    score,
+    completed,
+    next: completed ? null : buildCampaignStep(campaign, nextStage)
+  });
+}
+
+async function handleV5CampaignStatus(request, db) {
+  const sessions = await db.prepare("SELECT * FROM ce_campaign_sessions ORDER BY updated_at DESC LIMIT 30").all().catch(() => ({ results: [] }));
+  const misses = await db.prepare(`
+    SELECT campaign_id, stage_id, COUNT(*) AS count, MAX(created_at) AS latest
+    FROM ce_campaign_events
+    WHERE correct = 0
+    GROUP BY campaign_id, stage_id
+    ORDER BY count DESC, latest DESC
+    LIMIT 10
+  `).all().catch(() => ({ results: [] }));
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-ce-campaign",
+    generatedAt: new Date().toISOString(),
+    campaigns: V5_CE_CAMPAIGNS,
+    sessions: (sessions.results || []).map(row => ({
+      id: row.id,
+      campaignId: row.campaign_id,
+      status: row.status,
+      score: Number(row.score || 0),
+      currentStage: row.current_stage,
+      completed: Boolean(row.completed),
+      updatedAt: row.updated_at
+    })),
+    reviewQueue: (misses.results || []).map(row => {
+      const campaign = campaignById(row.campaign_id);
+      const stage = campaignStageById(campaign, row.stage_id);
+      return {
+        campaignId: row.campaign_id,
+        campaignTitle: campaign.title,
+        stageId: row.stage_id,
+        label: stage.label,
+        count: Number(row.count || 0),
+        latest: row.latest,
+        nextAction: "Replay this stage and state symptom, risk, evidence, owner, stop condition, report."
+      };
+    }),
+    safetyBoundary: "Generic public-training simulator only. No recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit, or customer confidential data."
+  });
+}
+
+function v5PriorityScore(item = {}) {
+  const base = {
+    security: 95,
+    storage: 90,
+    ce: 84,
+    english: 72,
+    cognitive: 68,
+    records: 64,
+    investment: 56,
+    backup: 52
+  }[item.lane] || 50;
+  return Math.min(99, base + Number(item.weight || 0));
+}
+
+async function buildV5CommandBriefing(request, env, db) {
+  const [ops, graph, caseStatus, campaignRows, packetCount, latestExport, missingNext, dyorReview] = await Promise.all([
+    buildV4OpsStatus(request, env, db),
+    buildV4LifeGraph(db),
+    handleCaseGameStatus(request, db).then(response => response.json()).catch(() => ({})),
+    db.prepare("SELECT COUNT(*) AS total, MAX(updated_at) AS latest FROM ce_campaign_sessions").first().catch(() => ({})),
+    countTable(db, "ai_packets"),
+    db.prepare("SELECT MAX(created_at) AS latest FROM ai_packets").first().catch(() => ({})),
+    db.prepare(`SELECT id, book_id, title, updated_at FROM life_records
+      WHERE next_step IS NULL OR TRIM(next_step) = ''
+      ORDER BY updated_at DESC LIMIT 8`).all().catch(() => ({ results: [] })),
+    db.prepare(`SELECT id, title, next_step, updated_at FROM life_records
+      WHERE book_id = 'investment-dyor' AND (next_step LIKE '%review%' OR next_step LIKE '%검토%' OR next_step LIKE '%재검%')
+      ORDER BY updated_at DESC LIMIT 6`).all().catch(() => ({ results: [] }))
+  ]);
+  const weak = graph.recurringWeaknesses || [];
+  const englishWeak = weak.find(item => `${item.lane} ${item.skill}`.toLowerCase().includes("english")) || null;
+  const ceWeak = weak.find(item => `${item.lane}`.includes("ce-")) || weak.find(item => `${item.skill}`.includes("ce")) || null;
+  const cognitiveWeak = weak.find(item => `${item.lane} ${item.skill}`.toLowerCase().includes("cognitive")) || null;
+  const caseMisses = caseStatus.reviewQueue || [];
+  const actions = [
+    !ops.auth.cloudflareAccessConfigured ? {
+      lane: "security",
+      title: "Cloudflare Access를 private route 앞에 세우기",
+      action: "TEAM_DOMAIN/POLICY_AUD를 설정하고 Access JWT가 들어오는지 확인합니다.",
+      why: "현재 client password/HMAC cookie는 편의 잠금이지 장기 실인증 레이어가 아닙니다.",
+      evidence: ops.auth.boundary,
+      source: "ops-status"
+    } : null,
+    !(ops.counts?.passkey_credentials) ? {
+      lane: "security",
+      title: "Passkey 등록",
+      action: "현재 기기에서 WebAuthn passkey를 1개 이상 등록합니다.",
+      why: "비밀번호 입력 의존도를 줄이고 개인 장기 운영성을 높입니다.",
+      evidence: "passkey_credentials = 0",
+      source: "security-center"
+    } : null,
+    !ops.storage.r2Binding ? {
+      lane: "storage",
+      title: "R2 FILE_VAULT binding 연결",
+      action: "wrangler에 R2 bucket binding(FILE_VAULT)을 추가합니다.",
+      why: "D1은 구조화 데이터용입니다. PDF/이미지/검진표/논문/설치 사진 원문은 R2/D-drive vault로 분리해야 합니다.",
+      evidence: ops.storage.rawFileRule,
+      source: "r2-status"
+    } : null,
+    ceWeak || caseMisses[0] ? {
+      lane: "ce",
+      title: "CE 판단 약점 복습",
+      action: caseMisses[0]?.nextAction || `${ceWeak.lane}/${ceWeak.skill} 복습 큐를 진행합니다.`,
+      why: caseMisses[0] ? `${caseMisses[0].count} misses in ${caseMisses[0].subsystem}/${caseMisses[0].step}` : `${ceWeak.count} repeated misses`,
+      evidence: caseMisses[0]?.title || ceWeak.skill,
+      source: "case-game/weakness"
+    } : {
+      lane: "ce",
+      title: "Install Day campaign 1회 진행",
+      action: "Day 0/1/2 중 하나를 골라 evidence board와 함께 훈련합니다.",
+      why: "케이스 게임을 캠페인 흐름으로 연결해야 현장 install 사고가 생깁니다.",
+      evidence: "no active CE weakness, keep streak",
+      source: "ce-campaign"
+    },
+    englishWeak ? {
+      lane: "english",
+      title: "영어 오답 기반 복습",
+      action: `${englishWeak.skill} 변형 문제와 customer update 말하기 문장을 10분 연습합니다.`,
+      why: `${englishWeak.count} repeated weakness events`,
+      evidence: englishWeak.latest || "weakness queue",
+      source: "weakness-events"
+    } : {
+      lane: "english",
+      title: "영어 CBT 5문제 즉시채점 루틴",
+      action: "grammar/vocabulary/reading/speaking 중 5문제를 풀고 틀린 태그를 저장합니다.",
+      why: "오답 데이터가 쌓여야 자동 복습 큐가 정확해집니다.",
+      evidence: "no current English weakness detected",
+      source: "routine"
+    },
+    cognitiveWeak ? {
+      lane: "cognitive",
+      title: "인지 약점 루틴",
+      action: `${cognitiveWeak.skill} 영역을 오늘 루틴에 우선 배치합니다.`,
+      why: `${cognitiveWeak.count} repeated signals`,
+      evidence: cognitiveWeak.latest || "cognitive weakness",
+      source: "weakness-events"
+    } : null,
+    (missingNext.results || []).length ? {
+      lane: "records",
+      title: "nextStep 없는 기록 정리",
+      action: `${(missingNext.results || []).length}개 기록에 다음 행동을 추가합니다.`,
+      why: "AI가 실행 코치가 되려면 모든 기록에 nextStep이 있어야 합니다.",
+      evidence: (missingNext.results || []).slice(0, 3).map(row => row.title).join(" / "),
+      source: "life-records"
+    } : null,
+    (dyorReview.results || []).length ? {
+      lane: "investment",
+      title: "투자 DYOR review",
+      action: "review date가 있는 투자 메모를 fact/source/risk/counter-thesis 기준으로 재검토합니다.",
+      why: "투자 판단은 조언이 아니라 timestamped research note로 관리합니다.",
+      evidence: (dyorReview.results || []).slice(0, 3).map(row => row.title).join(" / "),
+      source: "investment-dyor"
+    } : null,
+    !latestExport?.latest ? {
+      lane: "backup",
+      title: "AI packet/export 생성",
+      action: "민감정보 제외 packet과 전체 백업 JSON을 생성합니다.",
+      why: "장기 기억 OS는 백업/복원/export 루틴이 있어야 합니다.",
+      evidence: `ai_packets=${packetCount}`,
+      source: "ai-packet"
+    } : null
+  ].filter(Boolean).map(item => ({ ...item, priority: v5PriorityScore(item) }))
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 9);
+  return {
+    schema: "project-universe-os-v5-command-briefing",
+    generatedAt: new Date().toISOString(),
+    mode: "self-operating-ai-think-tank",
+    opsChecklist: [
+      { id: "access", label: "Cloudflare Access", state: ops.auth.cloudflareAccessConfigured ? "configured" : "needs-setup", action: "Set TEAM_DOMAIN and POLICY_AUD, then verify cf-access-jwt-assertion on private routes." },
+      { id: "passkey", label: "Passkey", state: ops.counts?.passkey_credentials ? "registered" : "needs-registration", action: "Register at least one WebAuthn passkey from the Security Center." },
+      { id: "r2", label: "R2 File Vault", state: ops.storage.r2Binding ? "bound" : "binding-needed", action: "Bind an R2 bucket as FILE_VAULT. D1 keeps only index/hash/summary." },
+      { id: "d1", label: "D1 structured memory", state: ops.counts?.life_records ? "active" : "needs-records", action: "Keep book/chapter/topic/evidence/action/result/nextStep structured." },
+      { id: "packet", label: "AI Packet", state: packetCount ? "available" : "create-first-packet", action: "Generate redacted AI packet after meaningful records are saved." }
+    ],
+    actions,
+    graphInsights: {
+      weaknessesTop10: (graph.recurringWeaknesses || []).slice(0, 10),
+      recurringPatternsTop10: (graph.recurringPatternsTop10 || []).slice(0, 10),
+      nextSevenDays: graph.nextSevenDays || [],
+      exportBoundary: graph.exportBoundary
+    },
+    operatingSignals: {
+      ceCampaignSessions: Number(campaignRows?.total || 0),
+      latestCampaignAt: campaignRows?.latest || null,
+      caseGameReviewCount: caseMisses.length,
+      recordsMissingNextStep: (missingNext.results || []).length,
+      aiPackets: packetCount,
+      latestPacketAt: latestExport?.latest || null
+    },
+    safetyBoundary: "No recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit, equipment manual text, or customer confidential data."
+  };
+}
+
+async function handleV5EvidenceBoardStatus(request, db) {
+  const result = await db.prepare("SELECT * FROM evidence_boards ORDER BY updated_at DESC LIMIT 12").all().catch(() => ({ results: [] }));
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-evidence-board",
+    generatedAt: new Date().toISOString(),
+    deck: V5_EVIDENCE_DECK,
+    boards: (result.results || []).map(row => ({
+      id: row.id,
+      title: row.title,
+      linkedCampaignId: row.linked_campaign_id,
+      status: row.status,
+      selectedCards: parseJsonValue(row.selected_cards, []),
+      updatedAt: row.updated_at
+    })),
+    thinkingFrame: ["symptom", "risk", "subsystem", "evidence", "owner", "stop", "report"]
+  });
+}
+
+async function handleV5EvidenceBoardCreate(request, db) {
+  const payload = await readBody(request);
+  const now = new Date().toISOString();
+  const id = String(payload.id || crypto.randomUUID());
+  const selected = safeArray(payload.selectedCards || []);
+  await db.prepare(`INSERT OR REPLACE INTO evidence_boards
+    (id, title, linked_campaign_id, status, selected_cards, created_at, updated_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .bind(
+      id,
+      compactText(payload.title || "CE Evidence Board", 180),
+      compactText(payload.linkedCampaignId || "", 120),
+      compactText(payload.status || "active", 80),
+      JSON.stringify(selected),
+      payload.createdAt || now,
+      now,
+      JSON.stringify(payload)
+    )
+    .run();
+  await insertAuditEvent(db, "v5-evidence-board-upsert", id, "info", "Evidence board saved.", { selectedCount: selected.length });
+  return jsonResponse(request, { ok: true, id, updatedAt: now, selectedCards: selected });
+}
+
+async function handleV5EvidenceBoardSelect(request, db) {
+  const payload = await readBody(request);
+  const boardId = String(payload.boardId || "");
+  const cardId = String(payload.cardId || "");
+  if (!boardId || !cardId) return jsonResponse(request, { ok: false, error: "boardId and cardId required" }, 400);
+  const board = await db.prepare("SELECT * FROM evidence_boards WHERE id = ?").bind(boardId).first();
+  if (!board) return jsonResponse(request, { ok: false, error: "evidence board not found" }, 404);
+  const selected = new Set(parseJsonValue(board.selected_cards, []));
+  const isSelected = payload.selected === undefined ? !selected.has(cardId) : Boolean(payload.selected);
+  if (isSelected) selected.add(cardId);
+  else selected.delete(cardId);
+  const card = V5_EVIDENCE_DECK.find(item => item.id === cardId) || {};
+  const now = new Date().toISOString();
+  await db.prepare("UPDATE evidence_boards SET selected_cards = ?, updated_at = ? WHERE id = ?")
+    .bind(JSON.stringify([...selected]), now, boardId)
+    .run();
+  await db.prepare(`INSERT INTO evidence_board_events
+    (id, board_id, card_id, card_type, selected, created_at, payload)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`)
+    .bind(crypto.randomUUID(), boardId, cardId, card.type || "", isSelected ? 1 : 0, now, JSON.stringify({ label: card.label || "", selected: isSelected }))
+    .run();
+  return jsonResponse(request, { ok: true, boardId, cardId, selected: isSelected, selectedCards: [...selected], updatedAt: now });
+}
+
+async function handleV5GraphQuery(request, env, db, url) {
+  const question = compactText(url.searchParams.get("q") || "weekly-action", 240);
+  const briefing = await buildV5CommandBriefing(request, env, db);
+  const graph = briefing.graphInsights || {};
+  const query = question.toLowerCase();
+  let answer;
+  if (query.includes("weak") || query.includes("약점")) {
+    answer = {
+      title: "약점 top 10",
+      items: graph.weaknessesTop10,
+      nextAction: "상위 1개 약점을 오늘의 10분 복습 또는 CE campaign stage로 전환합니다."
+    };
+  } else if (query.includes("export") || query.includes("ai")) {
+    answer = {
+      title: "AI export 가능/불가 경계",
+      items: [graph.exportBoundary],
+      nextAction: "민감정보 제외 packet을 우선 사용하고, 건강/자산/가족 record는 redacted/index-only로 유지합니다."
+    };
+  } else {
+    answer = {
+      title: "다음 7일 action",
+      items: graph.nextSevenDays,
+      nextAction: "가장 높은 priority action 1개를 완료하고 기록에 result/nextStep을 갱신합니다."
+    };
+  }
+  return jsonResponse(request, {
+    ok: true,
+    schema: "project-universe-v5-graph-query",
+    generatedAt: new Date().toISOString(),
+    question,
+    answer,
+    priorityActions: briefing.actions.slice(0, 5),
+    redactionBoundary: briefing.safetyBoundary
+  });
+}
+
 async function handleLogin(request, env, formMode = false) {
   const body = await readBody(request);
   const password = String(body.password || "");
@@ -1557,9 +3072,18 @@ async function handleApi(request, env, url) {
   if (url.pathname === "/api/login" && request.method === "POST") return handleLogin(request, env);
   if (url.pathname === "/api/login-form" && request.method === "POST") return handleLogin(request, env, true);
   if (url.pathname === "/api/logout") return handleLogout(request, true);
-  if (!(await isAuthenticated(request, env))) return jsonResponse(request, { ok: false, error: "unauthorized" }, 401);
 
   await ensureSchema(env);
+  const publicDb = d1Binding(env);
+  if (publicDb && url.pathname === "/api/passkey/auth/options" && request.method === "GET") {
+    return handlePasskeyAuthenticationOptions(request, env, publicDb, url);
+  }
+  if (publicDb && url.pathname === "/api/passkey/auth/verify" && request.method === "POST") {
+    return handlePasskeyAuthenticationVerify(request, env, publicDb);
+  }
+
+  if (!(await isAuthenticated(request, env))) return jsonResponse(request, { ok: false, error: "unauthorized" }, 401);
+
   if (url.pathname === "/api/health" && request.method === "GET") {
     const bindingName = d1BindingName(env);
     const db = d1Binding(env);
@@ -1586,6 +3110,74 @@ async function handleApi(request, env, url) {
   }
 
   const db = requireDb(env);
+
+  if (url.pathname === "/api/passkey/register/options" && request.method === "GET") {
+    return handlePasskeyRegistrationOptions(request, env, db);
+  }
+
+  if (url.pathname === "/api/passkey/register/verify" && request.method === "POST") {
+    return handlePasskeyRegistrationVerify(request, env, db);
+  }
+
+  if (url.pathname === "/api/v4/security-center" && request.method === "GET") {
+    return jsonResponse(request, { ok: true, security: await buildSecurityCenter(request, env, db) });
+  }
+
+  if (url.pathname === "/api/v4/r2/objects" && request.method === "GET") {
+    return handleR2List(request, env, db);
+  }
+
+  if (url.pathname === "/api/v4/r2/upload" && (request.method === "POST" || request.method === "PUT")) {
+    return handleR2Upload(request, env, db, url);
+  }
+
+  if ((url.pathname === "/api/v4/r2/download" || url.pathname.startsWith("/api/v4/r2/object/")) && request.method === "GET") {
+    return handleR2Download(request, env, db, url);
+  }
+
+  if (url.pathname === "/api/v4/case-game/status" && request.method === "GET") {
+    return handleCaseGameStatus(request, db);
+  }
+
+  if (url.pathname === "/api/v4/case-game/start" && request.method === "POST") {
+    return handleCaseGameStart(request, db);
+  }
+
+  if (url.pathname === "/api/v4/case-game/answer" && request.method === "POST") {
+    return handleCaseGameAnswer(request, db);
+  }
+
+  if (url.pathname === "/api/v5/command-briefing" && request.method === "GET") {
+    return jsonResponse(request, { ok: true, briefing: await buildV5CommandBriefing(request, env, db) });
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/status" && request.method === "GET") {
+    return handleV5CampaignStatus(request, db);
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/start" && request.method === "POST") {
+    return handleV5CampaignStart(request, db);
+  }
+
+  if (url.pathname === "/api/v5/ce-campaign/answer" && request.method === "POST") {
+    return handleV5CampaignAnswer(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board" && request.method === "GET") {
+    return handleV5EvidenceBoardStatus(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board" && request.method === "POST") {
+    return handleV5EvidenceBoardCreate(request, db);
+  }
+
+  if (url.pathname === "/api/v5/evidence-board/select" && request.method === "POST") {
+    return handleV5EvidenceBoardSelect(request, db);
+  }
+
+  if (url.pathname === "/api/v5/graph-query" && request.method === "GET") {
+    return handleV5GraphQuery(request, env, db, url);
+  }
 
   if (url.pathname === "/api/v4/ops-status" && request.method === "GET") {
     return jsonResponse(request, { ok: true, status: await buildV4OpsStatus(request, env, db) });
