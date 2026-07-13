@@ -529,8 +529,15 @@
     briefing: null,
     fileIndex: null,
     packet: null,
+    security: null,
+    r2: null,
+    caseGame: null,
     lastLoadedAt: ""
   };
+  let v4GraphFilters = { book: "all", privacy: "all", type: "all", query: "" };
+  let v4CaseGameSession = null;
+  let v4CaseGameStep = null;
+  let v4CaseGameFeedback = "";
 
   function escapeHtml(value = "") {
     return String(value)
@@ -849,6 +856,185 @@
     return response.json();
   }
 
+  function base64UrlToArrayBuffer(value = "") {
+    const base64 = String(value).replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const binary = atob(padded);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes.buffer;
+  }
+
+  function arrayBufferToBase64Url(buffer) {
+    const bytes = new Uint8Array(buffer || new ArrayBuffer(0));
+    let binary = "";
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  function parsePublicKeyOptions(options, mode) {
+    if (mode === "create" && PublicKeyCredential.parseCreationOptionsFromJSON) {
+      return PublicKeyCredential.parseCreationOptionsFromJSON(options);
+    }
+    if (mode === "get" && PublicKeyCredential.parseRequestOptionsFromJSON) {
+      return PublicKeyCredential.parseRequestOptionsFromJSON(options);
+    }
+    const publicKey = structuredClone(options);
+    publicKey.challenge = base64UrlToArrayBuffer(publicKey.challenge);
+    if (publicKey.user?.id) publicKey.user.id = base64UrlToArrayBuffer(publicKey.user.id);
+    if (Array.isArray(publicKey.excludeCredentials)) {
+      publicKey.excludeCredentials = publicKey.excludeCredentials.map(item => ({ ...item, id: base64UrlToArrayBuffer(item.id) }));
+    }
+    if (Array.isArray(publicKey.allowCredentials)) {
+      publicKey.allowCredentials = publicKey.allowCredentials.map(item => ({ ...item, id: base64UrlToArrayBuffer(item.id) }));
+    }
+    return publicKey;
+  }
+
+  function credentialToJSON(credential) {
+    if (credential?.toJSON) return credential.toJSON();
+    const response = credential.response || {};
+    const json = {
+      id: credential.id,
+      rawId: arrayBufferToBase64Url(credential.rawId),
+      type: credential.type,
+      clientExtensionResults: credential.getClientExtensionResults ? credential.getClientExtensionResults() : {},
+      response: {}
+    };
+    ["clientDataJSON", "attestationObject", "authenticatorData", "signature", "userHandle"].forEach(key => {
+      if (response[key]) json.response[key] = arrayBufferToBase64Url(response[key]);
+    });
+    return json;
+  }
+
+  async function registerPasskey() {
+    const status = document.querySelector("#v4-passkey-status");
+    try {
+      if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("이 브라우저는 WebAuthn을 지원하지 않습니다.");
+      const data = await apiFetch("/api/passkey/register/options");
+      const publicKey = parsePublicKeyOptions(data.options, "create");
+      const credential = await navigator.credentials.create({ publicKey });
+      const verify = await apiFetch("/api/passkey/register/verify", {
+        method: "POST",
+        body: JSON.stringify({ username: "owner", response: credentialToJSON(credential) })
+      });
+      if (!verify.ok) throw new Error(verify.error || "등록 검증 실패");
+      if (status) status.textContent = "Passkey 등록 완료. 다음 접속부터 Passkey 로그인을 사용할 수 있습니다.";
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `Passkey 등록 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function loginWithPasskeyFromApp() {
+    const status = document.querySelector("#v4-passkey-status");
+    try {
+      if (!window.PublicKeyCredential || !navigator.credentials) throw new Error("이 브라우저는 WebAuthn을 지원하지 않습니다.");
+      const data = await apiFetch("/api/passkey/auth/options", {}, BOOKSHELF_API);
+      if (!data.hasPasskeys) throw new Error("등록된 Passkey가 없습니다. 먼저 private mode에서 등록하세요.");
+      const publicKey = parsePublicKeyOptions(data.options, "get");
+      const credential = await navigator.credentials.get({ publicKey });
+      const verify = await apiFetch("/api/passkey/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({ username: "owner", response: credentialToJSON(credential) })
+      });
+      if (!verify.ok) throw new Error(verify.error || "로그인 검증 실패");
+      if (verify.token) sessionStorage.setItem(REMOTE_TOKEN_KEY, verify.token);
+      if (status) status.textContent = "Passkey 로그인 검증 완료.";
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `Passkey 로그인 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function uploadR2File() {
+    const status = document.querySelector("#v4-r2-status");
+    const file = document.querySelector("#v4-r2-file")?.files?.[0];
+    const label = document.querySelector("#v4-r2-label")?.value || file?.name || "vault-object";
+    if (!file) {
+      if (status) status.textContent = "업로드할 파일을 먼저 선택하세요.";
+      return;
+    }
+    try {
+      const token = tokenForApi(BOOKSHELF_API);
+      const response = await fetch(`${BOOKSHELF_API}/api/v4/r2/upload?label=${encodeURIComponent(label)}&privacyLevel=sensitive-index`, {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "X-ThinkTank-Password": sessionStorage.getItem(CLIENT_PASS_KEY) || "",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: file
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      if (status) status.textContent = `R2 업로드 완료: ${data.key}`;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `R2 업로드 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  function downloadR2Object(key) {
+    if (!key) return;
+    window.open(`${BOOKSHELF_API}/api/v4/r2/download?key=${encodeURIComponent(key)}`, "_blank", "noopener");
+  }
+
+  function updateV4GraphFilterFromDom() {
+    v4GraphFilters = {
+      type: document.querySelector("#v4-graph-type")?.value || "all",
+      book: document.querySelector("#v4-graph-book")?.value || "all",
+      privacy: document.querySelector("#v4-graph-privacy")?.value || "all",
+      query: document.querySelector("#v4-graph-query")?.value || ""
+    };
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  async function startCaseGame() {
+    const caseId = document.querySelector("#v4-case-select")?.value || "";
+    const status = document.querySelector("#v4-case-status");
+    try {
+      const data = await apiFetch("/api/v4/case-game/start", {
+        method: "POST",
+        body: JSON.stringify({ caseId })
+      });
+      v4CaseGameSession = data.session;
+      v4CaseGameStep = data.step;
+      v4CaseGameFeedback = "케이스 시작. 첫 단계는 immediate risk 판단입니다.";
+      if (status) status.textContent = v4CaseGameFeedback;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `케이스 시작 실패: ${error.message || "unknown"}`;
+    }
+  }
+
+  async function answerCaseGame(answer) {
+    const status = document.querySelector("#v4-case-status");
+    if (!v4CaseGameSession?.id) {
+      if (status) status.textContent = "먼저 케이스를 시작하세요.";
+      return;
+    }
+    try {
+      const data = await apiFetch("/api/v4/case-game/answer", {
+        method: "POST",
+        body: JSON.stringify({ sessionId: v4CaseGameSession.id, answer })
+      });
+      v4CaseGameStep = data.next;
+      v4CaseGameSession = {
+        ...v4CaseGameSession,
+        score: data.score,
+        completed: data.completed
+      };
+      v4CaseGameFeedback = `${data.correct ? "정답" : "재훈련 필요"} · ${data.feedback || ""} · score ${data.score}`;
+      if (data.completed) v4CaseGameFeedback = `${v4CaseGameFeedback} · 케이스 완료`;
+      await fetchV4KernelState();
+    } catch (error) {
+      if (status) status.textContent = `답변 제출 실패: ${error.message || "unknown"}`;
+    }
+  }
+
   async function fetchV4KernelState(options = {}) {
     const panel = document.querySelector("#v4-kernel-readout");
     v4KernelState.status = "loading";
@@ -858,12 +1044,15 @@
       if (options.reindex) {
         await apiFetch("/api/v4/reindex", { method: "POST", body: JSON.stringify({ limit: 1000 }) });
       }
-      const [opsData, graphData, briefingData, fileData, packetData] = await Promise.all([
+      const [opsData, graphData, briefingData, fileData, packetData, securityData, r2Data, caseGameData] = await Promise.all([
         apiFetch("/api/v4/ops-status"),
         apiFetch("/api/v4/life-graph"),
         apiFetch("/api/v4/coach-briefing"),
         apiFetch("/api/v4/file-index"),
-        apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence")
+        apiFetch("/api/v4/ai-packet?type=redacted-life-intelligence"),
+        apiFetch("/api/v4/security-center"),
+        apiFetch("/api/v4/r2/objects"),
+        apiFetch("/api/v4/case-game/status")
       ]);
       v4KernelState = {
         status: "ready",
@@ -873,6 +1062,9 @@
         briefing: briefingData.briefing,
         fileIndex: fileData.fileIndex,
         packet: packetData.packet,
+        security: securityData.security,
+        r2: r2Data,
+        caseGame: caseGameData,
         lastLoadedAt: new Date().toISOString()
       };
       latestAiPacketText = JSON.stringify(packetData.packet || {}, null, 2);
@@ -893,6 +1085,218 @@
     if (score >= 65) return "hardening";
     if (score >= 40) return "foundation";
     return "bootstrap";
+  }
+
+  function v4StatusText(ok, yes = "ACTIVE", no = "READY") {
+    return ok ? yes : no;
+  }
+
+  function v4Pills(items = []) {
+    return items.filter(Boolean).map(item => `<span>${escapeHtml(item)}</span>`).join("");
+  }
+
+  function renderV4SecurityCenter() {
+    const security = v4KernelState.security || {};
+    const access = security.cloudflareAccess || {};
+    const passkeys = security.passkeys || {};
+    return `
+      <section class="v4-module-card v4-security-center" aria-label="v4 security center">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">Security Center</p>
+            <h3>실인증 전환 준비 상태</h3>
+            <p>Cloudflare Access JWT가 들어오면 서버에서 검증하고, Passkey는 WebAuthn 등록/로그인 ceremony를 D1 challenge와 credential 테이블로 관리합니다.</p>
+          </div>
+          <span class="sync-pill">${escapeHtml(v4StatusText(access.configured && access.verified, "ACCESS VERIFIED", "HARDENING"))}</span>
+        </div>
+        <div class="v4-mini-grid">
+          <article><span>Cloudflare Access</span><strong>${access.configured ? "configured" : "not configured"}</strong><small>${access.verified ? `verified ${access.email || access.sub || ""}` : "TEAM_DOMAIN / POLICY_AUD 필요"}</small></article>
+          <article><span>Passkey</span><strong>${passkeys.registered ?? 0}</strong><small>${escapeHtml(passkeys.boundary || "등록 후 passwordless login 가능")}</small></article>
+          <article><span>Legacy lock</span><strong>${security.legacyPassword?.enabled ? "enabled" : "off"}</strong><small>호환용 잠금이며 기업용 실인증은 Access/Passkey가 담당</small></article>
+        </div>
+        <div class="v4-action-row">
+          <button class="primary" type="button" data-passkey-register>이 기기에 Passkey 등록</button>
+          <button class="secondary" type="button" data-passkey-login>Passkey 로그인 테스트</button>
+          <span class="copy-status" id="v4-passkey-status">HTTPS와 브라우저 인증장치가 필요합니다.</span>
+        </div>
+        <div class="v4-boundary-note">
+          <strong>저장 금지 경계</strong>
+          <p>비밀번호, seed phrase, 계좌번호, 주민등록번호, 고객 비공개자료, 장비 manual 원문, recipe, valve sequence, detector setpoint, interlock bypass, site-specific limit은 기록하지 않습니다.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV4R2Vault() {
+    const r2 = v4KernelState.r2 || {};
+    const objects = r2.objects || [];
+    return `
+      <section class="v4-module-card v4-r2-vault" aria-label="R2 raw file vault">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">R2 File Vault</p>
+            <h3>원문 파일은 R2, D1에는 색인만</h3>
+            <p>PDF, 이미지, 검진표, 논문 원문, 설치 사진은 D1에 넣지 않고 R2 object로 저장합니다. D1에는 file index, summary, hash, linked record만 남깁니다.</p>
+          </div>
+          <span class="sync-pill">${r2.configured ? "R2 BOUND" : "BINDING NEEDED"}</span>
+        </div>
+        <div class="v4-mini-grid">
+          <article><span>Binding</span><strong>${escapeHtml(r2.binding || "FILE_VAULT")}</strong><small>${r2.configured ? "Worker R2 bucket detected" : "wrangler r2_buckets 설정 필요"}</small></article>
+          <article><span>Objects</span><strong>${objects.length}</strong><small>최근 R2 index rows</small></article>
+          <article><span>Rule</span><strong>index-only D1</strong><small>원문 파일은 R2/D-drive, D1은 메타데이터</small></article>
+        </div>
+        <div class="v4-upload-strip">
+          <label>
+            <span>업로드할 원문 파일</span>
+            <input id="v4-r2-file" type="file" />
+          </label>
+          <label>
+            <span>라벨</span>
+            <input id="v4-r2-label" type="text" placeholder="예: EPI 논문 PDF / 건강검진표 요약 원문" />
+          </label>
+          <button class="primary" type="button" data-r2-upload ${r2.configured ? "" : "disabled"}>R2 업로드</button>
+          <span class="copy-status" id="v4-r2-status">${r2.configured ? "업로드 대기" : "R2 bucket binding(FILE_VAULT)을 먼저 연결해야 합니다."}</span>
+        </div>
+        <div class="v4-object-list">
+          ${objects.length ? objects.slice(0, 8).map(object => `
+            <article>
+              <div>
+                <strong>${escapeHtml(object.label || object.key)}</strong>
+                <p>${escapeHtml(object.key)} / ${escapeHtml(object.contentType || object.fileType || "object")} / ${object.size || 0} bytes</p>
+                <small>${escapeHtml(object.privacyLevel || "sensitive-index")} · ${escapeHtml(object.exportPolicy || "index-only")}</small>
+              </div>
+              <button class="secondary" type="button" data-r2-download="${escapeHtml(object.key)}" ${r2.configured ? "" : "disabled"}>다운로드</button>
+            </article>
+          `).join("") : `<article><div><strong>아직 R2 object index가 없습니다.</strong><p>R2 binding 후 업로드하면 여기에 원문 파일 index가 남습니다.</p></div></article>`}
+        </div>
+      </section>
+    `;
+  }
+
+  function filteredV4Graph() {
+    const graph = v4KernelState.graph || {};
+    const nodes = graph.nodes || [];
+    const edges = graph.edges || [];
+    const query = String(v4GraphFilters.query || "").toLowerCase().trim();
+    const filteredNodes = nodes.filter(node => {
+      if (v4GraphFilters.type !== "all" && node.type !== v4GraphFilters.type) return false;
+      if (v4GraphFilters.book !== "all" && node.bookId !== v4GraphFilters.book && node.id !== `book:${v4GraphFilters.book}`) return false;
+      if (v4GraphFilters.privacy !== "all" && node.privacyLevel !== v4GraphFilters.privacy) return false;
+      if (query && !`${node.label || ""} ${node.id || ""} ${node.bookId || ""} ${node.privacyLevel || ""}`.toLowerCase().includes(query)) return false;
+      return true;
+    });
+    const nodeIds = new Set(filteredNodes.map(node => node.id));
+    const filteredEdges = edges.filter(edge => nodeIds.has(edge.from) || nodeIds.has(edge.to));
+    return { graph, nodes: filteredNodes, edges: filteredEdges };
+  }
+
+  function renderV4GraphExplorer() {
+    const { graph, nodes, edges } = filteredV4Graph();
+    const nodeTypes = [...new Set((graph.nodes || []).map(node => node.type).filter(Boolean))].sort();
+    const bookIds = [...new Set((graph.nodes || []).map(node => node.bookId).filter(Boolean))].sort();
+    const privacyLevels = [...new Set((graph.nodes || []).map(node => node.privacyLevel).filter(Boolean))].sort();
+    const selected = nodes[0] || (graph.nodes || [])[0] || null;
+    const related = selected ? edges.filter(edge => edge.from === selected.id || edge.to === selected.id).slice(0, 8) : [];
+    return `
+      <section class="v4-module-card v4-graph-explorer" aria-label="v4 graph explorer">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">v4 Graph Explorer</p>
+            <h3>D1 지식 그래프 직접 탐색</h3>
+            <p>book, topic, tag, entity, privacy, exportPolicy 단위로 서버 graph를 탐색합니다. AI에게 넘길 수 있는 것과 숨겨야 하는 것을 같은 화면에서 구분합니다.</p>
+          </div>
+          <span class="sync-pill">${nodes.length} nodes / ${edges.length} edges</span>
+        </div>
+        <div class="v4-filter-bar">
+          <label><span>Type</span><select id="v4-graph-type"><option value="all">all</option>${nodeTypes.map(type => `<option value="${escapeHtml(type)}" ${v4GraphFilters.type === type ? "selected" : ""}>${escapeHtml(type)}</option>`).join("")}</select></label>
+          <label><span>Book</span><select id="v4-graph-book"><option value="all">all</option>${bookIds.map(book => `<option value="${escapeHtml(book)}" ${v4GraphFilters.book === book ? "selected" : ""}>${escapeHtml(book)}</option>`).join("")}</select></label>
+          <label><span>Privacy</span><select id="v4-graph-privacy"><option value="all">all</option>${privacyLevels.map(level => `<option value="${escapeHtml(level)}" ${v4GraphFilters.privacy === level ? "selected" : ""}>${escapeHtml(level)}</option>`).join("")}</select></label>
+          <label><span>Search</span><input id="v4-graph-query" type="search" value="${escapeHtml(v4GraphFilters.query)}" placeholder="tag, entity, record 검색" /></label>
+        </div>
+        <div class="v4-graph-map">
+          <div class="v4-node-column">
+            ${nodes.slice(0, 34).map(node => `
+              <button type="button" class="v4-node-chip" data-v4-node="${escapeHtml(node.id)}">
+                <b>${escapeHtml(node.type || "node")}</b>
+                ${escapeHtml(node.label || node.id)}
+                <small>${escapeHtml(node.bookId || node.privacyLevel || node.exportPolicy || "")}</small>
+              </button>
+            `).join("") || `<span class="v4-empty-state">필터 결과가 없습니다.</span>`}
+          </div>
+          <article class="v4-node-inspector">
+            <span>Selected node</span>
+            <strong>${escapeHtml(selected?.label || "no node")}</strong>
+            <p>${escapeHtml(selected ? `${selected.type || "node"} · ${selected.bookId || "book n/a"} · ${selected.privacyLevel || "privacy n/a"} · ${selected.exportPolicy || "export n/a"}` : "필터를 조정하거나 기록을 추가하세요.")}</p>
+            <div class="v4-related-list">
+              ${related.map(edge => `<span><b>${escapeHtml(edge.label || "edge")}</b>${escapeHtml(edge.from)} → ${escapeHtml(edge.to)}</span>`).join("") || `<span><b>related</b>아직 연결 edge가 없습니다.</span>`}
+            </div>
+          </article>
+        </div>
+        <div class="v4-boundary-note">
+          <strong>AI export 경계</strong>
+          <p>${escapeHtml(graph.exportBoundary?.allowed || "redacted summaries and metadata only")} / 차단: ${escapeHtml(graph.exportBoundary?.blocked || "secrets and confidential data")}</p>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderV4CaseGameEngine() {
+    const data = v4KernelState.caseGame || {};
+    const cases = data.cases || [];
+    const sessions = data.sessions || [];
+    const activeCase = cases.find(item => item.id === v4CaseGameSession?.caseId) || cases[0] || {};
+    const step = v4CaseGameStep;
+    return `
+      <section class="v4-module-card v4-case-game" aria-label="CE case game engine">
+        <div class="v4-module-head">
+          <div>
+            <p class="eyebrow">CE Case Game Engine</p>
+            <h3>증상 → 위험 → evidence → stop → report 훈련</h3>
+            <p>케이스를 시작하면 서버가 session/event/weakness를 저장합니다. 틀린 판단은 weakness queue에 들어가고, CE 사고 패턴이 장기적으로 누적됩니다.</p>
+          </div>
+          <span class="sync-pill">${sessions.length} sessions</span>
+        </div>
+        <div class="v4-case-layout">
+          <div class="v4-case-picker">
+            <label>
+              <span>Subsystem case</span>
+              <select id="v4-case-select">
+                ${cases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${escapeHtml(item.title)}</option>`).join("")}
+              </select>
+            </label>
+            <button class="primary" type="button" data-case-game-start>케이스 시작</button>
+            <div class="v4-case-summary">
+              <strong>${escapeHtml(activeCase.title || "case ready")}</strong>
+              <p>${escapeHtml(activeCase.symptom || "케이스를 선택하면 현장 증상과 위험 판단 흐름을 훈련합니다.")}</p>
+              <small>${v4Pills([activeCase.subsystem, activeCase.status, activeCase.stop])}</small>
+            </div>
+          </div>
+          <div class="v4-case-play">
+            ${step ? `
+              <div class="v4-step-head">
+                <span>${escapeHtml(step.step)} · ${escapeHtml(step.progress)}</span>
+                <strong>${escapeHtml(step.question)}</strong>
+              </div>
+              <div class="v4-choice-grid">
+                ${(step.choices || []).map(choice => `<button class="secondary" type="button" data-case-game-answer="${escapeHtml(choice)}">${escapeHtml(choice)}</button>`).join("")}
+              </div>
+              <label class="v4-report-input">
+                <span>직접 보고 문장/판단 문장 입력</span>
+                <textarea id="v4-case-free-answer" placeholder="예: Evidence shows pumpdown instability; we will hold qualification until owner review confirms safe readiness."></textarea>
+              </label>
+              <div class="v4-action-row">
+                <button class="primary" type="button" data-case-game-free-answer>직접 답변 제출</button>
+                <span class="copy-status" id="v4-case-status">${escapeHtml(v4CaseGameFeedback || "단계별로 답하면 즉시 채점됩니다.")}</span>
+              </div>
+            ` : `
+              <div class="v4-empty-state">
+                케이스를 시작하세요. 각 단계는 안전 경계와 고객 보고까지 연결됩니다.
+              </div>
+            `}
+          </div>
+        </div>
+      </section>
+    `;
   }
 
   function updateV4KernelPanel() {
@@ -933,6 +1337,21 @@
           <small>${escapeHtml(ops.storage?.r2State || "placeholder")}</small>
         </article>
         <article>
+          <span>Passkeys</span>
+          <strong>${counts.passkey_credentials ?? v4KernelState.security?.passkeys?.registered ?? 0}</strong>
+          <small>${escapeHtml(ops.auth?.cloudflareAccessConfigured ? "Access config present" : "Access config needed")}</small>
+        </article>
+        <article>
+          <span>R2 objects</span>
+          <strong>${counts.r2_objects ?? v4KernelState.r2?.objects?.length ?? 0}</strong>
+          <small>${escapeHtml(v4KernelState.r2?.configured ? "FILE_VAULT bound" : "binding needed")}</small>
+        </article>
+        <article>
+          <span>CE game</span>
+          <strong>${counts.case_game_sessions ?? 0}</strong>
+          <small>${counts.case_game_events ?? 0} judgment events</small>
+        </article>
+        <article>
           <span>Weakness</span>
           <strong>${counts.weakness_events ?? 0}</strong>
           <small>auto review signals</small>
@@ -957,7 +1376,34 @@
         <p>${escapeHtml(ops.auth?.boundary || "Client lock is not enterprise authentication. Cloudflare Access/Passkey hardening remains the next security jump.")}</p>
         <p>${escapeHtml(ops.storage?.rawFileRule || "D1 stores index and structured records only.")}</p>
       </div>
+      <div class="v4-module-grid">
+        ${renderV4SecurityCenter()}
+        ${renderV4R2Vault()}
+      </div>
+      ${renderV4GraphExplorer()}
+      ${renderV4CaseGameEngine()}
     `;
+    bindV4KernelDynamicControls();
+  }
+
+  function bindV4KernelDynamicControls() {
+    document.querySelector("[data-passkey-register]")?.addEventListener("click", registerPasskey);
+    document.querySelector("[data-passkey-login]")?.addEventListener("click", loginWithPasskeyFromApp);
+    document.querySelector("[data-r2-upload]")?.addEventListener("click", uploadR2File);
+    document.querySelectorAll("[data-r2-download]").forEach(button => {
+      button.addEventListener("click", () => downloadR2Object(button.dataset.r2Download));
+    });
+    ["#v4-graph-type", "#v4-graph-book", "#v4-graph-privacy"].forEach(selector => {
+      document.querySelector(selector)?.addEventListener("change", updateV4GraphFilterFromDom);
+    });
+    document.querySelector("#v4-graph-query")?.addEventListener("input", updateV4GraphFilterFromDom);
+    document.querySelector("[data-case-game-start]")?.addEventListener("click", startCaseGame);
+    document.querySelectorAll("[data-case-game-answer]").forEach(button => {
+      button.addEventListener("click", () => answerCaseGame(button.dataset.caseGameAnswer));
+    });
+    document.querySelector("[data-case-game-free-answer]")?.addEventListener("click", () => {
+      answerCaseGame(document.querySelector("#v4-case-free-answer")?.value || "");
+    });
   }
 
   async function copyText(text, statusSelector) {
