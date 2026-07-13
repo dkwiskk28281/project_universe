@@ -535,6 +535,8 @@
     lastLoadedAt: ""
   };
   let v4GraphFilters = { book: "all", privacy: "all", type: "all", query: "" };
+  let activeV4GraphNodeId = "";
+  let v4CaseSubsystemFilter = "all";
   let v4CaseGameSession = null;
   let v4CaseGameStep = null;
   let v4CaseGameFeedback = "";
@@ -956,12 +958,16 @@
       return;
     }
     try {
+      if (status) status.textContent = "파일 무결성 hash 계산 중...";
+      const contentHash = await fileSha256(file);
       const token = tokenForApi(BOOKSHELF_API);
       const response = await fetch(`${BOOKSHELF_API}/api/v4/r2/upload?label=${encodeURIComponent(label)}&privacyLevel=sensitive-index`, {
         method: "PUT",
         credentials: "include",
         headers: {
           "Content-Type": file.type || "application/octet-stream",
+          "X-Content-SHA256": contentHash,
+          "X-Original-Size": String(file.size || 0),
           "X-ThinkTank-Password": sessionStorage.getItem(CLIENT_PASS_KEY) || "",
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
@@ -969,7 +975,7 @@
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      if (status) status.textContent = `R2 업로드 완료: ${data.key}`;
+      if (status) status.textContent = `R2 업로드 완료: ${data.key} / sha256 ${contentHash.slice(0, 16)}...`;
       await fetchV4KernelState();
     } catch (error) {
       if (status) status.textContent = `R2 업로드 실패: ${error.message || "unknown"}`;
@@ -981,6 +987,12 @@
     window.open(`${BOOKSHELF_API}/api/v4/r2/download?key=${encodeURIComponent(key)}`, "_blank", "noopener");
   }
 
+  async function fileSha256(file) {
+    const buffer = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buffer);
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
   function updateV4GraphFilterFromDom() {
     v4GraphFilters = {
       type: document.querySelector("#v4-graph-type")?.value || "all",
@@ -988,6 +1000,22 @@
       privacy: document.querySelector("#v4-graph-privacy")?.value || "all",
       query: document.querySelector("#v4-graph-query")?.value || ""
     };
+    const { nodes } = filteredV4Graph();
+    if (activeV4GraphNodeId && !nodes.some(node => node.id === activeV4GraphNodeId)) activeV4GraphNodeId = "";
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  function selectV4GraphNode(nodeId) {
+    activeV4GraphNodeId = nodeId || "";
+    updateV4KernelPanel();
+    bindV4KernelDynamicControls();
+  }
+
+  function updateCaseSubsystemFilter() {
+    v4CaseSubsystemFilter = document.querySelector("#v4-case-subsystem-filter")?.value || "all";
+    v4CaseGameStep = null;
+    v4CaseGameFeedback = "";
     updateV4KernelPanel();
     bindV4KernelDynamicControls();
   }
@@ -1195,8 +1223,10 @@
     const nodeTypes = [...new Set((graph.nodes || []).map(node => node.type).filter(Boolean))].sort();
     const bookIds = [...new Set((graph.nodes || []).map(node => node.bookId).filter(Boolean))].sort();
     const privacyLevels = [...new Set((graph.nodes || []).map(node => node.privacyLevel).filter(Boolean))].sort();
-    const selected = nodes[0] || (graph.nodes || [])[0] || null;
+    const selected = nodes.find(node => node.id === activeV4GraphNodeId) || nodes[0] || (graph.nodes || [])[0] || null;
     const related = selected ? edges.filter(edge => edge.from === selected.id || edge.to === selected.id).slice(0, 8) : [];
+    const visualNodes = nodes.slice(0, 18);
+    const visualEdges = edges.filter(edge => visualNodes.some(node => node.id === edge.from) && visualNodes.some(node => node.id === edge.to)).slice(0, 28);
     return `
       <section class="v4-module-card v4-graph-explorer" aria-label="v4 graph explorer">
         <div class="v4-module-head">
@@ -1216,7 +1246,7 @@
         <div class="v4-graph-map">
           <div class="v4-node-column">
             ${nodes.slice(0, 34).map(node => `
-              <button type="button" class="v4-node-chip" data-v4-node="${escapeHtml(node.id)}">
+              <button type="button" class="v4-node-chip ${node.id === selected?.id ? "active" : ""}" data-v4-node="${escapeHtml(node.id)}">
                 <b>${escapeHtml(node.type || "node")}</b>
                 ${escapeHtml(node.label || node.id)}
                 <small>${escapeHtml(node.bookId || node.privacyLevel || node.exportPolicy || "")}</small>
@@ -1227,6 +1257,16 @@
             <span>Selected node</span>
             <strong>${escapeHtml(selected?.label || "no node")}</strong>
             <p>${escapeHtml(selected ? `${selected.type || "node"} · ${selected.bookId || "book n/a"} · ${selected.privacyLevel || "privacy n/a"} · ${selected.exportPolicy || "export n/a"}` : "필터를 조정하거나 기록을 추가하세요.")}</p>
+            <div class="v4-graph-visual" aria-label="selected graph visual">
+              ${visualNodes.map((node, index) => {
+                const angle = (Math.PI * 2 * index) / Math.max(1, visualNodes.length);
+                const radius = node.id === selected?.id ? 0 : 38;
+                const x = 50 + Math.cos(angle) * radius;
+                const y = 50 + Math.sin(angle) * radius;
+                return `<button type="button" class="v4-graph-dot ${node.id === selected?.id ? "active" : ""} dot-${escapeHtml(node.type || "node")}" style="left:${x}%;top:${y}%;" data-v4-node="${escapeHtml(node.id)}" title="${escapeHtml(node.label || node.id)}"><span>${escapeHtml((node.label || node.type || "?").slice(0, 2))}</span></button>`;
+              }).join("")}
+              ${visualEdges.map(edge => `<i title="${escapeHtml(edge.label || "edge")}"></i>`).join("")}
+            </div>
             <div class="v4-related-list">
               ${related.map(edge => `<span><b>${escapeHtml(edge.label || "edge")}</b>${escapeHtml(edge.from)} → ${escapeHtml(edge.to)}</span>`).join("") || `<span><b>related</b>아직 연결 edge가 없습니다.</span>`}
             </div>
@@ -1244,7 +1284,12 @@
     const data = v4KernelState.caseGame || {};
     const cases = data.cases || [];
     const sessions = data.sessions || [];
-    const activeCase = cases.find(item => item.id === v4CaseGameSession?.caseId) || cases[0] || {};
+    const subsystems = data.subsystems || [];
+    const reviewQueue = data.reviewQueue || [];
+    const filteredCases = v4CaseSubsystemFilter === "all"
+      ? cases
+      : cases.filter(item => item.subsystem === v4CaseSubsystemFilter);
+    const activeCase = filteredCases.find(item => item.id === v4CaseGameSession?.caseId) || filteredCases[0] || cases[0] || {};
     const step = v4CaseGameStep;
     return `
       <section class="v4-module-card v4-case-game" aria-label="CE case game engine">
@@ -1254,14 +1299,30 @@
             <h3>증상 → 위험 → evidence → stop → report 훈련</h3>
             <p>케이스를 시작하면 서버가 session/event/weakness를 저장합니다. 틀린 판단은 weakness queue에 들어가고, CE 사고 패턴이 장기적으로 누적됩니다.</p>
           </div>
-          <span class="sync-pill">${sessions.length} sessions</span>
+          <span class="sync-pill">${data.bank?.totalCases || cases.length} cases / ${sessions.length} sessions</span>
+        </div>
+        <div class="v4-case-bank-grid">
+          ${(subsystems.length ? subsystems : [{ subsystem: "all", cases: cases.length, sessions: sessions.length, avgScore: 0 }]).map(item => `
+            <button type="button" class="v4-case-bank-chip ${v4CaseSubsystemFilter === item.subsystem ? "active" : ""}" data-case-subsystem="${escapeHtml(item.subsystem)}">
+              <b>${escapeHtml(item.subsystem)}</b>
+              <span>${item.cases} cases</span>
+              <small>${item.sessions || 0} sessions · avg ${item.avgScore || 0}</small>
+            </button>
+          `).join("")}
         </div>
         <div class="v4-case-layout">
           <div class="v4-case-picker">
             <label>
+              <span>Subsystem filter</span>
+              <select id="v4-case-subsystem-filter">
+                <option value="all">all subsystems</option>
+                ${subsystems.map(item => `<option value="${escapeHtml(item.subsystem)}" ${v4CaseSubsystemFilter === item.subsystem ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${item.cases} cases</option>`).join("")}
+              </select>
+            </label>
+            <label>
               <span>Subsystem case</span>
               <select id="v4-case-select">
-                ${cases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${escapeHtml(item.title)}</option>`).join("")}
+                ${filteredCases.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === activeCase.id ? "selected" : ""}>${escapeHtml(item.subsystem)} · ${escapeHtml(item.title)}</option>`).join("")}
               </select>
             </label>
             <button class="primary" type="button" data-case-game-start>케이스 시작</button>
@@ -1270,6 +1331,16 @@
               <p>${escapeHtml(activeCase.symptom || "케이스를 선택하면 현장 증상과 위험 판단 흐름을 훈련합니다.")}</p>
               <small>${v4Pills([activeCase.subsystem, activeCase.status, activeCase.stop])}</small>
             </div>
+          </div>
+          <div class="v4-review-queue">
+            <span>Review queue</span>
+            ${reviewQueue.length ? reviewQueue.slice(0, 6).map(item => `
+              <button type="button" data-case-review="${escapeHtml(item.caseId)}">
+                <b>${escapeHtml(item.subsystem)} / ${escapeHtml(item.step)}</b>
+                ${escapeHtml(item.title)}
+                <small>${item.count} misses · ${escapeHtml(item.nextAction)}</small>
+              </button>
+            `).join("") : `<p>아직 누적 오답이 없습니다. 일부러 빠르게 풀지 말고 stop condition을 말로 써보세요.</p>`}
           </div>
           <div class="v4-case-play">
             ${step ? `
@@ -1397,6 +1468,28 @@
       document.querySelector(selector)?.addEventListener("change", updateV4GraphFilterFromDom);
     });
     document.querySelector("#v4-graph-query")?.addEventListener("input", updateV4GraphFilterFromDom);
+    document.querySelectorAll("[data-v4-node]").forEach(button => {
+      button.addEventListener("click", () => selectV4GraphNode(button.dataset.v4Node));
+    });
+    document.querySelector("#v4-case-subsystem-filter")?.addEventListener("change", updateCaseSubsystemFilter);
+    document.querySelectorAll("[data-case-subsystem]").forEach(button => {
+      button.addEventListener("click", () => {
+        v4CaseSubsystemFilter = button.dataset.caseSubsystem || "all";
+        v4CaseGameStep = null;
+        v4CaseGameFeedback = "";
+        updateV4KernelPanel();
+      });
+    });
+    document.querySelectorAll("[data-case-review]").forEach(button => {
+      button.addEventListener("click", () => {
+        const select = document.querySelector("#v4-case-select");
+        const targetCase = (v4KernelState.caseGame?.cases || []).find(item => item.id === button.dataset.caseReview);
+        if (targetCase) v4CaseSubsystemFilter = targetCase.subsystem;
+        updateV4KernelPanel();
+        const refreshedSelect = document.querySelector("#v4-case-select");
+        if (refreshedSelect) refreshedSelect.value = button.dataset.caseReview || refreshedSelect.value;
+      });
+    });
     document.querySelector("[data-case-game-start]")?.addEventListener("click", startCaseGame);
     document.querySelectorAll("[data-case-game-answer]").forEach(button => {
       button.addEventListener("click", () => answerCaseGame(button.dataset.caseGameAnswer));

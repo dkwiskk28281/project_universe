@@ -1959,11 +1959,15 @@ async function handleR2Upload(request, env, db, url) {
   const recordId = url.searchParams.get("recordId") || request.headers.get("X-Record-Id") || "";
   const privacyLevel = url.searchParams.get("privacyLevel") || "sensitive-index";
   const exportPolicy = url.searchParams.get("exportPolicy") || "index-only-unless-user-approves";
+  const contentHash = request.headers.get("X-Content-SHA256") || request.headers.get("X-Content-Hash") || "";
+  const originalSize = Number(request.headers.get("X-Original-Size") || request.headers.get("Content-Length") || 0);
   const object = await bucket.put(key, request.body, {
     httpMetadata: { contentType },
     customMetadata: {
       label: compactText(label, 120),
       recordId: compactText(recordId, 160),
+      contentHash: compactText(contentHash, 180),
+      originalSize: String(originalSize || ""),
       privacyLevel,
       exportPolicy
     }
@@ -1980,7 +1984,7 @@ async function handleR2Upload(request, env, db, url) {
       Number(object?.size || request.headers.get("Content-Length") || 0),
       contentType,
       object?.etag || "",
-      request.headers.get("X-Content-Hash") || "",
+      contentHash,
       privacyLevel,
       exportPolicy,
       compactText(request.headers.get("X-AI-Summary") || "", 1600),
@@ -1998,7 +2002,7 @@ async function handleR2Upload(request, env, db, url) {
       recordId,
       compactText(label, 160),
       contentType.split("/")[1] || "binary",
-      request.headers.get("X-Content-Hash") || object?.etag || "",
+      contentHash || object?.etag || "",
       key,
       "R2:FILE_VAULT",
       privacyLevel,
@@ -2008,11 +2012,11 @@ async function handleR2Upload(request, env, db, url) {
       url.searchParams.get("linkedBook") || "",
       now,
       now,
-      JSON.stringify({ r2Key: key, etag: object?.etag || "" })
+      JSON.stringify({ r2Key: key, etag: object?.etag || "", contentHash, originalSize })
     )
     .run();
-  await insertAuditEvent(db, "r2-upload", key, "info", "Uploaded raw object to R2 and stored index in D1.", { key, recordId, contentType });
-  return jsonResponse(request, { ok: true, key, etag: object?.etag || "", size: object?.size || null });
+  await insertAuditEvent(db, "r2-upload", key, "info", "Uploaded raw object to R2 and stored index in D1.", { key, recordId, contentType, contentHash });
+  return jsonResponse(request, { ok: true, key, etag: object?.etag || "", size: object?.size || null, contentHash });
 }
 
 async function handleR2Download(request, env, db, url) {
@@ -2118,6 +2122,154 @@ const CASE_GAME_BANK = [
   }
 ];
 
+function makeCaseGameExpansion() {
+  const groups = [
+    {
+      subsystem: "vacuum",
+      status: "safety-hold",
+      risk: ["air/moisture contamination", "particle excursion", "unsafe gas readiness"],
+      evidence: ["pressure trend", "recent change point", "foreline/exhaust state", "door/seal visual status", "approved leak-check record"],
+      stop: "If vacuum recovery is not understood or affects gas readiness, stop qualification and wait for owner review.",
+      report: "Vacuum behavior is outside the expected comparison window. We are holding the next step while collecting trend, change-point, and owner-review evidence.",
+      prevention: "Keep baseline pumpdown trends, PM recovery evidence, and owner signoff in the handover packet.",
+      titles: [
+        ["ll-base-pressure-drift", "Load lock base pressure drift", "Load lock base pressure does not return to the usual comparison band after dry cycling."],
+        ["pm-pressure-bounce", "Process module pressure bounce", "Process module pressure appears to recover and then bounces during readiness checks."],
+        ["foreline-health-gap", "Foreline health evidence gap", "Foreline or backing-pump status is unclear during install readiness review."],
+        ["door-seal-suspect", "Door seal condition suspect", "Door or slit valve boundary looks like a possible source of recovery delay."],
+        ["pump-restart-after-pm", "Pump restart after PM looks unstable", "After maintenance, pump recovery trend is not repeatable enough for baseline wafer work."]
+      ]
+    },
+    {
+      subsystem: "gas-delivery",
+      status: "toxic-gas-boundary",
+      risk: ["toxic/flammable gas exposure", "wrong process condition", "abatement overload"],
+      evidence: ["FDC flow trend", "gas box state", "alarm history", "approved purge readiness", "gas/EHS owner confirmation"],
+      stop: "If gas identity, purge readiness, detector state, or abatement readiness is unclear, do not manipulate gas state and escalate.",
+      report: "Gas delivery evidence is incomplete. We are not changing gas state manually and are escalating to the gas/EHS owner with trend evidence.",
+      prevention: "Standardize gas readiness evidence, purge confirmation, and post-maintenance response comparison before qualification.",
+      titles: [
+        ["mfc-feedback-lag", "MFC feedback lag", "Flow feedback lags command during a readiness check."],
+        ["purge-readiness-unknown", "Purge readiness unknown", "Purge status cannot be confidently tied to approved readiness documentation."],
+        ["gas-panel-state-mismatch", "Gas panel state mismatch", "Panel state and expected tool readiness state appear inconsistent."],
+        ["abatement-ready-gap", "Abatement readiness gap", "Abatement status is not clearly linked to the planned first-gas activity."],
+        ["gas-alarm-after-hookup", "Gas alarm after hook-up", "A gas-related alarm appears after facility hook-up or post-maintenance checks."]
+      ]
+    },
+    {
+      subsystem: "thermal",
+      status: "quality-risk",
+      risk: ["wafer damage", "process excursion", "metrology mismatch"],
+      evidence: ["thermal trace", "lamp/zone status", "pyrometry signal", "wafer history", "metrology map"],
+      stop: "If thermal trace or metrology is outside baseline comparison, hold production-like qualification until evidence is reviewed.",
+      report: "Thermal evidence is outside the expected comparison window. We are holding the next run until trace and metrology evidence are reviewed.",
+      prevention: "Maintain thermal baseline, lamp/pyrometry health evidence, and metrology correlation in handover.",
+      titles: [
+        ["rtp-ramp-rate-drift", "RTP ramp-rate drift", "Ramp behavior looks different from the accepted comparison trend."],
+        ["soak-stability-gap", "Soak stability gap", "Soak plateau appears less stable than the baseline reference."],
+        ["cooldown-repeatability", "Cooldown repeatability issue", "Cooldown behavior changes run to run."],
+        ["pyrometry-signal-noisy", "Pyrometry signal noisy", "Pyrometry signal is noisy enough to question trace confidence."],
+        ["edge-center-map-shift", "Center-edge map shift", "Metrology map suggests center-edge behavior shifted after PM or install."]
+      ]
+    },
+    {
+      subsystem: "wafer-handling",
+      status: "wafer-safety",
+      risk: ["wafer drop/scratch", "particle generation", "module contamination"],
+      evidence: ["robot alarm", "slot map", "alignment history", "door state", "approved teaching record"],
+      stop: "If wafer damage risk exists, stop repeated motion attempts and bring in wafer-handling owner review.",
+      report: "Wafer transfer evidence shows repeated retries. We are stopping repeated motion attempts and collecting alignment, slot-map, and alarm evidence.",
+      prevention: "Preserve teaching evidence, dry-transfer verification, and slot-map checks in install/PM handover.",
+      titles: [
+        ["slot-map-disagreement", "Slot map disagreement", "FOUP or load lock slot map does not match expected wafer state."],
+        ["efem-align-repeat", "EFEM alignment repeats", "EFEM alignment warning repeats during transfer preparation."],
+        ["tm-robot-retry", "TM robot retry", "Transfer module robot requires repeated retry to complete a movement."],
+        ["load-port-door-gap", "Load port door state gap", "Load port door state is not confidently aligned with transfer readiness."],
+        ["cooldown-wafer-handoff", "Cooldown handoff uncertainty", "Wafer handoff after cooldown has uncertain alignment evidence."]
+      ]
+    },
+    {
+      subsystem: "electrical-controls",
+      status: "energized-work-boundary",
+      risk: ["unexpected motion", "interlock misread", "energized work injury"],
+      evidence: ["expected value statement", "LOTO/work permit status", "PLC I/O state", "relay coil/contact logic", "approved DVM measurement plan"],
+      stop: "Unauthorized live measurement, panel opening, or interlock bypass is prohibited. Stop until approved scope exists.",
+      report: "The symptom suggests a controls evidence gap. We will not perform unauthorized energized work and need approved measurement scope and owner review.",
+      prevention: "Write expected value, reference point, allowed work boundary, and LOTO state before DVM work.",
+      titles: [
+        ["sensor-input-flicker", "Sensor input flicker", "A sensor input appears intermittent in the control chain."],
+        ["relay-state-unclear", "Relay state unclear", "Relay coil/contact state does not match the expected control story."],
+        ["plc-io-mismatch", "PLC I/O mismatch", "PLC input/output state and field symptom do not agree."],
+        ["interlock-chain-ambiguous", "Interlock chain ambiguous", "Interlock chain status is unclear after install or PM."],
+        ["voltage-drop-under-load", "Voltage drop under load", "Control voltage appears to sag when load changes."]
+      ]
+    },
+    {
+      subsystem: "facility-hookup",
+      status: "owner-interface",
+      risk: ["wrong utility state", "unsafe start-up", "customer handover gap"],
+      evidence: ["facility checklist", "owner signoff", "utility label verification", "as-built/punch-list item", "pre-power walkdown"],
+      stop: "If utility identity, ownership, or punch-list impact is unclear, stop energization or first-run activity until resolved.",
+      report: "Facility readiness evidence has an open item. We are holding the next step until owner signoff and punch-list impact are clear.",
+      prevention: "Tie every utility hook-up to owner, evidence, punch-list status, and handover documentation.",
+      titles: [
+        ["pcw-readiness-gap", "PCW readiness gap", "Cooling-water readiness or owner signoff is not clear before start-up."],
+        ["cda-label-unclear", "CDA label unclear", "Clean dry air label/state is not confidently matched to the tool connection."],
+        ["exhaust-owner-gap", "Exhaust owner gap", "Exhaust readiness evidence is not linked to a facility owner."],
+        ["power-turnon-punch", "Power turn-on punch item", "A punch-list item may affect safe power-on readiness."],
+        ["movein-leveling-handoff", "Move-in leveling handoff gap", "Set-in-place or leveling evidence is not ready for handover."]
+      ]
+    },
+    {
+      subsystem: "qualification",
+      status: "baseline-evidence",
+      risk: ["false pass", "customer acceptance gap", "process excursion"],
+      evidence: ["baseline wafer result", "metrology comparison", "alarm history", "recipe-independent readiness evidence", "customer/owner signoff"],
+      stop: "If baseline evidence is missing or acceptance criteria are site-specific and unapproved, do not claim qualification pass.",
+      report: "Qualification evidence is not yet sufficient for acceptance. We are separating readiness evidence from site-specific acceptance criteria and will report after owner review.",
+      prevention: "Keep baseline wafer, metrology, alarm history, and handover decision log together.",
+      titles: [
+        ["baseline-wafer-shift", "Baseline wafer result shifted", "Baseline wafer result changed after install or PM recovery."],
+        ["metrology-correlation-gap", "Metrology correlation gap", "Tool trend and metrology result do not tell the same story."],
+        ["alarm-free-run-gap", "Alarm-free run gap", "A dry run or readiness run is not clean enough for handover confidence."],
+        ["acceptance-limit-unknown", "Acceptance limit unknown", "Acceptance limit appears site-specific and is not confirmed in approved documents."],
+        ["handover-packet-incomplete", "Handover packet incomplete", "Evidence needed for customer handover is scattered or incomplete."]
+      ]
+    },
+    {
+      subsystem: "customer-communication",
+      status: "reporting-discipline",
+      risk: ["overpromising", "lost evidence", "owner confusion"],
+      evidence: ["symptom statement", "risk statement", "evidence list", "owner/action log", "next update time"],
+      stop: "Do not state root cause as fact before evidence confirms it. Do not promise timing without owner agreement.",
+      report: "We have observed a symptom and are separating risk, evidence, owner actions, and next update timing before giving a root-cause statement.",
+      prevention: "Use symptom-risk-evidence-stop-next-update format for every customer update.",
+      titles: [
+        ["root-cause-too-early", "Root cause stated too early", "A report draft jumps to root cause before evidence is complete."],
+        ["next-update-missing", "Next update time missing", "Customer update lacks the next update time or owner."],
+        ["risk-not-separated", "Risk not separated", "The report mixes quality risk, safety risk, and schedule impact."],
+        ["handover-no-prevention", "Handover lacks prevention", "The handover note does not include recurrence prevention."],
+        ["customer-reassurance-overpromise", "Reassurance overpromises", "The message reassures the customer without a defensible evidence boundary."]
+      ]
+    }
+  ];
+
+  return groups.flatMap(group => group.titles.map(([id, title, symptom]) => ({
+    id,
+    title,
+    subsystem: group.subsystem,
+    status: group.status,
+    symptom,
+    risk: group.risk,
+    evidence: group.evidence,
+    stop: group.stop,
+    report: group.report,
+    prevention: group.prevention
+  })));
+}
+
+CASE_GAME_BANK.push(...makeCaseGameExpansion().filter(item => !CASE_GAME_BANK.some(existing => existing.id === item.id)));
+
 function gameCaseById(id) {
   return CASE_GAME_BANK.find(item => item.id === id) || CASE_GAME_BANK[0];
 }
@@ -2216,9 +2368,32 @@ async function handleCaseGameAnswer(request, db) {
 async function handleCaseGameStatus(request, db) {
   const sessions = await db.prepare("SELECT * FROM case_game_sessions ORDER BY updated_at DESC LIMIT 50").all().catch(() => ({ results: [] }));
   const events = await db.prepare("SELECT subsystem, status, COUNT(*) AS count, AVG(score) AS avg_score FROM case_game_sessions GROUP BY subsystem, status").all().catch(() => ({ results: [] }));
+  const mistakes = await db.prepare(`
+    SELECT case_id, step, COUNT(*) AS count, MAX(created_at) AS latest
+    FROM case_game_events
+    WHERE correct = 0
+    GROUP BY case_id, step
+    ORDER BY count DESC, latest DESC
+    LIMIT 12
+  `).all().catch(() => ({ results: [] }));
+  const subsystems = [...new Set(CASE_GAME_BANK.map(item => item.subsystem))].sort().map(subsystem => ({
+    subsystem,
+    cases: CASE_GAME_BANK.filter(item => item.subsystem === subsystem).length,
+    sessions: (sessions.results || []).filter(row => row.subsystem === subsystem).length,
+    avgScore: Math.round(Number((events.results || []).find(row => row.subsystem === subsystem)?.avg_score || 0))
+  }));
   return jsonResponse(request, {
     ok: true,
+    schema: "ce-case-game-engine-v4.1",
+    generatedAt: new Date().toISOString(),
+    bank: {
+      totalCases: CASE_GAME_BANK.length,
+      subsystemCount: subsystems.length,
+      sequence: ["symptom", "risk", "evidence", "stop", "report", "prevention"],
+      safetyBoundary: "Generic public-training cases only. No recipe, valve sequence, detector setpoint, interlock bypass, or site-specific acceptance limit."
+    },
     cases: CASE_GAME_BANK,
+    subsystems,
     sessions: (sessions.results || []).map(row => ({
       id: row.id,
       caseId: row.case_id,
@@ -2234,7 +2409,19 @@ async function handleCaseGameStatus(request, db) {
       status: row.status,
       count: Number(row.count || 0),
       avgScore: Math.round(Number(row.avg_score || 0))
-    }))
+    })),
+    reviewQueue: (mistakes.results || []).map(row => {
+      const gameCase = gameCaseById(row.case_id);
+      return {
+        caseId: row.case_id,
+        title: gameCase.title,
+        subsystem: gameCase.subsystem,
+        step: row.step,
+        count: Number(row.count || 0),
+        latest: row.latest,
+        nextAction: `Repeat ${gameCase.subsystem}/${row.step} and write the stop condition before action.`
+      };
+    })
   });
 }
 
