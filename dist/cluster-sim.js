@@ -273,6 +273,129 @@ const clusterFlowPositions = [
   { left: 64, top: 84 }
 ];
 
+const clusterMentalSteps = [
+  {
+    title: "1. FOUP arrives at load port",
+    korean: "FOUP가 OHT/AMHS 또는 작업자에 의해 Load Port에 올라오고, carrier 존재와 docking 상태가 먼저 닫힙니다.",
+    pressure: "Atmosphere",
+    robot: "아직 wafer transfer 전. carrier handoff와 load port ready가 핵심입니다.",
+    host: "AMHS handoff는 공개 표준상 SEMI E84 영역, carrier coordination은 E87/GEM300 관점으로 이해합니다.",
+    evidence: ["carrier ID / lot ID", "load port dock/clamp/door state", "E84 handoff status", "host carrier state"],
+    stop: "FOUP seating, door open, carrier ID, slot map이 불명확하면 wafer를 꺼내기 전에 멈춥니다.",
+    activeMental: ["host", "amhs", "foup", "lp"],
+    activeComm: ["host", "amhs", "e84", "equipment", "carrier"],
+    activeEdge: ["host-amhs", "amhs-lp", "host-equipment"],
+    wafer: { left: 14, top: 38 }
+  },
+  {
+    title: "2. EFEM maps and selects wafer",
+    korean: "EFEM/Load Port가 FOUP door를 열고 wafer presence, slot, cross-slot 위험을 확인한 뒤 EFEM robot/aligner가 wafer를 준비합니다.",
+    pressure: "Atmosphere clean mini-environment",
+    robot: "EFEM atmospheric robot이 FOUP slot에서 wafer를 pick하고 aligner 또는 LL handoff 위치로 가져갑니다.",
+    host: "Host는 carrier/slot/material 상태를 장비 보고로 보고, equipment controller는 내부 EFEM/load port controller와 상태를 맞춥니다.",
+    evidence: ["slot map", "wafer present sensor", "align result", "EFEM robot position", "load port door state"],
+    stop: "slot map mismatch, wafer skew, door/robot interlock mismatch가 있으면 LL 투입 전 멈춥니다.",
+    activeMental: ["foup", "lp", "efem", "aligner"],
+    activeComm: ["equipment", "carrier", "substrate", "efem"],
+    activeEdge: ["equipment-efem", "equipment-substrate"],
+    wafer: { left: 29, top: 42 }
+  },
+  {
+    title: "3. Load Lock closes and pumps down",
+    korean: "EFEM이 wafer를 Load Lock에 넣고 대기쪽 문을 닫습니다. LL은 pumpdown으로 TM과 맞는 압력 영역으로 내려갑니다.",
+    pressure: "Transition: atmosphere to vacuum",
+    robot: "이 단계는 로봇보다 door/slit valve, pump, gauge, vent/purge state가 중요합니다.",
+    host: "Equipment는 substrate location을 LL로 갱신하고, carrier/wafer tracking 상태를 host가 볼 수 있게 보고합니다.",
+    evidence: ["LL door closed", "pumpdown curve", "pressure gauge trend", "roughing/pump ready", "slit valve permissive"],
+    stop: "pumpdown timeout, pressure mismatch, door seal 의심, gauge credibility 의심이면 TM으로 열지 않습니다.",
+    activeMental: ["ll", "pump", "gauge"],
+    activeComm: ["equipment", "substrate", "ll", "facility"],
+    activeEdge: ["equipment-ll", "equipment-substrate", "facility-equipment"],
+    wafer: { left: 44, top: 62 }
+  },
+  {
+    title: "4. TM robot takes wafer under vacuum",
+    korean: "Transfer Module은 진공 mainframe 중앙의 robot 공간입니다. TM robot blade가 LL에서 wafer를 받아 PM/CM facet으로 이동합니다.",
+    pressure: "Vacuum mainframe",
+    robot: "Robot teach, blade height, lift pin, slit/gate valve alignment가 install 핵심 evidence입니다.",
+    host: "Host가 직접 robot motor를 제어한다기보다 equipment controller가 job/route 상태에 따라 내부 motion controller를 조정합니다.",
+    evidence: ["TM robot home/teach", "blade height", "handoff sensor", "slit/gate valve open state", "wafer location event"],
+    stop: "wafer lost, scrape suspicion, valve position mismatch, robot teach drift가 있으면 wafer 있는 상태로 반복하지 않습니다.",
+    activeMental: ["tm", "robot", "ll"],
+    activeComm: ["equipment", "substrate", "tm", "safety"],
+    activeEdge: ["equipment-tm", "equipment-substrate", "safety-equipment"],
+    wafer: { left: 58, top: 52 }
+  },
+  {
+    title: "5. PM receives wafer for EPI/RTP action",
+    korean: "Process Module이 wafer를 받아 EPI film growth 또는 RTP thermal treatment 같은 실제 공정 행위를 수행합니다.",
+    pressure: "Process chamber condition",
+    robot: "TM robot은 wafer를 chamber support/lift pin 위치에 넘기고, PM controller는 gas/thermal/pressure envelope를 관리합니다.",
+    host: "GEM300에서는 process job/control job, substrate tracking, event/report가 host view를 만듭니다. 실제 recipe와 setpoint는 비공개/승인 문서 영역입니다.",
+    evidence: ["wafer-in-chamber event", "PM ready", "gas/exhaust/abatement ready", "temperature trace", "process complete event"],
+    stop: "gas/exhaust/abatement ready가 불명확하거나 detector/interlock hold가 있으면 first gas/qualification을 진행하지 않습니다.",
+    activeMental: ["pm", "gas", "pump", "abatement"],
+    activeComm: ["host", "equipment", "process", "pm", "facility", "safety"],
+    activeEdge: ["host-equipment", "equipment-pm", "facility-equipment", "safety-equipment"],
+    wafer: { left: 77, top: 37 }
+  },
+  {
+    title: "6. TM returns wafer from PM/CM",
+    korean: "공정 또는 보조 처리가 끝나면 TM robot이 PM/CM에서 wafer를 다시 받아 Load Lock 쪽으로 되돌립니다.",
+    pressure: "Vacuum return path",
+    robot: "return path에서는 cooldown 여부, wafer support release, handoff repeatability, particle risk를 같이 봅니다.",
+    host: "Equipment는 wafer location/process state 변화를 event/report로 쌓고, host는 lot/wafer/chamber history를 봅니다.",
+    evidence: ["process complete", "wafer out event", "cooldown state", "robot transfer log", "substrate history"],
+    stop: "process complete 불확실, wafer temperature/handling risk, chamber door/slit valve mismatch가 있으면 LL로 보내기 전에 멈춥니다.",
+    activeMental: ["pm", "tm", "robot", "ll"],
+    activeComm: ["equipment", "substrate", "tm", "pm"],
+    activeEdge: ["equipment-tm", "equipment-pm", "equipment-substrate"],
+    wafer: { left: 59, top: 52 }
+  },
+  {
+    title: "7. LL vents and EFEM returns wafer to FOUP",
+    korean: "Load Lock이 vent로 대기쪽 압력에 맞춰지고, EFEM robot이 wafer를 FOUP의 지정 slot으로 돌려보냅니다.",
+    pressure: "Vacuum to atmosphere, then FOUP",
+    robot: "LL vent, door open permissive, EFEM pick/place, FOUP slot return까지 하나의 닫힌 loop로 봅니다.",
+    host: "E87 carrier state, E90 substrate state, E40/E94 job state가 완료/반송/hold 상태로 정리됩니다.",
+    evidence: ["LL vent complete", "door open permissive", "return slot map", "carrier complete state", "job complete/abort state"],
+    stop: "slot destination, carrier state, job completion, wafer presence가 안 맞으면 carrier unload를 진행하지 않습니다.",
+    activeMental: ["ll", "efem", "foup", "lp"],
+    activeComm: ["host", "equipment", "carrier", "substrate", "efem"],
+    activeEdge: ["host-equipment", "equipment-efem", "equipment-substrate"],
+    wafer: { left: 21, top: 42 }
+  }
+];
+
+const clusterCommNodes = [
+  ["host", "Fab Host / MES-EAP", "SECS/GEM/GEM300 관점에서 carrier, job, event, report를 보는 상위 시스템"],
+  ["amhs", "AMHS / OHT", "FOUP를 load port까지 운반하고 carrier handoff를 수행하는 물류 시스템"],
+  ["e84", "E84 handoff", "AMHS와 load port 사이 carrier handoff 신호 계층으로 이해"],
+  ["equipment", "Equipment Controller", "host view와 내부 module controller 사이를 연결하는 장비 제어 중심"],
+  ["carrier", "Carrier Mgmt E87", "FOUP/carrier가 load port와 tool 내부 buffer에 어떻게 들어오고 나가는지 관리"],
+  ["substrate", "Substrate Tracking E90", "wafer가 FOUP, LL, TM, PM 중 어디에 있는지 추적"],
+  ["process", "PJ/CJ E40/E94", "어떤 material을 어떤 process job/control job으로 처리할지 관리"],
+  ["efem", "EFEM / Load Port Ctrl", "door, map, aligner, atmospheric robot, interlock status"],
+  ["ll", "Load Lock Ctrl", "door, pumpdown, vent, pressure, slit/gate permissive"],
+  ["tm", "TM Robot / Motion Ctrl", "vacuum robot, blade, teach, handoff motion"],
+  ["pm", "PM Chamber Ctrl", "EPI/RTP chamber readiness, gas/thermal/process events"],
+  ["facility", "Facility Signals", "gas, exhaust, abatement, vacuum, PCW 등 owner witness가 필요한 ready 상태"],
+  ["safety", "Safety / Interlock", "사람/장비/가스 안전을 위한 stop 조건. 우회 대상이 아님"]
+];
+
+const clusterCommEdges = [
+  ["host-amhs", "Host ↔ AMHS", "carrier dispatch / delivery intent"],
+  ["amhs-lp", "AMHS ↔ Load Port", "E84-style carrier handoff signals"],
+  ["host-equipment", "Host ↔ Equipment", "SECS/GEM over HSMS, GEM300 services"],
+  ["equipment-efem", "Equipment ↔ EFEM", "tool-specific internal control for load port, mapper, robot"],
+  ["equipment-ll", "Equipment ↔ LL", "door, pumpdown, vent, pressure state"],
+  ["equipment-tm", "Equipment ↔ TM", "motion command/state through approved internal controller"],
+  ["equipment-pm", "Equipment ↔ PM", "module ready, process events, chamber state"],
+  ["equipment-substrate", "Equipment ↔ Tracking", "wafer location/process history"],
+  ["facility-equipment", "Facility ↔ Equipment", "gas/exhaust/abatement/vacuum/PCW ready signals"],
+  ["safety-equipment", "Safety ↔ Equipment", "interlock chain and stop conditions"]
+];
+
 function clusterTarget() {
   const platform = clusterPlatforms[selectedClusterPlatform];
   const pm = Number(document.querySelector("#cluster-pm-count").value);
@@ -556,6 +679,7 @@ function updateClusterFlowStep() {
       item.setAttribute("aria-pressed", Number(item.dataset.flowStep) === clusterFlowStep ? "true" : "false");
     }
   });
+  updateClusterMentalLab();
 }
 
 function renderClusterFlowPanel() {
@@ -583,6 +707,7 @@ function renderClusterFlowPanel() {
       <span><strong>PM</strong> Process Module, 실제 EPI/RTP 공정이 일어나는 챔버</span>
       <span><strong>CM</strong> Clean/Cool/Support Module, 전처리·냉각 같은 보조 챔버를 이해하기 위한 표기</span>
     </div>
+    ${renderClusterMentalLab()}
     <div class="flow-step-list">
       ${clusterFlowSteps.map((step, index) => `
         <button class="flow-step-button" type="button" data-flow-step="${index}" aria-pressed="false">
@@ -617,6 +742,130 @@ function renderClusterFlowPanel() {
     button.addEventListener("click", () => selectClusterFlowStep(Number(button.dataset.flowStep)));
   });
   updateClusterFlowStep();
+}
+
+function renderClusterMentalLab() {
+  const mentalNodes = [
+    ["foup", "FOUP", "25-slot carrier"],
+    ["lp", "Load Port", "dock, clamp, door"],
+    ["efem", "EFEM", "atmospheric robot"],
+    ["aligner", "Aligner/Mapper", "slot and orientation"],
+    ["ll", "Load Lock", "pump/vent bridge"],
+    ["tm", "Transfer Module", "vacuum robot room"],
+    ["pm", "EPI PM", "film growth chamber"],
+    ["gas", "Gas Box", "MFC / purge"],
+    ["pump", "Pump", "vacuum path"],
+    ["abatement", "Abatement", "exhaust treatment"],
+    ["robot", "Robot Blade", "handoff geometry"],
+    ["gauge", "Pressure Gauge", "pumpdown evidence"]
+  ];
+  return `
+    <section class="cluster-mental-lab" aria-label="FOUP to EPI PM 3D mental model and communication model">
+      <div class="mental-lab-head">
+        <div>
+          <p class="eyebrow">3D Mental Model</p>
+          <h3>FOUP에서 EPI PM까지, 웨이퍼/압력/로봇/통신을 한 장면으로 보기</h3>
+          <p>단계 버튼을 누르면 wafer 위치, 압력 경계, 장비 내부 owner, fab host 통신 관점이 같이 바뀝니다. 실제 고객 line의 상세 message, interlock logic, recipe, valve sequence는 공식 승인 문서 영역입니다.</p>
+        </div>
+        <span class="mental-source-badge">Public standards view + CE install model</span>
+      </div>
+      <div class="mental-lab-grid">
+        <div class="mental-3d-scene" id="cluster-mental-scene">
+          <div class="mental-rail fab-rail"><span>FAB / AMHS SIDE</span></div>
+          <div class="mental-rail vacuum-rail"><span>VACUUM MAINFRAME SIDE</span></div>
+          <div class="mental-wafer" id="mental-wafer">W</div>
+          <div class="mental-path path-foup-efem"></div>
+          <div class="mental-path path-efem-ll"></div>
+          <div class="mental-path path-ll-tm"></div>
+          <div class="mental-path path-tm-pm"></div>
+          <div class="mental-path path-pm-return"></div>
+          ${mentalNodes.map(([id, label, sub]) => `
+            <button type="button" class="mental-node mental-${id}" data-mental-node="${id}">
+              <strong>${label}</strong>
+              <small>${sub}</small>
+            </button>
+          `).join("")}
+        </div>
+        <article class="mental-step-card" id="mental-step-card"></article>
+      </div>
+      <div class="comm-lab-grid">
+        <article class="comm-map-card">
+          <div class="comm-map-head">
+            <p class="eyebrow">Communication Stack</p>
+            <h3>Host가 직접 로봇을 움직이는 게 아니라, Equipment Controller가 표준 view와 내부 controller를 연결한다</h3>
+          </div>
+          <div class="comm-map" id="cluster-comm-map">
+            ${clusterCommNodes.map(([id, label, desc]) => `
+              <div class="comm-node comm-${id}" data-comm-node="${id}">
+                <strong>${label}</strong>
+                <small>${desc}</small>
+              </div>
+            `).join("")}
+          </div>
+          <div class="comm-edge-list" id="cluster-comm-edges">
+            ${clusterCommEdges.map(([id, label, desc]) => `
+              <span data-comm-edge="${id}"><strong>${label}</strong>${desc}</span>
+            `).join("")}
+          </div>
+        </article>
+        <article class="install-thinking-card">
+          <p class="eyebrow">Install CE가 머릿속에 그려야 하는 것</p>
+          <ul>
+            <li><strong>물리:</strong> FOUP, load port, EFEM robot, LL, TM, PM이 어떤 순서로 붙는가.</li>
+            <li><strong>압력:</strong> 대기압 mini-environment와 vacuum mainframe 사이 경계가 어디인가.</li>
+            <li><strong>제어:</strong> host는 carrier/job/event view를 보고, 장비 controller가 내부 module controller를 조율한다.</li>
+            <li><strong>증거:</strong> slot map, pumpdown curve, robot teach, chamber ready, gas/exhaust/abatement ready를 같은 wafer ID로 묶는다.</li>
+            <li><strong>중지:</strong> wafer가 움직이기 전, 압력이 열리기 전, gas가 열리기 전 각각 멈출 조건이 다르다.</li>
+          </ul>
+        </article>
+      </div>
+      <div class="comm-source-strip">
+        <a href="https://store-us.semi.org/products/e03000-semi-e30-specification-for-the-generic-model-for-communications-and-control-of-manufacturing-equipment-gem" target="_blank" rel="noreferrer">SEMI E30 GEM</a>
+        <a href="https://store-us.semi.org/products/e08700-semi-e87-specification-for-carrier-management-cms" target="_blank" rel="noreferrer">SEMI E87 Carrier Management</a>
+        <a href="https://store-us.semi.org/products/e09000-semi-e90-specification-for-substrate-tracking" target="_blank" rel="noreferrer">SEMI E90 Substrate Tracking</a>
+        <a href="https://store-us.semi.org/products/e08400-semi-e84-specification-for-enhanced-carrier-handoff-parallel-i-o-interface" target="_blank" rel="noreferrer">SEMI E84 Carrier Handoff</a>
+        <a href="https://store-us.semi.org/products/e03700-semi-e37-high-speed-secs-message-services-hsms-generic-services" target="_blank" rel="noreferrer">SEMI E37 HSMS</a>
+        <a href="https://store-us.semi.org/products/e04000-semi-e40-specification-for-processing-management" target="_blank" rel="noreferrer">SEMI E40 Processing</a>
+        <a href="https://store-us.semi.org/products/e09400-semi-e94-specification-for-control-job-management" target="_blank" rel="noreferrer">SEMI E94 Control Job</a>
+      </div>
+    </section>
+  `;
+}
+
+function updateClusterMentalLab() {
+  const step = clusterMentalSteps[clusterFlowStep];
+  if (!step) return;
+  const card = document.querySelector("#mental-step-card");
+  if (card) {
+    card.innerHTML = `
+      <span class="mental-pressure">${step.pressure}</span>
+      <h3>${step.title}</h3>
+      <p>${step.korean}</p>
+      <div class="mental-two">
+        <div><strong>Robot / module view</strong><span>${step.robot}</span></div>
+        <div><strong>Host / communication view</strong><span>${step.host}</span></div>
+      </div>
+      <div class="mental-evidence">
+        <strong>CE evidence</strong>
+        <ul>${step.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+      </div>
+      <p class="mental-stop"><strong>Stop condition:</strong> ${step.stop}</p>
+    `;
+  }
+  const wafer = document.querySelector("#mental-wafer");
+  if (wafer) {
+    wafer.style.left = `${step.wafer.left}%`;
+    wafer.style.top = `${step.wafer.top}%`;
+  }
+  document.querySelectorAll("[data-mental-node]").forEach(node => {
+    node.classList.toggle("active", step.activeMental.includes(node.dataset.mentalNode));
+  });
+  document.querySelectorAll("[data-comm-node]").forEach(node => {
+    node.classList.toggle("active", step.activeComm.includes(node.dataset.commNode));
+  });
+  document.querySelectorAll("[data-comm-edge]").forEach(edge => {
+    edge.classList.toggle("active", step.activeEdge.includes(edge.dataset.commEdge));
+  });
 }
 
 function moduleFace(type, role) {
