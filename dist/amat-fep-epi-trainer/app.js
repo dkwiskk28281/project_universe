@@ -4114,6 +4114,54 @@ const uxHotViews = [
   ["electrical", "DVM"],
   ["english-test", "영어"]
 ];
+const operatingRouteSteps = [
+  {
+    id: "structure",
+    order: "01",
+    title: "구조 먼저",
+    view: "cluster",
+    focus: "FOUP -> EFEM -> Load Lock -> TM -> PM",
+    why: "웨이퍼가 대기압에서 진공 클러스터로 들어가는 큰 그림을 먼저 잡습니다.",
+    action: "3D 구조 보기"
+  },
+  {
+    id: "process",
+    order: "02",
+    title: "공정 변화",
+    view: "process-visual",
+    focus: "Gas / Pump / Purge / Exhaust / Film",
+    why: "장비가 웨이퍼 위에서 실제로 무엇을 바꾸는지 단계별로 연결합니다.",
+    action: "공정 극장 열기"
+  },
+  {
+    id: "install",
+    order: "03",
+    title: "설치 순서",
+    view: "runbook",
+    focus: "Move-in -> Hook-up -> Dry run -> Qual",
+    why: "현장에서는 설명보다 evidence, owner, hold condition이 먼저입니다.",
+    action: "런북 체크"
+  },
+  {
+    id: "diagnose",
+    order: "04",
+    title: "판단 훈련",
+    view: "diagnostics",
+    focus: "Symptom -> Risk -> Evidence -> Report",
+    why: "문제가 생겼을 때 바로 조치하지 말고 위험도와 확인 증거부터 세웁니다.",
+    action: "케이스 풀기"
+  },
+  {
+    id: "memory",
+    order: "05",
+    title: "경험 저장",
+    view: "thinktank",
+    focus: "Symptom / Evidence / Action / Prevention",
+    why: "현장 경험은 구조화해서 저장할 때 다음 실력으로 변합니다.",
+    action: "Think Tank 기록"
+  }
+];
+
 const PUBLIC_VIEW_IDS = ["cognitive"];
 
 function save() {
@@ -4536,6 +4584,18 @@ function closeCommandPalette() {
   document.querySelector("#command-palette")?.classList.add("hidden");
 }
 
+function getOperatingRouteProgress() {
+  const visits = state.viewVisits || {};
+  const completed = operatingRouteSteps.filter(step => Number(visits[step.view] || 0) > 0);
+  const next = operatingRouteSteps.find(step => Number(visits[step.view] || 0) === 0) || operatingRouteSteps[0];
+  return {
+    completed: completed.length,
+    total: operatingRouteSteps.length,
+    percent: Math.round(completed.length / operatingRouteSteps.length * 100),
+    next
+  };
+}
+
 const THEME_STORAGE_KEY = "projectUniverseTheme";
 
 function normalizeTheme(theme) {
@@ -4626,16 +4686,50 @@ function renderCommandCenter() {
   const gateProgress = getRunbookGateProgress();
   const attempts = state.quizAttempts || [];
   const quizScore = attempts.length ? Math.round(attempts.filter(Boolean).length / attempts.length * 100) : 0;
+  const routeProgress = getOperatingRouteProgress();
 
   root.innerHTML = `
     <div class="command-head">
       <div>
         <p class="eyebrow">Mission Control</p>
-        <h2>오늘은 이 순서로 누르면 됩니다</h2>
+        <h2>오늘의 운영 브리핑</h2>
         <p>정보를 많이 읽기보다 구조를 만들고, 판단 기준을 체크하고, 경험을 저장하는 흐름으로 설계했습니다.</p>
       </div>
       <button class="primary" type="button" data-command-view="runbook">현장 런북 열기</button>
     </div>
+    <section class="operating-route" aria-label="CE operating route">
+      <div class="route-head">
+        <div class="route-title">
+          <p class="eyebrow">CE Operating Route</p>
+          <h3>CE 5단계 루트</h3>
+          <span>구조를 먼저 그리고, 공정 변화를 보고, 설치 evidence를 확인한 뒤, 고장 판단과 경험 저장으로 닫습니다.</span>
+        </div>
+        <div class="route-meter">
+          <strong>${routeProgress.percent}%</strong>
+          <span>${routeProgress.completed}/${routeProgress.total} 단계 확인</span>
+          <i><em style="width:${routeProgress.percent}%"></em></i>
+        </div>
+        <div class="route-actions">
+          <button class="primary" type="button" data-route-start>다음 단계 시작</button>
+          <button class="secondary" type="button" data-route-search>검색</button>
+        </div>
+      </div>
+      <div class="route-lane">
+        ${operatingRouteSteps.map(step => {
+          const visited = Number(state.viewVisits?.[step.view] || 0) > 0;
+          const isNext = step.id === routeProgress.next.id;
+          return `
+            <button class="route-step-card ${visited ? "done" : ""} ${isNext ? "next" : ""}" type="button" data-route-view="${step.view}">
+              <span class="route-order">${step.order}</span>
+              <strong>${step.title}</strong>
+              <small>${step.focus}</small>
+              <em>${step.why}</em>
+              <b>${visited ? "확인됨" : isNext ? "지금 할 일" : step.action}</b>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
     <div class="command-kpis">
       <article>
         <span>로드맵</span>
@@ -4675,6 +4769,11 @@ function renderCommandCenter() {
 
   root.querySelectorAll("[data-command-view]").forEach(button => {
     button.addEventListener("click", () => showView(button.dataset.commandView));
+  });
+  root.querySelector("[data-route-start]")?.addEventListener("click", () => showView(routeProgress.next.view));
+  root.querySelector("[data-route-search]")?.addEventListener("click", () => openCommandPalette());
+  root.querySelectorAll("[data-route-view]").forEach(button => {
+    button.addEventListener("click", () => showView(button.dataset.routeView));
   });
 }
 
