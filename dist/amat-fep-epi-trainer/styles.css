@@ -14375,3 +14375,487 @@ body[data-current-view="cognitive"] .learning-hud {
     grid-template-columns: 1fr;
   }
 }
+
+/* 20260714 UX composition pass: reduce text walls, fixed-overlay clutter, and mobile fatigue */
+.page-title h1 {
+  max-width: 980px;
+  font-size: 34px !important;
+  line-height: 1.16;
+}
+
+.page-title p {
+  max-width: 760px;
+}
+
+.source-note {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.28fr) minmax(0, 1fr);
+  gap: 12px 18px;
+  align-items: start;
+  padding: 16px 18px !important;
+}
+
+.source-note h2 {
+  margin: 0 !important;
+  font-size: 16px !important;
+  line-height: 1.35;
+}
+
+.source-note p {
+  margin: 0 !important;
+  max-width: 96ch;
+  line-height: 1.58;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.source-note ul,
+.source-note .reference-band {
+  grid-column: 1 / -1;
+}
+
+.learning-hud {
+  width: auto;
+  max-width: min(280px, calc(100vw - 32px));
+}
+
+.learning-hud-card:not([open]) {
+  display: inline-grid;
+  min-width: 0;
+  max-width: 118px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  opacity: 0.76;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+}
+
+.learning-hud-card:not([open]):hover,
+.learning-hud-card:not([open]):focus-within {
+  opacity: 1;
+}
+
+.learning-hud-card:not([open]) summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.learning-hud-card:not([open]) summary strong {
+  white-space: nowrap;
+}
+
+.learning-hud-card:not([open]) summary span {
+  display: none;
+}
+
+.learning-hud-card[open] {
+  width: min(280px, calc(100vw - 32px));
+}
+
+.term-explain::after {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.cluster-mental-lab {
+  padding: 16px !important;
+}
+
+.mental-lab-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.mental-lab-head p {
+  max-width: 92ch;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mental-lab-grid {
+  grid-template-columns: minmax(520px, 1.1fr) minmax(300px, 0.52fr);
+}
+
+.mental-3d-scene {
+  min-height: 520px;
+}
+
+.mental-step-card {
+  align-self: stretch;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.mental-step-card p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.mental-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mental-two div,
+.mental-evidence {
+  min-height: 0;
+}
+
+.mental-two span,
+.mental-evidence li,
+.mental-stop,
+.install-thinking-card li {
+  font-size: 13px;
+}
+
+.comm-lab-grid {
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.48fr);
+}
+
+.comm-map {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.comm-node {
+  min-height: 74px;
+  padding: 9px;
+}
+
+.comm-node small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.comm-edge-list span {
+  max-width: 100%;
+  line-height: 1.35;
+}
+
+.flow-term-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.flow-term-grid > span {
+  min-height: auto;
+  padding: 9px 10px;
+}
+
+.flow-step-list {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+.flow-step-button {
+  min-height: 68px;
+  align-content: start;
+}
+
+.flow-step-detail p,
+.cluster-coach p,
+.english-test-brief p,
+.process-stage-head p,
+.library-command p,
+.book-detail p,
+.thinktank-panel p,
+.scenario-panel p {
+  line-height: 1.58;
+}
+
+.cluster-coach {
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+}
+
+.cluster-coach > article p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.memory-pill-grid {
+  align-content: start;
+}
+
+.english-test-brief,
+.scenario-trainer-dashboard,
+.library-command,
+.vault-status {
+  align-items: start;
+}
+
+.english-test-brief p,
+.process-stage-head p,
+.library-command p:not(.eyebrow) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+
+.library-book-card p,
+.book-module-card p,
+.book-blueprint-card p,
+.english-speaking-card p,
+.case-card p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+@media (max-width: 980px) {
+  .page-title h1 {
+    font-size: 30px !important;
+  }
+
+  .source-note,
+  .mental-lab-head,
+  .mental-lab-grid,
+  .comm-lab-grid,
+  .cluster-coach {
+    grid-template-columns: 1fr;
+  }
+
+  .mental-3d-scene {
+    min-height: 620px;
+  }
+
+  .comm-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .app-header {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 12px;
+  }
+
+  .brand strong {
+    font-size: 14px;
+  }
+
+  .brand span:last-child {
+    font-size: 11px;
+  }
+
+  .top-nav {
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .nav-btn {
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  main {
+    width: min(100% - 24px, 1180px);
+    margin-top: 10px;
+  }
+
+  .page-title {
+    gap: 5px;
+    margin: 8px 0 12px;
+    padding: 8px 0 12px;
+  }
+
+  .page-title h1,
+  #bookshelf .page-title h1 {
+    font-size: 22px !important;
+    line-height: 1.17;
+    word-break: keep-all;
+  }
+
+  .page-title::after {
+    display: none;
+  }
+
+  .source-note {
+    padding: 12px !important;
+    gap: 8px;
+  }
+
+  .source-note h2 {
+    font-size: 15px !important;
+  }
+
+  .source-note p {
+    -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .term-explain::after,
+  .term-explain::before {
+    display: none;
+  }
+
+  .term-explain {
+    padding: 0 3px;
+    border-radius: 4px;
+  }
+
+  .learning-hud {
+    display: none !important;
+  }
+
+  .cluster-mental-lab {
+    margin: 12px 0;
+    padding: 10px !important;
+  }
+
+  .mental-lab-head p {
+    -webkit-line-clamp: 3;
+  }
+
+  .mental-source-badge {
+    width: fit-content;
+    max-width: 100%;
+    font-size: 10px;
+  }
+
+  .mental-3d-scene {
+    min-height: 620px;
+  }
+
+  .mental-node {
+    width: 44%;
+    min-height: 54px;
+    padding: 7px;
+  }
+
+  .mental-node strong {
+    font-size: 11px;
+  }
+
+  .mental-node small {
+    font-size: 9px;
+  }
+
+  .mental-wafer {
+    width: 28px;
+    height: 28px;
+  }
+
+  .mental-step-card,
+  .comm-map-card,
+  .install-thinking-card {
+    padding: 12px;
+  }
+
+  .mental-step-card h3,
+  .comm-map-head h3 {
+    font-size: 18px;
+    line-height: 1.28;
+  }
+
+  .mental-two {
+    grid-template-columns: 1fr;
+  }
+
+  .comm-map {
+    grid-template-columns: 1fr;
+  }
+
+  .comm-node {
+    min-height: 0;
+  }
+
+  .flow-term-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .flow-step-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .flow-step-button {
+    min-height: 0 !important;
+    padding: 9px;
+  }
+
+  .flow-step-button > span {
+    width: 22px;
+    height: 22px;
+  }
+
+  .flow-step-button strong {
+    font-size: 12px;
+  }
+
+  .flow-step-button small {
+    font-size: 10px;
+  }
+
+  .flow-step-button > span {
+    font-size: 11px;
+  }
+
+  .flow-step-detail {
+    padding: 12px;
+  }
+
+  .flow-step-detail > strong {
+    font-size: 16px;
+  }
+
+  .cluster-flow-panel p,
+  .cluster-flow-panel small,
+  .cluster-flow-panel li,
+  .cluster-mental-lab p,
+  .cluster-mental-lab li,
+  .mental-two span,
+  .mental-evidence li,
+  .mental-stop,
+  .install-thinking-card li,
+  .flow-step-detail p,
+  .flow-step-detail > small {
+    font-size: 13px !important;
+    line-height: 1.52;
+  }
+
+  .flow-step-detail .term-explain,
+  .cluster-mental-lab .term-explain {
+    font-size: 0.92em;
+  }
+
+  .english-test-brief,
+  .english-coach-panel,
+  .scenario-trainer-dashboard,
+  .vault-status,
+  .library-command,
+  .library-overview,
+  .book-detail,
+  .capture-panel,
+  .thinktank-panel {
+    padding: 12px !important;
+  }
+
+  .english-test-brief p,
+  .process-stage-head p,
+  .library-command p:not(.eyebrow),
+  .book-detail p,
+  .thinktank-panel p {
+    -webkit-line-clamp: 3;
+  }
+}
