@@ -6155,6 +6155,298 @@ function processGasRisk(tag) {
   return "공개자료 기준 개념 tag입니다. 실제 사용 여부와 위험 등급은 tool option, gas matrix, SDS, site EHS 문서로 확인합니다.";
 }
 
+const epiMasterSteps = [
+  {
+    stage: "01",
+    title: "FOUP 도킹과 slot map",
+    active: "efem",
+    wafer: [7, 42],
+    moduleState: "FOUP이 load port에 앉고 EFEM이 carrier ID, slot map, door open 가능 상태를 확인합니다.",
+    waferState: "웨이퍼는 아직 대기압 mini-environment 안에 있습니다. 막 성장은 시작되지 않았습니다.",
+    gases: ["N2 purge", "CDA", "none"],
+    toolState: ["대기압", "EFEM robot ready", "host/carrier handshake"],
+    gasState: "공정가스가 아니라 FOUP/EFEM purge와 대기압 handling 안정성이 핵심입니다.",
+    hazard: "N2/Ar 같은 inert gas도 산소결핍과 압력 에너지 위험이 있습니다. carrier handoff는 SEMI E84/E87/host 상태와 site rule을 우선합니다.",
+    evidence: ["carrier ID와 slot map 일치", "load port clamp/door 상태", "AMHS/host handoff alarm 없음"],
+    layers: [["Si wafer", "bare or patterned substrate", "#72808c", 42]],
+    sourceTag: "FOUP/EFEM/SEMI E84 공개 개념"
+  },
+  {
+    stage: "02",
+    title: "EFEM pick, align, Load Lock 투입",
+    active: "loadlock",
+    wafer: [24, 42],
+    moduleState: "EFEM robot이 wafer를 꺼내 aligner를 거쳐 load lock에 전달합니다.",
+    waferState: "wafer ID와 orientation이 맞아야 이후 chamber fault를 잘못 의심하지 않습니다.",
+    gases: ["N2", "clean dry air", "vacuum standby"],
+    toolState: ["대기압 -> LL boundary", "door interlock", "wafer present sensor"],
+    gasState: "load lock은 대기압과 vacuum mainframe 사이의 오염/압력 경계입니다.",
+    hazard: "door/slit/robot 상태가 불명확하면 반복 transfer를 하지 않습니다. wafer edge contact나 scrape 의심은 즉시 hold입니다.",
+    evidence: ["align repeatability", "wafer present sensor", "LL door/slit valve permissive"],
+    layers: [["Si wafer", "surface before pre-clean", "#72808c", 42], ["native oxide/contamination", "remove target", "#b7c5ce", 7]],
+    sourceTag: "cluster tool 공개 구조"
+  },
+  {
+    stage: "03",
+    title: "Load Lock pumpdown",
+    active: "loadlock",
+    wafer: [38, 48],
+    moduleState: "LL이 pumpdown되어 TM과 압력 조건을 맞춥니다. pressure boundary가 맞아야 slit valve가 열립니다.",
+    waferState: "웨이퍼 표면은 아직 성장 전입니다. 이 단계는 오염 없이 vacuum side로 넘기기 위한 준비입니다.",
+    gases: ["N2 vent/purge", "vacuum", "exhaust"],
+    toolState: ["pump ON", "pressure falling", "TM handoff ready"],
+    gasState: "pump exhaust와 abatement/readiness가 경로상에서 확인되어야 합니다.",
+    hazard: "pumpdown curve가 baseline과 다르거나 pressure gauge가 불일치하면 process gas introduction으로 넘어가지 않습니다.",
+    evidence: ["pumpdown curve", "pressure gauge trend", "door/slit seal 상태"],
+    layers: [["Si wafer", "vacuum transfer ready", "#72808c", 42], ["native oxide/contamination", "pre-clean target", "#b7c5ce", 7]],
+    sourceTag: "load lock/vacuum 공개 개념"
+  },
+  {
+    stage: "04",
+    title: "TM robot -> pre-clean/PM handoff",
+    active: "tm",
+    wafer: [53, 42],
+    moduleState: "Transfer Module robot이 load lock에서 wafer를 받아 pre-clean 또는 EPI PM으로 이동시킵니다.",
+    waferState: "vacuum break 없이 pre-clean과 EPI를 연결하면 계면 오염과 queue time을 줄이는 방향입니다.",
+    gases: ["vacuum", "N2/Ar support", "none"],
+    toolState: ["TM vacuum stable", "robot teach", "slit valve match"],
+    gasState: "이 구간은 공정가스보다 vacuum integrity, robot geometry, chamber ready가 핵심입니다.",
+    hazard: "slit valve feedback 지연, robot teach 문제, vacuum mismatch는 customer wafer 투입 전 멈춰야 할 신호입니다.",
+    evidence: ["robot handoff log", "slit valve feedback", "TM pressure stability"],
+    layers: [["Si wafer", "vacuum handoff", "#72808c", 42], ["interface target", "must stay clean", "#9ff6d0", 7]],
+    sourceTag: "Applied integrated pre-clean 공개 설명"
+  },
+  {
+    stage: "05",
+    title: "Integrated pre-clean / native oxide reset",
+    active: "preclean",
+    wafer: [65, 34],
+    moduleState: "pre-clean module이 native oxide와 계면 오염을 줄여 epitaxial growth가 가능한 표면을 만듭니다.",
+    waferState: "실리콘 결정 격자를 따라 새 층이 자라려면 표면이 깨끗하고 반응 가능한 상태여야 합니다.",
+    gases: ["H2", "radical chemistry option", "purge"],
+    toolState: ["pre-clean PM active", "byproduct exhaust", "vacuum transfer"],
+    gasState: "Applied Prime Epi 공개자료는 Siconi/Clarion/Ajax 같은 integrated pre-clean이 interface contamination을 줄인다고 설명합니다.",
+    hazard: "pre-clean chemistry와 byproduct는 option별로 다릅니다. 실제 gas matrix, purge, exhaust 조건은 공식 문서/SDS/EHS 승인 없이는 단정하지 않습니다.",
+    evidence: ["pre-clean pass evidence", "queue time 관리", "exhaust/abatement ready"],
+    layers: [["Si wafer", "crystal substrate", "#72808c", 42], ["clean Si surface", "growth-ready interface", "#7ff7c8", 8]],
+    sourceTag: "Applied Centura Prime Epi"
+  },
+  {
+    stage: "06",
+    title: "EPI PM heat, precursor introduction",
+    active: "pm",
+    wafer: [78, 34],
+    moduleState: "EPI PM에서 susceptor/temperature control, gas delivery, pressure control이 동시에 안정화됩니다.",
+    waferState: "Si precursor가 표면에서 분해/반응하고 Si 원자가 기존 결정 방향을 따라 붙기 시작합니다.",
+    gases: ["H2", "SiH4/DCS/TCS", "HCl"],
+    toolState: ["heater/lamp stable", "MFC response", "pressure controlled"],
+    gasState: "대표 공개자료 수준에서 Si source는 silane/chlorosilane 계열, carrier/reducing ambient는 H2, selectivity는 HCl 계열로 이해합니다.",
+    hazard: "H2는 가연성, silane은 공기 중 자발 점화 가능, chlorosilane/HCl 계열은 부식성/반응성 경계가 큽니다. detector/exhaust/abatement가 ready가 아니면 멈춥니다.",
+    evidence: ["MFC actual trend", "chamber pressure transient", "temperature trace"],
+    layers: [["Si wafer", "crystal template", "#72808c", 42], ["Si seed layer", "epitaxial start", "#5ee7ff", 13]],
+    sourceTag: "CVD/EPI 공개 논문 + NIOSH"
+  },
+  {
+    stage: "07",
+    title: "Si/SiGe growth, dopant incorporation",
+    active: "pm",
+    wafer: [83, 28],
+    moduleState: "PM 안에서 precursor replenishment, surface reaction, byproduct removal이 균형을 이루며 막이 자랍니다.",
+    waferState: "SiGe는 Ge precursor가 조성에 기여하고, PH3/AsH3/B2H6 같은 dopant 후보가 전기적 특성을 바꿀 수 있습니다.",
+    gases: ["GeH4", "PH3/AsH3/B2H6", "H2/HCl"],
+    toolState: ["growth front active", "exhaust flowing", "detector/abatement critical"],
+    gasState: "Xtera 공개자료의 핵심은 high aspect ratio 구조에서 chemistry delivery, low-volume chamber, 온도 모니터링, void-free source/drain 성장입니다.",
+    hazard: "PH3, AsH3, B2H6, GeH4는 독성/가연성 hydride family로 다룹니다. 실제 연결/qualification은 gas owner/EHS/SDS/OEM 절차 우선입니다.",
+    evidence: ["dopant response trend", "gas detector normal", "metrology: thickness/Rs/composition"],
+    layers: [["Si wafer", "substrate", "#72808c", 42], ["Si seed", "template", "#5ee7ff", 10], ["SiGe/doped epi", "strain/electrical layer", "#b98cff", 20], ["doped cap", "property tuning", "#00ff95", 9]],
+    sourceTag: "Applied Xtera Epi + NIOSH hydrides"
+  },
+  {
+    stage: "08",
+    title: "Purge, exhaust/abatement, qualification handoff",
+    active: "abatement",
+    wafer: [93, 42],
+    moduleState: "공정 후 purge/cool/pressure match를 거쳐 wafer가 TM/LL/EFEM 경로로 나가고, trace와 metrology가 handoff evidence가 됩니다.",
+    waferState: "완성된 epitaxial layer stack은 thickness, uniformity, defect, Rs/composition 같은 metrology로 확인됩니다.",
+    gases: ["N2/Ar purge", "residual hydride/HCl", "abatement"],
+    toolState: ["purge complete", "cooldown", "post-run log"],
+    gasState: "잔류가스와 byproduct는 exhaust/abatement 경로로 관리됩니다. qualification은 gas가 들어갔다는 사실보다 안전 envelope와 evidence가 먼저입니다.",
+    hazard: "open safety item, detector abnormal, exhaust/abatement not ready, unexplained metrology drift는 handover 전 stop condition입니다.",
+    evidence: ["post-run event log", "abatement/exhaust trend", "baseline wafer/metrology packet"],
+    layers: [["Si wafer", "substrate", "#72808c", 42], ["Si seed", "template", "#5ee7ff", 10], ["SiGe/doped epi", "grown crystal layer", "#b98cff", 20], ["cap/finish", "handoff stack", "#00ff95", 10]],
+    sourceTag: "SEMI/OSHA/NIOSH safety boundary"
+  }
+];
+
+const appliedEpiPublicMap = [
+  ["Centura Prime Epi", "Centura platform, integrated pre-clean, source/drain/channel/contact, in-situ doping, FinFET/GAA 응용.", "https://www.appliedmaterials.com/us/en/product-library/centura-prime-epi.html"],
+  ["Centura Xtera Epi", "high aspect ratio selective epitaxy, tighter deposition cross section, chemistry delivery, real-time wafer temperature monitoring, low-volume chamber.", "https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html"],
+  ["Xtera launch note", "GAA source/drain trench를 void-free로 채우는 목표, integrated pre-clean/etch, gas usage reduction, uniformity 개선.", "https://ir.appliedmaterials.com/news-releases/news-release-details/applied-materials-unveils-next-gen-chipmaking-products"],
+  ["Public CVD/EPI papers", "DCS, silane, chlorosilane, germane, HCl, dopant gas를 material/growth/selectivity/doping mental model로 학습.", "https://digital.library.unt.edu/ark:/67531/metadc666909/m2/1/high_res_d/2056.pdf"]
+];
+
+const epiGasSafetyAtlas = [
+  ["H2", "가연성 carrier/reducing ambient", "leak, ignition source, purge/exhaust readiness"],
+  ["SiH4", "silane: 공기 중 자발 점화 가능 flammable gas", "gas cabinet, detector, exhaust, abatement owner 확인"],
+  ["DCS/TCS/SiCl4", "silicon precursor/chlorosilane family", "SDS 기준 반응성/부식성/byproduct 경계 확인"],
+  ["HCl", "부식성/자극성 gas", "scrubber/exhaust compatibility, PPE/EHS boundary"],
+  ["GeH4", "germane: flammable hydride, toxic effect 고려", "detector/abatement/readiness evidence"],
+  ["PH3", "phosphine: toxic + flammable hydride", "gas release 전 EHS/gas owner sign-off"],
+  ["AsH3", "arsine: 매우 높은 독성/혈액·신장 위험 + flammable", "노출 의심/감지 이상은 즉시 stop/escalate"],
+  ["B2H6", "diborane: flammable/toxic, moist air에서 위험", "purge discipline, detector, exhaust/abatement"],
+  ["N2/Ar", "inert purge/support", "산소결핍, 압력 에너지, confined/local ventilation"]
+];
+
+const epiQualificationGuardrails = [
+  "첫 gas introduction 전에는 gas matrix, SDS, line label, detector health, exhaust/abatement ready, interlock 정상, EHS/gas owner witness를 evidence로 묶습니다.",
+  "qualification은 recipe를 맞히는 게임이 아니라 safety envelope 안에서 MFC actual, chamber pressure, pump/exhaust trend, temperature trace, metrology를 같은 시간축으로 연결하는 일입니다.",
+  "toxic/pyrophoric/corrosive gas는 연결 순서나 valve 조작을 웹에서 학습하지 않습니다. 실제 작업은 공식 교육, 승인된 절차서, 현장 owner 지시가 우선입니다.",
+  "멈출 조건: detector abnormal, exhaust/abatement not ready, unexplained pressure behavior, gas smell/irritation report, open EHS item, customer/site approval missing."
+];
+
+const epiCommunicationStack = [
+  ["Fab host / MES", "lot, carrier, process-start permission, traceability context를 장비 쪽 host interface로 전달합니다.", "공장별 host rule과 승인 flow는 site-specific입니다."],
+  ["AMHS + Load Port", "OHT/AGV가 FOUP을 load port에 내려놓고 carrier handoff, clamp, door 상태를 주고받습니다.", "SEMI E84/E87 같은 공개 표준 개념으로만 학습합니다."],
+  ["Equipment controller", "EFEM, LL, TM, PM, gas/vacuum 상태를 scheduler가 조합해 다음 동작 가능 여부를 판단합니다.", "실제 sequence와 permissive 조건은 OEM/고객 승인 문서 우선입니다."],
+  ["Module controllers", "robot servo, slit valve, pressure gauge, MFC, heater/lamp, pump, sensor actual 값을 로컬 controller가 보고합니다.", "CE는 command보다 actual trend와 alarm context를 evidence로 봅니다."],
+  ["Safety / EHS layer", "gas detector, exhaust, abatement, door, LOTO, emergency stop 같은 safety state가 motion/process보다 우선합니다.", "bypass, setpoint, hidden interlock logic은 다루지 않습니다."]
+];
+
+const epiUtilityQualificationMatrix = [
+  ["Toxic hydride", "PH3 / AsH3 / B2H6 / GeH4 후보", "SDS, gas matrix, detector health, exhaust/abatement ready, gas owner witness", "감지 이상, 냄새/자극 보고, owner 미확인"],
+  ["Pyrophoric silicon source", "SiH4 및 일부 reactive silicon chemistry", "gas cabinet 상태, purge readiness, leak check evidence, abatement path", "purge/exhaust 불명확, pressure behavior 비정상"],
+  ["Corrosive / halogen chemistry", "HCl, chlorosilane 계열 후보", "line label, scrubber compatibility, corrosion/PPE boundary, exhaust owner", "누출/부식 흔적, scrubber not-ready"],
+  ["Flammable support", "H2 carrier/reducing ambient", "LEL/fire safety boundary, ventilation, ignition-source control, MFC/pressure trend", "H2 alarm, ventilation uncertainty"],
+  ["Inert purge", "N2 / Ar purge/support", "O2 deficiency awareness, pressure energy, vent/purge status", "산소결핍 우려, confined/local ventilation 의심"]
+];
+
+function renderEpiMasterTheater(flow, currentStep) {
+  const root = document.querySelector("#epi-master-theater");
+  if (!root) return;
+  const stepIndex = Math.min(activeProcessStep, epiMasterSteps.length - 1);
+  const master = epiMasterSteps[stepIndex] || epiMasterSteps[0];
+  const nodes = [
+    ["efem", "EFEM/FI", "FOUP, load port, aligner"],
+    ["loadlock", "Load Lock", "대기압과 vacuum 경계"],
+    ["tm", "Transfer Module", "vacuum robot 교차로"],
+    ["preclean", "Pre-clean", "native oxide/interface reset"],
+    ["pm", "EPI PM", "heat + gas + crystal growth"],
+    ["abatement", "Exhaust/Abatement", "residual/byproduct 처리"]
+  ];
+  root.innerHTML = `
+    <div class="epi-theater-head">
+      <div>
+        <p class="eyebrow">EPI Master 3D Theater</p>
+        <h3>FOUP에서 epitaxial layer까지 한 장면으로 보기</h3>
+        <span>현재 선택 단계: ${master.stage} ${master.title}. 공개자료 기반 mental model이며 recipe, valve sequence, detector setpoint, site-specific limit는 제외합니다.</span>
+      </div>
+      <div class="epi-stage-badge">
+        <strong>${master.stage}</strong>
+        <span>${master.sourceTag}</span>
+      </div>
+    </div>
+    <div class="epi-theater-grid">
+      <div class="epi-3d-rig" data-active="${master.active}" style="--wafer-x:${master.wafer[0]}%; --wafer-y:${master.wafer[1]}%;">
+        <div class="epi-floor-grid"></div>
+        <div class="epi-wafer-orb"><span>W</span></div>
+        ${nodes.map(([id, label, note]) => `
+          <button class="epi-rig-node epi-${id} ${master.active === id ? "active" : ""}" type="button" aria-label="${label}">
+            <strong>${label}</strong>
+            <small>${note}</small>
+          </button>
+        `).join("")}
+        <div class="epi-rig-line line-a"></div>
+        <div class="epi-rig-line line-b"></div>
+        <div class="epi-rig-line line-c"></div>
+        <div class="epi-rig-line line-d"></div>
+        <div class="epi-gas-vector ${["pm", "preclean"].includes(master.active) ? "active" : ""}">
+          ${master.gases.map(gas => `<i>${gas}</i>`).join("")}
+        </div>
+      </div>
+      <article class="epi-step-readout">
+        <span class="epi-step-index">${master.stage}</span>
+        <h3>${master.title}</h3>
+        <p>${master.moduleState}</p>
+        <div class="epi-state-pills">
+          ${master.toolState.map(item => `<span>${item}</span>`).join("")}
+        </div>
+        <div class="epi-mini-stack">
+          ${master.layers.map(([name, note, color, height]) => `
+            <div style="--epi-layer-color:${color}; --epi-layer-height:${height}px">
+              <strong>${name}</strong><small>${note}</small>
+            </div>
+          `).join("")}
+        </div>
+        <p class="epi-wafer-state">${master.waferState}</p>
+      </article>
+    </div>
+    <div class="epi-safety-grid">
+      <article>
+        <strong>Gas 상태</strong>
+        <p>${master.gasState}</p>
+      </article>
+      <article class="epi-stop-card">
+        <strong>조심해야 할 조건</strong>
+        <p>${master.hazard}</p>
+      </article>
+      <article>
+        <strong>CE evidence</strong>
+        <ul>${master.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+      </article>
+    </div>
+    <div class="epi-comms-board">
+      <div class="epi-comms-title">
+        <strong>Fab host부터 PM까지 통신 mental model</strong>
+        <span>설치 CE는 command 하나가 아니라 host, carrier, scheduler, module actual, safety state가 서로 맞는지 본다.</span>
+      </div>
+      <div class="epi-comms-lanes">
+        ${epiCommunicationStack.map(([layer, role, boundary], index) => `
+          <article class="${index === 2 ? "core" : ""}">
+            <b>${layer}</b>
+            <p>${role}</p>
+            <small>${boundary}</small>
+          </article>
+        `).join("")}
+      </div>
+    </div>
+    <div class="epi-utility-matrix">
+      <div class="epi-comms-title">
+        <strong>Gas / utility qualification 사고표</strong>
+        <span>웹은 연결 순서가 아니라, 연결 전 확인해야 할 owner와 evidence를 훈련한다.</span>
+      </div>
+      ${epiUtilityQualificationMatrix.map(([family, examples, evidence, stop]) => `
+        <article>
+          <b>${family}</b>
+          <span>${examples}</span>
+          <p><strong>Evidence</strong> ${evidence}</p>
+          <p><strong>Stop</strong> ${stop}</p>
+        </article>
+      `).join("")}
+    </div>
+    <div class="epi-public-grid">
+      ${appliedEpiPublicMap.map(([title, text, url]) => `
+        <a href="${url}" target="_blank" rel="noreferrer">
+          <strong>${title}</strong>
+          <span>${text}</span>
+        </a>
+      `).join("")}
+    </div>
+    <div class="epi-gas-atlas">
+      ${epiGasSafetyAtlas.map(([gas, role, watch]) => `
+        <span>
+          <b>${gas}</b>
+          <em>${role}</em>
+          <small>${watch}</small>
+        </span>
+      `).join("")}
+    </div>
+    <div class="epi-qualification-guardrail">
+      <strong>Qualification / hook-up 학습 경계</strong>
+      <ul>${epiQualificationGuardrails.map(item => `<li>${item}</li>`).join("")}</ul>
+    </div>
+  `;
+}
+
 function renderProcessVisual() {
   const flowTabs = document.querySelector("#process-flow-tabs");
   const stepList = document.querySelector("#process-step-list");
@@ -6170,6 +6462,7 @@ function renderProcessVisual() {
   document.querySelector("#process-flow-kicker").textContent = flow.kicker;
   document.querySelector("#process-flow-title").textContent = flow.title;
   document.querySelector("#process-flow-summary").textContent = flow.summary;
+  renderEpiMasterTheater(flow, step);
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>

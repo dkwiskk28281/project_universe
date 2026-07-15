@@ -365,6 +365,594 @@ main,
   overflow: hidden;
 }
 
+/* 20260715 EPI master theater: hardware flow + gas state + wafer layer mental model */
+.epi-master-theater {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 78% 8%, rgba(94, 231, 255, 0.13), transparent 30%),
+    linear-gradient(135deg, rgba(2, 13, 16, 0.96), rgba(7, 27, 26, 0.94));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03), 0 22px 46px rgba(0, 0, 0, 0.2);
+  color: #ecfff8;
+}
+
+.epi-theater-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, auto);
+  gap: 14px;
+  align-items: start;
+}
+
+.epi-theater-head h3,
+.epi-theater-head p,
+.epi-theater-head span {
+  margin: 0;
+}
+
+.epi-theater-head h3 {
+  margin-top: 4px;
+  color: #ffffff;
+  font-size: clamp(22px, 2.4vw, 34px);
+  line-height: 1.14;
+}
+
+.epi-theater-head span {
+  display: block;
+  margin-top: 8px;
+  color: rgba(236, 255, 248, 0.74);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.epi-stage-badge {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 8px;
+  background: #10242d;
+}
+
+.epi-stage-badge strong {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 28px;
+}
+
+.epi-stage-badge span {
+  margin: 0;
+  max-width: 230px;
+  color: rgba(236, 255, 248, 0.68);
+  text-align: right;
+  font-size: 12px;
+}
+
+.epi-theater-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.epi-3d-rig {
+  position: relative;
+  min-height: 430px;
+  overflow: hidden;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(94, 231, 255, 0.08), rgba(0, 0, 0, 0.18)),
+    #03100f;
+  perspective: 920px;
+}
+
+.epi-floor-grid {
+  position: absolute;
+  inset: 44px 24px 32px;
+  transform: rotateX(62deg);
+  transform-origin: center bottom;
+  border: 1px solid rgba(0, 255, 149, 0.12);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.12) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(94, 231, 255, 0.09) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: 0.8;
+}
+
+.epi-rig-node {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  gap: 3px;
+  width: 126px;
+  min-height: 76px;
+  padding: 10px;
+  border: 1px solid rgba(236, 255, 248, 0.15);
+  border-radius: 8px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), rgba(0, 255, 149, 0.045)),
+    #11252b;
+  color: #ecfff8;
+  text-align: center;
+  transform: skewY(-3deg);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24);
+}
+
+.epi-rig-node strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.epi-rig-node small {
+  color: rgba(236, 255, 248, 0.62);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.epi-rig-node.active {
+  border-color: rgba(0, 255, 149, 0.8);
+  background:
+    linear-gradient(145deg, rgba(0, 255, 149, 0.2), rgba(94, 231, 255, 0.09)),
+    #102d2c;
+  box-shadow: 0 0 0 2px rgba(0, 255, 149, 0.12), 0 18px 34px rgba(0, 255, 149, 0.16);
+}
+
+.epi-efem { left: 5%; top: 40%; }
+.epi-loadlock { left: 23%; top: 40%; }
+.epi-tm { left: 41%; top: 40%; }
+.epi-preclean { left: 58%; top: 18%; }
+.epi-pm { left: 72%; top: 40%; }
+.epi-abatement { left: 58%; top: 68%; }
+
+.epi-rig-line {
+  position: absolute;
+  z-index: 2;
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 255, 149, 0.28), rgba(94, 231, 255, 0.5), rgba(0, 255, 149, 0.12));
+  box-shadow: 0 0 18px rgba(94, 231, 255, 0.12);
+}
+
+.epi-rig-line.line-a { left: 16%; top: 50%; width: 17%; }
+.epi-rig-line.line-b { left: 34%; top: 50%; width: 17%; }
+.epi-rig-line.line-c { left: 52%; top: 43%; width: 21%; transform: rotate(-23deg); }
+.epi-rig-line.line-d { left: 52%; top: 58%; width: 20%; transform: rotate(24deg); opacity: 0.62; }
+
+.epi-wafer-orb {
+  position: absolute;
+  z-index: 6;
+  left: var(--wafer-x);
+  top: var(--wafer-y);
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.85), transparent 24%),
+    radial-gradient(circle, #a5fff0, #3fdcc3 48%, #0d6b68);
+  box-shadow: 0 0 0 6px rgba(0, 255, 149, 0.12), 0 0 34px rgba(0, 255, 149, 0.28);
+  transition: left 360ms ease, top 360ms ease;
+}
+
+.epi-wafer-orb span {
+  color: #00150d;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.epi-gas-vector {
+  position: absolute;
+  z-index: 5;
+  right: 21%;
+  top: 16%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  width: min(290px, 46%);
+  opacity: 0.54;
+}
+
+.epi-gas-vector.active {
+  opacity: 1;
+}
+
+.epi-gas-vector i {
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 255, 149, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.11);
+  color: #d7ffea;
+  font-style: normal;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+  animation: epiGasFloat 2.2s ease-in-out infinite;
+}
+
+.epi-step-readout,
+.epi-safety-grid article,
+.epi-public-grid a,
+.epi-comms-board,
+.epi-utility-matrix article,
+.epi-qualification-guardrail {
+  min-width: 0;
+  border: 1px solid rgba(236, 255, 248, 0.13);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 255, 149, 0.035)),
+    #0f222a;
+}
+
+.epi-step-readout {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 14px;
+}
+
+.epi-step-index {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.12);
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-weight: 950;
+}
+
+.epi-step-readout h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.24;
+}
+
+.epi-step-readout p,
+.epi-safety-grid p,
+.epi-safety-grid li,
+.epi-public-grid span,
+.epi-comms-board p,
+.epi-comms-board small,
+.epi-utility-matrix span,
+.epi-utility-matrix p,
+.epi-qualification-guardrail li {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.54;
+  overflow-wrap: anywhere;
+}
+
+.epi-state-pills,
+.epi-gas-atlas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.epi-state-pills span {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.09);
+  color: #aef6ff;
+  font-size: 12px;
+}
+
+.epi-mini-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  overflow: hidden;
+  border: 1px solid rgba(236, 255, 248, 0.14);
+  border-radius: 8px 8px 18px 18px;
+}
+
+.epi-mini-stack div {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.36fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: var(--epi-layer-height);
+  padding: 5px 9px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.22), transparent 50%),
+    var(--epi-layer-color);
+  color: #04120f;
+}
+
+.epi-mini-stack strong,
+.epi-mini-stack small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.epi-wafer-state {
+  margin: 0;
+}
+
+.epi-safety-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.epi-safety-grid article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.epi-safety-grid strong,
+.epi-public-grid strong,
+.epi-comms-board strong,
+.epi-utility-matrix b,
+.epi-utility-matrix strong,
+.epi-qualification-guardrail strong {
+  color: #ffffff;
+}
+
+.epi-safety-grid ul,
+.epi-qualification-guardrail ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.epi-stop-card {
+  border-color: rgba(255, 211, 138, 0.28) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 211, 138, 0.08), rgba(0, 0, 0, 0.04)),
+    #221a12 !important;
+}
+
+.epi-public-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.epi-public-grid a {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.epi-public-grid a:hover,
+.epi-public-grid a:focus-visible {
+  border-color: rgba(0, 255, 149, 0.6);
+  outline: 0;
+}
+
+.epi-comms-board {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.epi-comms-title {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.epi-comms-title span {
+  color: rgba(236, 255, 248, 0.64);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.epi-comms-lanes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.epi-comms-lanes article {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(1, 12, 14, 0.46);
+}
+
+.epi-comms-lanes article::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -9px;
+  width: 9px;
+  height: 2px;
+  background: rgba(0, 255, 149, 0.34);
+}
+
+.epi-comms-lanes article:last-child::after {
+  display: none;
+}
+
+.epi-comms-lanes article.core {
+  border-color: rgba(0, 255, 149, 0.36);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.epi-comms-lanes b,
+.epi-utility-matrix b {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 12px;
+}
+
+.epi-comms-lanes p,
+.epi-comms-lanes small,
+.epi-utility-matrix p,
+.epi-utility-matrix span {
+  margin: 0;
+}
+
+.epi-comms-lanes small {
+  color: rgba(236, 255, 248, 0.52);
+  font-size: 11px;
+}
+
+.epi-utility-matrix {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.epi-utility-matrix .epi-comms-title {
+  grid-column: 1 / -1;
+  padding: 0 2px 2px;
+}
+
+.epi-utility-matrix article {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+}
+
+.epi-utility-matrix span {
+  color: rgba(174, 246, 255, 0.78);
+  font-size: 12px;
+}
+
+.epi-utility-matrix p {
+  font-size: 12px;
+}
+
+.epi-utility-matrix p strong {
+  color: rgba(255, 211, 138, 0.9);
+  font-size: inherit;
+}
+
+.epi-gas-atlas span {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 140px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.epi-gas-atlas b {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.epi-gas-atlas em,
+.epi-gas-atlas small {
+  color: rgba(236, 255, 248, 0.72);
+  font-style: normal;
+  line-height: 1.36;
+}
+
+.epi-gas-atlas small {
+  color: rgba(236, 255, 248, 0.58);
+  font-size: 11px;
+}
+
+.epi-qualification-guardrail {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+@keyframes epiGasFloat {
+  0%, 100% { transform: translate(0, 0); opacity: 0.72; }
+  50% { transform: translate(14px, -7px); opacity: 1; }
+}
+
+@media (max-width: 1100px) {
+  .epi-theater-grid,
+  .epi-safety-grid,
+  .epi-public-grid,
+  .epi-comms-lanes,
+  .epi-utility-matrix {
+    grid-template-columns: 1fr;
+  }
+
+  .epi-comms-lanes article::after {
+    top: auto;
+    right: auto;
+    bottom: -9px;
+    left: 18px;
+    width: 2px;
+    height: 9px;
+  }
+
+  .epi-3d-rig {
+    min-height: 540px;
+  }
+
+  .epi-efem { left: 5%; top: 12%; }
+  .epi-loadlock { left: 52%; top: 12%; }
+  .epi-tm { left: 28%; top: 31%; }
+  .epi-preclean { left: 5%; top: 52%; }
+  .epi-pm { left: 52%; top: 52%; }
+  .epi-abatement { left: 28%; top: 74%; }
+
+  .epi-rig-line {
+    display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .epi-master-theater {
+    padding: 12px;
+  }
+
+  .epi-theater-head {
+    grid-template-columns: 1fr;
+  }
+
+  .epi-stage-badge {
+    justify-items: start;
+  }
+
+  .epi-stage-badge span {
+    max-width: none;
+    text-align: left;
+  }
+
+  .epi-3d-rig {
+    min-height: 620px;
+  }
+
+  .epi-rig-node {
+    width: 43%;
+    min-height: 68px;
+    padding: 8px;
+  }
+
+  .epi-wafer-orb {
+    width: 32px;
+    height: 32px;
+  }
+
+  .epi-gas-vector {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 10px;
+    width: auto;
+  }
+}
+
 /* Life OS v3: knowledge graph, adaptive routines, and instant remediation */
 .knowledge-graph-panel,
 .fep-mastery-spine,
