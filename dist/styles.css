@@ -953,6 +953,537 @@ main,
   }
 }
 
+/* 20260715 Process Engineer digital twin lab */
+.epi-pe-lab {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(94, 231, 255, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(94, 231, 255, 0.12), transparent 28%),
+    radial-gradient(circle at 90% 14%, rgba(0, 255, 149, 0.1), transparent 32%),
+    linear-gradient(145deg, rgba(2, 14, 18, 0.98), rgba(7, 22, 28, 0.95));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.pe-lab-head,
+.pe-twin-grid,
+.pe-surface-knob-grid,
+.pe-comm-gas-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.pe-lab-head {
+  align-items: start;
+}
+
+.pe-lab-head h3,
+.pe-lab-head p,
+.pe-lab-head span,
+.pe-section-title h3,
+.pe-section-title p {
+  margin: 0;
+}
+
+.pe-lab-head h3,
+.pe-section-title h3 {
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.pe-lab-head h3 {
+  margin-top: 4px;
+  font-size: clamp(22px, 2.2vw, 32px);
+}
+
+.pe-lab-head span,
+.pe-section-title + p,
+.pe-surface-theater p {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.pe-lab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: 8px;
+}
+
+.pe-lab-actions button,
+.pe-chem-timeline button,
+.pe-case-picker button,
+.pe-gas-card-grid button {
+  min-width: 0;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #ecfff8;
+}
+
+.pe-isometric,
+.pe-step-card,
+.pe-surface-theater,
+.pe-knob-sim,
+.pe-comm-map,
+.pe-gas-safety,
+.pe-evidence-board {
+  min-width: 0;
+  border: 1px solid rgba(236, 255, 248, 0.13);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 255, 149, 0.025)),
+    #0d2229;
+}
+
+.pe-isometric {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  perspective: 980px;
+}
+
+.pe-grid-floor {
+  position: absolute;
+  inset: 58px 30px 34px;
+  transform: rotateX(62deg) rotateZ(-1deg);
+  transform-origin: center bottom;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.12) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(94, 231, 255, 0.1) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.82;
+}
+
+.pe-node {
+  position: absolute;
+  z-index: 4;
+  left: var(--node-x);
+  top: var(--node-y);
+  display: grid;
+  gap: 3px;
+  width: 104px;
+  min-height: 70px;
+  padding: 9px;
+  text-align: center;
+  transform: translate(-50%, -50%) skewY(-4deg);
+  box-shadow: 0 18px 28px rgba(0, 0, 0, 0.24);
+}
+
+.pe-node strong {
+  font-size: 11px;
+  line-height: 1.18;
+}
+
+.pe-node small {
+  color: rgba(236, 255, 248, 0.58);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.pe-node.active {
+  border-color: rgba(0, 255, 149, 0.86);
+  background:
+    linear-gradient(145deg, rgba(0, 255, 149, 0.2), rgba(94, 231, 255, 0.1)),
+    #102d2c;
+  box-shadow: 0 0 0 2px rgba(0, 255, 149, 0.12), 0 20px 36px rgba(0, 255, 149, 0.18);
+}
+
+.pe-control { border-color: rgba(94, 231, 255, 0.25); }
+.pe-material { border-color: rgba(0, 255, 149, 0.24); }
+.pe-motion { border-color: rgba(174, 246, 255, 0.22); }
+.pe-vacuum { border-color: rgba(185, 140, 255, 0.24); }
+.pe-process { border-color: rgba(255, 211, 138, 0.24); }
+.pe-gas { border-color: rgba(255, 120, 168, 0.28); }
+.pe-facility { border-color: rgba(132, 255, 214, 0.2); }
+
+.pe-wafer {
+  position: absolute;
+  z-index: 8;
+  left: var(--pe-wafer-x);
+  top: var(--pe-wafer-y);
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background:
+    radial-gradient(circle at 34% 26%, rgba(255, 255, 255, 0.9), transparent 24%),
+    radial-gradient(circle, #c6fff5, #3fdcc3 48%, #0a6b68);
+  box-shadow: 0 0 0 7px rgba(0, 255, 149, 0.1), 0 0 28px rgba(94, 231, 255, 0.3);
+  transition: left 420ms ease, top 420ms ease;
+}
+
+.pe-wafer span {
+  color: #00150d;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.pe-flow-line {
+  position: absolute;
+  z-index: 2;
+  height: 4px;
+  border-radius: 999px;
+  opacity: 0.8;
+}
+
+.pe-flow-line.material { left: 9%; top: 38%; width: 53%; background: linear-gradient(90deg, rgba(0, 255, 149, 0.25), rgba(94, 231, 255, 0.5)); }
+.pe-flow-line.vacuum { left: 43%; top: 44%; width: 34%; transform: rotate(-11deg); background: linear-gradient(90deg, rgba(185, 140, 255, 0.22), rgba(94, 231, 255, 0.36)); }
+.pe-flow-line.gas { left: 78%; top: 28%; width: 14%; transform: rotate(87deg); background: linear-gradient(90deg, rgba(255, 120, 168, 0.22), rgba(255, 211, 138, 0.5)); }
+.pe-flow-line.exhaust { left: 70%; top: 65%; width: 21%; transform: rotate(26deg); background: linear-gradient(90deg, rgba(255, 211, 138, 0.3), rgba(0, 255, 149, 0.18)); }
+
+.pe-step-card,
+.pe-surface-theater,
+.pe-knob-sim,
+.pe-comm-map,
+.pe-gas-safety,
+.pe-evidence-board {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 14px;
+}
+
+.pe-step-count {
+  width: fit-content;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.12);
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-weight: 950;
+}
+
+.pe-step-card h3 {
+  margin: 0;
+  color: #ffffff;
+}
+
+.pe-state-stack {
+  display: grid;
+  gap: 7px;
+}
+
+.pe-state-stack span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.07);
+  color: rgba(236, 255, 248, 0.74);
+  line-height: 1.35;
+}
+
+.pe-state-stack b,
+.pe-step-card strong {
+  color: #ffffff;
+}
+
+.pe-gas-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.pe-gas-tags em,
+.pe-comm-lanes b {
+  padding: 5px 8px;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.1);
+  color: #d7ffea;
+  font-style: normal;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+}
+
+.pe-step-card p,
+.pe-step-card li,
+.pe-evidence-flow p,
+.pe-comm-lanes span,
+.pe-comm-lanes small,
+.pe-gas-card-grid span,
+.pe-gas-card-grid small,
+.pe-knob-controls small,
+.pe-result-bars small {
+  color: rgba(236, 255, 248, 0.7);
+  line-height: 1.48;
+  overflow-wrap: anywhere;
+}
+
+.pe-step-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.pe-stop {
+  padding: 9px;
+  border: 1px solid rgba(255, 211, 138, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 211, 138, 0.08);
+  color: rgba(255, 232, 189, 0.92);
+  line-height: 1.45;
+}
+
+.pe-surface-stack {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(94, 231, 255, 0.08), transparent),
+    #061317;
+}
+
+.pe-surface-stack span {
+  display: grid;
+  min-height: 34px;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 52%),
+    hsl(calc(170 + var(--surface-index) * 24), 76%, 58%);
+  color: #03120f;
+}
+
+.pe-surface-stack b {
+  font-size: 12px;
+}
+
+.pe-chem-timeline,
+.pe-case-picker,
+.pe-gas-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.pe-chem-timeline button,
+.pe-case-picker button {
+  padding: 7px 9px;
+  font-size: 12px;
+}
+
+.pe-chem-timeline button.active,
+.pe-case-picker button.active {
+  border-color: rgba(0, 255, 149, 0.74);
+  background: rgba(0, 255, 149, 0.16);
+  color: #ffffff;
+}
+
+.pe-knob-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.pe-knob-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pe-knob-controls label > span,
+.pe-result-bars div > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.pe-knob-controls em,
+.pe-result-bars em {
+  color: #25d366;
+  font-style: normal;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.pe-knob-controls input {
+  width: 100%;
+  accent-color: #25d366;
+}
+
+.pe-result-bars {
+  display: grid;
+  gap: 9px;
+}
+
+.pe-result-bars div {
+  display: grid;
+  gap: 5px;
+}
+
+.pe-result-bars i {
+  display: block;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pe-result-bars u {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #25d366, #5ee7ff);
+}
+
+.pe-result-bars .risk u {
+  background: linear-gradient(90deg, #25d366, #ffd38a, #ff78a8);
+}
+
+.pe-comm-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pe-comm-lanes div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.pe-comm-lanes strong,
+.pe-gas-card-grid b,
+.pe-evidence-flow strong {
+  color: #ffffff;
+}
+
+.pe-gas-card-grid button {
+  display: grid;
+  flex: 1 1 210px;
+  gap: 5px;
+  padding: 10px;
+  text-align: left;
+}
+
+.pe-gas-card-grid b {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.pe-gas-card-grid em {
+  color: rgba(255, 211, 138, 0.92);
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.pe-gas-card-grid small strong {
+  color: rgba(174, 246, 255, 0.9);
+}
+
+.pe-case-picker {
+  max-height: 170px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.pe-evidence-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pe-evidence-flow article {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(236, 255, 248, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.pe-evidence-flow article:nth-child(8) {
+  border-color: rgba(255, 211, 138, 0.28);
+  background: rgba(255, 211, 138, 0.07);
+}
+
+.pe-evidence-flow p {
+  margin: 0;
+}
+
+@media (max-width: 1180px) {
+  .pe-lab-head,
+  .pe-twin-grid,
+  .pe-surface-knob-grid,
+  .pe-comm-gas-grid,
+  .pe-comm-lanes,
+  .pe-evidence-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .pe-lab-actions {
+    justify-content: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .epi-pe-lab {
+    padding: 12px;
+  }
+
+  .pe-isometric {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .pe-grid-floor,
+  .pe-flow-line,
+  .pe-wafer {
+    display: none;
+  }
+
+  .pe-node {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: auto;
+    min-height: 64px;
+    transform: none;
+  }
+
+  .pe-gas-card-grid button {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .pe-isometric {
+    grid-template-columns: 1fr;
+  }
+
+  .pe-lab-head h3 {
+    font-size: 22px;
+  }
+
+  .pe-case-picker {
+    max-height: 210px;
+  }
+}
+
 /* Life OS v3: knowledge graph, adaptive routines, and instant remediation */
 .knowledge-graph-panel,
 .fep-mastery-spine,

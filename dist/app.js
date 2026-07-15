@@ -4013,6 +4013,9 @@ let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
 let activeProcessFlow = processVisualFlows[0].id;
 let activeProcessStep = 0;
+let activePeTwinStep = 0;
+let activePeFailureIndex = 0;
+const peKnobs = { temp: 58, pressure: 46, precursor: 54, selectivity: 48, purge: 72, exhaust: 80 };
 let activeCurriculumChapter = state.activeCurriculumChapter || curriculumChapters[0].id;
 let activeFepProcessTwin = state.activeFepProcessTwin || fepProcessTwinSteps[0].id;
 let activeFepInstallGate = state.activeFepInstallGate || fepInstallGates[0].id;
@@ -6320,6 +6323,511 @@ const epiUtilityQualificationMatrix = [
   ["Inert purge", "N2 / Ar purge/support", "O2 deficiency awareness, pressure energy, vent/purge status", "산소결핍 우려, confined/local ventilation 의심"]
 ];
 
+const epiDigitalTwinNodes = [
+  ["host", "Fab Host / MES", "lot, carrier, recipe permission", 8, 8, "control"],
+  ["amhs", "AMHS / OHT", "FOUP delivery and pickup", 30, 8, "material"],
+  ["lp", "Load Port", "dock, clamp, door, E84 PIO", 7, 36, "material"],
+  ["efem", "EFEM / FI", "mini-environment robot", 27, 36, "motion"],
+  ["aligner", "Aligner", "notch/orientation", 43, 54, "motion"],
+  ["ll", "Load Lock", "ATM to vacuum boundary", 49, 36, "vacuum"],
+  ["tm", "Transfer Module", "vacuum robot crossroad", 70, 36, "motion"],
+  ["preclean", "Pre-clean / CM", "native oxide reset", 64, 16, "process"],
+  ["pm", "EPI PM", "heat, gas, growth", 88, 43, "process"],
+  ["cool", "Cooldown / CM", "cool and stabilize", 64, 67, "process"],
+  ["gasbox", "Gas Box", "valved gas cabinet interface", 92, 16, "gas"],
+  ["mfc", "MFC Panel", "relative flow actual", 91, 32, "gas"],
+  ["pump", "Pump Stack", "pressure and byproduct removal", 90, 55, "vacuum"],
+  ["exhaust", "Exhaust", "duct and negative pressure path", 84, 74, "facility"],
+  ["abatement", "Abatement", "hazard reduction before release", 72, 84, "facility"],
+  ["facility", "Facility Panel", "power, PCW, CDA, N2, exhaust", 44, 78, "facility"]
+];
+
+const epiPeTwinSteps = [
+  {
+    id: "slot-map",
+    title: "FOUP slot map / carrier context",
+    active: ["host", "amhs", "lp", "efem"],
+    wafer: [9, 36],
+    pressure: "Atmosphere / mini-environment",
+    atmosphere: "N2 purge or clean dry air boundary",
+    robot: "EFEM idle, carrier door not yet opened",
+    door: "load port clamp + carrier door permission",
+    gas: ["N2 purge", "CDA"],
+    surface: "native oxide and pre-existing contamination still present",
+    processMind: "Process Engineer는 이미 lot context, wafer history, queue time을 생각한다.",
+    evidence: ["carrier ID", "slot map", "host state", "load port status"],
+    stop: "carrier mismatch, unknown wafer history, load port alarm"
+  },
+  {
+    id: "efem-pick",
+    title: "EFEM pick / wafer map confidence",
+    active: ["efem", "aligner", "lp"],
+    wafer: [24, 39],
+    pressure: "Atmosphere",
+    atmosphere: "clean mini-environment",
+    robot: "EFEM blade pick, wafer present confirmation",
+    door: "FOUP door open under permissive",
+    gas: ["N2 purge"],
+    surface: "no film change yet, but particles/scratches can be introduced",
+    processMind: "나중에 defect가 늘면 공정뿐 아니라 handling evidence도 같이 봐야 한다.",
+    evidence: ["wafer present sensor", "robot pick log", "mapping repeatability", "particle baseline"],
+    stop: "wafer slip/scrape suspicion, map mismatch, carrier door abnormal"
+  },
+  {
+    id: "align",
+    title: "Aligner orientation / edge risk",
+    active: ["efem", "aligner"],
+    wafer: [34, 50],
+    pressure: "Atmosphere",
+    atmosphere: "EFEM mini-environment",
+    robot: "aligner rotates wafer to notch/orientation reference",
+    door: "EFEM internal handoff",
+    gas: ["N2 purge"],
+    surface: "edge contact risk is more important than chemistry here",
+    processMind: "orientation error는 PM 문제가 아니라 downstream placement/trace 문제로 보인다.",
+    evidence: ["align result", "notch read", "edge exclusion marks", "wafer center data"],
+    stop: "orientation fail, repeated centering error, edge contact mark"
+  },
+  {
+    id: "ll-load",
+    title: "Load Lock load / pressure boundary",
+    active: ["efem", "ll", "facility"],
+    wafer: [45, 38],
+    pressure: "Atmosphere side to isolated LL",
+    atmosphere: "LL isolated before pumpdown",
+    robot: "EFEM places wafer into load lock",
+    door: "outer door closes, inner slit remains protected",
+    gas: ["N2 purge", "vent path"],
+    surface: "surface waits; queue time and exposure matter",
+    processMind: "LL은 단순 대기실이 아니라 contamination과 pressure shock을 막는 경계다.",
+    evidence: ["LL door close", "wafer present", "seal state", "vent/purge state"],
+    stop: "door feedback abnormal, seal suspicion, wafer present disagreement"
+  },
+  {
+    id: "pumpdown",
+    title: "Pumpdown / vacuum transfer readiness",
+    active: ["ll", "pump", "exhaust", "facility"],
+    wafer: [50, 42],
+    pressure: "Falling toward transfer vacuum",
+    atmosphere: "N2/air removed through pump/exhaust path",
+    robot: "no robot motion until pressure permissive",
+    door: "inner slit waits for pressure match",
+    gas: ["N2 purge residue", "pump exhaust"],
+    surface: "chemistry still idle; vacuum integrity protects interface",
+    processMind: "pressure curve shape is evidence. A slow curve is a hypothesis generator.",
+    evidence: ["pumpdown curve", "gauge agreement", "door seal", "exhaust ready"],
+    stop: "unexpected pressure plateau, gauge disagreement, exhaust not ready"
+  },
+  {
+    id: "tm-handoff",
+    title: "TM robot handoff / vacuum geometry",
+    active: ["ll", "tm", "preclean", "pm"],
+    wafer: [58, 38],
+    pressure: "Transfer vacuum stable",
+    atmosphere: "mainframe vacuum",
+    robot: "TM blade moves wafer from LL to module path",
+    door: "slit valve open only when both sides agree",
+    gas: ["vacuum", "inert support"],
+    surface: "no vacuum break; interface contamination is held down",
+    processMind: "robot teach, slit timing, chamber ready, pressure stability are one system.",
+    evidence: ["robot handoff log", "slit feedback", "TM pressure", "module ready"],
+    stop: "slit mismatch, robot teach suspicion, unexplained TM pressure movement"
+  },
+  {
+    id: "preclean",
+    title: "Pre-clean / native oxide reset",
+    active: ["preclean", "tm", "pump", "exhaust", "abatement"],
+    wafer: [71, 22],
+    pressure: "Process module controlled low pressure",
+    atmosphere: "clean/reactive pre-clean chemistry by option",
+    robot: "wafer on susceptor/chuck, motion locked out",
+    door: "module isolated during treatment",
+    gas: ["H2 option", "radical/pre-clean option", "purge"],
+    surface: "native oxide and interface contamination reduced",
+    processMind: "pre-clean result is the first hidden cause for interface quality and nucleation.",
+    evidence: ["pre-clean pass", "queue time", "byproduct exhaust", "post-clean transfer time"],
+    stop: "unknown chemistry readiness, exhaust/abatement not ready, open EHS item"
+  },
+  {
+    id: "pm-load",
+    title: "EPI PM load / thermal stabilization",
+    active: ["pm", "tm", "gasbox", "mfc", "pump"],
+    wafer: [78, 44],
+    pressure: "PM pressure control active",
+    atmosphere: "H2 / carrier ambient concept",
+    robot: "TM places wafer, PM closes and stabilizes",
+    door: "PM isolated; transfer path protected",
+    gas: ["H2 carrier", "purge"],
+    surface: "clean Si surface waits for precursor arrival",
+    processMind: "temperature trace and pressure transient become the baseline for every wafer result.",
+    evidence: ["temperature trace", "pressure settle", "MFC zero/ready", "PM ready"],
+    stop: "temperature trace abnormal, pressure control unstable, gas ready missing"
+  },
+  {
+    id: "growth",
+    title: "Growth / precursor to crystal layer",
+    active: ["pm", "gasbox", "mfc", "pump", "exhaust", "abatement"],
+    wafer: [80, 43],
+    pressure: "Controlled process pressure",
+    atmosphere: "carrier + silicon/Ge/dopant precursor family",
+    robot: "no motion; process hardware holds stable environment",
+    door: "PM isolated, safety layer owns permissive",
+    gas: ["H2", "SiH4/DCS/TCS", "GeH4", "dopant candidates", "HCl/selective chemistry"],
+    surface: "adsorption, decomposition, diffusion, lattice incorporation, byproduct desorption",
+    processMind: "PE는 knob를 결과로 번역한다: growth rate, uniformity, composition, Rs, defect.",
+    evidence: ["MFC actual trend", "pressure trace", "temperature trace", "exhaust/abatement normal"],
+    stop: "detector alarm, MFC actual mismatch, pressure excursion, abatement not ready"
+  },
+  {
+    id: "purge-cool",
+    title: "Purge / cooldown / residual removal",
+    active: ["pm", "cool", "pump", "exhaust", "abatement"],
+    wafer: [70, 66],
+    pressure: "Post-process purge and cooldown",
+    atmosphere: "inert purge, residual gas removal",
+    robot: "motion waits for safe handoff state",
+    door: "module stays isolated until safe transition",
+    gas: ["N2/Ar purge", "residual hydride/HCl", "abatement path"],
+    surface: "grown layer stabilizes while residuals leave the chamber",
+    processMind: "purge is not empty time. It protects next wafer, people, and chamber memory.",
+    evidence: ["purge complete", "cooldown trace", "residual trend", "abatement ready"],
+    stop: "residual/gas detector concern, purge incomplete, cooldown abnormal"
+  },
+  {
+    id: "return-qual",
+    title: "Return path / metrology qualification",
+    active: ["cool", "tm", "ll", "efem", "host"],
+    wafer: [23, 36],
+    pressure: "Vacuum to LL vent to atmosphere",
+    atmosphere: "controlled vent and EFEM return",
+    robot: "TM returns wafer, EFEM restores to FOUP",
+    door: "LL vent boundary and carrier close",
+    gas: ["N2 vent", "inert purge"],
+    surface: "epi stack is complete; wafer result now becomes evidence",
+    processMind: "qualification joins wafer map, trace data, metrology, and open safety items.",
+    evidence: ["metrology map", "event log", "baseline wafer packet", "handover notes"],
+    stop: "unexplained metrology drift, open safety item, trace/metrology mismatch"
+  }
+];
+
+const epiSurfaceChemistrySteps = [
+  ["Native oxide", "공기 노출 후 자연 산화막/흡착 오염이 표면 반응을 막을 수 있습니다.", ["Si substrate", "native oxide", "adsorbed H2O/C/O"]],
+  ["Pre-clean", "진공 통합 pre-clean은 vacuum break 없이 interface contamination을 낮추는 방향입니다.", ["Si substrate", "oxide removed", "reactive surface"]],
+  ["H2 ambient", "H2 carrier/reducing ambient는 표면 상태와 gas transport의 배경으로 생각합니다.", ["clean Si", "H-terminated surface", "carrier flow"]],
+  ["Precursor adsorption", "Si/Ge precursor가 boundary layer를 지나 표면에 도달하고 흡착합니다.", ["clean Si", "adsorbed Si species", "Ge option"]],
+  ["Thermal decomposition", "열 에너지로 precursor가 분해/반응하며 성장 가능한 원자종을 제공합니다.", ["surface species", "Si adatom", "byproduct"]],
+  ["Surface diffusion", "원자종이 표면에서 이동해 낮은 에너지 자리로 붙습니다.", ["terrace", "step edge", "diffusing adatom"]],
+  ["Lattice matching", "새 원자는 기존 결정 격자 방향을 따라 붙어 epitaxial layer가 됩니다.", ["Si lattice", "matched Si layer", "interface quality"]],
+  ["SiGe incorporation", "Ge precursor 기여는 조성/strain/성능과 연결됩니다.", ["Si template", "SiGe layer", "strain"]],
+  ["Dopant incorporation", "PH3/AsH3/B2H6 후보는 Rs, 활성화, junction behavior와 연결됩니다.", ["epi layer", "dopant atoms", "electrical property"]],
+  ["Byproduct exhaust", "반응 부산물은 표면에서 떨어져 pump/exhaust/abatement 경로로 나가야 합니다.", ["grown layer", "byproduct", "exhaust path"]],
+  ["Metrology result", "막은 thickness, uniformity, composition, Rs, defect/particle map으로 번역됩니다.", ["epi stack", "metrology map", "trace packet"]]
+];
+
+const epiPeKnobDefs = [
+  ["temp", "Temperature energy", "growth kinetics, defect/slip, dopant behavior"],
+  ["pressure", "Pressure / residence", "gas residence time, depletion, radial uniformity"],
+  ["precursor", "Precursor balance", "growth rate, loading effect, composition stability"],
+  ["selectivity", "HCl / selectivity", "poly suppression, etch/deposition competition"],
+  ["purge", "Purge quality", "interface memory, residual gas, next-wafer risk"],
+  ["exhaust", "Exhaust / abatement", "safety envelope and byproduct removal"]
+];
+
+const epiPeGasCards = [
+  ["H2", "carrier / reducing ambient", "flammable support gas", "ventilation, ignition-source control, line label, owner witness", "flow/pressure stability, exhaust path ready", "H2 alarm, ventilation doubt, ignition-source concern"],
+  ["SiH4", "silicon source 후보", "pyrophoric / flammable gas", "gas cabinet, detector, purge, abatement, SDS", "MFC actual vs command trend, pressure response, detector normal", "detector alarm, purge/exhaust not ready, pressure behavior unexplained"],
+  ["DCS/TCS/SiCl4", "chlorosilane silicon source 후보", "reactive/corrosive byproduct boundary", "SDS, material compatibility, scrubber/exhaust owner", "byproduct removal, corrosion indicators, pressure trend", "scrubber not ready, corrosion/leak sign, owner unknown"],
+  ["HCl", "selective chemistry / poly suppression 후보", "corrosive nonflammable gas", "scrubber compatibility, PPE/EHS boundary, acid gas detection", "selectivity trend, exhaust/scrubber health, line label", "irritation report, scrubber issue, line mismatch"],
+  ["GeH4", "SiGe Ge source 후보", "toxic + flammable hydride", "detector, abatement, gas owner, SDS", "composition trend, MFC actual, detector normal", "detector abnormal, abatement not ready, unknown leak evidence"],
+  ["PH3", "n-type dopant 후보", "toxic + flammable hydride", "toxic gas release approval, detector, EHS witness", "Rs/dopant response, MFC actual, detector normal", "any gas release doubt, detector alarm, exposure concern"],
+  ["AsH3", "n-type dopant 후보", "very toxic flammable hydride", "strict SDS/EHS/gas owner confirmation", "Rs/activation trend, detector normal, exhaust ready", "exposure suspicion, detector abnormal, owner missing"],
+  ["B2H6", "p-type dopant 후보", "toxic + flammable, moist-air risk", "purge discipline, detector, exhaust/abatement owner", "dopant response, pressure trend, detector normal", "moisture/exhaust uncertainty, detector alarm"],
+  ["N2/Ar", "purge / vent / support", "asphyxiation and pressure-energy risk", "O2 deficiency awareness, vent path, confined/local ventilation", "purge completion, pressure equalization", "O2 deficiency concern, pressure trapped, vent path unclear"]
+];
+
+const epiPeCommFlows = [
+  ["Command", "Host/MES -> equipment controller", "lot start, carrier permission, recipe selection request", "SECS/GEM concept, site-specific details excluded"],
+  ["Carrier handoff", "AMHS/OHT <-> load port", "PIO status for approach, docking, clamp, handoff completion", "SEMI E84 public concept only"],
+  ["Status", "module controllers -> scheduler", "ready, busy, wafer present, pressure stable, temperature ready", "actual state beats assumption"],
+  ["Event", "tool -> host / logs", "carrier arrived, wafer moved, PM started, PM ended, alarm cleared", "traceability and report backbone"],
+  ["Alarm", "safety/interlock layer -> tool/CE", "gas detector, exhaust, door, robot, pressure, thermal abnormal", "never bypass or infer hidden logic"],
+  ["Trace data", "PM/gas/vacuum/thermal -> PE packet", "MFC actual, pressure, temperature, pump/exhaust, metrology link", "process engineer evidence chain"]
+];
+
+const epiPeFailureModes = [
+  ["Thickness non-uniformity center-high", "center-to-edge map shifted", "temperature/radial concentration imbalance", "susceptor/flow geometry/drift", "precursor depletion or pressure residence shift", "thickness map, trace overlay, chamber history", "ellipsometry/thickness map", "temperature + pressure + MFC actual", "trend repeats after baseline wafer", "Observed center-high thickness trend; holding release until trace/metrology correlation is reviewed."],
+  ["Thickness non-uniformity edge-high", "edge profile abnormal", "edge gas concentration or thermal edge condition", "edge ring/susceptor/flow path", "exhaust symmetry or pressure conductance", "edge map, hardware change log", "thickness map", "pressure and temperature radial proxy", "edge excursion outside agreed review band", "Edge-high profile found; checking hardware boundary and gas delivery evidence before next wafer."],
+  ["Growth rate low", "target thickness under trend", "temperature energy or precursor availability low", "MFC actual, gas line readiness, heater drift", "gas cabinet/pressure supply limitation", "run-to-run thickness, MFC actual", "thickness trend", "temperature/flow/pressure trace", "MFC actual mismatch or thermal instability", "Growth rate is below baseline; process and gas delivery traces are under review."],
+  ["Growth rate high", "overgrowth risk", "temperature or precursor effective supply high", "controller calibration or flow drift", "pressure/residence increase", "thickness trend, trace compare", "thickness map", "MFC/pressure/temp trend", "trend persists across qualification wafer", "Growth rate is above baseline; release is held pending trace-to-metrology correlation."],
+  ["Rs drift high", "sheet resistance increased", "dopant incorporation/activation low", "dopant MFC/gas delivery/thermal budget issue", "dopant cylinder/line readiness or purge effect", "Rs map, dopant trace, temperature trace", "four-point probe/Rs", "dopant actual + temperature", "toxic dopant gas evidence unclear", "Rs drift observed; dopant and thermal evidence are being checked before handover."],
+  ["Rs drift low", "sheet resistance decreased", "excess dopant incorporation or memory effect", "MFC actual drift, chamber memory", "dopant residual/purge quality", "Rs trend, prior recipe family, purge history", "Rs map", "dopant MFC, purge, chamber history", "unexplained memory carryover", "Low Rs trend suggests dopant response/memory; holding release for evidence review."],
+  ["SiGe composition low Ge", "Ge fraction below trend", "Ge precursor effectiveness low", "GeH4 delivery/MFC issue", "gas supply or pressure residence", "composition map, Ge MFC actual", "XRD/SIMS/ellipsometry", "Ge MFC + pressure", "toxic hydride readiness uncertain", "Ge composition is low; gas delivery and residence evidence are being reviewed."],
+  ["SiGe composition high Ge", "Ge fraction high", "Ge precursor balance high or temperature interaction", "MFC drift or line memory", "purge/residual Ge effect", "composition trend, prior runs", "XRD/SIMS", "Ge MFC + purge history", "composition excursion repeats", "High Ge composition trend detected; reviewing precursor balance and chamber memory."],
+  ["Defect density increase", "defect map worsened", "interface prep or growth instability", "pre-clean, handling, susceptor, chamber particle source", "residual/byproduct or gas purity concern", "defect map, pre-clean evidence, PM history", "inspection map", "pre-clean + pressure + exhaust", "customer wafer risk without baseline isolation", "Defect increase observed; isolating interface, handling, and chamber evidence before release."],
+  ["Particle after PM", "particle spike after maintenance", "seasoning or recovery insufficient", "opened area, seal, robot contact, susceptor", "purge/exhaust byproduct disturbance", "particle counter, PM checklist, dummy wafer trend", "inspection/particle map", "PM recovery + purge", "particles continue after recovery wafers", "Post-PM particle spike remains; release held for recovery/seasoning evidence."],
+  ["Poor interface quality", "interface contamination signature", "pre-clean/queue time issue", "vacuum break, LL/TM exposure, pre-clean module", "residual oxygen/moisture path", "queue time, pre-clean pass, O/C data if available", "SIMS/TEM/defect", "vacuum + pre-clean log", "interface evidence unexplained", "Interface quality concern; pre-clean and vacuum continuity evidence are under review."],
+  ["Pre-clean weak", "growth nucleation unstable", "native oxide removal insufficient", "pre-clean chamber readiness", "chemistry/exhaust/byproduct path", "pre-clean log, queue time, interface result", "defect/interface metrology", "pre-clean trace + exhaust", "pre-clean pass evidence missing", "Pre-clean evidence is incomplete; no process release until owner review."],
+  ["Pumpdown abnormal slow", "LL/PM pressure curve slow", "leak/conductance/outgassing", "seal, pump, valve feedback, gauge", "exhaust restriction or purge residual", "pumpdown curve vs baseline", "not wafer metrology first", "pressure gauges + pump state", "pressure plateau or gauge disagreement", "Pumpdown is not baseline; holding before process gas readiness."],
+  ["MFC actual mismatch", "flow actual not following expected command", "gas delivery instability", "MFC, pressure supply, valve, controller", "gas cabinet or line restriction", "MFC actual trend, alarm, pressure response", "wafer result secondary", "MFC + chamber pressure", "toxic/pyrophoric gas mismatch", "MFC actual mismatch detected; gas owner and safety evidence required."],
+  ["Temperature trace abnormal", "thermal trace off baseline", "heater/lamp/susceptor interaction", "sensor, lamp zone, cooling, chuck/susceptor", "flow cooling effect", "temperature trace, zone status, recent maintenance", "thickness/Rs/slip", "temperature + PCW", "thermal instability persists", "Temperature trace is abnormal; wafer result cannot be interpreted without thermal baseline."],
+  ["Backside contamination", "backside marks or particles", "handling/susceptor contact issue", "robot blade, susceptor backside, chuck", "byproduct redeposition", "backside inspection, robot path, PM history", "backside inspection", "robot handoff + chamber history", "risk to next modules", "Backside contamination found; transfer path and chamber contact evidence under review."],
+  ["Chamber memory effect", "result depends on prior process family", "residual dopant/Ge/chlorine memory", "seasoning/purge insufficient", "residual gas/desorption", "run order, purge history, dummy trend", "Rs/composition trend", "purge + prior lot history", "memory carries into baseline wafer", "Memory effect suspected; reviewing prior run and seasoning evidence."],
+  ["Seasoning insufficient", "first wafers unstable", "surface condition not stabilized", "PM recovery sequence incomplete", "residual clean/byproduct", "dummy wafer trend, PM signoff", "thickness/Rs/particles", "recovery trend", "unstable trend after recovery", "Seasoning trend is not stable; handover held pending recovery evidence."],
+  ["Abatement not ready", "safety path unavailable", "process cannot be safely qualified", "abatement interface or exhaust owner", "hazard reduction path missing", "ready signal, owner witness, alarm state", "not a wafer-only issue", "abatement + detector state", "abatement ready missing", "Abatement readiness missing; process gas introduction is stopped."],
+  ["Gas detector alarm", "safety alarm", "gas release or detector fault must be treated as real", "gas cabinet/line/detector/exhaust", "toxic/flammable/corrosive concern", "alarm log, detector health, EHS response", "no metrology priority", "detector + exhaust", "any unresolved alarm", "Gas detector alarm occurred; work stopped and EHS/gas owner escalation required."],
+  ["Exhaust flow low", "exhaust readiness degraded", "byproduct removal and safety compromised", "duct, damper, scrubber, facility interface", "gas residence/byproduct accumulation", "exhaust trend, owner status", "wafer trend if safe", "exhaust + pressure", "exhaust not within approved state", "Exhaust flow is not ready; holding qualification until facility owner clears."],
+  ["Pressure oscillation", "pressure unstable during process", "control loop or gas/exhaust coupling", "APC/gauge/pump/MFC interaction", "gas supply pulsation", "pressure trace, MFC trend, pump status", "thickness/defect map", "pressure + flow", "oscillation repeats or safety alarm", "Pressure oscillation found; process result is not trusted until control evidence is reviewed."],
+  ["Precursor depletion loading", "pattern-dependent growth variation", "local precursor consumption effect", "flow delivery and chamber volume interaction", "pressure/residence/precursor balance", "pattern split, thickness map, flow trace", "patterned wafer metrology", "MFC + pressure", "pattern loading exceeds review limit", "Loading-effect trend observed; PE review needed before process handover."],
+  ["Selectivity loss", "poly on dielectric/masked area", "HCl/selective balance or surface prep issue", "chemistry delivery, chamber condition", "HCl/precursor balance, residual oxygen", "SEM/inspection, chemistry trace", "inspection/SEM", "HCl candidate + pressure", "unwanted growth on protected area", "Selectivity concern; release held while chemistry balance and surface prep are reviewed."],
+  ["Void / seam in trench fill", "fill not void-free", "deposition/etch balance or replenishment issue", "flow cross-section, temperature, chamber condition", "precursor replenishment/residence", "cross-section metrology, trace", "TEM/SEM cross-section", "flow/pressure/temp", "void observed in qualification", "Void risk detected; process/window evidence requires PE review."],
+  ["Edge exclusion particles", "edge particle band", "edge contact or flow redeposition", "edge ring/robot blade/susceptor", "byproduct edge transport", "edge map, robot path, hardware inspection", "particle map", "robot + exhaust", "edge band repeats", "Edge particle band observed; checking handling and edge hardware evidence."],
+  ["Slip line risk", "crystal slip signature", "thermal stress too high", "temperature ramp/nonuniformity/susceptor", "gas cooling imbalance", "inspection, thermal trace", "defect/slip inspection", "temperature trace", "slip signature on baseline", "Slip risk detected; thermal evidence review before release."],
+  ["Dopant activation drift", "electrical result not matching dose trend", "thermal budget or incorporation issue", "temperature control, dopant delivery", "dopant gas actual, purge memory", "Rs/SIMS, thermal trace, dopant trace", "Rs/SIMS", "temp + dopant MFC", "electrical drift unexplained", "Activation-related drift suspected; thermal and dopant evidence are under review."],
+  ["Queue time sensitivity", "result changes with wait time", "surface recontamination between steps", "LL/TM/pre-clean scheduling", "vacuum exposure/residuals", "timestamp chain, queue time, interface metrology", "interface/defect", "event timestamps", "queue-time effect repeats", "Queue time sensitivity found; timestamp and interface evidence are being correlated."],
+  ["LL vent particle burst", "particles after vent cycle", "vent flow disturbance", "LL filter/vent path/seal", "N2 vent quality", "LL vent trace, particle map", "particle map", "LL vent/purge", "vent-related repeat", "LL vent-related particle trend observed; vent path evidence required."],
+  ["Robot handoff scratch", "linear mark or edge damage", "mechanical handling cause", "blade, teach, aligner, slit position", "not gas first", "image, robot log, wafer path", "visual/inspection", "robot events", "physical contact evidence", "Handling mark suspected; motion path review before continuing."],
+  ["Gas cabinet pressure drift", "supply pressure unstable", "gas delivery root cause", "gas cabinet/regulator", "source supply not stable", "cabinet trend, MFC actual", "wafer trend if safe", "supply pressure + MFC", "toxic/flammable supply abnormal", "Gas supply drift detected; gas owner review required."],
+  ["Scrubber compatibility concern", "corrosive gas path question", "abatement chemistry mismatch", "scrubber/exhaust interface", "HCl/chlorosilane byproduct concern", "scrubber status, EHS owner signoff", "not wafer-first", "abatement/exhaust", "scrubber not confirmed", "Scrubber compatibility not confirmed; process gas introduction stopped."],
+  ["PCW thermal disturbance", "temperature stability poor", "cooling utility variation", "PCW flow/temp, heat exchanger", "gas cooling secondary", "PCW trend, temp trace", "thickness/Rs", "PCW + thermal", "thermal control not stable", "PCW-related thermal disturbance suspected; facility evidence needed."],
+  ["CDA/N2 purge contamination", "unexpected oxide/particle behavior", "purge gas quality or moisture", "purge line/filter/dryer", "moisture/oxygen ingress", "purge status, moisture/O2 if available", "interface/defect", "purge events", "purge quality unverified", "Purge quality concern; interface evidence held for owner review."],
+  ["Metrology mismatch", "tool trace good but metrology odd", "measurement recipe/tool issue possible", "metrology setup, wafer ID, map alignment", "not gas first", "repeat measurement, wafer ID", "metrology repeat", "trace-to-wafer ID", "metrology cannot be trusted", "Metrology mismatch found; repeat/ID evidence needed before process conclusion."],
+  ["Baseline wafer drift", "baseline no longer matches history", "tool/process baseline shifted", "hardware drift, chamber condition", "gas/thermal/vacuum drift", "baseline packet, trend chart", "baseline metrology", "long-term trace trend", "baseline outside review band", "Baseline drift observed; tool is held for trend/root cause review."],
+  ["First wafer effect", "first wafer different from later wafers", "thermal/chemical stabilization", "chamber wall state, seasoning", "residual purge/memory", "wafer order trend, dummy history", "run-order metrology", "chamber history", "first-wafer excursion repeats", "First-wafer effect observed; seasoning and chamber state evidence reviewed."],
+  ["Cross-module mismatch", "PM A and PM B results differ", "module matching issue", "PM hardware/calibration/susceptor", "gas split/line difference", "PM split data, trace overlay", "split wafer metrology", "PM trace compare", "module delta persists", "Cross-module mismatch found; PM matching evidence required."],
+  ["Post-clean recovery abnormal", "post-clean wafers unstable", "clean residue or chamber condition", "clean endpoint/recovery/seasoning", "residual byproduct/purge", "post-clean trend, recovery checklist", "particles/thickness/Rs", "clean + purge trace", "unstable recovery", "Post-clean recovery unstable; no handover until recovery trend closes."],
+  ["Host data association error", "trace does not match wafer", "data association failure", "host/load port/wafer ID mapping", "not process physics first", "carrier/wafer ID, event timestamps", "map-to-slot check", "SECS/GEM/event log", "traceability broken", "Traceability mismatch detected; process conclusion is held until data association is corrected."]
+].map((item, index) => ({
+  id: `pe-case-${index + 1}`,
+  title: item[0],
+  wafer: item[1],
+  process: item[2],
+  hardware: item[3],
+  gas: item[4],
+  evidence: item[5],
+  metrology: item[6],
+  trace: item[7],
+  stop: item[8],
+  report: item[9]
+}));
+
+function peMetricLabel(value, inverse = false) {
+  const v = inverse ? 100 - value : value;
+  if (v >= 72) return "High";
+  if (v >= 45) return "Medium";
+  return "Low";
+}
+
+function computePeKnobResults() {
+  const k = peKnobs;
+  const growth = Math.round((k.temp * 0.34) + (k.precursor * 0.38) + (k.pressure * 0.16) + (k.selectivity * 0.08));
+  const uniformity = Math.round(100 - Math.abs(k.pressure - 52) * 0.52 - Math.abs(k.precursor - 55) * 0.24 - Math.abs(k.temp - 58) * 0.18);
+  const composition = Math.round(100 - Math.abs(k.precursor - 58) * 0.5 - Math.abs(k.temp - 55) * 0.18 - Math.abs(k.purge - 70) * 0.12);
+  const defectRisk = Math.round(Math.max(8, (Math.abs(k.temp - 58) * 0.42) + (100 - k.purge) * 0.22 + (100 - k.exhaust) * 0.18 + Math.max(0, k.precursor - 72) * 0.18));
+  const particleRisk = Math.round(Math.max(6, (100 - k.purge) * 0.36 + (100 - k.exhaust) * 0.24 + Math.abs(k.pressure - 50) * 0.13));
+  const interfaceQuality = Math.round(Math.min(96, k.purge * 0.36 + k.exhaust * 0.18 + k.selectivity * 0.2 + (100 - Math.abs(k.temp - 56)) * 0.18));
+  const safetyRisk = Math.round(Math.max(5, (100 - k.exhaust) * 0.42 + (100 - k.purge) * 0.22 + Math.max(0, k.precursor - 70) * 0.16 + Math.max(0, k.pressure - 70) * 0.12));
+  return [
+    ["Growth rate", growth, false, "온도와 precursor가 올라가면 성장 경향은 강해지지만 defect/safety와 분리해서 볼 수 없습니다."],
+    ["Thickness uniformity", Math.max(0, Math.min(100, uniformity)), false, "압력/precursor/thermal balance가 중심-엣지 profile을 흔듭니다."],
+    ["Composition stability", Math.max(0, Math.min(100, composition)), false, "SiGe/dopant 계열은 precursor balance와 thermal budget에 민감합니다."],
+    ["Defect risk", Math.max(0, Math.min(100, defectRisk)), true, "온도/잔류가스/배기 준비도 흔들림은 defect hypothesis를 키웁니다."],
+    ["Particle risk", Math.max(0, Math.min(100, particleRisk)), true, "purge와 exhaust가 약하면 PM recovery와 particle evidence를 더 봐야 합니다."],
+    ["Interface quality", Math.max(0, Math.min(100, interfaceQuality)), false, "pre-clean, queue time, purge quality가 interface quality의 출발점입니다."],
+    ["Safety risk", Math.max(0, Math.min(100, safetyRisk)), true, "exhaust/abatement와 purge confidence가 낮으면 process knob보다 stop condition이 먼저입니다."]
+  ];
+}
+
+function renderEpiProcessEngineerLab() {
+  const root = document.querySelector("#epi-pe-lab");
+  if (!root) return;
+  const step = epiPeTwinSteps[activePeTwinStep] || epiPeTwinSteps[0];
+  const surface = epiSurfaceChemistrySteps[Math.min(activePeTwinStep, epiSurfaceChemistrySteps.length - 1)];
+  const activeCase = epiPeFailureModes[activePeFailureIndex] || epiPeFailureModes[0];
+  const knobResults = computePeKnobResults();
+  root.innerHTML = `
+    <div class="pe-lab-head">
+      <div>
+        <p class="eyebrow">Process Engineer Digital Twin</p>
+        <h3>장비 구조, 표면 반응, trace evidence를 한 번에 연결</h3>
+        <span>교육용 qualitative model입니다. recipe, valve sequence, detector setpoint, interlock bypass, site-specific limit는 제외합니다.</span>
+      </div>
+      <div class="pe-lab-actions">
+        <button class="secondary" type="button" data-pe-step="prev">이전 path</button>
+        <button class="primary" type="button" data-pe-step="next">다음 path</button>
+      </div>
+    </div>
+    <section class="pe-twin-grid">
+      <div class="pe-isometric" style="--pe-wafer-x:${step.wafer[0]}%; --pe-wafer-y:${step.wafer[1]}%;">
+        <div class="pe-grid-floor"></div>
+        <div class="pe-wafer"><span>W</span></div>
+        ${epiDigitalTwinNodes.map(([id, label, note, x, y, group]) => `
+          <button type="button" class="pe-node pe-${group} ${step.active.includes(id) ? "active" : ""}" data-pe-node="${id}" style="--node-x:${x}%; --node-y:${y}%">
+            <strong>${label}</strong>
+            <small>${note}</small>
+          </button>
+        `).join("")}
+        <div class="pe-flow-line material"></div>
+        <div class="pe-flow-line vacuum"></div>
+        <div class="pe-flow-line gas"></div>
+        <div class="pe-flow-line exhaust"></div>
+      </div>
+      <article class="pe-step-card">
+        <span class="pe-step-count">${String(activePeTwinStep + 1).padStart(2, "0")} / ${epiPeTwinSteps.length}</span>
+        <h3>${step.title}</h3>
+        <div class="pe-state-stack">
+          <span><b>Pressure</b>${step.pressure}</span>
+          <span><b>Atmosphere</b>${step.atmosphere}</span>
+          <span><b>Robot</b>${step.robot}</span>
+          <span><b>Door/slit</b>${step.door}</span>
+        </div>
+        <div class="pe-gas-tags">${step.gas.map(gas => `<em>${gas}</em>`).join("")}</div>
+        <p>${step.surface}</p>
+        <strong>PE 사고</strong>
+        <p>${step.processMind}</p>
+        <strong>Evidence</strong>
+        <ul>${step.evidence.map(item => `<li>${item}</li>`).join("")}</ul>
+        <div class="pe-stop">Stop: ${step.stop}</div>
+      </article>
+    </section>
+    <section class="pe-surface-knob-grid">
+      <article class="pe-surface-theater">
+        <div class="pe-section-title">
+          <p class="eyebrow">Wafer Surface Chemistry Theater</p>
+          <h3>${surface[0]}</h3>
+        </div>
+        <div class="pe-surface-stack">
+          ${surface[2].map((layer, index) => `<span style="--surface-index:${index}"><b>${layer}</b></span>`).join("")}
+        </div>
+        <p>${surface[1]}</p>
+        <div class="pe-chem-timeline">
+          ${epiSurfaceChemistrySteps.map((item, index) => `
+            <button type="button" class="${index === Math.min(activePeTwinStep, epiSurfaceChemistrySteps.length - 1) ? "active" : ""}" data-pe-surface="${index}">
+              ${index + 1}. ${item[0]}
+            </button>
+          `).join("")}
+        </div>
+      </article>
+      <article class="pe-knob-sim">
+        <div class="pe-section-title">
+          <p class="eyebrow">Process Knob -> Wafer Result</p>
+          <h3>수치 recipe가 아닌 상대 경향 모델</h3>
+        </div>
+        <div class="pe-knob-controls">
+          ${epiPeKnobDefs.map(([id, label, hint]) => `
+            <label>
+              <span><b>${label}</b><em>${peKnobs[id]}</em></span>
+              <input type="range" min="0" max="100" value="${peKnobs[id]}" data-pe-knob="${id}" aria-label="${label}" />
+              <small>${hint}</small>
+            </label>
+          `).join("")}
+        </div>
+        <div class="pe-result-bars">
+          ${knobResults.map(([label, value, inverse, note]) => `
+            <div class="${inverse ? "risk" : ""}">
+              <span><b>${label}</b><em>${value}% / ${peMetricLabel(value, inverse)}</em></span>
+              <i><u style="width:${value}%"></u></i>
+              <small>${note}</small>
+            </div>
+          `).join("")}
+        </div>
+      </article>
+    </section>
+    <section class="pe-comm-gas-grid">
+      <article class="pe-comm-map">
+        <div class="pe-section-title">
+          <p class="eyebrow">Communication / Trace Map</p>
+          <h3>Command, status, event, alarm, trace data 흐름</h3>
+        </div>
+        <div class="pe-comm-lanes">
+          ${epiPeCommFlows.map(([type, path, meaning, boundary]) => `
+            <div>
+              <b>${type}</b>
+              <strong>${path}</strong>
+              <span>${meaning}</span>
+              <small>${boundary}</small>
+            </div>
+          `).join("")}
+        </div>
+      </article>
+      <article class="pe-gas-safety">
+        <div class="pe-section-title">
+          <p class="eyebrow">Gas Safety Deep Cards</p>
+          <h3>왜 쓰고, 무엇을 멈춰야 하는가</h3>
+        </div>
+        <div class="pe-gas-card-grid">
+          ${epiPeGasCards.map(([gas, why, hazard, before, trend, stop]) => `
+            <button type="button">
+              <b>${gas}</b>
+              <span>${why}</span>
+              <em>${hazard}</em>
+              <small><strong>Before</strong> ${before}</small>
+              <small><strong>Trend</strong> ${trend}</small>
+              <small><strong>Stop</strong> ${stop}</small>
+            </button>
+          `).join("")}
+        </div>
+      </article>
+    </section>
+    <section class="pe-evidence-board">
+      <div class="pe-section-title">
+        <p class="eyebrow">Evidence Thinking Board / Failure Mode Game</p>
+        <h3>wafer result에서 PE hypothesis와 customer report까지</h3>
+      </div>
+      <div class="pe-case-picker">
+        ${epiPeFailureModes.map((item, index) => `
+          <button type="button" class="${index === activePeFailureIndex ? "active" : ""}" data-pe-case="${index}">
+            ${String(index + 1).padStart(2, "0")} ${item.title}
+          </button>
+        `).join("")}
+      </div>
+      <div class="pe-evidence-flow">
+        ${[
+          ["Symptom / wafer result", activeCase.wafer],
+          ["Process hypothesis", activeCase.process],
+          ["Hardware hypothesis", activeCase.hardware],
+          ["Gas / vacuum hypothesis", activeCase.gas],
+          ["Evidence to collect", activeCase.evidence],
+          ["Metrology to check", activeCase.metrology],
+          ["Tool trace to compare", activeCase.trace],
+          ["Stop condition", activeCase.stop],
+          ["Customer/process report", activeCase.report]
+        ].map(([label, value]) => `
+          <article>
+            <strong>${label}</strong>
+            <p>${value}</p>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+  root.querySelectorAll("[data-pe-step]").forEach(button => {
+    button.addEventListener("click", () => {
+      activePeTwinStep = button.dataset.peStep === "next"
+        ? (activePeTwinStep + 1) % epiPeTwinSteps.length
+        : (activePeTwinStep + epiPeTwinSteps.length - 1) % epiPeTwinSteps.length;
+      renderEpiProcessEngineerLab();
+    });
+  });
+  root.querySelectorAll("[data-pe-surface]").forEach(button => {
+    button.addEventListener("click", () => {
+      activePeTwinStep = Math.min(Number(button.dataset.peSurface), epiPeTwinSteps.length - 1);
+      renderEpiProcessEngineerLab();
+    });
+  });
+  root.querySelectorAll("[data-pe-knob]").forEach(input => {
+    input.addEventListener("input", () => {
+      peKnobs[input.dataset.peKnob] = Number(input.value);
+      renderEpiProcessEngineerLab();
+    });
+  });
+  root.querySelectorAll("[data-pe-case]").forEach(button => {
+    button.addEventListener("click", () => {
+      activePeFailureIndex = Number(button.dataset.peCase);
+      renderEpiProcessEngineerLab();
+    });
+  });
+}
+
 function renderEpiMasterTheater(flow, currentStep) {
   const root = document.querySelector("#epi-master-theater");
   if (!root) return;
@@ -6463,6 +6971,7 @@ function renderProcessVisual() {
   document.querySelector("#process-flow-title").textContent = flow.title;
   document.querySelector("#process-flow-summary").textContent = flow.summary;
   renderEpiMasterTheater(flow, step);
+  renderEpiProcessEngineerLab();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>
