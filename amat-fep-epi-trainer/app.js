@@ -4016,6 +4016,16 @@ let activeProcessStep = 0;
 let activePeTwinStep = 0;
 let activePeFailureIndex = 0;
 const peKnobs = { temp: 58, pressure: 46, precursor: 54, selectivity: 48, purge: 72, exhaust: 80 };
+let activeTraceScenario = state.activeTraceScenario || "epi-uniformity";
+let activeTraceView = state.activeTraceView || "trace";
+let activeTraceCaseIndex = state.activeTraceCaseIndex || 0;
+const traceEvidenceSelection = new Set(state.traceEvidenceSelection || []);
+const rtpTraceKnobs = {
+  ramp: state.rtpTraceKnobs?.ramp ?? 56,
+  pyrometry: state.rtpTraceKnobs?.pyrometry ?? 72,
+  cooling: state.rtpTraceKnobs?.cooling ?? 74,
+  ambient: state.rtpTraceKnobs?.ambient ?? 66
+};
 let activeCurriculumChapter = state.activeCurriculumChapter || curriculumChapters[0].id;
 let activeFepProcessTwin = state.activeFepProcessTwin || fepProcessTwinSteps[0].id;
 let activeFepInstallGate = state.activeFepInstallGate || fepInstallGates[0].id;
@@ -6828,6 +6838,480 @@ function renderEpiProcessEngineerLab() {
   });
 }
 
+const epiTraceScenarios = [
+  {
+    id: "epi-uniformity",
+    family: "EPI",
+    title: "EPI thickness uniformity drift",
+    symptom: "Thickness map shows a repeatable center-high or edge-high shape.",
+    likely: "thermal balance, pressure residence, gas flow distribution, chamber matching",
+    risk: "Do not release by thickness number alone. Correlate wafer map with trace trend and module history.",
+    map: "center-high",
+    traceBias: { temp: 7, pressure: 8, flow: -3, exhaust: -5, metric: 12 },
+    evidence: ["thickness-map", "temp-trace", "pressure-trace", "mfc-actual", "module-history"],
+    stop: "Trend repeats on baseline wafer or trace is not associated with the correct wafer ID.",
+    report: "Thickness profile drift is repeatable; trace, module history, and metrology association are under PE review before release."
+  },
+  {
+    id: "epi-rs-drift",
+    family: "EPI",
+    title: "EPI Rs / dopant response drift",
+    symptom: "Sheet resistance moves while thickness looks roughly stable.",
+    likely: "dopant delivery response, thermal budget, purge memory, prior chamber state",
+    risk: "Treat hydride/dopant gas readiness and trace association as safety-critical evidence.",
+    map: "gradient",
+    traceBias: { temp: -4, pressure: 2, flow: 10, exhaust: -2, metric: -14 },
+    evidence: ["rs-map", "dopant-trace", "temp-trace", "purge-history", "gas-owner"],
+    stop: "Toxic dopant gas readiness is uncertain or electrical trend cannot be tied to a verified trace.",
+    report: "Electrical drift is present; dopant response, thermal trace, and purge history are being correlated."
+  },
+  {
+    id: "epi-particle-pm",
+    family: "EPI",
+    title: "Post-PM particle recovery",
+    symptom: "Particle count spikes after opened-chamber work or recovery.",
+    likely: "seasoning recovery, robot contact, seal disturbance, purge/exhaust disturbance",
+    risk: "Do not compensate with process knobs. Isolate handling, recovery wafer trend, and opened-area evidence.",
+    map: "spot",
+    traceBias: { temp: 1, pressure: 5, flow: 0, exhaust: -12, metric: 18 },
+    evidence: ["particle-map", "pm-history", "dummy-trend", "robot-events", "exhaust-ready"],
+    stop: "Particle trend does not decay after approved recovery path or backside/edge damage appears.",
+    report: "Post-PM particle trend remains; recovery evidence and transfer-path checks are required before handover."
+  },
+  {
+    id: "rtp-overshoot",
+    family: "RTP",
+    title: "RTP thermal overshoot / slip risk",
+    symptom: "Thermal trace overshoots or wafer inspection suggests stress signature.",
+    likely: "lamp zone response, pyrometry confidence, cooling margin, wafer emissivity condition",
+    risk: "Thermal excursions can damage wafer or invalidate electrical interpretation.",
+    map: "ring",
+    traceBias: { temp: 16, pressure: 0, flow: 0, exhaust: 1, metric: 9 },
+    evidence: ["thermal-trace", "lamp-zone", "pyrometry", "pcw", "inspection"],
+    stop: "Thermal control is unstable, pyrometry confidence is low, or stress/slip evidence appears.",
+    report: "RTP thermal trace is not baseline; lamp/pyrometry/cooling evidence is under review before qualification."
+  },
+  {
+    id: "rtp-pcw-drift",
+    family: "RTP",
+    title: "RTP cooling utility disturbance",
+    symptom: "Repeatability worsens later in the run or cool-down shape changes.",
+    likely: "PCW temperature/flow variation, heat exchanger capacity, facility stability",
+    risk: "Cooling utility drift can look like process drift unless facility evidence is separated.",
+    map: "edge-high",
+    traceBias: { temp: 8, pressure: 0, flow: 0, exhaust: 0, metric: 11 },
+    evidence: ["pcw", "thermal-trace", "run-order", "facility-owner", "baseline-trend"],
+    stop: "Cooling evidence is not stable or owner clearance is missing.",
+    report: "Cooling-related repeatability drift suspected; facility trace and thermal overlay are required before release."
+  },
+  {
+    id: "rtp-pyrometry",
+    family: "RTP",
+    title: "RTP pyrometry / emissivity uncertainty",
+    symptom: "Trace appears plausible but wafer result does not match expected thermal response.",
+    likely: "pyrometry confidence, backside condition, wafer emissivity, alignment, calibration context",
+    risk: "A believable trace is not enough if measurement association or sensor confidence is weak.",
+    map: "checker",
+    traceBias: { temp: -7, pressure: 0, flow: 0, exhaust: 0, metric: -10 },
+    evidence: ["pyrometry", "wafer-id", "metrology-repeat", "backside-check", "thermal-trace"],
+    stop: "Trace-to-wafer association or pyrometry confidence cannot be defended.",
+    report: "Thermal result mismatch is under review; wafer ID, pyrometry confidence, and repeat metrology are being checked."
+  }
+];
+
+const epiTraceEvidenceDeck = [
+  ["thickness-map", "Thickness map", "Profile shape: center, edge, ring, local spot"],
+  ["rs-map", "Rs map", "Electrical response: dopant/activation clue"],
+  ["particle-map", "Particle map", "Handling, recovery, byproduct, or surface source"],
+  ["temp-trace", "Temperature trace", "Heater/lamp/susceptor stability clue"],
+  ["thermal-trace", "RTP thermal trace", "Ramp, soak, spike, cool-down behavior"],
+  ["pressure-trace", "Pressure trace", "Residence, pumpdown, leak, conductance clue"],
+  ["mfc-actual", "MFC actual", "Gas delivery follows expected command trend"],
+  ["dopant-trace", "Dopant trace", "Toxic gas delivery response evidence"],
+  ["purge-history", "Purge history", "Memory and residual removal confidence"],
+  ["dummy-trend", "Dummy/baseline trend", "Recovery or first-wafer effect evidence"],
+  ["robot-events", "Robot events", "Handling or handoff timing evidence"],
+  ["pcw", "PCW utility", "Cooling water temperature/flow stability"],
+  ["pyrometry", "Pyrometry", "Sensor confidence and emissivity context"],
+  ["wafer-id", "Wafer ID association", "Correct wafer, slot, trace, and metrology link"],
+  ["gas-owner", "Gas owner signoff", "Gas cabinet, detector, exhaust, abatement readiness"],
+  ["facility-owner", "Facility owner status", "Exhaust, PCW, CDA/N2, power owner evidence"],
+  ["module-history", "Module history", "Recent PM, matching, clean, prior process family"],
+  ["inspection", "Inspection", "Defect, slip, backside, edge signature"],
+  ["metrology-repeat", "Metrology repeat", "Confirm tool setup before blaming process"]
+];
+
+const rtpTraceKnobDefs = [
+  ["ramp", "Ramp aggressiveness", "Higher value means more thermal stress in this education model."],
+  ["pyrometry", "Pyrometry confidence", "Sensor/emissivity confidence before trusting the temperature trace."],
+  ["cooling", "Cooling margin", "PCW and thermal recovery margin."],
+  ["ambient", "Ambient readiness", "N2/CDA/exhaust/facility readiness context."]
+];
+
+function getTraceScenario() {
+  return epiTraceScenarios.find(item => item.id === activeTraceScenario) || epiTraceScenarios[0];
+}
+
+function tracePointSeries(scenario, key, count = 34) {
+  const bias = scenario.traceBias[key] || 0;
+  return Array.from({ length: count }, (_, index) => {
+    const t = index / (count - 1);
+    const wave = Math.sin(t * Math.PI * 2.35) * 6 + Math.cos(t * Math.PI * 4.1) * 2.5;
+    const phase = key === "temp" ? 62 : key === "pressure" ? 46 : key === "flow" ? 54 : key === "exhaust" ? 58 : 50;
+    const rtpPulse = scenario.family === "RTP" && key === "temp" ? Math.sin(Math.min(1, t * 1.25) * Math.PI) * 24 : 0;
+    const epiRamp = scenario.family === "EPI" && key === "flow" ? Math.min(1, t * 2) * 10 : 0;
+    return Math.max(6, Math.min(96, phase + bias + wave + rtpPulse + epiRamp));
+  });
+}
+
+function traceSvgPath(points, width, height, min = 0, max = 100) {
+  return points.map((value, index) => {
+    const x = 34 + (index / (points.length - 1)) * (width - 58);
+    const y = 18 + (1 - (value - min) / (max - min)) * (height - 42);
+    return `${index ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+}
+
+function traceWaferValue(scenario, row, col, size) {
+  const center = (size - 1) / 2;
+  const dx = (col - center) / center;
+  const dy = (row - center) / center;
+  const r = Math.sqrt(dx * dx + dy * dy);
+  let value = 48;
+  if (scenario.map === "center-high") value += (1 - r) * 30;
+  if (scenario.map === "edge-high") value += r * 28;
+  if (scenario.map === "ring") value += (1 - Math.abs(r - 0.62) * 2.2) * 24;
+  if (scenario.map === "spot") value += Math.max(0, 1 - Math.sqrt((dx - 0.35) ** 2 + (dy + 0.2) ** 2) * 2.8) * 36;
+  if (scenario.map === "gradient") value += (dx - dy) * 18;
+  if (scenario.map === "checker") value += ((row + col) % 2 ? 10 : -8) + (Math.sin(row * 1.8) * 4);
+  return Math.max(10, Math.min(96, Math.round(value)));
+}
+
+function traceEvidenceScore(scenario) {
+  const required = scenario.evidence || [];
+  const hits = required.filter(item => traceEvidenceSelection.has(item)).length;
+  const misses = required.length - hits;
+  const extras = [...traceEvidenceSelection].filter(item => !required.includes(item)).length;
+  const score = Math.max(0, Math.min(100, Math.round((hits / Math.max(1, required.length)) * 92 - extras * 4)));
+  return { score, hits, misses, extras, required };
+}
+
+function computeRtpThermalScores() {
+  const k = rtpTraceKnobs;
+  const activation = Math.round(k.ramp * 0.25 + k.pyrometry * 0.28 + k.ambient * 0.18 + k.cooling * 0.12);
+  const slipRisk = Math.round(Math.max(3, k.ramp * 0.42 + (100 - k.cooling) * 0.34 + (100 - k.pyrometry) * 0.1));
+  const diffusionRisk = Math.round(Math.max(4, k.ramp * 0.22 + (100 - k.cooling) * 0.22 + Math.max(0, k.ambient - 72) * 0.1));
+  const repeatability = Math.round(Math.min(98, k.pyrometry * 0.34 + k.cooling * 0.28 + k.ambient * 0.22 + (100 - Math.abs(k.ramp - 54)) * 0.1));
+  return { activation, slipRisk, diffusionRisk, repeatability };
+}
+
+function rtpCurvePath(width, height) {
+  const k = rtpTraceKnobs;
+  const overshoot = (k.ramp - 50) * 0.23 + (100 - k.pyrometry) * 0.11;
+  const coolLag = (100 - k.cooling) * 0.15;
+  const points = [
+    [18, 88],
+    [70, 78],
+    [130, 34 - overshoot],
+    [205, 22 - overshoot * 0.25],
+    [278, 28],
+    [345, 66 + coolLag],
+    [width - 18, 83 + coolLag * 0.25]
+  ];
+  return points.map(([x, y], index) => `${index ? "L" : "M"} ${x.toFixed(1)} ${Math.max(8, Math.min(height - 8, y)).toFixed(1)}`).join(" ");
+}
+
+function traceGameCase() {
+  const scenario = getTraceScenario();
+  const cases = [
+    {
+      scenario: "epi-uniformity",
+      ask: "Uniformity drift가 보이면 가장 먼저 무엇을 연결해서 보나?",
+      choices: [
+        ["Thickness map + temp/pressure/MFC overlay", true, "Correct. Map shape and module trace must agree before action."],
+        ["Immediately tune recipe target", false, "Wrong. Recipe-like action without evidence is outside this safe training boundary."],
+        ["Ignore trace if metrology exists", false, "Wrong. Metrology alone cannot explain module state."]
+      ],
+      weakness: "trace-to-metrology correlation"
+    },
+    {
+      scenario: "epi-rs-drift",
+      ask: "Rs drift에서 thickness가 안정적이면 어떤 evidence가 더 중요해지나?",
+      choices: [
+        ["Dopant trace + thermal trace + purge history", true, "Correct. Electrical result needs dopant and thermal evidence."],
+        ["Only FOUP load time", false, "Queue time can matter, but this symptom needs electrical/process evidence first."],
+        ["Pump model name", false, "Pump identity alone is not an evidence chain."]
+      ],
+      weakness: "electrical response evidence"
+    },
+    {
+      scenario: "epi-particle-pm",
+      ask: "Post-PM particle spike에서 피해야 할 행동은?",
+      choices: [
+        ["Use recovery trend and opened-area history", false, "This is useful evidence, not the wrong action."],
+        ["Change process knobs to hide particles", true, "Correct. Do not mask recovery/handling evidence with process knobs."],
+        ["Check backside/edge signature", false, "This is part of the evidence chain."]
+      ],
+      weakness: "post-PM recovery discipline"
+    },
+    {
+      scenario: "rtp-overshoot",
+      ask: "RTP overshoot에서 stop condition에 가장 가까운 것은?",
+      choices: [
+        ["Thermal instability or slip/stress evidence", true, "Correct. Thermal safety and wafer damage risk come first."],
+        ["Operator preference", false, "Stop condition must be evidence and safety driven."],
+        ["Wafer color looks normal", false, "Visual impression is not enough."]
+      ],
+      weakness: "RTP thermal risk"
+    },
+    {
+      scenario: "rtp-pcw-drift",
+      ask: "Cooling drift가 의심되면 누구의 evidence가 필요한가?",
+      choices: [
+        ["Facility/PCW owner status plus thermal overlay", true, "Correct. Separate facility drift from chamber/process drift."],
+        ["Only gas cabinet owner", false, "Gas can matter elsewhere, but PCW drift needs cooling utility evidence."],
+        ["Only metrology operator", false, "Metrology confirms result, not utility stability."]
+      ],
+      weakness: "facility evidence separation"
+    },
+    {
+      scenario: "rtp-pyrometry",
+      ask: "Trace는 좋아 보이는데 wafer result가 이상하면?",
+      choices: [
+        ["Verify wafer ID, pyrometry confidence, repeat metrology", true, "Correct. First prove the evidence chain is valid."],
+        ["Assume physics is impossible", false, "Unverified data association can mislead."],
+        ["Skip sensor context", false, "Pyrometry/emissivity context is central."]
+      ],
+      weakness: "data association discipline"
+    }
+  ];
+  return cases.find(item => item.scenario === scenario.id) || cases[activeTraceCaseIndex % cases.length] || cases[0];
+}
+
+function renderEpiTraceLab() {
+  const root = document.querySelector("#epi-trace-lab");
+  if (!root) return;
+  const scenario = getTraceScenario();
+  const score = traceEvidenceScore(scenario);
+  const selectedDeck = epiTraceEvidenceDeck.filter(item => traceEvidenceSelection.has(item[0]));
+  const mapSize = 9;
+  const svgWidth = 430;
+  const svgHeight = 172;
+  const lines = [
+    ["Temperature", "temp", "trace-temp"],
+    ["Pressure", "pressure", "trace-pressure"],
+    ["MFC actual", "flow", "trace-flow"],
+    ["Exhaust", "exhaust", "trace-exhaust"],
+    ["Metrology", "metric", "trace-metric"]
+  ].map(([label, key, className]) => ({ label, key, className, points: tracePointSeries(scenario, key) }));
+  const rtpScores = computeRtpThermalScores();
+  const game = traceGameCase();
+  const attempts = state.traceCaseAttempts || {};
+  const weakness = state.traceWeakness || {};
+  root.innerHTML = `
+    <div class="trace-lab-head">
+      <div>
+        <p class="eyebrow">Trace / Metrology Intelligence Lab</p>
+        <h3>Wafer map, tool trace, RTP thermal curve를 한 화면에서 연결</h3>
+        <span>합성 교육 모델입니다. 실제 recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 의도적으로 제외합니다.</span>
+      </div>
+      <div class="trace-scenario-strip">
+        ${epiTraceScenarios.map(item => `
+          <button type="button" class="${item.id === scenario.id ? "active" : ""}" data-trace-scenario="${item.id}">
+            <b>${item.family}</b><span>${item.title}</span>
+          </button>
+        `).join("")}
+      </div>
+    </div>
+    <div class="trace-view-tabs" role="tablist" aria-label="Trace lab view">
+      ${[["trace", "Trace overlay"], ["map", "Wafer map"], ["evidence", "Evidence packet"], ["rtp", "RTP thermal twin"], ["game", "Case game"]].map(([id, label]) => `
+        <button type="button" class="${activeTraceView === id ? "active" : ""}" data-trace-view="${id}" aria-selected="${activeTraceView === id}">${label}</button>
+      `).join("")}
+    </div>
+    <section class="trace-main-grid" data-view="${activeTraceView}">
+      <article class="trace-plot-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">${scenario.family} scenario</p>
+          <h3>${scenario.title}</h3>
+          <span>${scenario.symptom}</span>
+        </div>
+        <svg class="trace-overlay-chart" viewBox="0 0 ${svgWidth} ${svgHeight}" role="img" aria-label="Synthetic trace overlay for ${scenario.title}">
+          <title>${scenario.title} synthetic trace overlay</title>
+          <desc>Relative educational trace lines for temperature, pressure, MFC actual, exhaust, and metrology. No real recipe or setpoint is shown.</desc>
+          <g class="trace-grid">
+            ${[0, 1, 2, 3].map(i => `<line x1="30" y1="${24 + i * 36}" x2="${svgWidth - 18}" y2="${24 + i * 36}"></line>`).join("")}
+            ${[0, 1, 2, 3, 4].map(i => `<line x1="${34 + i * 82}" y1="12" x2="${34 + i * 82}" y2="${svgHeight - 22}"></line>`).join("")}
+          </g>
+          ${lines.map(item => `<path class="${item.className}" d="${traceSvgPath(item.points, svgWidth, svgHeight)}"></path>`).join("")}
+          <text x="34" y="164">carrier/wafer event chain -> process interval -> metrology association</text>
+        </svg>
+        <div class="trace-legend">
+          ${lines.map(item => `<span class="${item.className}"><i></i>${item.label}</span>`).join("")}
+        </div>
+      </article>
+      <article class="trace-wafer-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">Wafer map mental model</p>
+          <h3>결과 shape를 subsystem 질문으로 번역</h3>
+          <span>색은 상대값입니다. 실제 spec/acceptance limit이 아닙니다.</span>
+        </div>
+        <div class="trace-wafer-map" aria-label="relative wafer map">
+          ${Array.from({ length: mapSize * mapSize }, (_, index) => {
+            const row = Math.floor(index / mapSize);
+            const col = index % mapSize;
+            const value = traceWaferValue(scenario, row, col, mapSize);
+            const dx = col - (mapSize - 1) / 2;
+            const dy = row - (mapSize - 1) / 2;
+            const hidden = Math.sqrt(dx * dx + dy * dy) > 4.25;
+            const hue = Math.round(155 + value * 0.65);
+            const light = Math.round(18 + value * 0.34);
+            return `<span class="${hidden ? "empty" : ""}" style="--trace-map:${value}; --trace-hue:${hue}; --trace-light:${light}%;" aria-label="map cell ${row + 1}-${col + 1} ${value}">${hidden ? "" : value}</span>`;
+          }).join("")}
+        </div>
+        <div class="trace-hypothesis">
+          <b>Likely subsystem questions</b>
+          <p>${scenario.likely}</p>
+          <b>Stop condition</b>
+          <p>${scenario.stop}</p>
+        </div>
+      </article>
+      <article class="trace-evidence-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">Evidence board</p>
+          <h3>선택한 증거가 hypothesis를 지지하는가</h3>
+          <span>필수 evidence ${score.hits}/${score.required.length}, extra ${score.extras}, score ${score.score}</span>
+        </div>
+        <div class="trace-evidence-deck">
+          ${epiTraceEvidenceDeck.map(([id, label, hint]) => `
+            <button type="button" class="${traceEvidenceSelection.has(id) ? "active" : ""} ${scenario.evidence.includes(id) ? "needed" : ""}" data-trace-evidence="${id}">
+              <b>${label}</b><span>${hint}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="trace-report-card">
+          <strong>Customer report draft</strong>
+          <p>${scenario.report}</p>
+          <small>${selectedDeck.length ? `Selected: ${selectedDeck.map(item => item[1]).join(", ")}` : "증거 카드를 선택하면 보고 패킷에 들어갑니다."}</small>
+        </div>
+      </article>
+      <article class="rtp-twin-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">RTP Thermal Twin</p>
+          <h3>Ramp, soak, cool을 wafer risk로 번역</h3>
+          <span>상대 교육 모델입니다. 실제 온도/시간 setpoint를 의미하지 않습니다.</span>
+        </div>
+        <svg class="rtp-curve" viewBox="0 0 430 122" role="img" aria-label="RTP educational thermal curve">
+          <title>RTP relative thermal curve</title>
+          <desc>Relative ramp, soak, and cool-down curve influenced by training knobs.</desc>
+          <path class="rtp-zone" d="M18 92 H412"></path>
+          <path class="rtp-thermal" d="${rtpCurvePath(430, 122)}"></path>
+          <text x="24" y="112">ramp</text><text x="162" y="112">soak/spike</text><text x="320" y="112">cool</text>
+        </svg>
+        <div class="rtp-knob-grid">
+          ${rtpTraceKnobDefs.map(([id, label, hint]) => `
+            <label>
+              <span><b>${label}</b><em>${rtpTraceKnobs[id]}</em></span>
+              <input type="range" min="0" max="100" value="${rtpTraceKnobs[id]}" data-rtp-trace-knob="${id}" aria-label="${label}" />
+              <small>${hint}</small>
+            </label>
+          `).join("")}
+        </div>
+        <div class="rtp-score-grid">
+          ${[
+            ["Activation confidence", rtpScores.activation, false],
+            ["Slip/stress risk", rtpScores.slipRisk, true],
+            ["Diffusion risk", rtpScores.diffusionRisk, true],
+            ["Repeatability", rtpScores.repeatability, false]
+          ].map(([label, value, risk]) => `
+            <span class="${risk ? "risk" : ""}"><b>${label}</b><i><u style="width:${value}%"></u></i><em>${value}</em></span>
+          `).join("")}
+        </div>
+      </article>
+      <article class="trace-game-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">CE / PE case game</p>
+          <h3>${game.ask}</h3>
+          <span>현재 시나리오의 즉시 판단 훈련입니다. 오답은 weakness에 저장됩니다.</span>
+        </div>
+        <div class="trace-game-choices">
+          ${game.choices.map(([label, good], index) => `
+            <button type="button" class="${attempts[`${scenario.id}:${index}`] || ""}" data-trace-choice="${index}" data-good="${good}">
+              ${label}
+            </button>
+          `).join("")}
+        </div>
+        <div class="trace-game-feedback" id="trace-game-feedback">
+          ${Object.keys(weakness).length ? `Weakness top: ${Object.entries(weakness).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v}`).join(" / ")}` : "아직 저장된 오답이 없습니다."}
+        </div>
+      </article>
+    </section>
+    <div class="trace-boundary-note">
+      <strong>Safety boundary</strong>
+      <span>이 lab은 공개자료 기반 mental model과 synthetic data입니다. 실제 gas hook-up, qualification, detector setpoint, recipe, valve sequence, interlock logic, site-specific criteria는 공식 교육과 승인 문서가 우선입니다.</span>
+    </div>
+  `;
+
+  root.querySelectorAll("[data-trace-scenario]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeTraceScenario = button.dataset.traceScenario;
+      state.activeTraceScenario = activeTraceScenario;
+      traceEvidenceSelection.clear();
+      state.traceEvidenceSelection = [];
+      persistState();
+      renderEpiTraceLab();
+    });
+  });
+  root.querySelectorAll("[data-trace-view]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeTraceView = button.dataset.traceView;
+      state.activeTraceView = activeTraceView;
+      persistState();
+      renderEpiTraceLab();
+    });
+  });
+  root.querySelectorAll("[data-trace-evidence]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.traceEvidence;
+      if (traceEvidenceSelection.has(id)) traceEvidenceSelection.delete(id);
+      else traceEvidenceSelection.add(id);
+      state.traceEvidenceSelection = [...traceEvidenceSelection];
+      persistState();
+      renderEpiTraceLab();
+    });
+  });
+  root.querySelectorAll("[data-rtp-trace-knob]").forEach(input => {
+    input.addEventListener("input", () => {
+      rtpTraceKnobs[input.dataset.rtpTraceKnob] = Number(input.value);
+      state.rtpTraceKnobs = { ...rtpTraceKnobs };
+      persistState();
+      renderEpiTraceLab();
+    });
+  });
+  root.querySelectorAll("[data-trace-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.traceChoice);
+      const good = button.dataset.good === "true";
+      state.traceCaseAttempts = state.traceCaseAttempts || {};
+      state.traceCaseAttempts[`${scenario.id}:${index}`] = good ? "good" : "bad";
+      if (!good) {
+        state.traceWeakness = state.traceWeakness || {};
+        state.traceWeakness[game.weakness] = (state.traceWeakness[game.weakness] || 0) + 1;
+      }
+      persistState();
+      const feedback = root.querySelector("#trace-game-feedback");
+      if (feedback) {
+        const detail = game.choices[index]?.[2] || "";
+        feedback.textContent = `${good ? "Correct" : "Review"}: ${detail}`;
+      }
+      root.querySelectorAll("[data-trace-choice]").forEach(choice => {
+        const isGood = choice.dataset.good === "true";
+        choice.classList.toggle("good", isGood);
+        choice.classList.toggle("bad", !isGood && choice === button);
+      });
+    });
+  });
+}
+
 function renderEpiMasterTheater(flow, currentStep) {
   const root = document.querySelector("#epi-master-theater");
   if (!root) return;
@@ -6972,6 +7456,7 @@ function renderProcessVisual() {
   document.querySelector("#process-flow-summary").textContent = flow.summary;
   renderEpiMasterTheater(flow, step);
   renderEpiProcessEngineerLab();
+  renderEpiTraceLab();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>

@@ -1484,6 +1484,433 @@ main,
   }
 }
 
+/* 20260715 Trace OS: metrology, RTP twin, and evidence game */
+.epi-trace-lab {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0 18px;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(0, 255, 149, 0.12), transparent 30%),
+    radial-gradient(circle at 100% 8%, rgba(94, 231, 255, 0.11), transparent 32%),
+    linear-gradient(145deg, rgba(1, 10, 13, 0.98), rgba(3, 19, 17, 0.96));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.trace-lab-head,
+.trace-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1.05fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.trace-lab-head {
+  align-items: start;
+}
+
+.trace-lab-head h3,
+.trace-lab-head p,
+.trace-lab-head span,
+.trace-panel-title h3,
+.trace-panel-title p,
+.trace-panel-title span {
+  margin: 0;
+}
+
+.trace-lab-head h3,
+.trace-panel-title h3 {
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.trace-lab-head h3 {
+  margin-top: 4px;
+  font-size: clamp(22px, 2vw, 30px);
+}
+
+.trace-lab-head span,
+.trace-panel-title span,
+.trace-hypothesis p,
+.trace-report-card p,
+.trace-report-card small,
+.trace-boundary-note span {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.trace-scenario-strip,
+.trace-view-tabs,
+.trace-evidence-deck,
+.trace-game-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.trace-scenario-strip button,
+.trace-view-tabs button,
+.trace-evidence-deck button,
+.trace-game-choices button {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+}
+
+.trace-scenario-strip button {
+  display: grid;
+  flex: 1 1 210px;
+  gap: 4px;
+  padding: 10px;
+  text-align: left;
+}
+
+.trace-scenario-strip b {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+}
+
+.trace-scenario-strip span {
+  color: rgba(236, 255, 248, 0.78);
+}
+
+.trace-scenario-strip button.active,
+.trace-view-tabs button.active,
+.trace-evidence-deck button.active,
+.trace-game-choices button.good {
+  border-color: rgba(0, 255, 149, 0.72);
+  background: rgba(0, 255, 149, 0.15);
+  color: #ffffff;
+}
+
+.trace-view-tabs button {
+  padding: 8px 10px;
+}
+
+.trace-main-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trace-plot-panel,
+.trace-wafer-panel,
+.trace-evidence-panel,
+.rtp-twin-panel,
+.trace-game-panel,
+.trace-boundary-note {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(236, 255, 248, 0.12);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 255, 149, 0.024)),
+    #081b1d;
+}
+
+.trace-plot-panel {
+  grid-column: span 2;
+}
+
+.trace-overlay-chart,
+.rtp-curve {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 122px;
+  overflow: visible;
+}
+
+.trace-grid line {
+  stroke: rgba(236, 255, 248, 0.1);
+  stroke-width: 1;
+}
+
+.trace-overlay-chart path,
+.rtp-curve path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trace-overlay-chart text,
+.rtp-curve text {
+  fill: rgba(236, 255, 248, 0.58);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 10px;
+}
+
+.trace-temp { stroke: #5ee7ff; }
+.trace-pressure { stroke: #b98cff; }
+.trace-flow { stroke: #25d366; }
+.trace-exhaust { stroke: #ffd38a; }
+.trace-metric { stroke: #ff78a8; }
+
+.trace-overlay-chart .trace-temp,
+.trace-overlay-chart .trace-pressure,
+.trace-overlay-chart .trace-flow,
+.trace-overlay-chart .trace-exhaust,
+.trace-overlay-chart .trace-metric {
+  stroke-width: 2.4;
+}
+
+.trace-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.trace-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(236, 255, 248, 0.78);
+  font-size: 12px;
+}
+
+.trace-legend i {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.trace-wafer-map {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 360px;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0 auto;
+  padding: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  background:
+    radial-gradient(circle, rgba(94, 231, 255, 0.09), rgba(0, 0, 0, 0.12) 66%, transparent 67%),
+    #061315;
+}
+
+.trace-wafer-map span {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 20%, rgba(255, 255, 255, 0.38), transparent 24%),
+    hsl(var(--trace-hue), 78%, var(--trace-light));
+  color: #00140d;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 9px;
+  font-weight: 950;
+}
+
+.trace-wafer-map .empty {
+  background: transparent;
+  color: transparent;
+}
+
+.trace-hypothesis,
+.trace-report-card,
+.trace-game-feedback {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.trace-hypothesis b,
+.trace-report-card strong,
+.trace-boundary-note strong,
+.trace-game-feedback {
+  color: #ffffff;
+}
+
+.trace-evidence-deck {
+  overflow: visible;
+  padding-right: 0;
+}
+
+.trace-evidence-deck button {
+  display: grid;
+  flex: 1 1 180px;
+  gap: 5px;
+  padding: 10px;
+  text-align: left;
+}
+
+.trace-evidence-deck button.needed:not(.active) {
+  border-color: rgba(255, 211, 138, 0.28);
+}
+
+.trace-evidence-deck b,
+.trace-game-choices button {
+  color: #ffffff;
+}
+
+.trace-evidence-deck span {
+  color: rgba(236, 255, 248, 0.66);
+  line-height: 1.38;
+}
+
+.rtp-thermal {
+  stroke: #5ee7ff;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 7px rgba(94, 231, 255, 0.28));
+}
+
+.rtp-zone {
+  stroke: rgba(236, 255, 248, 0.14);
+  stroke-width: 2;
+}
+
+.rtp-knob-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.rtp-knob-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.rtp-knob-grid label > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.rtp-knob-grid em,
+.rtp-score-grid em {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-style: normal;
+}
+
+.rtp-knob-grid input {
+  width: 100%;
+  accent-color: #25d366;
+}
+
+.rtp-knob-grid small {
+  color: rgba(236, 255, 248, 0.64);
+  line-height: 1.35;
+}
+
+.rtp-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.rtp-score-grid span {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.rtp-score-grid b {
+  color: #ffffff;
+}
+
+.rtp-score-grid i {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rtp-score-grid u {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #25d366, #5ee7ff);
+}
+
+.rtp-score-grid .risk u {
+  background: linear-gradient(90deg, #25d366, #ffd38a, #ff78a8);
+}
+
+.trace-game-choices button {
+  flex: 1 1 210px;
+  padding: 10px;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.trace-game-choices button.bad {
+  border-color: rgba(255, 120, 168, 0.7);
+  background: rgba(255, 120, 168, 0.12);
+}
+
+.trace-boundary-note {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border-color: rgba(255, 211, 138, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 211, 138, 0.07), transparent),
+    #081718;
+}
+
+@media (max-width: 1180px) {
+  .trace-lab-head,
+  .trace-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-plot-panel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .epi-trace-lab {
+    padding: 12px;
+  }
+
+  .trace-scenario-strip button,
+  .trace-evidence-deck button,
+  .trace-game-choices button {
+    flex-basis: 100%;
+  }
+
+  .rtp-score-grid,
+  .trace-boundary-note {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-wafer-map span {
+    font-size: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .trace-view-tabs button {
+    flex: 1 1 135px;
+  }
+
+  .trace-wafer-map {
+    gap: 2px;
+    padding: 8px;
+  }
+}
+
 /* Life OS v3: knowledge graph, adaptive routines, and instant remediation */
 .knowledge-graph-panel,
 .fep-mastery-spine,
