@@ -7682,6 +7682,8 @@ function renderEpiTraceLab() {
     try {
       const data = await saveTracePacketToD1(state.traceImportPacket);
       traceRemoteSaveStatus = `D1 저장 완료: ${data.entry?.id || state.traceImportPacket.id}`;
+      traceImportStatus = traceRemoteSaveStatus;
+      state.traceImportStatus = traceRemoteSaveStatus;
       state.traceImportPacket = { ...state.traceImportPacket, syncStatus: "D1 saved", remoteSavedAt: new Date().toISOString() };
       persistState();
       renderEpiTraceLab();
