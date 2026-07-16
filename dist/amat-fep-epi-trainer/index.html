@@ -18,7 +18,7 @@
       document.documentElement.style.colorScheme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260717-tracecsv2" />
+  <link rel="stylesheet" href="styles.css?v=20260717-webgl1" />
 </head>
 <body class="auth-public entry-choice-open">
   <div id="entry-choice-gate" class="entry-choice-gate" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
@@ -245,6 +245,56 @@
               <button class="primary" type="button" id="process-next-step">다음 단계</button>
             </div>
           </div>
+          <section class="webgl-twin" id="webgl-twin" aria-label="3D WebGL equipment digital twin">
+            <div class="webgl-twin-head">
+              <div>
+                <p class="eyebrow">3D Equipment Digital Twin</p>
+                <h2>FOUP -> EFEM -> Load Lock -> TM -> PM 흐름을 3D로 보기</h2>
+                <p>공개자료 기반 mental model입니다. 실제 recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 의도적으로 제외합니다.</p>
+              </div>
+              <div class="webgl-twin-actions" aria-label="3D twin controls">
+                <button class="secondary" type="button" data-webgl-step="prev">이전</button>
+                <button class="primary" type="button" data-webgl-play>재생</button>
+                <button class="secondary" type="button" data-webgl-step="next">다음</button>
+              </div>
+            </div>
+            <div class="webgl-twin-shell">
+              <div class="webgl-canvas-wrap" id="webgl-canvas-wrap">
+                <div class="webgl-label-layer" id="webgl-label-layer"></div>
+              </div>
+              <aside class="webgl-side-panel">
+                <div class="webgl-route-panel">
+                  <strong>Wafer route</strong>
+                  <div class="webgl-route-buttons">
+                    <button type="button" class="active" data-webgl-route="epi-a">EPI PM-A</button>
+                    <button type="button" data-webgl-route="epi-b">EPI PM-B</button>
+                    <button type="button" data-webgl-route="rtp">RTP PM</button>
+                  </div>
+                </div>
+                <div class="webgl-mode-panel">
+                  <strong>Overlay</strong>
+                  <div class="webgl-mode-buttons">
+                    <button type="button" class="active" data-webgl-mode="material">Wafer path</button>
+                    <button type="button" data-webgl-mode="vacuum">Vacuum</button>
+                    <button type="button" data-webgl-mode="gas">Gas/facility</button>
+                    <button type="button" data-webgl-mode="comm">Communication</button>
+                  </div>
+                </div>
+                <label class="webgl-speed-control">
+                  <span>Animation speed <b id="webgl-speed-value">1.0x</b></span>
+                  <input type="range" min="40" max="180" value="100" data-webgl-speed aria-label="3D twin animation speed" />
+                </label>
+                <div class="webgl-readout" id="webgl-readout"></div>
+                <div class="webgl-selected" id="webgl-selected"></div>
+              </aside>
+            </div>
+            <div class="webgl-twin-legend">
+              <span><i class="material"></i>wafer/material path</span>
+              <span><i class="vacuum"></i>vacuum boundary</span>
+              <span><i class="gas"></i>gas/facility path</span>
+              <span><i class="comm"></i>SECS/GEM/E84 style communication concept</span>
+            </div>
+          </section>
           <section class="epi-master-theater" id="epi-master-theater" aria-label="EPI 전체 공정 3D 시뮬레이션"></section>
           <section class="epi-pe-lab" id="epi-pe-lab" aria-label="EPI Process Engineer 디지털 트윈 실습"></section>
           <section class="epi-trace-lab" id="epi-trace-lab" aria-label="EPI RTP trace metrology intelligence lab"></section>
@@ -654,7 +704,8 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260717-tracecsv2"></script>
+  <script src="app.js?v=20260717-webgl1"></script>
+  <script type="module" src="webgl-twin.js?v=20260717-webgl1"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260714-flow3d"></script>

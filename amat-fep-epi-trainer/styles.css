@@ -1484,6 +1484,325 @@ main,
   }
 }
 
+/* 20260717 WebGL equipment digital twin */
+.webgl-twin {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(94, 231, 255, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 4% 0%, rgba(94, 231, 255, 0.12), transparent 32%),
+    radial-gradient(circle at 96% 12%, rgba(0, 255, 149, 0.1), transparent 34%),
+    linear-gradient(145deg, rgba(1, 10, 13, 0.98), rgba(3, 19, 17, 0.96));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.webgl-twin-head,
+.webgl-twin-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.webgl-twin-head {
+  align-items: start;
+}
+
+.webgl-twin-head h2,
+.webgl-twin-head p {
+  margin: 0;
+}
+
+.webgl-twin-head h2 {
+  margin-top: 4px;
+  color: #ffffff;
+  font-size: clamp(22px, 2.1vw, 32px);
+  line-height: 1.15;
+}
+
+.webgl-twin-head p:not(.eyebrow) {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.webgl-twin-actions,
+.webgl-route-buttons,
+.webgl-mode-buttons,
+.webgl-twin-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.webgl-twin-actions {
+  justify-content: end;
+}
+
+.webgl-canvas-wrap {
+  position: relative;
+  min-width: 0;
+  height: clamp(560px, 54vw, 680px);
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(94, 231, 255, 0.08), rgba(0, 255, 149, 0.04)),
+    #061114;
+}
+
+.webgl-canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.webgl-label-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.webgl-label {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  max-width: 130px;
+  min-width: 82px;
+  padding: 5px 7px;
+  border: 1px solid rgba(94, 231, 255, 0.2);
+  border-radius: 7px;
+  background: rgba(2, 13, 15, 0.78);
+  color: #ecfff8;
+  text-align: left;
+  transform: translate(-999px, -999px);
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
+}
+
+.webgl-label b {
+  font-size: 10px;
+  line-height: 1.15;
+}
+
+.webgl-label span {
+  color: rgba(236, 255, 248, 0.62);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.webgl-label.active {
+  border-color: rgba(0, 255, 149, 0.72);
+  background: rgba(2, 36, 28, 0.84);
+}
+
+.webgl-label.selected {
+  border-color: rgba(255, 211, 138, 0.82);
+  box-shadow: 0 0 0 2px rgba(255, 211, 138, 0.12);
+}
+
+.webgl-side-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.webgl-route-panel,
+.webgl-mode-panel,
+.webgl-speed-control,
+.webgl-readout,
+.webgl-selected {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(236, 255, 248, 0.12);
+  border-radius: 8px;
+  background: rgba(5, 22, 24, 0.88);
+}
+
+.webgl-route-panel strong,
+.webgl-mode-panel strong,
+.webgl-readout strong,
+.webgl-selected strong {
+  color: #ffffff;
+}
+
+.webgl-route-buttons button,
+.webgl-mode-buttons button {
+  flex: 1 1 128px;
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+  padding: 8px 10px;
+}
+
+.webgl-route-buttons button.active,
+.webgl-mode-buttons button.active {
+  border-color: rgba(0, 255, 149, 0.72);
+  background: rgba(0, 255, 149, 0.15);
+  color: #ffffff;
+}
+
+.webgl-speed-control span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.webgl-speed-control b {
+  color: #25d366;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.webgl-speed-control input {
+  width: 100%;
+  accent-color: #25d366;
+}
+
+.webgl-readout h3,
+.webgl-selected h3,
+.webgl-readout p,
+.webgl-selected p {
+  margin: 0;
+}
+
+.webgl-readout h3,
+.webgl-selected h3 {
+  color: #ffffff;
+  line-height: 1.22;
+}
+
+.webgl-readout p,
+.webgl-selected p {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.webgl-state-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.webgl-state-grid span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.07);
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.28;
+}
+
+.webgl-state-grid b {
+  color: #ffffff;
+}
+
+.webgl-stop {
+  padding: 9px;
+  border: 1px solid rgba(255, 211, 138, 0.25);
+  border-radius: 8px;
+  background: rgba(255, 211, 138, 0.08);
+  color: rgba(255, 232, 189, 0.92);
+  line-height: 1.4;
+}
+
+.webgl-twin-legend {
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(236, 255, 248, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.webgl-twin-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(236, 255, 248, 0.72);
+  font-size: 12px;
+}
+
+.webgl-twin-legend i {
+  width: 18px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.webgl-twin-legend .material { background: #27f5a9; }
+.webgl-twin-legend .vacuum { background: #8f7bff; }
+.webgl-twin-legend .gas { background: #ff78a8; }
+.webgl-twin-legend .comm { background: #5ee7ff; }
+
+@media (max-width: 1180px) {
+  .webgl-twin-head,
+  .webgl-twin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .webgl-twin-actions {
+    justify-content: start;
+  }
+
+  .webgl-canvas-wrap {
+    height: 540px;
+  }
+}
+
+@media (max-width: 720px) {
+  .webgl-twin {
+    padding: 12px;
+  }
+
+  .webgl-canvas-wrap {
+    height: 470px;
+  }
+
+  .webgl-label {
+    max-width: 112px;
+    min-width: 72px;
+    padding: 4px 6px;
+  }
+
+  .webgl-label b {
+    font-size: 9px;
+  }
+
+  .webgl-label span {
+    font-size: 8px;
+  }
+
+  .webgl-state-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .webgl-canvas-wrap {
+    height: 420px;
+  }
+
+  .webgl-route-buttons button,
+  .webgl-mode-buttons button {
+    flex-basis: 100%;
+  }
+}
+
 /* 20260715 Trace OS: metrology, RTP twin, and evidence game */
 .epi-trace-lab {
   display: grid;

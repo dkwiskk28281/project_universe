@@ -9,6 +9,7 @@ const webFiles = [
   "index.html",
   "styles.css",
   "app.js",
+  "webgl-twin.js",
   "cluster-sim.js",
   "english-test-expansion.js",
   "english-test.js",
