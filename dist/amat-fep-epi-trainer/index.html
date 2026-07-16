@@ -18,7 +18,7 @@
       document.documentElement.style.colorScheme = theme;
     })();
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260717-webgl1" />
+  <link rel="stylesheet" href="styles.css?v=20260717-webgl2" />
 </head>
 <body class="auth-public entry-choice-open">
   <div id="entry-choice-gate" class="entry-choice-gate" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
@@ -261,6 +261,7 @@
             <div class="webgl-twin-shell">
               <div class="webgl-canvas-wrap" id="webgl-canvas-wrap">
                 <div class="webgl-label-layer" id="webgl-label-layer"></div>
+                <div class="webgl-canvas-hud" id="webgl-canvas-hud" aria-live="polite"></div>
               </div>
               <aside class="webgl-side-panel">
                 <div class="webgl-route-panel">
@@ -280,10 +281,30 @@
                     <button type="button" data-webgl-mode="comm">Communication</button>
                   </div>
                 </div>
+                <div class="webgl-camera-panel">
+                  <strong>Camera</strong>
+                  <div class="webgl-camera-buttons">
+                    <button type="button" class="active" data-webgl-camera="iso">Orbit</button>
+                    <button type="button" data-webgl-camera="top">Top</button>
+                    <button type="button" data-webgl-camera="front">Front</button>
+                    <button type="button" data-webgl-camera="reset">Reset</button>
+                  </div>
+                  <small>Drag to orbit. Wheel to zoom.</small>
+                </div>
+                <div class="webgl-layer-panel">
+                  <strong>Digital twin layers</strong>
+                  <div class="webgl-layer-buttons">
+                    <button type="button" data-webgl-layer="cutaway">Cutaway</button>
+                    <button type="button" class="active" data-webgl-layer="pressure">LL pressure</button>
+                    <button type="button" class="active" data-webgl-layer="particles">Gas / purge / exhaust</button>
+                    <button type="button" class="active" data-webgl-layer="packets">Host packets</button>
+                  </div>
+                </div>
                 <label class="webgl-speed-control">
                   <span>Animation speed <b id="webgl-speed-value">1.0x</b></span>
                   <input type="range" min="40" max="180" value="100" data-webgl-speed aria-label="3D twin animation speed" />
                 </label>
+                <div class="webgl-diagnostics" id="webgl-diagnostics"></div>
                 <div class="webgl-readout" id="webgl-readout"></div>
                 <div class="webgl-selected" id="webgl-selected"></div>
               </aside>
@@ -704,8 +725,8 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260717-webgl1"></script>
-  <script type="module" src="webgl-twin.js?v=20260717-webgl1"></script>
+  <script src="app.js?v=20260717-webgl2"></script>
+  <script type="module" src="webgl-twin.js?v=20260717-webgl2"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
   <script src="cluster-sim.js?v=20260714-flow3d"></script>

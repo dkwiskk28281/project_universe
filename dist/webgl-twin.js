@@ -10,156 +10,60 @@ const COLORS = {
   facility: 0xffd38a,
   process: 0xffd38a,
   active: 0x25d366,
-  warning: 0xffd38a,
-  wafer: 0xbffff3
+  wafer: 0xbffff3,
+  dark: 0x061114
 };
 
 const COMPONENTS = [
-  {
-    id: "host",
-    label: "Fab Host / MES",
-    group: "comm",
-    pos: [-5.25, 2.38, -2.2],
-    size: [1.28, 0.42, 0.72],
-    role: "Fab 생산 서버입니다. lot, carrier, wafer slot, recipe ID, event trace를 장비와 연결합니다.",
-    issue: "wafer ID, slot, event 연결이 깨지면 trace와 metrology 결과가 서로 맞지 않아 고객 보고가 위험해집니다."
-  },
-  {
-    id: "toolpc",
-    label: "Tool Controller",
-    group: "comm",
-    pos: [-3.58, 1.8, -1.94],
-    size: [1.16, 0.38, 0.64],
-    role: "장비 내부 scheduler와 module state를 모으는 controller입니다. host 명령과 실제 module 상태 사이의 번역기입니다.",
-    issue: "command와 actual state가 다르면 host 화면보다 module evidence, event order, alarm trace를 먼저 확인합니다."
-  },
-  {
-    id: "foup",
-    label: "FOUP",
-    group: "material",
-    pos: [-5.2, 0.72, 0],
-    size: [0.82, 1.24, 0.9],
-    role: "wafer가 담겨 오는 sealed carrier입니다. load port에 도킹되면 slot map과 carrier ID 연결이 시작됩니다.",
-    issue: "slot map mismatch, carrier ID mismatch, wafer present 오류는 전체 traceability를 흔듭니다."
-  },
-  {
-    id: "lp",
-    label: "Load Port",
-    group: "material",
-    pos: [-4.2, 0.52, 0],
-    size: [0.52, 0.9, 1.05],
-    role: "FOUP를 고정하고 장비가 wafer를 꺼낼 수 있도록 door/open handoff boundary를 만듭니다.",
-    issue: "clamp, door, E84 handoff, carrier-present 신호가 맞지 않으면 자동 반송과 장비 start가 멈춥니다."
-  },
-  {
-    id: "efem",
-    label: "EFEM / FI",
-    group: "material",
-    pos: [-3.05, 0.5, 0],
-    size: [1.08, 0.76, 1.74],
-    role: "대기압 영역의 front interface입니다. FOUP wafer를 꺼내 aligner와 load lock으로 넘기는 atmospheric robot zone입니다.",
-    issue: "robot teach, aligner, wafer present, door state를 함께 봐야 handling 문제를 분리할 수 있습니다."
-  },
-  {
-    id: "aligner",
-    label: "Aligner",
-    group: "material",
-    pos: [-3.05, 0.45, 1.36],
-    size: [0.62, 0.28, 0.62],
-    role: "wafer notch와 center를 맞추는 위치입니다. 이후 robot handoff가 정확해지도록 wafer 자세를 정렬합니다.",
-    issue: "alignment fail은 transfer, slit valve, PM handoff 문제처럼 보일 수 있어 event order가 중요합니다."
-  },
-  {
-    id: "lla",
-    label: "Load Lock A",
-    group: "vacuum",
-    pos: [-1.66, 0.52, -0.55],
-    size: [0.72, 0.7, 0.78],
-    role: "대기압 EFEM과 진공 TM 사이의 압력 경계입니다. wafer가 들어오면 격리 후 pumpdown으로 transfer vacuum에 맞춥니다.",
-    issue: "pumpdown slow, vent particle, slit door mismatch는 install/qualification에서 반드시 분리해야 합니다."
-  },
-  {
-    id: "llb",
-    label: "Load Lock B",
-    group: "vacuum",
-    pos: [-1.66, 0.52, 0.55],
-    size: [0.72, 0.7, 0.78],
-    role: "throughput과 isolation을 위해 병렬로 쓰는 두 번째 load lock 개념입니다.",
-    issue: "LL A/B 차이가 나면 seal, gauge, pump, valve feedback을 같은 조건으로 비교합니다."
-  },
-  {
-    id: "tm",
-    label: "Transfer Module",
-    group: "vacuum",
-    pos: [0, 0.48, 0],
-    radius: 0.88,
-    role: "진공 robot hub입니다. load lock, process module, clean/cool module 사이에서 wafer를 옮깁니다.",
-    issue: "robot handoff, slit valve, wafer present, chamber pressure ready가 동시에 맞아야 안전한 move가 가능합니다."
-  },
-  {
-    id: "preclean",
-    label: "Pre-clean / CM",
-    group: "process",
-    pos: [0.24, 0.52, 1.78],
-    size: [0.92, 0.74, 0.82],
-    role: "native oxide/interface reset 또는 cooldown/clean module을 대표합니다. 실제 option에 따라 역할은 달라질 수 있습니다.",
-    issue: "interface defect는 pre-clean pass, queue time, vacuum continuity, metrology association과 연결해서 봅니다."
-  },
-  {
-    id: "pm1",
-    label: "EPI PM-A",
-    group: "process",
-    pos: [1.72, 0.58, -1.55],
-    size: [1.18, 0.86, 0.98],
-    role: "single-wafer epitaxy process module입니다. heat, gas delivery, surface reaction, exhaust를 분리해서 이해해야 합니다.",
-    issue: "uniformity, growth rate, Rs, particle 문제는 gas, thermal, vacuum, metrology evidence로 나눠 판단합니다."
-  },
-  {
-    id: "pm2",
-    label: "EPI PM-B",
-    group: "process",
-    pos: [2.18, 0.58, 0],
-    size: [1.18, 0.86, 0.98],
-    role: "module matching을 비교하기 좋은 두 번째 EPI PM입니다. 같은 platform에서 PM별 drift를 비교할 수 있습니다.",
-    issue: "PM A/B mismatch는 shared facility 문제인지 module-local drift인지 먼저 나눕니다."
-  },
-  {
-    id: "pm3",
-    label: "RTP PM",
-    group: "process",
-    pos: [1.72, 0.58, 1.55],
-    size: [1.18, 0.86, 0.98],
-    role: "rapid thermal process chamber입니다. ramp, soak, cool, pyrometry confidence를 시간축으로 봅니다.",
-    issue: "thermal overshoot, slip/stress, pyrometry uncertainty는 trace와 wafer result를 연결해 분리합니다."
-  },
-  {
-    id: "gasbox",
-    label: "Gas Box",
-    group: "gas",
-    pos: [3.68, 0.72, -1.35],
-    size: [0.8, 1.05, 1.1],
-    role: "MFC, purge readiness, gas delivery를 묶어 생각하는 영역입니다. 실제 gas set은 tool option과 site 문서가 우선입니다.",
-    issue: "toxic, flammable, corrosive gas는 owner signoff, detector, exhaust, abatement evidence가 process보다 먼저입니다."
-  },
-  {
-    id: "pump",
-    label: "Pump Stack",
-    group: "facility",
-    pos: [3.66, 0.48, 0.18],
-    size: [0.85, 0.7, 0.86],
-    role: "pumpdown과 process pressure control을 facility와 장비 경계에서 떠받치는 영역입니다.",
-    issue: "slow pumpdown은 leak, outgassing, valve feedback, gauge disagreement로 나누어 확인합니다."
-  },
-  {
-    id: "abatement",
-    label: "Exhaust / Abatement",
-    group: "facility",
-    pos: [4.7, 0.7, 1.35],
-    size: [0.86, 1.08, 1.05],
-    role: "byproduct와 hazardous gas가 안전하게 처리되는 경로를 대표합니다. process gas introduction 전 ready evidence가 필요합니다.",
-    issue: "exhaust/abatement가 ready가 아니면 process gas보다 stop condition 판단이 먼저입니다."
-  }
-];
+  ["host", "Fab Host / MES", "comm", [-5.25, 2.38, -2.2], [1.28, 0.42, 0.72],
+    "Fab 생산 서버입니다. lot, carrier, wafer slot, recipe ID, event trace를 장비와 연결합니다.",
+    "wafer ID, slot, event 연결이 깨지면 trace와 metrology 결과가 서로 맞지 않아 고객 보고가 위험해집니다."],
+  ["toolpc", "Tool Controller", "comm", [-3.58, 1.8, -1.94], [1.16, 0.38, 0.64],
+    "장비 내부 scheduler와 module state를 모으는 controller입니다. host 명령과 실제 module 상태 사이의 번역기입니다.",
+    "command와 actual state가 다르면 host 화면보다 module evidence, event order, alarm trace를 먼저 확인합니다."],
+  ["foup", "FOUP", "material", [-5.2, 0.72, 0], [0.82, 1.24, 0.9],
+    "wafer가 담겨 오는 sealed carrier입니다. load port에 도킹되면 slot map과 carrier ID 연결이 시작됩니다.",
+    "slot map mismatch, carrier ID mismatch, wafer present 오류는 전체 traceability를 흔듭니다."],
+  ["lp", "Load Port", "material", [-4.2, 0.52, 0], [0.52, 0.9, 1.05],
+    "FOUP를 고정하고 장비가 wafer를 꺼낼 수 있도록 door/open handoff boundary를 만듭니다.",
+    "clamp, door, E84 handoff, carrier-present 신호가 맞지 않으면 자동 반송과 장비 start가 멈춥니다."],
+  ["efem", "EFEM / FI", "material", [-3.05, 0.5, 0], [1.08, 0.76, 1.74],
+    "대기압 영역의 front interface입니다. FOUP wafer를 꺼내 aligner와 load lock으로 넘기는 atmospheric robot zone입니다.",
+    "robot teach, aligner, wafer present, door state를 함께 봐야 handling 문제를 분리할 수 있습니다."],
+  ["aligner", "Aligner", "material", [-3.05, 0.45, 1.36], [0.62, 0.28, 0.62],
+    "wafer notch와 center를 맞추는 위치입니다. 이후 robot handoff가 정확해지도록 wafer 자세를 정렬합니다.",
+    "alignment fail은 transfer, slit valve, PM handoff 문제처럼 보일 수 있어 event order가 중요합니다."],
+  ["lla", "Load Lock A", "vacuum", [-1.66, 0.52, -0.55], [0.72, 0.7, 0.78],
+    "대기압 EFEM과 진공 TM 사이의 압력 경계입니다. wafer가 들어오면 격리 후 pumpdown으로 transfer vacuum에 맞춥니다.",
+    "pumpdown slow, vent particle, slit door mismatch는 install/qualification에서 반드시 분리해야 합니다."],
+  ["llb", "Load Lock B", "vacuum", [-1.66, 0.52, 0.55], [0.72, 0.7, 0.78],
+    "throughput과 isolation을 위해 병렬로 쓰는 두 번째 load lock 개념입니다.",
+    "LL A/B 차이가 나면 seal, gauge, pump, valve feedback을 같은 조건으로 비교합니다."],
+  ["tm", "Transfer Module", "vacuum", [0, 0.48, 0], null,
+    "진공 robot hub입니다. load lock, process module, clean/cool module 사이에서 wafer를 옮깁니다.",
+    "robot handoff, slit valve, wafer present, chamber pressure ready가 동시에 맞아야 안전한 move가 가능합니다."],
+  ["preclean", "Pre-clean / CM", "process", [0.24, 0.52, 1.78], [0.92, 0.74, 0.82],
+    "native oxide/interface reset 또는 cooldown/clean module을 대표합니다. 실제 option에 따라 역할은 달라질 수 있습니다.",
+    "interface defect는 pre-clean pass, queue time, vacuum continuity, metrology association과 연결해서 봅니다."],
+  ["pm1", "EPI PM-A", "process", [1.72, 0.58, -1.55], [1.18, 0.86, 0.98],
+    "single-wafer epitaxy process module입니다. heat, gas delivery, surface reaction, exhaust를 분리해서 이해해야 합니다.",
+    "uniformity, growth rate, Rs, particle 문제는 gas, thermal, vacuum, metrology evidence로 나눠 판단합니다."],
+  ["pm2", "EPI PM-B", "process", [2.18, 0.58, 0], [1.18, 0.86, 0.98],
+    "module matching을 비교하기 좋은 두 번째 EPI PM입니다. 같은 platform에서 PM별 drift를 비교할 수 있습니다.",
+    "PM A/B mismatch는 shared facility 문제인지 module-local drift인지 먼저 나눕니다."],
+  ["pm3", "RTP PM", "process", [1.72, 0.58, 1.55], [1.18, 0.86, 0.98],
+    "rapid thermal process chamber입니다. ramp, soak, cool, pyrometry confidence를 시간축으로 봅니다.",
+    "thermal overshoot, slip/stress, pyrometry uncertainty는 trace와 wafer result를 연결해 분리합니다."],
+  ["gasbox", "Gas Box", "gas", [3.68, 0.72, -1.35], [0.8, 1.05, 1.1],
+    "MFC, purge readiness, gas delivery를 묶어 생각하는 영역입니다. 실제 gas set은 tool option과 site 문서가 우선입니다.",
+    "toxic, flammable, corrosive gas는 owner signoff, detector, exhaust, abatement evidence가 process보다 먼저입니다."],
+  ["pump", "Pump Stack", "facility", [3.66, 0.48, 0.18], [0.85, 0.7, 0.86],
+    "pumpdown과 process pressure control을 facility와 장비 경계에서 떠받치는 영역입니다.",
+    "slow pumpdown은 leak, outgassing, valve feedback, gauge disagreement로 나누어 확인합니다."],
+  ["abatement", "Exhaust / Abatement", "facility", [4.7, 0.7, 1.35], [0.86, 1.08, 1.05],
+    "byproduct와 hazardous gas가 안전하게 처리되는 경로를 대표합니다. process gas introduction 전 ready evidence가 필요합니다.",
+    "exhaust/abatement가 ready가 아니면 process gas보다 stop condition 판단이 먼저입니다."]
+].map(([id, label, group, pos, size, role, issue]) => ({ id, label, group, pos, size, role, issue, radius: id === "tm" ? 0.88 : null }));
 
 const ROUTES = {
   "epi-a": { label: "EPI PM-A", pm: "pm1" },
@@ -168,162 +72,22 @@ const ROUTES = {
 };
 
 const STEPS = [
-  {
-    id: "carrier-arrive",
-    title: "1. FOUP 도킹과 job context",
-    point: "foup",
-    active: ["host", "toolpc", "foup", "lp"],
-    mode: "comm",
-    pressure: "ATM",
-    gas: "none",
-    door: "FOUP / load port handshake",
-    robot: "idle",
-    comm: "Host가 lot/carrier/job context를 보내고 load port가 carrier present와 slot map을 확인합니다.",
-    evidence: "carrier ID, slot map, E84/load port state, event timestamp",
-    stop: "carrier/slot association이 맞지 않거나 handoff state가 불명확하면 멈춥니다."
-  },
-  {
-    id: "efem-pick",
-    title: "2. EFEM robot pickup",
-    point: "efem",
-    active: ["foup", "lp", "efem", "aligner"],
-    mode: "material",
-    pressure: "ATM",
-    gas: "N2 mini-environment concept",
-    door: "FOUP door open / LL slit closed",
-    robot: "atmospheric robot moving",
-    comm: "Tool controller가 wafer present, aligner result, robot event order를 추적합니다.",
-    evidence: "wafer present, aligner result, robot event order",
-    stop: "unexpected wafer present, alignment fail, door state mismatch가 있으면 멈춥니다."
-  },
-  {
-    id: "ll-load",
-    title: "3. Load Lock handoff",
-    point: "lla",
-    active: ["efem", "lla", "llb", "tm"],
-    mode: "vacuum",
-    pressure: "ATM -> pumpdown",
-    gas: "N2 purge / vent concept",
-    door: "EFEM side opens, TM side closed",
-    robot: "EFEM handoff complete",
-    comm: "LL이 wafer present, door state, pressure state를 보고합니다.",
-    evidence: "LL pressure curve, door feedback, wafer present, pump state",
-    stop: "door feedback conflict 또는 pumpdown이 baseline 방향으로 내려가지 않으면 멈춥니다."
-  },
-  {
-    id: "pumpdown",
-    title: "4. Pumpdown / isolation",
-    point: "lla",
-    active: ["lla", "tm", "pump", "abatement"],
-    mode: "vacuum",
-    pressure: "transfer vacuum으로 전환",
-    gas: "purge residual removal",
-    door: "pressure transition 동안 양쪽 door closed",
-    robot: "TM waiting",
-    comm: "pressure ready가 TM pickup gate가 됩니다.",
-    evidence: "pressure trace, pump state, gauge agreement, elapsed time",
-    stop: "pressure plateau, gauge disagreement, unresolved exhaust alarm이면 멈춥니다."
-  },
-  {
-    id: "tm-pick",
-    title: "5. TM vacuum robot pickup",
-    point: "tm",
-    active: ["lla", "tm"],
-    mode: "material",
-    pressure: "Transfer vacuum",
-    gas: "none",
-    door: "pressure ready 후 TM side slit open",
-    robot: "vacuum robot extends/retracts",
-    comm: "scheduler가 LL과 TM state가 맞을 때 move를 허가합니다.",
-    evidence: "slit state, robot position, wafer present transition",
-    stop: "unexpected motion, wafer lost, slit/pressure not ready면 멈춥니다."
-  },
-  {
-    id: "pm-load",
-    title: "6. PM load",
-    point: "route-pm",
-    active: ["tm", "route-pm"],
-    mode: "material",
-    pressure: "PM ready / transfer vacuum",
-    gas: "process gas not introduced yet",
-    door: "transfer 동안 PM slit open",
-    robot: "wafer placed on susceptor/chuck",
-    comm: "PM ready, wafer present, slit close event가 기록됩니다.",
-    evidence: "PM wafer present, slit close, susceptor/chuck ready, timestamp",
-    stop: "PM not ready, wafer present abnormal, wrong module selected면 멈춥니다."
-  },
-  {
-    id: "process",
-    title: "7. Process interval",
-    point: "route-pm",
-    active: ["route-pm", "gasbox", "pump", "abatement", "toolpc"],
-    mode: "gas",
-    pressure: "controlled process state",
-    gas: "H2/N2/Ar + precursor family concept, option-specific",
-    door: "PM isolated",
-    robot: "idle outside PM",
-    comm: "temperature, pressure, MFC actual, exhaust, abatement trace가 wafer ID와 묶입니다.",
-    evidence: "temperature trace, pressure trace, MFC actual, exhaust/abatement ready, metrology association",
-    stop: "gas readiness, detector, exhaust, abatement, thermal stability를 방어할 수 없으면 멈춥니다."
-  },
-  {
-    id: "unload",
-    title: "8. Unload / cooldown handoff",
-    point: "tm",
-    active: ["route-pm", "tm", "preclean"],
-    mode: "material",
-    pressure: "PM -> transfer vacuum",
-    gas: "purge/byproduct removal concept",
-    door: "safe ready state 후 PM slit open",
-    robot: "TM retrieves wafer",
-    comm: "PM complete event가 trace와 wafer ID를 연결합니다.",
-    evidence: "process complete, purge/exhaust state, wafer present transition",
-    stop: "byproduct path, PM state, wafer ID association이 불명확하면 멈춥니다."
-  },
-  {
-    id: "return",
-    title: "9. Return to FOUP",
-    point: "foup",
-    active: ["tm", "lla", "efem", "lp", "foup", "host"],
-    mode: "comm",
-    pressure: "vacuum -> vent -> ATM",
-    gas: "N2 vent concept",
-    door: "LL cycles back to EFEM side",
-    robot: "TM then EFEM return sequence",
-    comm: "Host가 wafer complete event를 받고 trace/metrology packet이 연결 상태로 남습니다.",
-    evidence: "return event chain, slot map, wafer ID, trace ID, metrology ID",
-    stop: "traceability가 깨지거나 returned slot이 expected state와 맞지 않으면 멈춥니다."
-  }
-];
+  ["carrier-arrive", "1. FOUP 도킹과 job context", "foup", ["host", "toolpc", "foup", "lp"], "comm", "ATM", "none", "FOUP / load port handshake", "idle", "Host가 lot/carrier/job context를 보내고 load port가 carrier present와 slot map을 확인합니다.", "carrier ID, slot map, E84/load port state, event timestamp", "carrier/slot association이 맞지 않거나 handoff state가 불명확하면 멈춥니다."],
+  ["efem-pick", "2. EFEM robot pickup", "efem", ["foup", "lp", "efem", "aligner"], "material", "ATM", "N2 mini-environment concept", "FOUP door open / LL slit closed", "atmospheric robot moving", "Tool controller가 wafer present, aligner result, robot event order를 추적합니다.", "wafer present, aligner result, robot event order", "unexpected wafer present, alignment fail, door state mismatch가 있으면 멈춥니다."],
+  ["ll-load", "3. Load Lock handoff", "lla", ["efem", "lla", "llb", "tm"], "vacuum", "ATM -> pumpdown", "N2 purge / vent concept", "EFEM side opens, TM side closed", "EFEM handoff complete", "LL이 wafer present, door state, pressure state를 보고합니다.", "LL pressure curve, door feedback, wafer present, pump state", "door feedback conflict 또는 pumpdown이 baseline 방향으로 내려가지 않으면 멈춥니다."],
+  ["pumpdown", "4. Pumpdown / isolation", "lla", ["lla", "tm", "pump", "abatement"], "vacuum", "transfer vacuum으로 전환", "purge residual removal", "pressure transition 동안 양쪽 door closed", "TM waiting", "pressure ready가 TM pickup gate가 됩니다.", "pressure trace, pump state, gauge agreement, elapsed time", "pressure plateau, gauge disagreement, unresolved exhaust alarm이면 멈춥니다."],
+  ["tm-pick", "5. TM vacuum robot pickup", "tm", ["lla", "tm"], "material", "Transfer vacuum", "none", "pressure ready 후 TM side slit open", "vacuum robot extends/retracts", "scheduler가 LL과 TM state가 맞을 때 move를 허가합니다.", "slit state, robot position, wafer present transition", "unexpected motion, wafer lost, slit/pressure not ready면 멈춥니다."],
+  ["pm-load", "6. PM load", "route-pm", ["tm", "route-pm"], "material", "PM ready / transfer vacuum", "process gas not introduced yet", "transfer 동안 PM slit open", "wafer placed on susceptor/chuck", "PM ready, wafer present, slit close event가 기록됩니다.", "PM wafer present, slit close, susceptor/chuck ready, timestamp", "PM not ready, wafer present abnormal, wrong module selected면 멈춥니다."],
+  ["process", "7. Process interval", "route-pm", ["route-pm", "gasbox", "pump", "abatement", "toolpc"], "gas", "controlled process state", "H2/N2/Ar + precursor family concept, option-specific", "PM isolated", "idle outside PM", "temperature, pressure, MFC actual, exhaust, abatement trace가 wafer ID와 묶입니다.", "temperature trace, pressure trace, MFC actual, exhaust/abatement ready, metrology association", "gas readiness, detector, exhaust, abatement, thermal stability를 방어할 수 없으면 멈춥니다."],
+  ["unload", "8. Unload / cooldown handoff", "tm", ["route-pm", "tm", "preclean"], "material", "PM -> transfer vacuum", "purge/byproduct removal concept", "safe ready state 후 PM slit open", "TM retrieves wafer", "PM complete event가 trace와 wafer ID를 연결합니다.", "process complete, purge/exhaust state, wafer present transition", "byproduct path, PM state, wafer ID association이 불명확하면 멈춥니다."],
+  ["return", "9. Return to FOUP", "foup", ["tm", "lla", "efem", "lp", "foup", "host"], "comm", "vacuum -> vent -> ATM", "N2 vent concept", "LL cycles back to EFEM side", "TM then EFEM return sequence", "Host가 wafer complete event를 받고 trace/metrology packet이 연결 상태로 남습니다.", "return event chain, slot map, wafer ID, trace ID, metrology ID", "traceability가 깨지거나 returned slot이 expected state와 맞지 않으면 멈춥니다."]
+].map(([id, title, point, active, mode, pressure, gas, door, robot, comm, evidence, stop]) => ({ id, title, point, active, mode, pressure, gas, door, robot, comm, evidence, stop }));
 
 const CONNECTIONS = [
-  ["foup", "lp", "material"],
-  ["lp", "efem", "material"],
-  ["efem", "aligner", "material"],
-  ["efem", "lla", "material"],
-  ["efem", "llb", "material"],
-  ["lla", "tm", "vacuum"],
-  ["llb", "tm", "vacuum"],
-  ["tm", "pm1", "material"],
-  ["tm", "pm2", "material"],
-  ["tm", "pm3", "material"],
-  ["tm", "preclean", "material"],
-  ["gasbox", "pm1", "gas"],
-  ["gasbox", "pm2", "gas"],
-  ["gasbox", "pm3", "gas"],
-  ["pm1", "pump", "vacuum"],
-  ["pm2", "pump", "vacuum"],
-  ["pm3", "pump", "vacuum"],
-  ["pump", "abatement", "facility"],
-  ["host", "toolpc", "comm"],
-  ["toolpc", "lp", "comm"],
-  ["toolpc", "efem", "comm"],
-  ["toolpc", "lla", "comm"],
-  ["toolpc", "llb", "comm"],
-  ["toolpc", "tm", "comm"],
-  ["toolpc", "pm1", "comm"],
-  ["toolpc", "pm2", "comm"],
-  ["toolpc", "pm3", "comm"]
+  ["foup", "lp", "material"], ["lp", "efem", "material"], ["efem", "aligner", "material"], ["efem", "lla", "material"], ["efem", "llb", "material"],
+  ["lla", "tm", "vacuum"], ["llb", "tm", "vacuum"], ["tm", "pm1", "material"], ["tm", "pm2", "material"], ["tm", "pm3", "material"], ["tm", "preclean", "material"],
+  ["gasbox", "pm1", "gas"], ["gasbox", "pm2", "gas"], ["gasbox", "pm3", "gas"], ["pm1", "pump", "vacuum"], ["pm2", "pump", "vacuum"], ["pm3", "pump", "vacuum"], ["pump", "abatement", "facility"],
+  ["host", "toolpc", "comm"], ["toolpc", "lp", "comm"], ["toolpc", "efem", "comm"], ["toolpc", "lla", "comm"], ["toolpc", "llb", "comm"], ["toolpc", "tm", "comm"], ["toolpc", "pm1", "comm"], ["toolpc", "pm2", "comm"], ["toolpc", "pm3", "comm"]
 ];
 
 const root = document.getElementById("webgl-twin");
@@ -331,6 +95,8 @@ const wrap = document.getElementById("webgl-canvas-wrap");
 const labels = document.getElementById("webgl-label-layer");
 const readout = document.getElementById("webgl-readout");
 const selectedPanel = document.getElementById("webgl-selected");
+const diagnostics = document.getElementById("webgl-diagnostics");
+const hud = document.getElementById("webgl-canvas-hud");
 
 let renderer;
 let scene;
@@ -340,20 +106,32 @@ let pointer;
 let wafer;
 let robotArm;
 let processGlow;
+let pressureGroup;
+let pressureFill;
+let pressureNeedle;
 let selectedId = "tm";
 let activeStep = 0;
 let activeRoute = "epi-a";
 let activeMode = "material";
+let activeCamera = "iso";
 let playing = false;
 let speed = 0.7;
 let lastTick = 0;
 let stageProgress = 0;
 let initialized = false;
 
+const layerState = { cutaway: false, pressure: true, particles: true, packets: true };
 const meshes = new Map();
+const componentGroups = new Map();
 const labelNodes = new Map();
+const shellLids = [];
+const interiorObjects = [];
 const lines = [];
+const flowParticles = [];
+const packetParticles = [];
 const tempVec = new THREE.Vector3();
+const drag = { active: false, moved: false, x: 0, y: 0 };
+const orbit = { theta: -0.72, phi: 0.86, radius: 7.45, target: new THREE.Vector3(0.12, 0.48, 0.08) };
 
 function routePmId() {
   return ROUTES[activeRoute]?.pm || "pm1";
@@ -386,8 +164,18 @@ function makeMaterial(group, opacity = 0.62) {
   });
 }
 
+function addInterior(id, object) {
+  object.visible = false;
+  object.userData.interiorOf = id;
+  interiorObjects.push(object);
+  return object;
+}
+
 function makeBox(item) {
   const group = new THREE.Group();
+  group.position.set(...item.pos);
+  group.userData.componentId = item.id;
+
   const body = new THREE.Mesh(new THREE.BoxGeometry(...item.size), makeMaterial(item.group));
   body.castShadow = true;
   body.receiveShadow = true;
@@ -396,72 +184,104 @@ function makeBox(item) {
 
   const cap = new THREE.Mesh(
     new THREE.BoxGeometry(item.size[0] * 0.86, 0.035, item.size[2] * 0.86),
-    new THREE.MeshBasicMaterial({ color: colorFor(item.group), transparent: true, opacity: 0.32 })
+    new THREE.MeshBasicMaterial({ color: colorFor(item.group), transparent: true, opacity: 0.34 })
   );
   cap.position.y = item.size[1] * 0.52;
   group.add(cap);
+  shellLids.push(cap);
 
-  group.position.set(...item.pos);
-  group.userData.componentId = item.id;
   scene.add(group);
+  componentGroups.set(item.id, group);
   meshes.set(item.id, body);
-
-  if (item.id === "foup") addFoupSlots(group);
-  if (item.id === "gasbox") addGasCylinders(group);
-  if (item.id === "pump") addPumpStack(group);
+  addComponentDetails(item, group);
   return group;
 }
 
 function makeCylinder(item) {
-  const mesh = new THREE.Mesh(
+  const group = new THREE.Group();
+  group.position.set(...item.pos);
+  const body = new THREE.Mesh(
     new THREE.CylinderGeometry(item.radius, item.radius, 0.38, 56),
     makeMaterial(item.group, 0.5)
   );
-  mesh.position.set(...item.pos);
-  mesh.position.y += 0.06;
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  mesh.userData.componentId = item.id;
-  scene.add(mesh);
-  meshes.set(item.id, mesh);
+  body.position.y += 0.06;
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.userData.componentId = item.id;
+  group.add(body);
 
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(item.radius * 0.96, 0.018, 8, 72),
     new THREE.MeshBasicMaterial({ color: COLORS.vacuum, transparent: true, opacity: 0.55 })
   );
-  ring.position.copy(mesh.position);
-  ring.position.y += 0.23;
+  ring.position.y += 0.29;
   ring.rotation.x = Math.PI / 2;
-  scene.add(ring);
-  return mesh;
+  group.add(ring);
+  scene.add(group);
+  componentGroups.set(item.id, group);
+  meshes.set(item.id, body);
+
+  const hub = addInterior(item.id, new THREE.Mesh(
+    new THREE.CylinderGeometry(0.18, 0.18, 0.045, 32),
+    new THREE.MeshBasicMaterial({ color: COLORS.wafer, transparent: true, opacity: 0.7 })
+  ));
+  hub.position.set(0, 0.32, 0);
+  group.add(hub);
+  return group;
 }
 
-function addFoupSlots(group) {
-  const slotMaterial = new THREE.MeshBasicMaterial({ color: COLORS.wafer, transparent: true, opacity: 0.55 });
-  for (let i = 0; i < 6; i += 1) {
-    const slot = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.012, 0.72), slotMaterial);
-    slot.position.set(0, -0.35 + i * 0.12, 0);
-    group.add(slot);
+function addComponentDetails(item, group) {
+  if (item.id === "foup") {
+    const slotMaterial = new THREE.MeshBasicMaterial({ color: COLORS.wafer, transparent: true, opacity: 0.55 });
+    for (let i = 0; i < 6; i += 1) {
+      const slot = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.012, 0.72), slotMaterial);
+      slot.position.set(0, -0.35 + i * 0.12, 0);
+      group.add(slot);
+    }
   }
-}
+  if (["lla", "llb"].includes(item.id)) {
+    const shelf = addInterior(item.id, new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.2, 0.018, 40),
+      new THREE.MeshBasicMaterial({ color: COLORS.wafer, transparent: true, opacity: 0.65 })
+    ));
+    shelf.position.y = 0.04;
+    shelf.rotation.x = Math.PI / 2;
+    group.add(shelf);
+  }
+  if (["pm1", "pm2", "pm3", "preclean"].includes(item.id)) {
+    const susceptor = addInterior(item.id, new THREE.Mesh(
+      new THREE.CylinderGeometry(0.31, 0.31, 0.035, 48),
+      new THREE.MeshBasicMaterial({ color: COLORS.wafer, transparent: true, opacity: 0.62 })
+    ));
+    susceptor.position.y = 0.05;
+    susceptor.rotation.x = Math.PI / 2;
+    group.add(susceptor);
 
-function addGasCylinders(group) {
-  const material = new THREE.MeshStandardMaterial({ color: COLORS.gas, transparent: true, opacity: 0.55, roughness: 0.5 });
-  [-0.22, 0, 0.22].forEach((x, index) => {
-    const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.92, 20), material);
-    cylinder.position.set(x, 0.02, -0.43 + index * 0.12);
-    cylinder.rotation.x = Math.PI / 2;
-    group.add(cylinder);
-  });
-}
-
-function addPumpStack(group) {
-  const material = new THREE.MeshBasicMaterial({ color: COLORS.facility, transparent: true, opacity: 0.35 });
-  for (let i = 0; i < 3; i += 1) {
-    const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.13 + i * 0.03, 0.012, 8, 36), material);
-    rotor.position.set(0.02, -0.18 + i * 0.16, 0.16);
-    rotor.rotation.x = Math.PI / 2;
-    group.add(rotor);
+    const shower = addInterior(item.id, new THREE.Mesh(
+      new THREE.TorusGeometry(0.34, 0.018, 8, 48),
+      new THREE.MeshBasicMaterial({ color: item.id === "pm3" ? COLORS.facility : COLORS.gas, transparent: true, opacity: 0.78 })
+    ));
+    shower.position.y = 0.34;
+    shower.rotation.x = Math.PI / 2;
+    group.add(shower);
+  }
+  if (item.id === "gasbox") {
+    const material = new THREE.MeshStandardMaterial({ color: COLORS.gas, transparent: true, opacity: 0.55, roughness: 0.5 });
+    [-0.22, 0, 0.22].forEach((x, index) => {
+      const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.92, 20), material);
+      cylinder.position.set(x, 0.02, -0.43 + index * 0.12);
+      cylinder.rotation.x = Math.PI / 2;
+      group.add(cylinder);
+    });
+  }
+  if (item.id === "pump") {
+    const material = new THREE.MeshBasicMaterial({ color: COLORS.facility, transparent: true, opacity: 0.36 });
+    for (let i = 0; i < 3; i += 1) {
+      const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.13 + i * 0.03, 0.012, 8, 36), material);
+      rotor.position.set(0.02, -0.18 + i * 0.16, 0.16);
+      rotor.rotation.x = Math.PI / 2;
+      group.add(rotor);
+    }
   }
 }
 
@@ -494,12 +314,58 @@ function makeLine(a, b, type) {
   lines.push(line);
 }
 
+function createPressureGauge() {
+  pressureGroup = new THREE.Group();
+  pressureGroup.position.copy(positionOf("lla"));
+  pressureGroup.position.x -= 0.48;
+  pressureGroup.position.y = 1.08;
+  pressureGroup.position.z -= 0.34;
+
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(0.1, 0.92, 0.06),
+    new THREE.MeshBasicMaterial({ color: COLORS.vacuum, transparent: true, opacity: 0.22 })
+  );
+  pressureGroup.add(shell);
+
+  pressureFill = new THREE.Mesh(
+    new THREE.BoxGeometry(0.075, 0.82, 0.07),
+    new THREE.MeshBasicMaterial({ color: COLORS.material, transparent: true, opacity: 0.7 })
+  );
+  pressureFill.position.y = -0.02;
+  pressureGroup.add(pressureFill);
+
+  pressureNeedle = new THREE.Mesh(
+    new THREE.BoxGeometry(0.42, 0.018, 0.025),
+    new THREE.MeshBasicMaterial({ color: COLORS.facility, transparent: true, opacity: 0.9 })
+  );
+  pressureNeedle.position.set(0.22, 0.38, 0);
+  pressureGroup.add(pressureNeedle);
+  scene.add(pressureGroup);
+}
+
+function makeFlowParticle(kind, index) {
+  const color = kind === "packet" ? COLORS.comm : kind === "gas" ? COLORS.gas : kind === "purge" ? COLORS.vacuum : COLORS.facility;
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(kind === "packet" ? 0.045 : 0.035, 12, 8),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.82 })
+  );
+  mesh.userData = { kind, offset: index / 18 };
+  scene.add(mesh);
+  if (kind === "packet") packetParticles.push(mesh);
+  else flowParticles.push(mesh);
+}
+
+function createParticles() {
+  for (let i = 0; i < 18; i += 1) makeFlowParticle("gas", i);
+  for (let i = 0; i < 16; i += 1) makeFlowParticle("exhaust", i);
+  for (let i = 0; i < 12; i += 1) makeFlowParticle("purge", i);
+  for (let i = 0; i < 10; i += 1) makeFlowParticle("packet", i);
+}
+
 function createScene() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(COLORS.bg);
   camera = new THREE.PerspectiveCamera(43, 1, 0.1, 100);
-  camera.position.set(0.2, 5.6, 6.5);
-  camera.lookAt(0, 0.35, 0);
 
   renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -509,10 +375,10 @@ function createScene() {
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
+  renderer.domElement.setAttribute("aria-label", "3D WebGL equipment digital twin canvas");
   wrap.prepend(renderer.domElement);
 
-  const ambient = new THREE.AmbientLight(0x9cfde4, 0.54);
-  scene.add(ambient);
+  scene.add(new THREE.AmbientLight(0x9cfde4, 0.54));
   const key = new THREE.DirectionalLight(0xffffff, 1.1);
   key.position.set(-2.5, 7, 4.5);
   key.castShadow = true;
@@ -540,19 +406,13 @@ function createScene() {
     makeLabel(item);
   });
   CONNECTIONS.forEach(([a, b, type]) => makeLine(a, b, type));
+  createPressureGauge();
+  createParticles();
 
   wafer = new THREE.Mesh(
     new THREE.CylinderGeometry(0.22, 0.22, 0.028, 56),
-    new THREE.MeshStandardMaterial({
-      color: COLORS.wafer,
-      emissive: 0x1fd7bd,
-      emissiveIntensity: 0.35,
-      roughness: 0.2,
-      metalness: 0.45
-    })
+    new THREE.MeshStandardMaterial({ color: COLORS.wafer, emissive: 0x1fd7bd, emissiveIntensity: 0.35, roughness: 0.2, metalness: 0.45 })
   );
-  wafer.position.copy(positionOf(STEPS[0].point));
-  wafer.position.y = 1.18;
   wafer.castShadow = true;
   scene.add(wafer);
 
@@ -560,7 +420,6 @@ function createScene() {
     new THREE.BoxGeometry(1.25, 0.055, 0.09),
     new THREE.MeshBasicMaterial({ color: COLORS.comm, transparent: true, opacity: 0.72 })
   );
-  robotArm.position.set(0, 0.86, 0);
   scene.add(robotArm);
 
   processGlow = new THREE.Mesh(
@@ -572,7 +431,13 @@ function createScene() {
   raycaster = new THREE.Raycaster();
   pointer = new THREE.Vector2();
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
+  renderer.domElement.addEventListener("pointermove", onPointerMove);
+  renderer.domElement.addEventListener("pointerup", onPointerUp);
+  renderer.domElement.addEventListener("pointerleave", onPointerUp);
+  renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+
   initialized = true;
+  applyCameraPreset("iso");
 }
 
 function setStaticCopy() {
@@ -607,16 +472,118 @@ function cleanupTermMarkup() {
 
 function activeStepData() {
   const base = STEPS[activeStep] || STEPS[0];
-  return {
-    ...base,
-    active: base.active.map(resolveId),
-    point: resolveId(base.point)
-  };
+  return { ...base, active: base.active.map(resolveId), point: resolveId(base.point) };
 }
 
 function nextStepData() {
   const next = STEPS[(activeStep + 1) % STEPS.length] || STEPS[0];
   return { ...next, point: resolveId(next.point) };
+}
+
+function pressureModel() {
+  const step = activeStepData();
+  const p = stageProgress;
+  if (step.id === "ll-load") return { fill: 88, label: "ATM side", note: "LL은 아직 대기압 쪽 handoff 경계입니다." };
+  if (step.id === "pumpdown") return { fill: Math.max(10, 92 - p * 82), label: "pumping down", note: "압력은 정성 모델입니다. 실제 setpoint는 공식 문서 영역입니다." };
+  if (["tm-pick", "pm-load", "process", "unload"].includes(step.id)) return { fill: 12, label: "transfer vacuum concept", note: "TM과 PM handoff가 가능한 진공 경계로 생각합니다." };
+  if (step.id === "return") return { fill: Math.min(88, 12 + p * 76), label: "venting to ATM", note: "return에서는 LL이 다시 대기압 쪽으로 전환됩니다." };
+  return { fill: 92, label: "ATM-like", note: "FOUP/EFEM 쪽은 대기압 handling 영역입니다." };
+}
+
+function flowLabel() {
+  const step = activeStepData();
+  if (step.id === "process") return "Gas in -> PM reaction -> pump/exhaust -> abatement";
+  if (["ll-load", "pumpdown", "return"].includes(step.id)) return "N2 purge/vent concept + pump path";
+  if (step.id === "unload") return "purge/byproduct removal before transfer";
+  return "wafer handling 중심, process gas는 아직 gated";
+}
+
+function packetLabel() {
+  const step = activeStepData();
+  if (step.id === "carrier-arrive") return "Host -> Tool Controller -> Load Port";
+  if (step.id === "process") return "PM trace -> Tool Controller -> Host";
+  return "Tool Controller -> active module state handshake";
+}
+
+function pathPoint(ids, t) {
+  const points = ids.map(positionOf);
+  if (points.length === 1) return points[0];
+  const scaled = Math.min(points.length - 1 - 0.001, Math.max(0, t * (points.length - 1)));
+  const index = Math.floor(scaled);
+  const local = scaled - index;
+  return points[index].clone().lerp(points[index + 1], local);
+}
+
+function particlePath(kind) {
+  const pm = routePmId();
+  if (kind === "gas") return ["gasbox", pm];
+  if (kind === "exhaust") return [pm, "pump", "abatement"];
+  if (kind === "purge") return ["lla", "pump", "abatement"];
+  const point = activeStepData().point;
+  const target = ["pm1", "pm2", "pm3", "preclean", "tm", "lla", "llb", "lp", "efem"].includes(point) ? point : "lp";
+  return ["host", "toolpc", target];
+}
+
+function kindVisible(kind) {
+  const step = activeStepData();
+  if (kind === "gas") return layerState.particles && (activeMode === "gas" || step.id === "process");
+  if (kind === "exhaust") return layerState.particles && (activeMode === "gas" || ["process", "unload"].includes(step.id));
+  if (kind === "purge") return layerState.particles && (activeMode === "vacuum" || ["ll-load", "pumpdown", "return"].includes(step.id));
+  return layerState.packets && (activeMode === "comm" || step.mode === "comm");
+}
+
+function updateParticles(tick) {
+  flowParticles.forEach(mesh => {
+    const kind = mesh.userData.kind;
+    const visible = kindVisible(kind);
+    mesh.visible = visible;
+    if (!visible) return;
+    const t = (tick * (kind === "gas" ? 0.00016 : 0.00013) * speed + mesh.userData.offset) % 1;
+    const point = pathPoint(particlePath(kind), t);
+    mesh.position.copy(point);
+    mesh.position.y += kind === "purge" ? 0.38 : kind === "exhaust" ? 0.32 : 0.68;
+  });
+  packetParticles.forEach(mesh => {
+    const visible = kindVisible("packet");
+    mesh.visible = visible;
+    if (!visible) return;
+    const t = (tick * 0.00024 * speed + mesh.userData.offset) % 1;
+    const point = pathPoint(particlePath("packet"), t);
+    mesh.position.copy(point);
+    mesh.position.y += 0.92;
+  });
+}
+
+function applyCameraPreset(preset) {
+  activeCamera = preset === "reset" ? "iso" : preset;
+  if (preset === "top") {
+    orbit.theta = -0.02;
+    orbit.phi = 0.08;
+    orbit.radius = 7.2;
+  } else if (preset === "front") {
+    orbit.theta = -1.55;
+    orbit.phi = 1.08;
+    orbit.radius = 7.4;
+  } else {
+    orbit.theta = -0.72;
+    orbit.phi = 0.86;
+    orbit.radius = 7.45;
+  }
+  updateCameraButtons();
+  updateCamera();
+}
+
+function updateCamera() {
+  if (!camera) return;
+  const phi = THREE.MathUtils.clamp(orbit.phi, 0.08, 1.42);
+  const radius = THREE.MathUtils.clamp(orbit.radius, 4.8, 10.5);
+  const sinPhi = Math.sin(phi);
+  camera.position.set(
+    orbit.target.x + radius * sinPhi * Math.cos(orbit.theta),
+    orbit.target.y + radius * Math.cos(phi),
+    orbit.target.z + radius * sinPhi * Math.sin(orbit.theta)
+  );
+  camera.lookAt(orbit.target);
 }
 
 function updateRouteButtons() {
@@ -626,10 +593,21 @@ function updateRouteButtons() {
   root.querySelectorAll("[data-webgl-mode]").forEach(button => {
     button.classList.toggle("active", button.dataset.webglMode === activeMode);
   });
+  root.querySelectorAll("[data-webgl-layer]").forEach(button => {
+    const layer = button.dataset.webglLayer;
+    button.classList.toggle("active", !!layerState[layer]);
+  });
   const play = root.querySelector("[data-webgl-play]");
   if (play) play.textContent = playing ? "일시정지" : "재생";
   const speedValue = root.querySelector("#webgl-speed-value");
   if (speedValue) speedValue.textContent = `${speed.toFixed(1)}x`;
+}
+
+function updateCameraButtons() {
+  root.querySelectorAll("[data-webgl-camera]").forEach(button => {
+    const key = button.dataset.webglCamera;
+    button.classList.toggle("active", key === activeCamera || (key === "iso" && activeCamera === "iso"));
+  });
 }
 
 function updateHighlights() {
@@ -639,13 +617,19 @@ function updateHighlights() {
     const item = component(id);
     const isActive = activeSet.has(id);
     const isSelected = selectedId === id;
+    const cutawayFactor = layerState.cutaway && ["vacuum", "process", "gas"].includes(item.group) ? 0.48 : 1;
     mesh.material.color.setHex(isSelected ? COLORS.facility : isActive ? COLORS.active : colorFor(item.group));
-    mesh.material.opacity = isSelected ? 0.86 : isActive ? 0.78 : 0.38;
+    mesh.material.opacity = (isSelected ? 0.86 : isActive ? 0.78 : 0.38) * cutawayFactor;
     mesh.scale.setScalar(isSelected ? 1.08 : isActive ? 1.04 : 1);
   });
+  shellLids.forEach(lid => {
+    lid.visible = !layerState.cutaway;
+  });
+  interiorObjects.forEach(object => {
+    object.visible = layerState.cutaway;
+  });
   lines.forEach(line => {
-    const typeMatch = line.userData.type === activeMode ||
-      (activeMode === "gas" && line.userData.type === "facility");
+    const typeMatch = line.userData.type === activeMode || (activeMode === "gas" && line.userData.type === "facility");
     const activeLine = activeSet.has(resolveId(line.userData.a)) || activeSet.has(resolveId(line.userData.b));
     line.material.opacity = typeMatch ? (activeLine ? 0.95 : 0.42) : 0.12;
     line.material.color.setHex(colorFor(line.userData.type));
@@ -654,6 +638,7 @@ function updateHighlights() {
     node.classList.toggle("active", activeSet.has(id));
     node.classList.toggle("selected", selectedId === id);
   });
+  if (pressureGroup) pressureGroup.visible = layerState.pressure;
 }
 
 function updateWafer(delta) {
@@ -667,10 +652,7 @@ function updateWafer(delta) {
       updateReadouts();
     }
   }
-
-  const eased = stageProgress < 0.5
-    ? 2 * stageProgress * stageProgress
-    : 1 - Math.pow(-2 * stageProgress + 2, 2) / 2;
+  const eased = stageProgress < 0.5 ? 2 * stageProgress * stageProgress : 1 - Math.pow(-2 * stageProgress + 2, 2) / 2;
   wafer.position.lerpVectors(current, next, playing ? eased : 0);
   wafer.position.y = 1.14 + Math.sin(performance.now() * 0.006) * 0.025;
   wafer.rotation.y += delta * 0.0016;
@@ -686,9 +668,20 @@ function updateWafer(delta) {
 
   const pm = positionOf(routePmId());
   processGlow.position.set(pm.x, 0.98, pm.z);
-  processGlow.material.opacity = activeStepData().id === "process"
-    ? 0.12 + Math.sin(performance.now() * 0.006) * 0.04
-    : 0;
+  processGlow.material.opacity = activeStepData().id === "process" ? 0.12 + Math.sin(performance.now() * 0.006) * 0.04 : 0;
+}
+
+function updatePressureGauge() {
+  const model = pressureModel();
+  if (pressureFill) {
+    const scale = THREE.MathUtils.clamp(model.fill / 100, 0.06, 0.96);
+    pressureFill.scale.y = scale;
+    pressureFill.position.y = -0.42 + (0.82 * scale) / 2;
+    pressureFill.material.color.setHex(model.fill > 50 ? COLORS.vacuum : COLORS.material);
+  }
+  if (pressureNeedle) {
+    pressureNeedle.rotation.z = THREE.MathUtils.degToRad(-42 + (100 - model.fill) * 0.78);
+  }
 }
 
 function updateLabels() {
@@ -697,10 +690,7 @@ function updateLabels() {
   const step = activeStepData();
   const activeSet = new Set(step.active);
   const compact = rect.width < 560;
-  const coreSet = compact
-    ? new Set([step.point, selectedId, routePmId(), ...step.active])
-    : new Set(["foup", "efem", "lla", "tm", routePmId(), selectedId, ...step.active]);
-
+  const coreSet = compact ? new Set([step.point, selectedId, routePmId(), ...step.active]) : new Set(["foup", "efem", "lla", "tm", routePmId(), selectedId, ...step.active]);
   COMPONENTS.forEach(item => {
     const node = labelNodes.get(item.id);
     const mesh = meshes.get(item.id);
@@ -725,11 +715,35 @@ function updateLabels() {
   });
 }
 
+function updateDiagnostics() {
+  const pressure = pressureModel();
+  if (diagnostics) {
+    diagnostics.style.setProperty("--pressure-fill", `${Math.round(pressure.fill)}%`);
+    diagnostics.innerHTML = `
+      <h3>Live mental model</h3>
+      <div class="webgl-diagnostic-cell"><b>LL pressure</b>${pressure.label}</div>
+      <div class="webgl-diagnostic-cell"><b>Flow</b>${flowLabel()}</div>
+      <div class="webgl-diagnostic-cell"><b>Packets</b>${packetLabel()}</div>
+      <div class="webgl-diagnostic-cell"><b>View</b>${layerState.cutaway ? "cutaway on" : "shell view"} / ${activeCamera}</div>
+      <div class="webgl-pressure-bar"><i></i></div>
+      <small>${pressure.note}</small>
+    `;
+  }
+  if (hud) {
+    hud.innerHTML = `
+      <strong>${activeStepData().title}</strong>
+      <span>${pressure.label} · ${flowLabel()} · ${packetLabel()}</span>
+    `;
+  }
+}
+
 function updateReadouts() {
   const step = activeStepData();
   const selected = component(selectedId) || component("tm");
   updateRouteButtons();
   updateHighlights();
+  updatePressureGauge();
+  updateDiagnostics();
   if (readout) {
     readout.innerHTML = `
       <p class="eyebrow">현재 단계</p>
@@ -759,7 +773,7 @@ function updateReadouts() {
   cleanupTermMarkup();
 }
 
-function onPointerDown(event) {
+function pickComponent(event) {
   if (!renderer || !camera || !raycaster) return;
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -772,6 +786,44 @@ function onPointerDown(event) {
   }
 }
 
+function onPointerDown(event) {
+  drag.active = true;
+  drag.moved = false;
+  drag.x = event.clientX;
+  drag.y = event.clientY;
+  renderer.domElement.setPointerCapture?.(event.pointerId);
+}
+
+function onPointerMove(event) {
+  if (!drag.active) return;
+  const dx = event.clientX - drag.x;
+  const dy = event.clientY - drag.y;
+  if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+  drag.x = event.clientX;
+  drag.y = event.clientY;
+  orbit.theta -= dx * 0.006;
+  orbit.phi = THREE.MathUtils.clamp(orbit.phi + dy * 0.004, 0.08, 1.42);
+  activeCamera = "orbit";
+  updateCameraButtons();
+  updateCamera();
+}
+
+function onPointerUp(event) {
+  if (!drag.active) return;
+  renderer.domElement.releasePointerCapture?.(event.pointerId);
+  const wasMoved = drag.moved;
+  drag.active = false;
+  if (!wasMoved) pickComponent(event);
+}
+
+function onWheel(event) {
+  event.preventDefault();
+  orbit.radius = THREE.MathUtils.clamp(orbit.radius + event.deltaY * 0.006, 4.8, 10.5);
+  activeCamera = "orbit";
+  updateCameraButtons();
+  updateCamera();
+}
+
 function resize() {
   if (!renderer || !camera || !wrap) return;
   const width = Math.max(320, Math.floor(wrap.clientWidth || 0));
@@ -779,6 +831,7 @@ function resize() {
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+  updateCamera();
 }
 
 function animate(tick = 0) {
@@ -786,9 +839,10 @@ function animate(tick = 0) {
   const delta = Math.min(48, tick - (lastTick || tick));
   lastTick = tick;
   updateWafer(delta);
-  const orbit = Math.sin(tick * 0.00012) * 0.22;
-  camera.position.x = 0.25 + orbit;
-  camera.lookAt(0.15, 0.48, 0);
+  updateParticles(tick);
+  updatePressureGauge();
+  updateDiagnostics();
+  updateCamera();
   renderer.render(scene, camera);
   updateLabels();
   requestAnimationFrame(animate);
@@ -797,9 +851,7 @@ function animate(tick = 0) {
 function setupEvents() {
   root.querySelectorAll("[data-webgl-step]").forEach(button => {
     button.addEventListener("click", () => {
-      activeStep = button.dataset.webglStep === "next"
-        ? (activeStep + 1) % STEPS.length
-        : (activeStep + STEPS.length - 1) % STEPS.length;
+      activeStep = button.dataset.webglStep === "next" ? (activeStep + 1) % STEPS.length : (activeStep + STEPS.length - 1) % STEPS.length;
       stageProgress = 0;
       updateReadouts();
     });
@@ -822,8 +874,18 @@ function setupEvents() {
       updateReadouts();
     });
   });
+  root.querySelectorAll("[data-webgl-camera]").forEach(button => {
+    button.addEventListener("click", () => applyCameraPreset(button.dataset.webglCamera));
+  });
+  root.querySelectorAll("[data-webgl-layer]").forEach(button => {
+    button.addEventListener("click", () => {
+      const layer = button.dataset.webglLayer;
+      layerState[layer] = !layerState[layer];
+      updateReadouts();
+    });
+  });
   root.querySelector("[data-webgl-speed]")?.addEventListener("input", event => {
-    speed = Number(event.target.value || 100) / 100;
+    speed = Number(event.target.value || 70) / 100;
     updateRouteButtons();
   });
   window.addEventListener("resize", resize);
@@ -860,15 +922,22 @@ function getState() {
     activeStepId: activeStepData().id,
     activeRoute,
     activeMode,
+    activeCamera,
     selectedId,
     playing,
     speed,
+    layerState: { ...layerState },
     stageProgress: Number(stageProgress.toFixed(3)),
+    pressure: pressureModel(),
+    visibleFlowParticles: flowParticles.filter(mesh => mesh.visible).length,
+    visiblePacketParticles: packetParticles.filter(mesh => mesh.visible).length,
     waferPosition: wafer ? wafer.position.toArray().map(value => Number(value.toFixed(3))) : [],
+    cameraPosition: camera ? camera.position.toArray().map(value => Number(value.toFixed(3))) : [],
     canvas: canvas ? { width: canvas.clientWidth, height: canvas.clientHeight } : null,
     visibleLabels: [...labelNodes.values()].filter(node => node.style.display !== "none").length,
     totalLabels: labelNodes.size,
-    readoutText: readout?.textContent?.replace(/\s+/g, " ").trim() || ""
+    readoutText: readout?.textContent?.replace(/\s+/g, " ").trim() || "",
+    hudText: hud?.textContent?.replace(/\s+/g, " ").trim() || ""
   };
 }
 
@@ -897,6 +966,11 @@ function init() {
       if (["material", "vacuum", "gas", "comm"].includes(mode)) activeMode = mode;
       updateReadouts();
     },
+    setLayer: (layer, value) => {
+      if (Object.prototype.hasOwnProperty.call(layerState, layer)) layerState[layer] = !!value;
+      updateReadouts();
+    },
+    setCamera: applyCameraPreset,
     play: () => {
       playing = true;
       updateRouteButtons();
