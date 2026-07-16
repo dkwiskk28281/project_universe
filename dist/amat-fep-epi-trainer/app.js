@@ -4020,6 +4020,8 @@ let activeTraceScenario = state.activeTraceScenario || "epi-uniformity";
 let activeTraceView = state.activeTraceView || "trace";
 let activeTraceCaseIndex = state.activeTraceCaseIndex || 0;
 const traceEvidenceSelection = new Set(state.traceEvidenceSelection || []);
+let traceImportStatus = state.traceImportStatus || "";
+let traceRemoteSaveStatus = "";
 const rtpTraceKnobs = {
   ramp: state.rtpTraceKnobs?.ramp ?? 56,
   pyrometry: state.rtpTraceKnobs?.pyrometry ?? 72,
@@ -6937,6 +6939,12 @@ const epiTraceEvidenceDeck = [
   ["gas-owner", "Gas owner signoff", "Gas cabinet, detector, exhaust, abatement readiness"],
   ["facility-owner", "Facility owner status", "Exhaust, PCW, CDA/N2, power owner evidence"],
   ["module-history", "Module history", "Recent PM, matching, clean, prior process family"],
+  ["pm-history", "PM history", "Opened-area work, replaced parts, clean/recovery context"],
+  ["exhaust-ready", "Exhaust ready", "Duct/scrubber/abatement owner readiness signal"],
+  ["lamp-zone", "Lamp zone", "RTP zone response and thermal uniformity clue"],
+  ["run-order", "Run order", "First-wafer, queue-time, or later-run drift clue"],
+  ["baseline-trend", "Baseline trend", "Golden wafer or historical module comparison"],
+  ["backside-check", "Backside check", "Emissivity, handling, and contamination context"],
   ["inspection", "Inspection", "Defect, slip, backside, edge signature"],
   ["metrology-repeat", "Metrology repeat", "Confirm tool setup before blaming process"]
 ];
@@ -7088,6 +7096,286 @@ function traceGameCase() {
   return cases.find(item => item.scenario === scenario.id) || cases[activeTraceCaseIndex % cases.length] || cases[0];
 }
 
+const traceImportSample = `time_s,temp_actual_c,pressure_torr,mfc_si_actual,mfc_dopant_actual,exhaust_flow_pct,thickness_nm,rs_ohm_sq
+0,55,48,51,4.2,82,0,128
+1,59,49,53,4.2,82,4,127
+2,65,51,55,4.3,81,9,126
+3,72,53,57,4.4,79,15,124
+4,76,57,58,4.8,77,21,121
+5,75,59,58,5.1,75,27,118
+6,73,58,57,5.3,74,33,115
+7,70,56,55,5.2,76,38,114
+8,66,54,54,5.1,78,43,113
+9,62,52,53,5.0,80,47,113
+10,58,50,52,4.9,82,50,114`;
+
+function traceHashText(text = "") {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
+
+function splitTraceCsvLine(line, delimiter) {
+  const cells = [];
+  let current = "";
+  let quoted = false;
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+    if (char === '"' && quoted && next === '"') {
+      current += '"';
+      index += 1;
+    } else if (char === '"') {
+      quoted = !quoted;
+    } else if (char === delimiter && !quoted) {
+      cells.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+function detectTraceDelimiter(line = "") {
+  const candidates = [",", "\t", ";"];
+  return candidates
+    .map(delimiter => ({ delimiter, count: splitTraceCsvLine(line, delimiter).length }))
+    .sort((a, b) => b.count - a.count)[0]?.delimiter || ",";
+}
+
+function traceNumber(value) {
+  if (value === null || value === undefined) return null;
+  const cleaned = String(value).replace(/[%_\s]/g, "").replace(/,/g, "");
+  if (!cleaned || cleaned === "-" || cleaned.toLowerCase() === "nan") return null;
+  const next = Number(cleaned);
+  return Number.isFinite(next) ? next : null;
+}
+
+function parseTraceTable(text = "") {
+  const lines = text
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+    .slice(0, 1200);
+  if (lines.length < 2) throw new Error("At least one header row and one data row are required.");
+  const delimiter = detectTraceDelimiter(lines[0]);
+  const headers = splitTraceCsvLine(lines[0], delimiter).map((header, index) => header || `column_${index + 1}`);
+  const rows = lines.slice(1).map(line => {
+    const cells = splitTraceCsvLine(line, delimiter);
+    const row = {};
+    headers.forEach((header, index) => {
+      row[header] = cells[index] ?? "";
+    });
+    return row;
+  });
+  return { delimiter, headers, rows };
+}
+
+function inferTraceColumnKind(name = "") {
+  const n = name.toLowerCase();
+  if (/time|sec|min|timestamp|date/.test(n)) return "time";
+  if (/temp|thermal|pyro|lamp|heater/.test(n)) return "thermal";
+  if (/press|vac|torr|mbar|pump/.test(n)) return "vacuum";
+  if (/mfc|flow|gas|si|ge|dop|hcl|h2|n2|ar/.test(n)) return "gas-delivery";
+  if (/exhaust|scrub|abat|duct/.test(n)) return "exhaust-abatement";
+  if (/thick|film|rs|sheet|metrology|particle|defect|uniform|ge_|dose/.test(n)) return "metrology";
+  if (/pcw|cool|water|facility|cda|utility/.test(n)) return "facility";
+  return "unknown";
+}
+
+function summarizeTraceColumn(name, rows) {
+  const values = rows.map(row => traceNumber(row[name])).filter(value => value !== null);
+  if (values.length < 2) return null;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const first = values[0];
+  const last = values[values.length - 1];
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const drift = last - first;
+  const span = max - min;
+  const deltas = values.slice(1).map((value, index) => value - values[index]);
+  const volatility = deltas.reduce((sum, value) => sum + Math.abs(value), 0) / Math.max(1, deltas.length);
+  const direction = Math.abs(drift) < Math.max(0.001, span * 0.12) ? "stable" : drift > 0 ? "rising" : "falling";
+  const kind = inferTraceColumnKind(name);
+  return {
+    name,
+    kind,
+    sampleCount: values.length,
+    min: Number(min.toFixed(3)),
+    max: Number(max.toFixed(3)),
+    mean: Number(mean.toFixed(3)),
+    first: Number(first.toFixed(3)),
+    last: Number(last.toFixed(3)),
+    drift: Number(drift.toFixed(3)),
+    span: Number(span.toFixed(3)),
+    volatility: Number(volatility.toFixed(3)),
+    direction,
+    values: values.slice(0, 180).map(value => Number(value.toFixed(3)))
+  };
+}
+
+function traceColumnSeverity(column) {
+  if (!column) return 0;
+  const relativeDrift = Math.abs(column.drift) / Math.max(1, Math.abs(column.mean), column.span);
+  const relativeVolatility = column.volatility / Math.max(1, Math.abs(column.mean), column.span);
+  return Math.min(100, Math.round(relativeDrift * 140 + relativeVolatility * 85 + Math.min(18, column.span)));
+}
+
+function buildTraceImportPacket(text, label = "manual trace") {
+  const parsed = parseTraceTable(text);
+  const columns = parsed.headers
+    .map(header => summarizeTraceColumn(header, parsed.rows))
+    .filter(Boolean);
+  if (!columns.length) throw new Error("No numeric trace columns were found.");
+  const signalColumns = columns.filter(column => column.kind !== "time");
+  const ranked = [...(signalColumns.length ? signalColumns : columns)].sort((a, b) => traceColumnSeverity(b) - traceColumnSeverity(a));
+  const subsystemCounts = ranked.reduce((acc, column) => {
+    acc[column.kind] = (acc[column.kind] || 0) + traceColumnSeverity(column);
+    return acc;
+  }, {});
+  const rankedSubsystems = Object.entries(subsystemCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([kind, score]) => ({ kind, score: Math.round(score) }));
+  const evidence = ranked.slice(0, 5).map(column => `${column.name}: ${column.direction}, drift ${column.drift}, span ${column.span}`);
+  const top = ranked[0];
+  const second = ranked[1];
+  const subsystem = rankedSubsystems[0]?.kind || "unknown";
+  const likely = subsystem === "thermal"
+    ? "thermal control, susceptor/lamp response, pyrometry confidence, cooling margin"
+    : subsystem === "vacuum"
+      ? "pressure control, pump conductance, leak/outgassing, APC/gauge evidence"
+      : subsystem === "gas-delivery"
+        ? "MFC actual response, gas cabinet supply, purge memory, line readiness"
+        : subsystem === "exhaust-abatement"
+          ? "exhaust conductance, scrubber/abatement readiness, byproduct removal path"
+          : subsystem === "metrology"
+            ? "wafer map/metrology association, baseline drift, module matching"
+            : subsystem === "facility"
+              ? "facility utility stability, owner status, trend correlation"
+              : "data association and trace quality first";
+  const stop = subsystem === "gas-delivery" || subsystem === "exhaust-abatement"
+    ? "Stop if toxic/flammable/corrosive gas readiness, detector state, exhaust, or abatement owner evidence is missing."
+    : subsystem === "thermal"
+      ? "Stop if thermal control is unstable, wafer damage/slip is suspected, or pyrometry confidence is not defensible."
+      : "Stop if trace-to-wafer/metrology association is broken or baseline wafer trend repeats without owner review.";
+  const now = new Date().toISOString();
+  const packet = {
+    id: `trace-packet-${traceHashText(`${label}:${now}:${text.slice(0, 4000)}`).slice(-8)}-${Date.now().toString(36)}`,
+    schemaVersion: "trace-intelligence-packet-v1",
+    type: "FEP/EPI/RTP Trace Intelligence Packet",
+    title: `Trace analyzer: ${label}`,
+    subsystem: "FEP/EPI/RTP",
+    severity: traceColumnSeverity(top) >= 55 ? "review-required" : "learning-review",
+    privacyLevel: "work-learning",
+    exportPolicy: "ai-summary-ok",
+    aiExportOk: true,
+    recordKind: "structured-summary",
+    storageTier: "d1-summary-only",
+    sourceDevice: navigator.userAgent ? traceHashText(navigator.userAgent).slice(0, 18) : "browser-session",
+    createdAt: now,
+    updatedAt: now,
+    label,
+    rawDataStored: false,
+    rawHash: traceHashText(text),
+    delimiter: parsed.delimiter === "\t" ? "tab" : parsed.delimiter,
+    rowCount: parsed.rows.length,
+    columnCount: parsed.headers.length,
+    numericColumnCount: columns.length,
+    tags: ["FEP/EPI/RTP", "trace", "metrology", subsystem],
+    entities: ["EPI", "RTP", "trace", "wafer", "metrology", subsystem],
+    topic: "trace-to-metrology evidence",
+    chapter: "Process Visual / Trace Analyzer",
+    summary: `Uploaded trace summary only. Dominant signal: ${top.name} (${top.kind}) ${top.direction}; drift ${top.drift}, span ${top.span}. ${second ? `Secondary: ${second.name} (${second.kind}) ${second.direction}.` : ""}`,
+    evidence: evidence.join("\n"),
+    action: `Correlate ${top.name} with wafer ID, event timestamps, baseline wafer, module history, and owner evidence before any process conclusion.`,
+    result: "Training packet generated from browser-side parsing. Raw CSV was not saved.",
+    nextAction: `Review likely subsystem: ${likely}. Build a customer report with symptom, evidence, owner, stop condition, and prevention.`,
+    stopCondition: stop,
+    customerReport: `Trace review shows ${top.name} is the strongest changing signal. We are correlating it with wafer/metrology association, module history, and ${subsystem} owner evidence before release.`,
+    likelySubsystems: rankedSubsystems.slice(0, 5),
+    columns: columns.map(({ values, ...column }) => column),
+    series: ranked.slice(0, 5).map(column => ({ name: column.name, kind: column.kind, values: column.values }))
+  };
+  return packet;
+}
+
+function traceImportPath(values = [], width = 430, height = 136) {
+  if (!values.length) return "";
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(1e-9, max - min);
+  return values.map((value, index) => {
+    const x = 26 + (index / Math.max(1, values.length - 1)) * (width - 46);
+    const y = 14 + (1 - (value - min) / span) * (height - 34);
+    return `${index ? "L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join(" ");
+}
+
+function renderTraceImportPacket(packet) {
+  if (!packet) {
+    return `
+      <div class="trace-import-empty">
+        <strong>No trace packet yet</strong>
+        <span>CSV/TSV를 업로드하거나 sample을 불러오면 browser 안에서만 raw를 읽고, D1에는 요약 패킷만 저장할 수 있습니다.</span>
+      </div>
+    `;
+  }
+  const series = packet.series || [];
+  return `
+    <div class="trace-import-summary">
+      <article><span>Rows</span><strong>${packet.rowCount}</strong><small>${packet.numericColumnCount} numeric columns</small></article>
+      <article><span>Dominant</span><strong>${packet.series?.[0]?.name || "n/a"}</strong><small>${packet.likelySubsystems?.[0]?.kind || "unknown"}</small></article>
+      <article><span>Raw storage</span><strong>${packet.rawDataStored ? "stored" : "not stored"}</strong><small>${packet.rawHash}</small></article>
+    </div>
+    <svg class="trace-import-chart" viewBox="0 0 430 150" role="img" aria-label="Imported trace normalized chart">
+      <title>Imported trace normalized chart</title>
+      <desc>Top changing numeric columns normalized to show direction and relative instability.</desc>
+      <g class="trace-grid">
+        ${[0, 1, 2].map(i => `<line x1="24" y1="${26 + i * 42}" x2="410" y2="${26 + i * 42}"></line>`).join("")}
+      </g>
+      ${series.map((item, index) => `<path class="trace-import-line trace-import-${index}" d="${traceImportPath(item.values, 430, 150)}"></path>`).join("")}
+      <text x="26" y="142">normalized imported trace, no recipe/setpoint</text>
+    </svg>
+    <div class="trace-import-series">
+      ${series.map((item, index) => `<span class="trace-import-${index}"><i></i>${item.name}<em>${item.kind}</em></span>`).join("")}
+    </div>
+    <div class="trace-import-columns">
+      ${packet.columns.slice(0, 8).map(column => `
+        <article>
+          <b>${column.name}</b>
+          <span>${column.kind} / ${column.direction}</span>
+          <small>first ${column.first}, last ${column.last}, drift ${column.drift}, volatility ${column.volatility}</small>
+        </article>
+      `).join("")}
+    </div>
+    <div class="trace-report-card">
+      <strong>Generated CE packet</strong>
+      <p>${packet.customerReport}</p>
+      <small>Stop: ${packet.stopCondition}</small>
+    </div>
+  `;
+}
+
+async function saveTracePacketToD1(packet) {
+  const response = await fetch("/api/v4/records", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      "X-ThinkTank-Password": sessionStorage.getItem("ceTrainerPass") || ""
+    },
+    body: JSON.stringify(packet)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error(data.error || `save failed ${response.status}`);
+  return data;
+}
+
 function renderEpiTraceLab() {
   const root = document.querySelector("#epi-trace-lab");
   if (!root) return;
@@ -7108,6 +7396,7 @@ function renderEpiTraceLab() {
   const game = traceGameCase();
   const attempts = state.traceCaseAttempts || {};
   const weakness = state.traceWeakness || {};
+  const importPacket = state.traceImportPacket || null;
   root.innerHTML = `
     <div class="trace-lab-head">
       <div>
@@ -7124,7 +7413,7 @@ function renderEpiTraceLab() {
       </div>
     </div>
     <div class="trace-view-tabs" role="tablist" aria-label="Trace lab view">
-      ${[["trace", "Trace overlay"], ["map", "Wafer map"], ["evidence", "Evidence packet"], ["rtp", "RTP thermal twin"], ["game", "Case game"]].map(([id, label]) => `
+      ${[["trace", "Trace overlay"], ["map", "Wafer map"], ["evidence", "Evidence packet"], ["rtp", "RTP thermal twin"], ["game", "Case game"], ["import", "Trace CSV analyzer"]].map(([id, label]) => `
         <button type="button" class="${activeTraceView === id ? "active" : ""}" data-trace-view="${id}" aria-selected="${activeTraceView === id}">${label}</button>
       `).join("")}
     </div>
@@ -7244,6 +7533,33 @@ function renderEpiTraceLab() {
           ${Object.keys(weakness).length ? `Weakness top: ${Object.entries(weakness).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v}`).join(" / ")}` : "아직 저장된 오답이 없습니다."}
         </div>
       </article>
+      <article class="trace-import-panel">
+        <div class="trace-panel-title">
+          <p class="eyebrow">Trace CSV Analyzer</p>
+          <h3>내 trace를 evidence packet으로 바꾸기</h3>
+          <span>CSV/TSV 원문은 브라우저에서만 읽고 저장하지 않습니다. D1에는 column profile, hash, evidence, report summary만 저장합니다.</span>
+        </div>
+        <div class="trace-import-controls">
+          <label>
+            <span>CSV/TSV file</span>
+            <input id="trace-file-input" type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" />
+          </label>
+          <label>
+            <span>Paste trace text</span>
+            <textarea id="trace-paste-input" placeholder="time,temp_actual,pressure,mfc_actual,exhaust,thickness..."></textarea>
+          </label>
+          <div class="trace-import-actions">
+            <button type="button" class="secondary" data-trace-load-sample>sample 불러오기</button>
+            <button type="button" class="primary" data-trace-analyze-paste>붙여넣은 trace 분석</button>
+            <button type="button" class="secondary" data-trace-copy-packet ${importPacket ? "" : "disabled"}">패킷 복사</button>
+            <button type="button" class="primary" data-trace-save-packet ${importPacket ? "" : "disabled"}">D1에 요약 저장</button>
+          </div>
+          <small class="trace-import-status" id="trace-import-status">${traceImportStatus || traceRemoteSaveStatus || "raw file is not stored; summary packet only."}</small>
+        </div>
+        <div class="trace-import-result">
+          ${renderTraceImportPacket(importPacket)}
+        </div>
+      </article>
     </section>
     <div class="trace-boundary-note">
       <strong>Safety boundary</strong>
@@ -7309,6 +7625,70 @@ function renderEpiTraceLab() {
         choice.classList.toggle("bad", !isGood && choice === button);
       });
     });
+  });
+  function setTraceImportStatus(message) {
+    traceImportStatus = message;
+    state.traceImportStatus = message;
+    persistState();
+    const status = root.querySelector("#trace-import-status");
+    if (status) status.textContent = message;
+  }
+  function analyzeTraceText(text, label) {
+    try {
+      const packet = buildTraceImportPacket(text, label);
+      state.traceImportPacket = packet;
+      state.traceImportPackets = [packet, ...(state.traceImportPackets || []).filter(item => item.id !== packet.id)].slice(0, 12);
+      traceRemoteSaveStatus = "";
+      setTraceImportStatus(`분석 완료: ${packet.rowCount} rows, ${packet.numericColumnCount} numeric columns, dominant ${packet.series?.[0]?.name || "n/a"}`);
+      persistState();
+      renderEpiTraceLab();
+    } catch (error) {
+      setTraceImportStatus(`분석 실패: ${error.message || error}`);
+    }
+  }
+  root.querySelector("#trace-file-input")?.addEventListener("change", event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 1_200_000) {
+      setTraceImportStatus("파일이 너무 큽니다. 교육용 analyzer는 1.2MB 이하 trace summary만 처리합니다.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => analyzeTraceText(String(reader.result || ""), file.name || "uploaded trace"));
+    reader.addEventListener("error", () => setTraceImportStatus("파일을 읽지 못했습니다."));
+    reader.readAsText(file);
+  });
+  root.querySelector("[data-trace-load-sample]")?.addEventListener("click", () => {
+    const input = root.querySelector("#trace-paste-input");
+    if (input) input.value = traceImportSample;
+    analyzeTraceText(traceImportSample, "built-in EPI/RTP sample trace");
+  });
+  root.querySelector("[data-trace-analyze-paste]")?.addEventListener("click", () => {
+    const text = root.querySelector("#trace-paste-input")?.value || "";
+    analyzeTraceText(text, "pasted trace");
+  });
+  root.querySelector("[data-trace-copy-packet]")?.addEventListener("click", async () => {
+    if (!state.traceImportPacket) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(state.traceImportPacket, null, 2));
+      setTraceImportStatus("AI/CE packet JSON을 클립보드에 복사했습니다.");
+    } catch {
+      setTraceImportStatus("클립보드 복사 권한이 없어 실패했습니다.");
+    }
+  });
+  root.querySelector("[data-trace-save-packet]")?.addEventListener("click", async () => {
+    if (!state.traceImportPacket) return;
+    setTraceImportStatus("D1에 trace summary packet 저장 중...");
+    try {
+      const data = await saveTracePacketToD1(state.traceImportPacket);
+      traceRemoteSaveStatus = `D1 저장 완료: ${data.entry?.id || state.traceImportPacket.id}`;
+      state.traceImportPacket = { ...state.traceImportPacket, syncStatus: "D1 saved", remoteSavedAt: new Date().toISOString() };
+      persistState();
+      renderEpiTraceLab();
+    } catch (error) {
+      traceRemoteSaveStatus = `D1 저장 실패: ${error.message || error}. 로컬 요약은 유지됩니다.`;
+      setTraceImportStatus(traceRemoteSaveStatus);
+    }
   });
 }
 

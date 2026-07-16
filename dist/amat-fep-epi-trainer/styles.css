@@ -1596,6 +1596,12 @@ main,
   padding: 8px 10px;
 }
 
+.trace-view-tabs button.disabled,
+.trace-import-actions button.disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+
 .trace-main-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1605,6 +1611,7 @@ main,
 .trace-evidence-panel,
 .rtp-twin-panel,
 .trace-game-panel,
+.trace-import-panel,
 .trace-boundary-note {
   display: grid;
   gap: 12px;
@@ -1621,8 +1628,13 @@ main,
   grid-column: span 2;
 }
 
+.trace-import-panel {
+  grid-column: span 2;
+}
+
 .trace-overlay-chart,
-.rtp-curve {
+.rtp-curve,
+.trace-import-chart {
   display: block;
   width: 100%;
   height: auto;
@@ -1636,14 +1648,16 @@ main,
 }
 
 .trace-overlay-chart path,
-.rtp-curve path {
+.rtp-curve path,
+.trace-import-chart path {
   fill: none;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
 .trace-overlay-chart text,
-.rtp-curve text {
+.rtp-curve text,
+.trace-import-chart text {
   fill: rgba(236, 255, 248, 0.58);
   font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 10px;
@@ -1859,6 +1873,137 @@ main,
   background: rgba(255, 120, 168, 0.12);
 }
 
+.trace-import-controls {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.trace-import-controls label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: #ffffff;
+}
+
+.trace-import-controls input[type="file"],
+.trace-import-controls textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #ecfff8;
+}
+
+.trace-import-controls input[type="file"] {
+  padding: 9px;
+}
+
+.trace-import-controls textarea {
+  min-height: 98px;
+  padding: 10px;
+  resize: vertical;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  line-height: 1.45;
+}
+
+.trace-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trace-import-status,
+.trace-import-empty span,
+.trace-import-summary small,
+.trace-import-columns small,
+.trace-import-series em {
+  color: rgba(236, 255, 248, 0.66);
+  line-height: 1.45;
+}
+
+.trace-import-empty {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px dashed rgba(94, 231, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.trace-import-empty strong,
+.trace-import-summary strong,
+.trace-import-columns b,
+.trace-import-series span {
+  color: #ffffff;
+}
+
+.trace-import-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.trace-import-summary article,
+.trace-import-columns article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.trace-import-summary span,
+.trace-import-columns span {
+  color: rgba(94, 231, 255, 0.82);
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 11px;
+}
+
+.trace-import-chart {
+  min-height: 132px;
+}
+
+.trace-import-line {
+  stroke-width: 2.4;
+}
+
+.trace-import-0 { stroke: #5ee7ff; }
+.trace-import-1 { stroke: #25d366; }
+.trace-import-2 { stroke: #ff78a8; }
+.trace-import-3 { stroke: #ffd38a; }
+.trace-import-4 { stroke: #b98cff; }
+
+.trace-import-series {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.trace-import-series span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.trace-import-series i {
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.trace-import-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .trace-boundary-note {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -1877,6 +2022,14 @@ main,
   .trace-plot-panel {
     grid-column: auto;
   }
+
+  .trace-import-panel {
+    grid-column: auto;
+  }
+
+  .trace-import-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1891,6 +2044,8 @@ main,
   }
 
   .rtp-score-grid,
+  .trace-import-summary,
+  .trace-import-columns,
   .trace-boundary-note {
     grid-template-columns: 1fr;
   }
