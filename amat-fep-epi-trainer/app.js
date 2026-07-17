@@ -4447,6 +4447,7 @@ function save() {
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
   renderCeCampaignEngine();
+  renderCeStakeholderRoom();
   renderCeIncidentKernel();
   renderCeWarRoom();
   renderCeMemoryLedger();
@@ -8227,6 +8228,7 @@ function renderCeCampaignEngine() {
       campaign.seasonId = button.dataset.campaignSeason;
       persistState();
       renderCeCampaignEngine();
+      renderCeStakeholderRoom();
       renderCeMemoryLedger();
     });
   });
@@ -8236,6 +8238,7 @@ function renderCeCampaignEngine() {
       campaign.activeMission = button.dataset.campaignMission;
       persistState();
       renderCeCampaignEngine();
+      renderCeStakeholderRoom();
     });
   });
   root.querySelectorAll("[data-campaign-choice]").forEach(button => {
@@ -8261,6 +8264,7 @@ function renderCeCampaignEngine() {
       }
       persistState();
       renderCeCampaignEngine();
+      renderCeStakeholderRoom();
       renderCeMemoryLedger();
     });
   });
@@ -8289,6 +8293,7 @@ function renderCeCampaignEngine() {
       };
       persistState();
       renderCeCampaignEngine();
+      renderCeStakeholderRoom();
       renderCeMemoryLedger();
     });
   });
@@ -8308,12 +8313,14 @@ function renderCeCampaignEngine() {
     campaign.activeMission = next.id;
     persistState();
     renderCeCampaignEngine();
+    renderCeStakeholderRoom();
   });
   root.querySelector("[data-campaign-prev]")?.addEventListener("click", () => {
     const prev = ceCampaignMissions[Math.max(0, activeIndex - 1)];
     campaign.activeMission = prev.id;
     persistState();
     renderCeCampaignEngine();
+    renderCeStakeholderRoom();
   });
   root.querySelector("[data-campaign-save]")?.addEventListener("click", () => {
     state.ceCampaignSnapshot = {
@@ -8322,6 +8329,7 @@ function renderCeCampaignEngine() {
     };
     persistState();
     renderCeCampaignEngine();
+    renderCeStakeholderRoom();
   });
   root.querySelector("[data-campaign-reset]")?.addEventListener("click", () => {
     state.ceCampaign = {
@@ -8333,6 +8341,486 @@ function renderCeCampaignEngine() {
     };
     persistState();
     renderCeCampaignEngine();
+    renderCeStakeholderRoom();
+  });
+}
+
+const ceStakeholderActors = [
+  {
+    id: "customer-pm",
+    label: "Customer PM",
+    role: "Schedule / handover pressure",
+    pressure: "Wants visible progress, date confidence, and clean ownership.",
+    needs: "Short update: what is held, why it is held, who owns it, and next update time.",
+    risk: "May push verbal closeout if evidence language is weak."
+  },
+  {
+    id: "facilities",
+    label: "Facilities",
+    role: "Hook-up / exhaust / utilities",
+    pressure: "Needs clear boundary between tool-side ready and facility-side actual.",
+    needs: "Owner witness, utility status, and downstream readiness evidence.",
+    risk: "Visual connection can be mistaken for actual readiness."
+  },
+  {
+    id: "ehs-gas",
+    label: "EHS / Gas",
+    role: "Gas safety gate",
+    pressure: "Protects SDS, gas family, detector, exhaust, abatement, and first-gas authorization.",
+    needs: "Source-to-abatement chain and explicit stop line.",
+    risk: "Schedule language can normalize hazardous operation without owner evidence."
+  },
+  {
+    id: "process-metrology",
+    label: "Process / Metrology",
+    role: "Baseline / qualification evidence",
+    pressure: "Needs wafer, PM, trace, and metrology linkage before a qualification claim.",
+    needs: "Defensible traceability packet, not just a good number.",
+    risk: "A pass-looking value can hide weak evidence linkage."
+  },
+  {
+    id: "electrical-ehs",
+    label: "Electrical / EHS",
+    role: "LOTO / energized boundary",
+    pressure: "Needs approved boundary before live checks or DVM work.",
+    needs: "Authorized owner, stored-energy scope, panel boundary, and work permit clarity.",
+    risk: "Indicator lights can be over-trusted."
+  },
+  {
+    id: "amhs-host",
+    label: "AMHS / Host",
+    role: "Carrier handoff / communication",
+    pressure: "Needs host, AMHS, load port, and physical carrier ownership reconciled.",
+    needs: "State chain before retry.",
+    risk: "Repeated retry can corrupt traceability assumptions."
+  },
+  {
+    id: "senior-ce",
+    label: "Senior CE",
+    role: "Evidence-first coaching",
+    pressure: "Protects stop authority, customer wording, and recovery plan.",
+    needs: "Clear CE recommendation with evidence gaps and next action.",
+    risk: "Overpromising to look helpful creates downstream debt."
+  }
+];
+
+const ceStakeholderScenarios = [
+  {
+    id: "datum-meeting",
+    missionId: "day0-datum",
+    caseId: "move-in-floor-mark-mismatch",
+    title: "Datum hold meeting",
+    trigger: "Rigging crew is waiting and the customer asks if the tool can be set in place before datum disagreement is fully resolved.",
+    conflict: "Schedule pressure vs. service clearance evidence.",
+    actors: ["customer-pm", "facilities", "senior-ce"],
+    evidence: ["floor mark", "tool datum", "service clearance", "facility owner witness"],
+    stopLine: "Hold set-in-place until datum, clearance, and owner witness are aligned.",
+    reportModel: "We are holding set-in-place to protect hook-up clearance. Next action is a shared datum packet with facility owner witness.",
+    choices: [
+      { id: "datum-owner-table", label: "Build owner witness datum table", good: true, alignment: 16, evidence: 16, trust: 10, risk: -12, result: "The room can see one shared datum packet instead of competing opinions." },
+      { id: "move-now-note-later", label: "Move now and note the gap later", good: false, alignment: -12, evidence: -18, trust: -10, risk: 22, result: "You traded visible speed for hook-up rework risk and weak owner accountability." },
+      { id: "argue-mark-only", label: "Argue only from the floor mark", good: false, alignment: -8, evidence: -10, trust: -7, risk: 14, result: "A single reference is not enough; the room needs datum, clearance, and owner witness together." }
+    ]
+  },
+  {
+    id: "loto-boundary-room",
+    missionId: "day1-loto",
+    caseId: "power-loto-boundary-unclear",
+    title: "LOTO boundary room",
+    trigger: "Power-on meeting starts, but the panel boundary and stored-energy scope are interpreted differently by two owners.",
+    conflict: "Fast energized check vs. approved safety boundary.",
+    actors: ["electrical-ehs", "customer-pm", "senior-ce"],
+    evidence: ["LOTO owner", "panel scope", "stored energy", "authorized work boundary"],
+    stopLine: "No energized work until approved boundary and stored-energy scope are confirmed.",
+    reportModel: "Before any energized check, we need the approved LOTO boundary and stored-energy scope confirmed by the authorized owner.",
+    choices: [
+      { id: "loto-scope-first", label: "Stop and align LOTO scope first", good: true, alignment: 14, evidence: 12, trust: 8, risk: -16, result: "You made DVM work conditional on safety boundary, which is the senior CE move." },
+      { id: "green-light-check", label: "Use indicator lights as proof", good: false, alignment: -7, evidence: -11, trust: -8, risk: 18, result: "Indicator lights are not a substitute for approved boundary and stored-energy evidence." },
+      { id: "quick-meter-demo", label: "Quick DVM demo to calm the room", good: false, alignment: -15, evidence: -9, trust: -14, risk: 26, result: "A live-work shortcut under social pressure is exactly the failure pattern to avoid." }
+    ]
+  },
+  {
+    id: "exhaust-owner-gap",
+    missionId: "facility-exhaust",
+    caseId: "facility-exhaust-not-witnessed",
+    title: "Exhaust owner gap",
+    trigger: "Tool-side exhaust connection looks complete, but downstream actual readiness and abatement owner witness are not in the room.",
+    conflict: "Visible hook-up vs. actual containment chain.",
+    actors: ["facilities", "ehs-gas", "customer-pm", "senior-ce"],
+    evidence: ["tool-side connection", "exhaust actual", "abatement actual", "owner witness"],
+    stopLine: "No hazardous operation without downstream exhaust and abatement actual witness.",
+    reportModel: "Tool-side connection is visible, but downstream actual readiness is not yet witnessed; we are holding hazardous operation.",
+    choices: [
+      { id: "source-to-abatement-map", label: "Map source-to-abatement evidence", good: true, alignment: 15, evidence: 18, trust: 9, risk: -15, result: "You separated mechanical connection from actual containment readiness." },
+      { id: "visual-line-ok", label: "Accept visual line connection", good: false, alignment: -9, evidence: -17, trust: -11, risk: 24, result: "Visual completion does not close the downstream containment evidence gap." },
+      { id: "gas-will-alarm", label: "Let gas alarms prove readiness", good: false, alignment: -14, evidence: -15, trust: -16, risk: 30, result: "Using alarms as the test is unsafe thinking; owner evidence must come first." }
+    ]
+  },
+  {
+    id: "first-gas-board",
+    missionId: "first-gas",
+    caseId: "toxic-gas-cabinet-owner-gap",
+    title: "First gas board",
+    trigger: "The schedule calls for first gas, but gas family, SDS, detector health, exhaust actual, and abatement actual are not one packet.",
+    conflict: "First gas milestone vs. complete safety chain.",
+    actors: ["ehs-gas", "facilities", "customer-pm", "senior-ce"],
+    evidence: ["gas family", "SDS", "detector health", "exhaust actual", "abatement actual"],
+    stopLine: "No gas enable without source-to-abatement packet and owner witness.",
+    reportModel: "First gas remains on hold until gas family, detector health, exhaust actual, abatement actual, and owner witness are in one packet.",
+    choices: [
+      { id: "gas-chain-packet", label: "Build first-gas chain packet", good: true, alignment: 18, evidence: 20, trust: 11, risk: -18, result: "The board now has one source-to-abatement chain instead of scattered green indicators." },
+      { id: "tool-ready-bit", label: "Use tool-ready bit as go signal", good: false, alignment: -10, evidence: -18, trust: -12, risk: 27, result: "A tool-ready bit cannot replace gas family, detector, exhaust, abatement, and owner evidence." },
+      { id: "promise-later-paper", label: "Promise paperwork after first gas", good: false, alignment: -16, evidence: -22, trust: -18, risk: 32, result: "Paperwork after hazardous action is not evidence-first control." }
+    ]
+  },
+  {
+    id: "handoff-state-room",
+    missionId: "wafer-handoff",
+    caseId: "e84-handoff-timeout",
+    title: "Carrier ownership room",
+    trigger: "AMHS handoff times out and the customer asks whether repeated retry is safe because production is waiting.",
+    conflict: "Retry pressure vs. carrier ownership and traceability.",
+    actors: ["amhs-host", "customer-pm", "process-metrology", "senior-ce"],
+    evidence: ["AMHS active state", "load port passive state", "physical carrier state", "host transaction"],
+    stopLine: "No repeated retry while carrier ownership is ambiguous.",
+    reportModel: "We are holding repeated handoff until AMHS state, load port state, and physical carrier ownership are reconciled.",
+    choices: [
+      { id: "state-chain-first", label: "Reconcile active/passive/physical state", good: true, alignment: 15, evidence: 17, trust: 8, risk: -12, result: "You protected traceability before retrying a visible automation action." },
+      { id: "retry-to-clear", label: "Retry until timeout clears", good: false, alignment: -9, evidence: -14, trust: -8, risk: 19, result: "Retry can hide the original owner mismatch and make the trace harder to defend." },
+      { id: "host-is-truth", label: "Treat host state as the only truth", good: false, alignment: -6, evidence: -12, trust: -7, risk: 15, result: "Host state matters, but physical carrier ownership must also be reconciled." }
+    ]
+  },
+  {
+    id: "baseline-claim-room",
+    missionId: "baseline-link",
+    caseId: "baseline-metrology-link-broken",
+    title: "Baseline claim room",
+    trigger: "A baseline number looks good, but wafer ID, PM ID, trace ID, and metrology ID are not fully linked.",
+    conflict: "Good-looking value vs. defensible qualification evidence.",
+    actors: ["process-metrology", "customer-pm", "senior-ce"],
+    evidence: ["wafer ID", "PM ID", "trace ID", "metrology ID", "timestamp"],
+    stopLine: "Do not claim qualification pass until ID linkage is closed.",
+    reportModel: "The value alone is not enough; we are holding the qualification claim until wafer, PM, trace, and metrology IDs are linked.",
+    choices: [
+      { id: "id-linkage-packet", label: "Build ID-linkage packet", good: true, alignment: 13, evidence: 22, trust: 12, risk: -14, result: "You turned a result into defensible qualification evidence." },
+      { id: "pass-by-value", label: "Pass because the value looks good", good: false, alignment: -7, evidence: -24, trust: -15, risk: 22, result: "A good value without linkage can collapse during handover or later audit." },
+      { id: "rename-after", label: "Rename files after meeting", good: false, alignment: -5, evidence: -18, trust: -12, risk: 18, result: "Post-hoc naming does not fix traceability and timestamp integrity." }
+    ]
+  },
+  {
+    id: "handover-escalation-room",
+    missionId: "handover",
+    caseId: "handover-punchlist-open",
+    title: "Handover escalation room",
+    trigger: "Most installation work is done, but open punchlist items lack owner, due date, and residual-risk wording.",
+    conflict: "Final closeout pressure vs. evidence-linked handover.",
+    actors: ["customer-pm", "process-metrology", "facilities", "senior-ce"],
+    evidence: ["completed evidence", "open issue owner", "due date", "residual risk", "next review"],
+    stopLine: "No final handover while owner/due date/residual-risk wording is missing.",
+    reportModel: "We can summarize completed evidence today, but final handover should wait until open issues have owner, due date, and residual-risk wording.",
+    choices: [
+      { id: "evidence-open-split", label: "Separate completed evidence and open risks", good: true, alignment: 18, evidence: 18, trust: 18, risk: -16, result: "The customer can see what is done and what still needs owner-controlled closure." },
+      { id: "verbal-final", label: "Close verbally to protect schedule", good: false, alignment: -10, evidence: -16, trust: -22, risk: 22, result: "Verbal closure creates ambiguity exactly where ownership should be strongest." },
+      { id: "report-done-only", label: "Report only completed items", good: false, alignment: -12, evidence: -18, trust: -24, risk: 24, result: "Hiding open issues is a trust failure and creates future escalation." }
+    ]
+  }
+];
+
+function getStakeholderState() {
+  state.ceStakeholderRoom = state.ceStakeholderRoom || {
+    activeScenario: ceStakeholderScenarios[0].id,
+    decisions: {},
+    reports: {},
+    savedPackets: [],
+    startedAt: new Date().toISOString()
+  };
+  if (!ceStakeholderScenarios.some(item => item.id === state.ceStakeholderRoom.activeScenario)) {
+    state.ceStakeholderRoom.activeScenario = ceStakeholderScenarios[0].id;
+  }
+  state.ceStakeholderRoom.decisions = state.ceStakeholderRoom.decisions || {};
+  state.ceStakeholderRoom.reports = state.ceStakeholderRoom.reports || {};
+  state.ceStakeholderRoom.savedPackets = state.ceStakeholderRoom.savedPackets || [];
+  return state.ceStakeholderRoom;
+}
+
+function getActiveStakeholderScenario() {
+  const room = getStakeholderState();
+  return ceStakeholderScenarios.find(item => item.id === room.activeScenario) || ceStakeholderScenarios[0];
+}
+
+function getStakeholderScenarioForMission(missionId) {
+  return ceStakeholderScenarios.find(item => item.missionId === missionId) || ceStakeholderScenarios[0];
+}
+
+function getStakeholderScores() {
+  const room = getStakeholderState();
+  const values = Object.values(room.decisions || {});
+  const totals = values.reduce((acc, decision) => {
+    acc.alignment += decision.alignment || 0;
+    acc.evidence += decision.evidence || 0;
+    acc.trust += decision.trust || 0;
+    acc.risk += decision.risk || 0;
+    if (decision.good) acc.good += 1;
+    else acc.bad += 1;
+    return acc;
+  }, { alignment: 54, evidence: 50, trust: 52, risk: 28, good: 0, bad: 0 });
+  return {
+    alignment: clampScore(totals.alignment),
+    evidence: clampScore(totals.evidence),
+    trust: clampScore(totals.trust),
+    risk: clampScore(totals.risk),
+    good: totals.good,
+    bad: totals.bad,
+    completed: values.length,
+    total: ceStakeholderScenarios.length,
+    leadership: clampScore((totals.alignment + totals.evidence + totals.trust + (100 - clampScore(totals.risk))) / 4)
+  };
+}
+
+function getStakeholderReportCoach(text = "") {
+  const normalized = String(text || "").toLowerCase();
+  const checks = [
+    { id: "hold", label: "Hold / stop line", hit: /(hold|stop|wait|until|cannot|중지|보류)/i.test(normalized) },
+    { id: "owner", label: "Owner named", hit: /(owner|responsible|customer|facility|facilities|ehs|gas|process|metrology|electrical|담당|오너)/i.test(normalized) },
+    { id: "evidence", label: "Evidence packet", hit: /(evidence|packet|witness|trace|actual|id|link|증거|확인|입회)/i.test(normalized) },
+    { id: "next", label: "Next update", hit: /(next|update|due|date|time|review|다음|업데이트|시간|기한)/i.test(normalized) }
+  ];
+  return {
+    checks,
+    score: Math.round((checks.filter(item => item.hit).length / checks.length) * 100),
+    missing: checks.filter(item => !item.hit).map(item => item.label)
+  };
+}
+
+function buildStakeholderPacket() {
+  const room = getStakeholderState();
+  const scenario = getActiveStakeholderScenario();
+  const campaign = getCampaignState();
+  const season = getActiveCampaignSeason();
+  const activeReportCoach = getStakeholderReportCoach(room.reports?.[scenario.id] || "");
+  return {
+    schemaVersion: "ce-stakeholder-control-room-v1",
+    generatedAt: new Date().toISOString(),
+    season: { id: season.id, title: season.title },
+    activeCampaignMission: campaign.activeMission,
+    activeScenario: scenario.id,
+    scores: getStakeholderScores(),
+    scenario: {
+      title: scenario.title,
+      missionId: scenario.missionId,
+      caseId: scenario.caseId,
+      trigger: scenario.trigger,
+      conflict: scenario.conflict,
+      evidence: scenario.evidence,
+      stopLine: scenario.stopLine,
+      reportModel: scenario.reportModel
+    },
+    activeReportCoach,
+    actors: scenario.actors.map(id => ceStakeholderActors.find(actor => actor.id === id)).filter(Boolean),
+    decisions: ceStakeholderScenarios.map(item => ({
+      scenarioId: item.id,
+      missionId: item.missionId,
+      selected: room.decisions?.[item.id]?.choiceId || null,
+      good: room.decisions?.[item.id]?.good ?? null,
+      reportDraft: room.reports?.[item.id] || "",
+      reportCoach: getStakeholderReportCoach(room.reports?.[item.id] || ""),
+      reportModel: item.reportModel
+    })),
+    excludedDangerousInfo: [
+      "recipe",
+      "valve sequence",
+      "detector setpoint",
+      "interlock bypass",
+      "site-specific acceptance limit",
+      "customer confidential procedure"
+    ]
+  };
+}
+
+function renderCeStakeholderRoom() {
+  const root = document.querySelector("#ce-stakeholder-room");
+  if (!root) return;
+  const room = getStakeholderState();
+  const scenario = getActiveStakeholderScenario();
+  const selected = room.decisions?.[scenario.id];
+  const reportDraft = room.reports?.[scenario.id] || "";
+  const reportCoach = getStakeholderReportCoach(reportDraft);
+  const scores = getStakeholderScores();
+  const campaign = getCampaignState();
+  const season = getActiveCampaignSeason();
+  const syncedScenario = getStakeholderScenarioForMission(campaign.activeMission);
+  const actors = scenario.actors.map(id => ceStakeholderActors.find(actor => actor.id === id)).filter(Boolean);
+  const packet = buildStakeholderPacket();
+  root.innerHTML = `
+    <div class="stakeholder-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v15</p>
+        <h2>Stakeholder Control Room</h2>
+        <p>Train the part of CE work that does not live inside the chamber: owner alignment, pressure control, stop-line wording, and customer updates without overpromising.</p>
+      </div>
+      <div class="stakeholder-leadership">
+        <span>Field leadership</span>
+        <strong>${scores.leadership}%</strong>
+        <small>${scores.completed}/${scores.total} rooms · ${season.label} · wrong moves ${scores.bad}</small>
+      </div>
+    </div>
+    <div class="stakeholder-score-grid">
+      <article><span>Owner alignment</span><strong>${scores.alignment}%</strong><i style="--w:${scores.alignment}%"></i></article>
+      <article><span>Evidence clarity</span><strong>${scores.evidence}%</strong><i style="--w:${scores.evidence}%"></i></article>
+      <article><span>Trust control</span><strong>${scores.trust}%</strong><i style="--w:${scores.trust}%"></i></article>
+      <article class="risk"><span>Escalation risk</span><strong>${scores.risk}%</strong><i style="--w:${scores.risk}%"></i></article>
+    </div>
+    <div class="stakeholder-layout">
+      <aside class="stakeholder-scenario-list">
+        <div class="stakeholder-sync">
+          <span>Campaign sync</span>
+          <strong>${syncedScenario.title}</strong>
+          <p>Active campaign mission: ${campaign.activeMission}. Syncing opens the matching room without changing campaign decisions.</p>
+          <button class="primary" type="button" data-stakeholder-sync>Sync from campaign</button>
+        </div>
+        ${ceStakeholderScenarios.map(item => {
+          const decision = room.decisions?.[item.id];
+          const pressure = getSeasonPressureForMission(item.missionId);
+          return `
+            <button type="button" class="${item.id === scenario.id ? "active" : ""} ${decision?.good ? "good" : decision ? "bad" : ""} ${pressure.riskTotal ? "season-hot" : ""}" data-stakeholder-scenario="${item.id}">
+              <span>${item.missionId}</span>
+              <b>${item.title}</b>
+              <small>${decision ? (decision.good ? "contained" : "conflict debt") : "open"}${pressure.riskTotal ? ` · season +${pressure.riskTotal}` : ""}</small>
+            </button>
+          `;
+        }).join("")}
+      </aside>
+      <section class="stakeholder-main">
+        <div class="stakeholder-brief">
+          <span>${scenario.caseId}</span>
+          <h3>${scenario.title}</h3>
+          <p>${scenario.trigger}</p>
+        </div>
+        <div class="stakeholder-conflict-grid">
+          <article><span>Conflict</span><p>${scenario.conflict}</p></article>
+          <article><span>Evidence to align</span><p>${scenario.evidence.join(" · ")}</p></article>
+          <article><span>Stop line</span><p>${scenario.stopLine}</p></article>
+        </div>
+        <div class="stakeholder-actor-map">
+          ${actors.map(actor => `
+            <article>
+              <span>${actor.label}</span>
+              <b>${actor.role}</b>
+              <p>${actor.pressure}</p>
+              <small>Needs: ${actor.needs}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="stakeholder-choice-grid">
+          ${scenario.choices.map(choice => `
+            <button type="button" class="${selected?.choiceId === choice.id ? "picked" : ""} ${selected?.choiceId === choice.id && choice.good ? "good" : ""} ${selected?.choiceId === choice.id && !choice.good ? "bad" : ""}" data-stakeholder-choice="${choice.id}">
+              <b>${choice.label}</b>
+              <span>${choice.good ? "Owner-evidence move" : "Pressure-debt move"}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="stakeholder-result ${selected ? (selected.good ? "good" : "bad") : ""}">
+          <strong>${selected ? (selected.good ? "Room aligned" : "Conflict debt created") : "Choose the CE room move"}</strong>
+          <p>${selected?.result || "Your goal is not to sound fast. It is to make the owner, evidence gap, stop condition, and next update impossible to misunderstand."}</p>
+        </div>
+      </section>
+      <aside class="stakeholder-report-lab">
+        <div>
+          <span>Customer update lab</span>
+          <strong>Model wording</strong>
+          <p>${scenario.reportModel}</p>
+        </div>
+        <label>
+          <span>Your update draft</span>
+          <textarea data-stakeholder-report placeholder="Write the update you would say to the customer...">${escapeHtml(reportDraft)}</textarea>
+        </label>
+        <div class="stakeholder-report-coach">
+          <span>Report coach ${reportCoach.score}%</span>
+          ${reportCoach.checks.map(item => `<b class="${item.hit ? "hit" : ""}">${item.hit ? "OK" : "MISS"} · ${item.label}</b>`).join("")}
+        </div>
+        <div class="stakeholder-report-actions">
+          <button class="secondary" type="button" data-stakeholder-open-case>Open linked case</button>
+          <button class="primary" type="button" data-stakeholder-save>Save room packet</button>
+          <button class="secondary" type="button" data-stakeholder-reset>Reset room</button>
+        </div>
+        <textarea readonly id="stakeholder-packet-output">${JSON.stringify(packet, null, 2)}</textarea>
+      </aside>
+    </div>
+  `;
+
+  root.querySelectorAll("[data-stakeholder-scenario]").forEach(button => {
+    button.addEventListener("click", () => {
+      room.activeScenario = button.dataset.stakeholderScenario;
+      persistState();
+      renderCeStakeholderRoom();
+    });
+  });
+  root.querySelector("[data-stakeholder-sync]")?.addEventListener("click", () => {
+    room.activeScenario = syncedScenario.id;
+    persistState();
+    renderCeStakeholderRoom();
+  });
+  root.querySelectorAll("[data-stakeholder-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const choice = scenario.choices.find(item => item.id === button.dataset.stakeholderChoice);
+      if (!choice) return;
+      room.decisions[scenario.id] = {
+        choiceId: choice.id,
+        label: choice.label,
+        good: Boolean(choice.good),
+        alignment: choice.alignment,
+        evidence: choice.evidence,
+        trust: choice.trust,
+        risk: choice.risk,
+        result: choice.result,
+        caseId: scenario.caseId,
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice.good) {
+        state.ceIncidentWeakness = state.ceIncidentWeakness || {};
+        state.ceIncidentWeakness["stakeholder-conflict"] = (state.ceIncidentWeakness["stakeholder-conflict"] || 0) + 1;
+      }
+      persistState();
+      renderCeStakeholderRoom();
+      renderCeMemoryLedger();
+    });
+  });
+  root.querySelector("[data-stakeholder-report]")?.addEventListener("input", event => {
+    room.reports[scenario.id] = event.target.value;
+    persistState();
+  });
+  root.querySelector("[data-stakeholder-open-case]")?.addEventListener("click", () => {
+    activeIncidentCase = scenario.caseId;
+    state.activeIncidentCase = activeIncidentCase;
+    state.ceIncidentFilters = { campaign: "all", subsystem: "all", status: "all", query: "" };
+    persistState();
+    renderCeIncidentKernel();
+    renderCeWarRoom();
+    renderCeMemoryLedger();
+    syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
+    document.querySelector("#ce-incident-kernel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  root.querySelector("[data-stakeholder-save]")?.addEventListener("click", () => {
+    const nextPacket = buildStakeholderPacket();
+    room.savedPackets = [
+      { savedAt: new Date().toISOString(), scenarioId: scenario.id, packet: nextPacket },
+      ...(room.savedPackets || [])
+    ].slice(0, 10);
+    state.ceStakeholderSnapshot = { packet: nextPacket, savedAt: new Date().toISOString() };
+    persistState();
+    renderCeStakeholderRoom();
+    renderCeMemoryLedger();
+  });
+  root.querySelector("[data-stakeholder-reset]")?.addEventListener("click", () => {
+    state.ceStakeholderRoom = {
+      activeScenario: scenario.id,
+      decisions: {},
+      reports: {},
+      savedPackets: [],
+      startedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeStakeholderRoom();
   });
 }
 
@@ -10753,6 +11241,7 @@ function renderProcessVisual() {
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
   renderCeCampaignEngine();
+  renderCeStakeholderRoom();
   renderCeIncidentKernel();
   renderCeWarRoom();
   renderCeMemoryLedger();
