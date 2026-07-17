@@ -7788,12 +7788,14 @@ function getCampaignState() {
   state.ceCampaign = state.ceCampaign || {
     activeMission: ceCampaignMissions[0].id,
     decisions: {},
+    recoveries: {},
     startedAt: new Date().toISOString()
   };
   if (!ceCampaignMissions.some(item => item.id === state.ceCampaign.activeMission)) {
     state.ceCampaign.activeMission = ceCampaignMissions[0].id;
   }
   state.ceCampaign.decisions = state.ceCampaign.decisions || {};
+  state.ceCampaign.recoveries = state.ceCampaign.recoveries || {};
   return state.ceCampaign;
 }
 
@@ -7802,36 +7804,89 @@ function getActiveCampaignMission() {
   return ceCampaignMissions.find(item => item.id === campaign.activeMission) || ceCampaignMissions[0];
 }
 
+function getCampaignMissionIndex(id) {
+  return ceCampaignMissions.findIndex(item => item.id === id);
+}
+
+function getCampaignDebtItems() {
+  const campaign = getCampaignState();
+  return ceCampaignMissions
+    .map((mission, index) => {
+      const decision = campaign.decisions?.[mission.id];
+      if (!decision || decision.good) return null;
+      const recovery = campaign.recoveries?.[mission.id];
+      const warPacket = state.ceWarRoomPackets?.[mission.caseId];
+      const answered = state.ceIncidentAnswers?.[mission.caseId];
+      const report = state.ceIncidentReports?.[mission.caseId];
+      const recoveryReady = Boolean(warPacket?.savedAt || (answered?.correct && report?.savedAt));
+      const targetMissions = ceCampaignMissions
+        .slice(index + 1, Math.min(ceCampaignMissions.length, index + 4))
+        .map(item => item.title);
+      return {
+        missionId: mission.id,
+        caseId: mission.caseId,
+        day: mission.day,
+        title: mission.title,
+        owner: mission.owner,
+        stop: mission.stop,
+        debt: decision.result,
+        risk: Math.max(8, Number(decision.risk || 0)),
+        recoveryReady,
+        recovered: Boolean(recovery?.recoveredAt),
+        recoveredAt: recovery?.recoveredAt || "",
+        recoveryNote: recovery?.note || "",
+        targetMissions
+      };
+    })
+    .filter(Boolean);
+}
+
+function getIncomingCampaignDebts(missionId) {
+  const missionIndex = getCampaignMissionIndex(missionId);
+  return getCampaignDebtItems().filter(item => {
+    const debtIndex = getCampaignMissionIndex(item.missionId);
+    return debtIndex >= 0 && debtIndex < missionIndex && !item.recovered;
+  });
+}
+
 function getCampaignMetrics() {
   const campaign = getCampaignState();
-  const decisions = Object.values(campaign.decisions || {});
+  const decisions = Object.entries(campaign.decisions || {});
   const totals = decisions.reduce((acc, decision) => {
-    acc.safety += decision.safety || 0;
-    acc.evidence += decision.evidence || 0;
-    acc.trust += decision.trust || 0;
-    acc.risk += decision.risk || 0;
-    if (decision.good) acc.good += 1;
+    const [missionId, value] = decision;
+    const recovered = Boolean(campaign.recoveries?.[missionId]?.recoveredAt);
+    const recoveryFactor = recovered && !value.good ? 0.28 : 1;
+    acc.safety += value.good ? (value.safety || 0) : Math.round((value.safety || 0) * recoveryFactor);
+    acc.evidence += value.good ? (value.evidence || 0) : Math.round((value.evidence || 0) * recoveryFactor);
+    acc.trust += value.good ? (value.trust || 0) : Math.round((value.trust || 0) * recoveryFactor);
+    acc.risk += value.good ? (value.risk || 0) : Math.round((value.risk || 0) * recoveryFactor);
+    if (value.good) acc.good += 1;
     else acc.bad += 1;
+    if (recovered) acc.recovered += 1;
     return acc;
-  }, { safety: 62, evidence: 46, trust: 52, risk: 20, good: 0, bad: 0 });
+  }, { safety: 62, evidence: 46, trust: 52, risk: 20, good: 0, bad: 0, recovered: 0 });
+  const activeDebtPenalty = getCampaignDebtItems().filter(item => !item.recovered).reduce((sum, item) => sum + Math.min(8, item.risk), 0);
   return {
     safety: clampScore(totals.safety),
     evidence: clampScore(totals.evidence),
     trust: clampScore(totals.trust),
-    risk: clampScore(totals.risk),
+    risk: clampScore(totals.risk + activeDebtPenalty),
     good: totals.good,
     bad: totals.bad,
+    recovered: totals.recovered,
+    activeDebtPenalty,
     completed: decisions.length,
     total: ceCampaignMissions.length,
-    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - totals.risk)) / 4)
+    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - clampScore(totals.risk + activeDebtPenalty))) / 4)
   };
 }
 
 function buildCampaignPacket() {
   const campaign = getCampaignState();
   const metrics = getCampaignMetrics();
+  const debtItems = getCampaignDebtItems();
   return {
-    schemaVersion: "ce-campaign-v1",
+    schemaVersion: "ce-campaign-season-v1",
     generatedAt: new Date().toISOString(),
     activeMission: campaign.activeMission,
     metrics,
@@ -7846,19 +7901,21 @@ function buildCampaignPacket() {
         selected: decision?.choiceId || null,
         good: decision?.good ?? null,
         result: decision?.result || null,
+        recovered: Boolean(campaign.recoveries?.[mission.id]?.recoveredAt),
+        recoveryNote: campaign.recoveries?.[mission.id]?.note || null,
         customerLine: mission.customerLine,
         stopCondition: mission.stop
       };
     }),
-    openDebts: ceCampaignMissions
-      .filter(mission => campaign.decisions?.[mission.id] && !campaign.decisions[mission.id].good)
-      .map(mission => ({
-        missionId: mission.id,
-        title: mission.title,
-        caseId: mission.caseId,
-        debt: campaign.decisions[mission.id].result,
-        recovery: mission.stop
-      })),
+    openDebts: debtItems.filter(item => !item.recovered),
+    recoveredDebts: debtItems.filter(item => item.recovered),
+    nextPressure: getIncomingCampaignDebts(campaign.activeMission).map(item => ({
+      missionId: item.missionId,
+      title: item.title,
+      risk: item.risk,
+      recoveryReady: item.recoveryReady,
+      recovery: item.stop
+    })),
     excludedDangerousInfo: [
       "recipe",
       "valve sequence",
@@ -7879,17 +7936,19 @@ function renderCeCampaignEngine() {
   const selected = campaign.decisions?.[mission.id];
   const activeIndex = ceCampaignMissions.findIndex(item => item.id === mission.id);
   const packet = buildCampaignPacket();
+  const debtItems = getCampaignDebtItems();
+  const incomingDebts = getIncomingCampaignDebts(mission.id);
   root.innerHTML = `
     <div class="campaign-head">
       <div>
-        <p class="eyebrow">Project Universe OS v12</p>
-        <h2>CE Campaign Game Engine</h2>
-        <p>설치 현장을 Day 0부터 handover까지 이어서 판단합니다. 선택을 잘못하면 다음 단계에 risk debt가 남고, 필요한 순간 41-case bank로 뛰어들어 evidence 훈련을 합니다.</p>
+        <p class="eyebrow">Project Universe OS v13</p>
+        <h2>CE Campaign Season Engine</h2>
+        <p>설치 현장을 Day 0부터 handover까지 이어서 판단합니다. 잘못된 선택은 downstream risk debt로 남고, linked case와 War Room packet을 통해 recovery closeout해야 사라집니다.</p>
       </div>
       <div class="campaign-readiness">
         <span>Campaign readiness</span>
         <strong>${metrics.readiness}%</strong>
-        <small>${metrics.completed}/${metrics.total} missions · risk debt ${metrics.risk}%</small>
+        <small>${metrics.completed}/${metrics.total} missions · active debt ${debtItems.filter(item => !item.recovered).length} · recovered ${metrics.recovered}</small>
       </div>
     </div>
     <div class="campaign-meter-grid">
@@ -7922,6 +7981,16 @@ function renderCeCampaignEngine() {
           <article><span>Stakes</span><p>${mission.stakes}</p></article>
           <article><span>Stop condition</span><p>${mission.stop}</p></article>
         </div>
+        <div class="campaign-pressure-panel ${incomingDebts.length ? "hot" : ""}">
+          <span>Incoming pressure</span>
+          ${incomingDebts.length ? incomingDebts.map(item => `
+            <article>
+              <strong>${item.title}</strong>
+              <p>${item.debt}</p>
+              <small>Recovery: ${item.stop}</small>
+            </article>
+          `).join("") : "<p>이 mission에 끌려오는 unresolved debt가 없습니다.</p>"}
+        </div>
         <div class="campaign-choice-grid">
           ${mission.choices.map(choice => `
             <button type="button" class="${selected?.choiceId === choice.id ? "picked" : ""} ${selected?.choiceId === choice.id && choice.good ? "good" : ""} ${selected?.choiceId === choice.id && !choice.good ? "bad" : ""}" data-campaign-choice="${choice.id}">
@@ -7948,6 +8017,23 @@ function renderCeCampaignEngine() {
           <button class="secondary" type="button" data-campaign-save>Campaign packet 저장</button>
           <button class="secondary" type="button" data-campaign-reset>Reset</button>
         </div>
+        <div class="campaign-debt-board">
+          <div>
+            <span>Season debt board</span>
+            <strong>${debtItems.filter(item => !item.recovered).length} active / ${debtItems.filter(item => item.recovered).length} recovered</strong>
+          </div>
+          ${debtItems.length ? debtItems.map(item => `
+            <article class="${item.recovered ? "recovered" : ""}">
+              <b>${item.day} · ${item.title}</b>
+              <p>${item.recovered ? item.recoveryNote : item.debt}</p>
+              <small>${item.recoveryReady ? "War Room evidence ready" : "Linked case packet needed"} · impacts ${item.targetMissions.join(", ") || "final report"}</small>
+              <div>
+                <button class="secondary" type="button" data-campaign-debt-case="${item.caseId}">Case 열기</button>
+                <button class="primary" type="button" data-campaign-recover="${item.missionId}" ${item.recoveryReady || item.recovered ? "" : "disabled"}>${item.recovered ? "Recovered" : "Recovery closeout"}</button>
+              </div>
+            </article>
+          `).join("") : "<p>아직 campaign risk debt가 없습니다.</p>"}
+        </div>
         <textarea readonly id="campaign-packet-output">${JSON.stringify(packet, null, 2)}</textarea>
       </aside>
     </div>
@@ -7964,6 +8050,7 @@ function renderCeCampaignEngine() {
     button.addEventListener("click", () => {
       const choice = mission.choices.find(item => item.id === button.dataset.campaignChoice);
       if (!choice) return;
+      if (campaign.recoveries?.[mission.id]) delete campaign.recoveries[mission.id];
       campaign.decisions[mission.id] = {
         choiceId: choice.id,
         label: choice.label,
@@ -7980,6 +8067,34 @@ function renderCeCampaignEngine() {
         state.ceIncidentWeakness = state.ceIncidentWeakness || {};
         state.ceIncidentWeakness["campaign-risk-debt"] = (state.ceIncidentWeakness["campaign-risk-debt"] || 0) + 1;
       }
+      persistState();
+      renderCeCampaignEngine();
+      renderCeMemoryLedger();
+    });
+  });
+  root.querySelectorAll("[data-campaign-debt-case]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeIncidentCase = button.dataset.campaignDebtCase;
+      state.activeIncidentCase = activeIncidentCase;
+      state.ceIncidentFilters = { campaign: "all", subsystem: "all", status: "all", query: "" };
+      persistState();
+      renderCeIncidentKernel();
+      renderCeWarRoom();
+      renderCeMemoryLedger();
+      syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
+      document.querySelector("#ce-incident-kernel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  root.querySelectorAll("[data-campaign-recover]").forEach(button => {
+    button.addEventListener("click", () => {
+      const missionId = button.dataset.campaignRecover;
+      const debt = getCampaignDebtItems().find(item => item.missionId === missionId);
+      if (!debt || debt.recovered || !debt.recoveryReady) return;
+      campaign.recoveries[missionId] = {
+        recoveredAt: new Date().toISOString(),
+        caseId: debt.caseId,
+        note: `Recovered via linked case evidence and War Room packet. Stop condition reinforced: ${debt.stop}`
+      };
       persistState();
       renderCeCampaignEngine();
       renderCeMemoryLedger();
@@ -8020,6 +8135,7 @@ function renderCeCampaignEngine() {
     state.ceCampaign = {
       activeMission: ceCampaignMissions[0].id,
       decisions: {},
+      recoveries: {},
       startedAt: new Date().toISOString()
     };
     persistState();
@@ -8557,6 +8673,7 @@ function renderCeWarRoom() {
     };
     persistState();
     renderCeWarRoom();
+    renderCeCampaignEngine();
     renderCeMemoryLedger();
   });
   root.querySelector("[data-war-packet-copy]")?.addEventListener("click", async () => {

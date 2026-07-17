@@ -1301,7 +1301,9 @@ main,
 
 .campaign-objective-grid article,
 .campaign-result,
-.campaign-case-link {
+.campaign-case-link,
+.campaign-pressure-panel,
+.campaign-debt-board {
   display: grid;
   gap: 6px;
   min-width: 0;
@@ -1313,8 +1315,76 @@ main,
 
 .campaign-objective-grid p,
 .campaign-result p,
-.campaign-case-link p {
+.campaign-case-link p,
+.campaign-pressure-panel p,
+.campaign-debt-board p {
   margin: 0;
+}
+
+.campaign-pressure-panel {
+  border-color: rgba(94, 231, 255, 0.14);
+}
+
+.campaign-pressure-panel.hot {
+  border-color: rgba(255, 107, 107, 0.42);
+  background:
+    linear-gradient(135deg, rgba(255, 107, 107, 0.10), transparent 70%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.campaign-pressure-panel > span,
+.campaign-debt-board > div span {
+  color: #ffd38a;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.campaign-pressure-panel article,
+.campaign-debt-board article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(255, 211, 138, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.campaign-pressure-panel article strong,
+.campaign-debt-board article b,
+.campaign-debt-board > div strong {
+  color: #ffffff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.campaign-pressure-panel article small,
+.campaign-debt-board article small {
+  color: rgba(236, 255, 248, 0.64);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.campaign-debt-board article.recovered {
+  border-color: rgba(0, 255, 149, 0.36);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.08), transparent 70%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.campaign-debt-board article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.ce-campaign-engine button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .campaign-choice-grid {
