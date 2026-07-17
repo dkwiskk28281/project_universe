@@ -4447,6 +4447,7 @@ function save() {
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
   renderCeIncidentKernel();
+  renderCeWarRoom();
 }
 
 function persistState() {
@@ -7619,6 +7620,7 @@ function renderCeIncidentKernel() {
       state.activeIncidentCase = activeIncidentCase;
       persistState();
       renderCeIncidentKernel();
+      renderCeWarRoom();
       syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
     });
   });
@@ -7638,6 +7640,7 @@ function renderCeIncidentKernel() {
       state.ceIncidentBoard[item.id] = [...selected];
       persistState();
       renderCeIncidentKernel();
+      renderCeWarRoom();
     });
   });
   root.querySelectorAll("[data-incident-choice]").forEach(button => {
@@ -7658,6 +7661,7 @@ function renderCeIncidentKernel() {
       }
       persistState();
       renderCeIncidentKernel();
+      renderCeWarRoom();
     });
   });
   root.querySelector("[data-incident-report-save]")?.addEventListener("click", () => {
@@ -7681,6 +7685,264 @@ function renderCeIncidentKernel() {
     }
     persistState();
     renderCeIncidentKernel();
+    renderCeWarRoom();
+  });
+}
+
+const ceWarRoomPlaybooks = {
+  "ll-slow-pumpdown": [
+    ["Leak / seal boundary", "Door seal, slit seal, chamber isolation, pressure plateau", "Gauge disagrees or pump curve improves after isolation split", "Vacuum owner + senior CE"],
+    ["Pump / foreline restriction", "Pump status, foreline path, exhaust readiness, elapsed trend", "LL A/B comparison shows same pump path limitation", "Facility / vacuum owner"],
+    ["Outgassing / wet surface load", "Recent vent, idle time, wafer/carrier history, curve shape", "Repeat empty LL pumpdown returns to baseline", "CE + process owner"]
+  ],
+  "efem-slot-mismatch": [
+    ["Carrier identity mismatch", "Host expected carrier vs load port readback vs timestamp", "Manual visual does not match host context", "Customer host owner"],
+    ["Slot map / wafer present ambiguity", "Mapping result, wafer-present transition order, FOUP door state", "Second map confirms expected slots", "EFEM owner"],
+    ["Scheduler stale context", "Job permission, event order, previous abort/retry history", "Fresh job download resolves mismatch", "Controls owner"]
+  ],
+  "tm-wafer-present-conflict": [
+    ["Sensor transition conflict", "Source/destination present states, event order, timestamp", "Sensor actual follows wafer after approved recovery", "Controls / robot owner"],
+    ["Robot handoff geometry", "Robot actual position, teach reference, slit timing", "Dry motion without wafer passes after witness check", "Senior CE"],
+    ["Slit / pressure permissive gap", "Slit feedback, pressure ready, motion command order", "Pressure/slit chain matches expected sequence", "Vacuum + robot owner"]
+  ],
+  "gas-readiness-abatement": [
+    ["Downstream readiness not witnessed", "Abatement actual, exhaust flow, detector health, owner signoff", "Owner witness confirms actual ready state", "Gas / EHS owner"],
+    ["Tool-side ready bit insufficient", "Tool panel ready vs local facility actual vs alarm history", "Local actual and tool ready align at same timestamp", "Facilities + CE"],
+    ["Gas family control gap", "SDS, toxic/flammable/corrosive/inert family, monitor state", "Gas family controls match approved site documents", "EHS owner"]
+  ],
+  "pm-a-b-mismatch": [
+    ["Shared utility drift", "Shared gas pressure, exhaust, facility state, common timestamp", "Both PMs respond similarly to shared utility correction", "Facility owner"],
+    ["Module-local chamber condition", "Wall condition, seasoning, local pressure/temp trace", "Only one PM deviates under matched shared utility", "Module owner"],
+    ["Metrology / trace association gap", "Wafer ID, PM ID, trace ID, metrology ID linkage", "Re-associated data removes mismatch", "Process/metrology owner"]
+  ],
+  "thermal-trace-unstable": [
+    ["Sensor confidence issue", "Pyrometry confidence, window/sensor path, trace quality", "Independent trace/wafer result does not support actual thermal drift", "Thermal owner"],
+    ["Lamp zone / control behavior", "Zone command/actual trace, ramp/soak/cool shape", "Zone response repeats under controlled check", "RTP hardware owner"],
+    ["Ambient / pressure context", "Process ambient readiness, pressure state, exhaust path", "Stable ambient removes trace instability", "Process owner"]
+  ],
+  "particle-after-pm": [
+    ["Chamber recovery source", "Changed parts, seasoning, PM recovery history, particle map", "Repeat baseline after controlled recovery improves", "Module owner"],
+    ["Handling path source", "FOUP/EFEM/TM contact points, return path, scratch/edge clues", "Particle map follows handling route pattern", "Handling owner"],
+    ["Purge / residual source", "Purge complete evidence, exhaust trend, residual history", "Improved purge/exhaust evidence reduces particles", "Facilities + CE"]
+  ],
+  "host-tool-state-gap": [
+    ["Stale ready indication", "Timestamp, event order, alarm clear time, UI refresh", "Fresh state chain aligns with module actual", "Controls owner"],
+    ["Module actual conflict", "Door, pressure, robot, gas, thermal actuals", "Actual states prove ready or identify blocker", "Module owner"],
+    ["Host permission mismatch", "Host job permission, tool scheduler state, previous abort", "Host and tool permission align after context refresh", "Customer host owner"]
+  ]
+};
+
+function getWarRoomPlaybook(item) {
+  return ceWarRoomPlaybooks[item.id] || [
+    ["Primary subsystem hypothesis", "Collect direct actual-state evidence", "Evidence disproves the subsystem candidate", "Senior CE"],
+    ["Shared utility hypothesis", "Compare shared facility and module-local trends", "Shared trend does not correlate", "Facility owner"],
+    ["Traceability hypothesis", "Match wafer ID, event time, trace ID, metrology ID", "IDs and timestamps align", "Customer / CE"]
+  ];
+}
+
+function getWarRoomReadiness(item) {
+  const evidence = scoreIncidentEvidence(item);
+  const answer = state.ceIncidentAnswers?.[item.id];
+  const report = state.ceIncidentReports?.[item.id];
+  const packet = state.ceWarRoomPackets?.[item.id];
+  const rca = state.ceWarRoomRca?.[item.id] || {};
+  const rcaFilled = ["fact", "why1", "test", "owner"].filter(key => String(rca[key] || "").trim().length > 5).length;
+  const gates = [
+    ["Safety gate", evidence.selected.has(item.cards.find(card => card[0] === "stop" && card[4])?.[1]), "Stop condition selected"],
+    ["Evidence gate", evidence.pct >= 70 && !evidence.wrong.length, `${evidence.hits}/${evidence.required.length} required evidence`],
+    ["Decision gate", Boolean(answer?.correct), answer ? "Decision answered" : "Decision pending"],
+    ["Report gate", Boolean(report?.feedback), report?.feedback || "Report not saved"],
+    ["RCA gate", rcaFilled >= 3, `${rcaFilled}/4 RCA fields`],
+    ["Packet gate", Boolean(packet?.savedAt), packet?.savedAt ? "Packet saved" : "Packet not saved"]
+  ];
+  const score = Math.round((gates.filter(gate => gate[1]).length / gates.length) * 100);
+  return { evidence, answer, report, packet, rca, gates, score };
+}
+
+function buildWarRoomPacket(item) {
+  const readiness = getWarRoomReadiness(item);
+  const selectedIds = new Set(state.ceIncidentBoard?.[item.id] || []);
+  const selectedEvidence = item.cards
+    .filter(card => selectedIds.has(card[1]))
+    .map(([lane, id, label, text, expected]) => ({ lane, id, label, text, expected }));
+  const decision = readiness.answer ? item.decision[readiness.answer.selected] : null;
+  return {
+    schemaVersion: "ce-war-room-v1",
+    generatedAt: new Date().toISOString(),
+    caseId: item.id,
+    title: item.title,
+    subsystem: item.subsystem,
+    severity: item.severity,
+    symptom: item.symptom,
+    immediateBoundary: item.severity,
+    readinessScore: readiness.score,
+    gates: readiness.gates.map(([label, passed, detail]) => ({ label, passed: Boolean(passed), detail })),
+    selectedEvidence,
+    decision: decision ? { selected: decision[0], correct: Boolean(decision[1]), rationale: decision[2] } : null,
+    report: readiness.report?.text || item.reportTemplate,
+    rca: readiness.rca,
+    hypotheses: getWarRoomPlaybook(item).map(([hypothesis, evidenceToCheck, disproveSignal, owner]) => ({
+      hypothesis,
+      evidenceToCheck,
+      disproveSignal,
+      owner
+    })),
+    preventionHabit: item.prevention,
+    excludedDangerousInfo: [
+      "recipe",
+      "valve sequence",
+      "detector setpoint",
+      "interlock bypass",
+      "site-specific acceptance limit",
+      "customer confidential procedure"
+    ]
+  };
+}
+
+function renderCeWarRoom() {
+  const root = document.querySelector("#ce-war-room");
+  if (!root) return;
+  const item = getActiveIncidentCase();
+  const playbook = getWarRoomPlaybook(item);
+  const readiness = getWarRoomReadiness(item);
+  const packet = buildWarRoomPacket(item);
+  const packetText = JSON.stringify(packet, null, 2);
+  const rca = readiness.rca || {};
+  root.innerHTML = `
+    <div class="war-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v9</p>
+        <h2>Senior CE War Room</h2>
+        <p>Incident 훈련 결과를 root-cause hypothesis, evidence gate, RCA memo, customer packet으로 묶어 Think Tank에 남기는 운영실입니다.</p>
+      </div>
+      <div class="war-score">
+        <span>Packet readiness</span>
+        <strong>${readiness.score}%</strong>
+        <small>${item.title}</small>
+      </div>
+    </div>
+    <div class="war-gate-grid">
+      ${readiness.gates.map(([label, passed, detail]) => `
+        <article class="${passed ? "pass" : "wait"}">
+          <span>${passed ? "PASS" : "WAIT"}</span>
+          <strong>${label}</strong>
+          <p>${detail}</p>
+        </article>
+      `).join("")}
+    </div>
+    <div class="war-layout">
+      <section class="war-graph-panel">
+        <div class="war-panel-head">
+          <p class="eyebrow">Root Cause Graph</p>
+          <h3>${item.symptom}</h3>
+        </div>
+        <div class="war-graph">
+          <svg viewBox="0 0 100 72" aria-hidden="true">
+            <path d="M8 36 C22 36, 24 14, 38 14" />
+            <path d="M8 36 C22 36, 24 36, 38 36" />
+            <path d="M8 36 C22 36, 24 58, 38 58" />
+            <path d="M64 14 C76 14, 76 36, 92 36" />
+            <path d="M64 36 C76 36, 76 36, 92 36" />
+            <path d="M64 58 C76 58, 76 36, 92 36" />
+          </svg>
+          <div class="war-node symptom" style="--x:8%; --y:50%;"><b>Symptom</b><span>${item.title}</span></div>
+          ${playbook.map(([hypothesis], index) => `
+            <div class="war-node hypothesis h${index + 1}" style="--x:50%; --y:${[20, 50, 80][index]}%;">
+              <b>H${index + 1}</b><span>${hypothesis}</span>
+            </div>
+          `).join("")}
+          <div class="war-node action" style="--x:92%; --y:50%;"><b>Action</b><span>${readiness.score >= 80 ? "Ready to brief" : "More evidence"}</span></div>
+        </div>
+      </section>
+      <section class="war-hypothesis-panel">
+        <div class="war-panel-head">
+          <p class="eyebrow">Hypothesis Discipline</p>
+          <h3>단정하지 말고 증거로 좁히기</h3>
+        </div>
+        <div class="war-hypothesis-list">
+          ${playbook.map(([hypothesis, evidenceToCheck, disproveSignal, owner], index) => `
+            <article>
+              <span>H${index + 1}</span>
+              <strong>${hypothesis}</strong>
+              <p><b>Check</b> ${evidenceToCheck}</p>
+              <p><b>Disprove</b> ${disproveSignal}</p>
+              <small>Owner: ${owner}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    </div>
+    <section class="war-rca-panel">
+      <div class="war-panel-head">
+        <p class="eyebrow">RCA Memo</p>
+        <h3>현장에서 바로 쓰는 사고 메모</h3>
+      </div>
+      <div class="war-rca-grid">
+        <label>
+          <span>Observed fact</span>
+          <textarea data-war-rca="fact" placeholder="Confirmed symptom and timestamp">${rca.fact || ""}</textarea>
+        </label>
+        <label>
+          <span>Most likely why</span>
+          <textarea data-war-rca="why1" placeholder="Current best hypothesis, not a final conclusion">${rca.why1 || ""}</textarea>
+        </label>
+        <label>
+          <span>Next evidence test</span>
+          <textarea data-war-rca="test" placeholder="What evidence will prove or disprove it">${rca.test || ""}</textarea>
+        </label>
+        <label>
+          <span>Owner / ETA</span>
+          <textarea data-war-rca="owner" placeholder="Who owns the next check and when">${rca.owner || ""}</textarea>
+        </label>
+      </div>
+      <div class="war-actions">
+        <button class="primary" type="button" data-war-rca-save>RCA memo 저장</button>
+        <span id="war-rca-status">${state.ceWarRoomRca?.[item.id]?.savedAt ? `Saved ${state.ceWarRoomRca[item.id].savedAt}` : "아직 저장된 RCA 없음"}</span>
+      </div>
+    </section>
+    <section class="war-packet-panel">
+      <div class="war-panel-head">
+        <p class="eyebrow">AI-ready Incident Packet</p>
+        <h3>나중에 AI에게 그대로 보여줄 수 있는 구조화 기록</h3>
+      </div>
+      <textarea readonly id="war-packet-output">${packetText}</textarea>
+      <div class="war-actions">
+        <button class="primary" type="button" data-war-packet-save>패킷 저장</button>
+        <button class="secondary" type="button" data-war-packet-copy>패킷 복사</button>
+        <span id="war-packet-status">${readiness.packet?.savedAt ? `Saved ${readiness.packet.savedAt}` : "아직 저장된 packet 없음"}</span>
+      </div>
+    </section>
+  `;
+
+  root.querySelector("[data-war-rca-save]")?.addEventListener("click", () => {
+    state.ceWarRoomRca = state.ceWarRoomRca || {};
+    state.ceWarRoomRca[item.id] = {
+      fact: root.querySelector('[data-war-rca="fact"]')?.value.trim() || "",
+      why1: root.querySelector('[data-war-rca="why1"]')?.value.trim() || "",
+      test: root.querySelector('[data-war-rca="test"]')?.value.trim() || "",
+      owner: root.querySelector('[data-war-rca="owner"]')?.value.trim() || "",
+      savedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeWarRoom();
+  });
+  root.querySelector("[data-war-packet-save]")?.addEventListener("click", () => {
+    state.ceWarRoomPackets = state.ceWarRoomPackets || {};
+    state.ceWarRoomPackets[item.id] = {
+      packet: buildWarRoomPacket(item),
+      savedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeWarRoom();
+  });
+  root.querySelector("[data-war-packet-copy]")?.addEventListener("click", async () => {
+    const status = root.querySelector("#war-packet-status");
+    try {
+      await navigator.clipboard.writeText(root.querySelector("#war-packet-output")?.value || packetText);
+      if (status) status.textContent = "Packet copied.";
+    } catch {
+      if (status) status.textContent = "Copy failed. Packet remains visible in the text box.";
+    }
   });
 }
 

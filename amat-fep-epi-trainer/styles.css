@@ -1461,6 +1461,324 @@ main,
   }
 }
 
+/* 20260717 v9 Senior CE war room */
+.ce-war-room {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(185, 140, 255, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 6% 0%, rgba(185, 140, 255, 0.14), transparent 34%),
+    radial-gradient(circle at 92% 12%, rgba(0, 255, 149, 0.09), transparent 32%),
+    linear-gradient(145deg, rgba(7, 4, 14, 0.98), rgba(1, 15, 13, 0.97));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.war-head,
+.war-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.44fr);
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.war-head h2,
+.war-panel-head h3 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.18;
+}
+
+.war-head p:not(.eyebrow),
+.war-score small,
+.war-gate-grid p,
+.war-hypothesis-list p,
+.war-hypothesis-list small,
+.war-actions span {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.war-score,
+.war-graph-panel,
+.war-hypothesis-panel,
+.war-rca-panel,
+.war-packet-panel {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.64);
+  box-shadow: inset 0 1px 0 rgba(236, 255, 248, 0.04);
+}
+
+.war-score {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 14px;
+}
+
+.war-score span,
+.war-gate-grid span,
+.war-hypothesis-list span,
+.war-rca-grid span {
+  color: #b98cff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.war-score strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(2.4rem, 5vw, 3.7rem);
+  line-height: 0.95;
+}
+
+.war-gate-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.war-gate-grid article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  min-height: 104px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.war-gate-grid article.pass {
+  border-color: rgba(0, 255, 149, 0.44);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.war-gate-grid article.wait {
+  border-color: rgba(255, 211, 138, 0.3);
+}
+
+.war-gate-grid strong,
+.war-hypothesis-list strong,
+.war-node b {
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.war-graph-panel,
+.war-hypothesis-panel,
+.war-rca-panel,
+.war-packet-panel {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.war-graph {
+  position: relative;
+  min-height: 330px;
+  overflow: hidden;
+  border: 1px solid rgba(185, 140, 255, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(185, 140, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(94, 231, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 149, 0.09), transparent 44%),
+    rgba(2, 8, 12, 0.92);
+  background-size: 28px 28px, 28px 28px, auto, auto;
+}
+
+.war-graph svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.war-graph path {
+  fill: none;
+  stroke: rgba(185, 140, 255, 0.62);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-dasharray: 5 4;
+}
+
+.war-node {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  display: grid;
+  gap: 4px;
+  width: min(180px, 28%);
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.88);
+  transform: translate(-50%, -50%);
+  backdrop-filter: blur(6px);
+}
+
+.war-node span {
+  color: rgba(236, 255, 248, 0.7);
+  font-size: 0.78rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.war-node.symptom {
+  border-color: rgba(255, 211, 138, 0.42);
+}
+
+.war-node.hypothesis {
+  border-color: rgba(185, 140, 255, 0.5);
+}
+
+.war-node.action {
+  border-color: rgba(0, 255, 149, 0.5);
+}
+
+.war-hypothesis-list {
+  display: grid;
+  gap: 8px;
+}
+
+.war-hypothesis-list article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.war-hypothesis-list p {
+  margin: 0;
+}
+
+.war-hypothesis-list p b {
+  color: #ffd38a;
+}
+
+.war-rca-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.war-rca-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.war-rca-grid textarea,
+.war-packet-panel textarea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  color: #d8ffea;
+  padding: 10px;
+  line-height: 1.5;
+}
+
+.war-rca-grid textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.war-packet-panel textarea {
+  min-height: 300px;
+  resize: vertical;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.82rem;
+}
+
+.war-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.war-actions span {
+  flex: 1 1 220px;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 1180px) {
+  .war-head,
+  .war-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .war-gate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ce-war-room {
+    padding: 12px;
+  }
+
+  .war-gate-grid,
+  .war-rca-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .war-graph {
+    min-height: 520px;
+  }
+
+  .war-node {
+    width: 142px;
+  }
+
+  .war-node.symptom {
+    left: 50%;
+    top: 10%;
+  }
+
+  .war-node.h1 {
+    left: 50%;
+    top: 32%;
+  }
+
+  .war-node.h2 {
+    left: 50%;
+    top: 50%;
+  }
+
+  .war-node.h3 {
+    left: 50%;
+    top: 68%;
+  }
+
+  .war-node.action {
+    left: 50%;
+    top: 90%;
+  }
+
+  .war-graph svg {
+    display: none;
+  }
+}
+
 /* 20260715 EPI master theater: hardware flow + gas state + wafer layer mental model */
 .epi-master-theater {
   display: grid;
