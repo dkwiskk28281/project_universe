@@ -4004,6 +4004,262 @@ const storageTopology = [
   ["Browser localStorage", "화면 반응성을 위한 임시 캐시입니다.", "체크박스, 선택 상태, 짧은 학습 진행률"]
 ];
 
+const epiInstallCampaign = [
+  {
+    id: "day0-carrier-context",
+    day: "Install Day 0",
+    phase: "Move-in / host context",
+    title: "FOUP 도킹 전 lot/context를 먼저 묶기",
+    subtitle: "wafer가 움직이기 전에 host, carrier, slot map, load port state가 같은 이야기를 하는지 확인합니다.",
+    prompt: "FOUP이 load port에 도착했지만 carrier ID와 slot map 확인이 늦습니다. CE가 먼저 세워야 할 판단은?",
+    twin: { step: 0, route: "epi-a", mode: "comm", layers: { packets: true, particles: false, pressure: true, cutaway: false } },
+    process: { flow: "epi-sige", step: 0 },
+    status: [
+      ["Host/MES", "carrier context pending"],
+      ["Load Port", "carrier present / clamp check"],
+      ["EFEM", "waiting for verified map"],
+      ["LL", "closed / no wafer"],
+      ["TM", "idle"],
+      ["PM", "not selected"],
+      ["Risk", "traceability mismatch"]
+    ],
+    cards: [
+      ["symptom", "carrier-id-delay", "Carrier ID 지연", "lot, carrier, slot map association이 늦거나 불명확합니다.", true],
+      ["risk", "wrong-wafer", "Wrong wafer risk", "잘못된 wafer/context로 진행하면 downstream traceability가 깨집니다.", true],
+      ["subsystem", "load-port-host", "Load Port + Host", "첫 원인 후보는 host/tool/load port handshake입니다.", true],
+      ["evidence", "slot-map", "Slot map evidence", "carrier ID, slot map, timestamp, host event를 같은 시간축으로 묶습니다.", true],
+      ["owner", "customer-host", "Customer host owner", "MES/host permission은 고객 owner와 같이 확인합니다.", true],
+      ["stop", "no-context-no-move", "No context, no move", "carrier/slot association이 불명확하면 wafer move를 시작하지 않습니다.", true],
+      ["report", "context-report", "보고 문장", "현재 wafer 이동 전 context 확인 단계이며, lot/carrier/slot map evidence를 맞춘 뒤 진행하겠습니다.", true],
+      ["evidence", "recipe-edit", "Recipe edit", "recipe나 setpoint를 임의 변경해 해결하려고 합니다.", false]
+    ],
+    choices: [
+      ["carrier present만 확인되면 EFEM pick을 먼저 진행한다.", false, "wafer 이동은 traceability가 맞은 뒤 진행해야 합니다.", "traceability"],
+      ["host, carrier ID, slot map, load port event timestamp를 같은 evidence packet으로 묶고 owner 확인 후 진행한다.", true, "wafer가 움직이기 전 context가 맞아야 이후 모든 evidence가 의미를 갖습니다."],
+      ["PM ready 상태부터 확인한다.", false, "이 단계의 병목은 PM이 아니라 front-end context와 host/load-port handshake입니다.", "subsystem-priority"]
+    ],
+    report: "현재는 wafer 이동 전 carrier context 확인 단계입니다. host event, carrier ID, slot map, load port state를 같은 timestamp로 맞춘 뒤 진행하겠습니다.",
+    stop: "carrier/slot association, host permission, load port state가 맞지 않으면 wafer move 금지",
+    next: "3D twin에서 communication packet layer를 켜고 Host -> Tool -> Load Port 흐름을 설명합니다."
+  },
+  {
+    id: "day0-efem-pick",
+    day: "Install Day 0",
+    phase: "EFEM / FI handoff",
+    title: "EFEM이 FOUP에서 wafer를 집기 전 mapping을 믿어도 되는가",
+    subtitle: "EFEM은 대기압 handling 영역입니다. wafer present, aligner, door state, robot event order가 핵심 evidence입니다.",
+    prompt: "EFEM pick 직전 wafer present는 보이지만 aligner result가 늦게 들어옵니다. 어떻게 판단할까?",
+    twin: { step: 1, route: "epi-a", mode: "material", layers: { packets: true, particles: false, pressure: true, cutaway: false } },
+    process: { flow: "epi-sige", step: 1 },
+    status: [
+      ["FOUP", "door open permission"],
+      ["EFEM", "wafer present / aligner pending"],
+      ["LL", "ATM side closed"],
+      ["TM", "isolated"],
+      ["Communication", "tool controller event order"],
+      ["Risk", "slot mismatch / alignment fail"]
+    ],
+    cards: [
+      ["symptom", "aligner-pending", "Aligner pending", "alignment result가 event chain에 늦게 들어옵니다.", true],
+      ["risk", "handoff-error", "Handoff error", "wafer orientation/slot mismatch는 LL 이후 더 큰 문제로 번집니다.", true],
+      ["subsystem", "efem-aligner", "EFEM + aligner", "대기압 robot, aligner, load port door state를 먼저 봅니다.", true],
+      ["evidence", "robot-order", "Robot event order", "pick, align, place event 순서와 wafer present transition을 봅니다.", true],
+      ["stop", "alignment-fail", "Alignment fail hold", "alignment fail, unexpected wafer present, door mismatch면 멈춥니다.", true],
+      ["owner", "senior-ce", "Senior CE witness", "robot teach나 handoff 반복은 선임 witness와 진행합니다.", true],
+      ["report", "efem-report", "보고 문장", "EFEM/aligner event 순서를 확인 중이며 LL 투입 전 wafer identity와 orientation을 고정하겠습니다.", true],
+      ["risk", "ignore-aligner", "Ignore aligner", "aligner 결과 없이 LL로 넣고 나중에 확인합니다.", false]
+    ],
+    choices: [
+      ["aligner 결과가 늦어도 wafer present만 있으면 LL로 보낸다.", false, "LL 이후에는 vacuum boundary가 생겨 복구 비용과 위험이 커집니다.", "EFEM/aligner"],
+      ["EFEM event order, aligner result, wafer present transition을 확인하고 LL handoff 전 멈춤 기준을 세운다.", true, "대기압 영역에서 잡을 수 있는 문제는 vacuum boundary 전에 잡는 것이 맞습니다."],
+      ["PM process readiness를 먼저 확인한다.", false, "아직 wafer는 EFEM/LL 전단에 있으므로 PM readiness가 1차 evidence가 아닙니다.", "subsystem-priority"]
+    ],
+    report: "EFEM pick 단계에서 wafer present, aligner result, robot event order를 확인하고 있습니다. LL handoff 전 identity/orientation evidence를 맞추겠습니다.",
+    stop: "unexpected wafer present, alignment fail, door state mismatch",
+    next: "3D twin에서 material path를 켜고 EFEM -> LL 전단을 천천히 추적합니다."
+  },
+  {
+    id: "day1-loadlock-pumpdown",
+    day: "Install Day 1",
+    phase: "Load Lock pumpdown",
+    title: "Load Lock이 대기압에서 transfer vacuum으로 내려가는가",
+    subtitle: "LL은 FOUP/EFEM 대기압 영역과 TM vacuum 영역 사이의 압력 경계입니다.",
+    prompt: "Load Lock pumpdown이 baseline보다 느리고 plateau가 생겼습니다. CE가 먼저 해야 할 일은?",
+    twin: { step: 3, route: "epi-a", mode: "vacuum", layers: { packets: true, particles: true, pressure: true, cutaway: true } },
+    process: { flow: "epi-sige", step: 2 },
+    status: [
+      ["LL", "pumpdown plateau"],
+      ["Door", "both sides closed expected"],
+      ["Pump", "running / response slow"],
+      ["Gauge", "agreement required"],
+      ["TM", "waiting for pressure ready"],
+      ["Risk", "leak / door feedback / gauge mismatch"]
+    ],
+    cards: [
+      ["symptom", "pressure-plateau", "Pressure plateau", "압력 곡선이 baseline 방향으로 충분히 내려가지 않습니다.", true],
+      ["risk", "vacuum-boundary", "Vacuum boundary risk", "pressure equalization 없이 TM slit을 열면 안전/wafer risk가 큽니다.", true],
+      ["subsystem", "ll-pump-gauge", "LL / pump / gauge", "LL seal, door feedback, pump state, gauge agreement를 분리합니다.", true],
+      ["evidence", "pumpdown-curve", "Pumpdown curve", "baseline과 elapsed time, gauge agreement, pump state를 비교합니다.", true],
+      ["owner", "facility-vacuum", "Facility / vacuum owner", "roughing/exhaust 관련 owner와 실제 상태를 대조합니다.", true],
+      ["stop", "no-pressure-ready", "No pressure ready, no TM", "pressure ready가 방어되지 않으면 TM pickup을 허가하지 않습니다.", true],
+      ["report", "ll-report", "보고 문장", "LL pumpdown curve가 baseline과 달라 door feedback, gauge, pump state를 분리 확인하겠습니다.", true],
+      ["action", "open-slit", "Slit open retry", "압력이 애매한 상태에서 slit을 열어 확인합니다.", false]
+    ],
+    choices: [
+      ["시간이 지나면 내려갈 수 있으니 TM pickup을 먼저 시도한다.", false, "pressure ready가 gate입니다. vacuum boundary를 추정으로 넘기면 안 됩니다.", "vacuum-boundary"],
+      ["pumpdown curve, door feedback, pump state, gauge agreement를 baseline과 비교하고 pressure ready 전 TM move를 hold한다.", true, "증상 -> risk -> subsystem -> evidence -> stop condition 순서가 맞습니다."],
+      ["process PM의 gas readiness를 먼저 확인한다.", false, "현재 증상은 LL pumpdown이며 gas readiness보다 vacuum boundary evidence가 우선입니다.", "subsystem-priority"]
+    ],
+    report: "LL pumpdown이 baseline과 달라 hold 상태로 보고합니다. door feedback, pump state, gauge agreement, elapsed time을 같은 trend로 묶어 확인하겠습니다.",
+    stop: "pressure plateau, gauge disagreement, door feedback conflict, unresolved exhaust/pump alarm",
+    next: "3D twin cutaway와 LL pressure layer를 켜고 압력 경계가 왜 필요한지 설명합니다."
+  },
+  {
+    id: "day1-tm-pm-handoff",
+    day: "Install Day 1",
+    phase: "TM -> PM handoff",
+    title: "TM robot이 올바른 PM에 wafer를 넘기는가",
+    subtitle: "transfer chamber는 vacuum 안의 중앙 교차로입니다. PM ready, slit state, robot position, wafer present transition이 한 묶음입니다.",
+    prompt: "TM pickup은 되었지만 PM load 직전 PM ready가 불안정합니다. 어떤 evidence를 우선할까?",
+    twin: { step: 5, route: "epi-b", mode: "material", layers: { packets: true, particles: false, pressure: true, cutaway: true } },
+    process: { flow: "epi-sige", step: 3 },
+    status: [
+      ["TM", "robot carrying wafer"],
+      ["PM", "ready flicker"],
+      ["Slit", "closed until ready"],
+      ["Wafer", "identity must remain tied"],
+      ["Scheduler", "module permission check"],
+      ["Risk", "wrong module / wafer present abnormal"]
+    ],
+    cards: [
+      ["symptom", "pm-ready-flicker", "PM ready flicker", "PM ready 신호가 안정적으로 유지되지 않습니다.", true],
+      ["risk", "wrong-module", "Wrong module risk", "잘못된 PM 또는 불안정한 chamber에 wafer를 넣을 수 있습니다.", true],
+      ["subsystem", "tm-pm-scheduler", "TM / PM / scheduler", "TM robot, PM ready, slit state, scheduler permission을 같이 봅니다.", true],
+      ["evidence", "wafer-present-transition", "Wafer present transition", "TM hand, PM wafer present, slit close event timestamp를 묶습니다.", true],
+      ["owner", "tool-owner", "Tool owner", "module map과 scheduler state는 tool owner/senior CE와 대조합니다.", true],
+      ["stop", "pm-not-stable", "PM not stable hold", "PM ready가 안정적이지 않으면 load를 hold합니다.", true],
+      ["report", "handoff-report", "보고 문장", "TM/PM handoff 전 PM ready와 wafer present transition이 안정적인지 확인하겠습니다.", true],
+      ["action", "force-load", "Force load", "ready flicker를 무시하고 PM load를 반복합니다.", false]
+    ],
+    choices: [
+      ["PM ready가 한 번이라도 들어왔으면 load를 진행한다.", false, "불안정한 ready는 wafer risk를 만들 수 있습니다.", "TM/PM handoff"],
+      ["PM ready 유지, slit state, robot position, wafer present transition을 같은 timestamp로 확인하고 unstable이면 hold한다.", true, "handoff는 단일 신호가 아니라 상태 전이 묶음으로 봐야 합니다."],
+      ["LL pumpdown curve만 다시 본다.", false, "LL은 이미 통과한 경계이고, 현재 병목은 TM/PM handoff입니다.", "subsystem-priority"]
+    ],
+    report: "TM -> PM handoff 전 PM ready 안정성, slit state, robot position, wafer present transition을 확인 중입니다. unstable ready면 load를 hold하겠습니다.",
+    stop: "PM ready unstable, wrong module selected, wafer present abnormal, slit state conflict",
+    next: "3D twin route를 PM-B로 바꾸고 TM 중심의 material path를 설명합니다."
+  },
+  {
+    id: "day1-gas-readiness",
+    day: "Install Day 1",
+    phase: "First gas readiness",
+    title: "Gas / purge / exhaust / abatement가 동시에 ready인가",
+    subtitle: "EPI는 gas가 들어오는 순간부터 supply, chamber, pump, exhaust, abatement가 한 시스템이 됩니다.",
+    prompt: "Tool ready는 보이지만 abatement local ready 확인이 늦습니다. CE의 안전한 판단은?",
+    twin: { step: 6, route: "epi-a", mode: "gas", layers: { packets: true, particles: true, pressure: true, cutaway: true } },
+    process: { flow: "epi-sige", step: 4 },
+    status: [
+      ["Gas box", "MFC actual needs witness"],
+      ["PM", "isolated process state"],
+      ["Pump", "foreline path ready"],
+      ["Exhaust", "flow path required"],
+      ["Abatement", "local ready pending"],
+      ["Risk", "toxic/flammable/reactive gas family"]
+    ],
+    cards: [
+      ["symptom", "abatement-pending", "Abatement pending", "tool ready와 local abatement ready가 아직 완전히 맞지 않습니다.", true],
+      ["risk", "gas-hazard", "Gas hazard", "toxic/flammable/corrosive/reactive family는 exhaust/abatement witness가 핵심입니다.", true],
+      ["subsystem", "gas-exhaust-abatement", "Gas + exhaust + abatement", "supply만 보지 말고 downstream 처리 경로까지 봅니다.", true],
+      ["evidence", "mfc-exhaust-ready", "MFC / exhaust evidence", "MFC actual, supply pressure, exhaust ready, abatement ready, alarm history를 묶습니다.", true],
+      ["owner", "ehs-gas-owner", "EHS / gas owner", "first gas readiness는 owner witness와 승인 문서가 우선입니다.", true],
+      ["stop", "no-abatement-no-gas", "No abatement, no gas", "abatement/exhaust readiness가 방어되지 않으면 first gas를 진행하지 않습니다.", true],
+      ["report", "gas-report", "보고 문장", "Tool ready와 local abatement ready를 대조 중이며, owner witness 후 first gas readiness를 판단하겠습니다.", true],
+      ["action", "bypass-ready", "Bypass ready", "ready 신호를 우회하거나 detector/setpoint를 바꿔 진행합니다.", false]
+    ],
+    choices: [
+      ["tool ready가 true면 first gas를 진행한다.", false, "gas readiness는 tool input뿐 아니라 local actual state와 owner witness가 필요합니다.", "gas-safety"],
+      ["MFC actual, supply pressure, exhaust/abatement local ready, alarm history를 확인하고 owner witness 전 hold한다.", true, "first gas는 안전 경계가 가장 강한 단계입니다."],
+      ["recipe step을 낮춰서 시험해 본다.", false, "recipe 조정은 process owner 승인 영역이며 install CE가 임의로 해결할 문제가 아닙니다.", "unsafe-action"]
+    ],
+    report: "First gas readiness는 tool ready와 local exhaust/abatement 상태를 분리해 확인 중입니다. EHS/gas owner witness와 alarm history 확인 후 진행 판단하겠습니다.",
+    stop: "detector alarm, exhaust/abatement not ready, unknown purge completion, unapproved gas state",
+    next: "3D twin에서 gas/facility overlay를 켜고 gas in -> PM -> pump -> abatement 흐름을 말합니다."
+  },
+  {
+    id: "day2-baseline-wafer",
+    day: "Install Day 2",
+    phase: "Baseline wafer",
+    title: "첫 baseline wafer 결과를 tool evidence와 묶기",
+    subtitle: "qualification은 pass/fail만 보는 게 아니라 chamber state, trace, metrology가 같은 wafer ID로 묶이는지 확인하는 과정입니다.",
+    prompt: "Baseline wafer thickness trend가 예상보다 낮습니다. CE가 process engineer처럼 분리할 축은?",
+    twin: { step: 6, route: "epi-a", mode: "gas", layers: { packets: true, particles: true, pressure: true, cutaway: true } },
+    process: { flow: "epi-sige", step: 5 },
+    status: [
+      ["Wafer", "baseline run complete"],
+      ["Trace", "temperature / pressure / MFC"],
+      ["Metrology", "thickness / Rs / defect"],
+      ["PM", "seasoning / recovery context"],
+      ["Risk", "premature recipe blame"],
+      ["Report", "evidence packet required"]
+    ],
+    cards: [
+      ["symptom", "thickness-low", "Thickness low trend", "baseline wafer 결과가 예상 trend보다 낮습니다.", true],
+      ["risk", "wrong-root-cause", "Wrong root cause", "recipe 탓으로 단정하면 gas/thermal/vacuum evidence를 놓칩니다.", true],
+      ["subsystem", "process-stack", "Process stack", "surface prep, gas delivery, temperature, pressure, metrology association을 분리합니다.", true],
+      ["evidence", "trace-metrology", "Trace + metrology", "temperature, pressure, MFC actual, wafer ID, metrology result를 같은 packet으로 묶습니다.", true],
+      ["owner", "process-owner", "Process owner", "acceptance와 process 판단은 process/customer owner 문서가 우선입니다.", true],
+      ["stop", "no-association", "No association, no conclusion", "trace/metrology/wafer ID 연결이 깨지면 결론을 내리지 않습니다.", true],
+      ["report", "baseline-report", "보고 문장", "baseline 결과를 tool trace와 metrology association으로 분리해 보고하겠습니다.", true],
+      ["action", "recipe-tweak", "Recipe tweak", "두께가 낮으니 recipe 값을 바로 올립니다.", false]
+    ],
+    choices: [
+      ["두께가 낮으니 recipe를 바로 보정한다.", false, "recipe 변경은 승인 영역입니다. 먼저 evidence packet으로 원인 후보를 좁혀야 합니다.", "process-discipline"],
+      ["surface prep, gas delivery, thermal/vacuum trend, wafer ID/metrology association을 분리해 process owner와 리뷰한다.", true, "CE는 결과와 장비 evidence를 묶어 process 판단이 가능하게 만들어야 합니다."],
+      ["PM chamber를 무조건 문제로 단정한다.", false, "PM 문제일 수도 있지만 path, incoming, trace association을 먼저 분리해야 합니다.", "premature-conclusion"]
+    ],
+    report: "Baseline wafer 결과를 wafer ID 기준으로 tool trace, gas/thermal/vacuum trend, metrology와 묶어 리뷰하겠습니다. recipe/acceptance 판단은 승인 문서와 process owner 기준으로 진행하겠습니다.",
+    stop: "wafer ID mismatch, trace missing, abnormal particle burst, unsafe gas/exhaust state",
+    next: "공정 극장에서 film growth layer와 trace/metrology association을 연결합니다."
+  },
+  {
+    id: "day2-qualification-handover",
+    day: "Install Day 2",
+    phase: "Qualification / handover",
+    title: "고객에게 handover 가능한 evidence packet 만들기",
+    subtitle: "좋은 handover는 pass 문장 하나가 아니라 open risk, owner, next action, excluded boundary가 명확한 packet입니다.",
+    prompt: "Dry run과 baseline은 통과했지만 한 번의 recoverable alarm이 있었습니다. 고객 보고 문장은 어떻게 잡을까?",
+    twin: { step: 8, route: "epi-a", mode: "comm", layers: { packets: true, particles: true, pressure: true, cutaway: false } },
+    process: { flow: "epi-sige", step: 6 },
+    status: [
+      ["Run", "dry run / baseline complete"],
+      ["Alarm", "recoverable / documented"],
+      ["Evidence", "trace, metrology, event log"],
+      ["Owner", "customer / senior CE"],
+      ["Risk", "overpromising"],
+      ["Handover", "facts + next action"]
+    ],
+    cards: [
+      ["symptom", "recoverable-alarm", "Recoverable alarm", "한 번의 alarm이 있었고 복구 기록이 남았습니다.", true],
+      ["risk", "overpromise", "Overpromise risk", "완전 무결하다고 말하면 남은 risk와 owner가 사라집니다.", true],
+      ["subsystem", "handover-packet", "Handover packet", "event log, trace, metrology, action/result/prevention을 묶습니다.", true],
+      ["evidence", "alarm-history", "Alarm history", "alarm timestamp, action, result, recurrence 여부를 기록합니다.", true],
+      ["owner", "customer-owner", "Customer owner", "고객 owner와 open item/review date를 합의합니다.", true],
+      ["stop", "open-risk", "Open risk not closed", "unresolved safety/process risk가 있으면 handover 완료라고 말하지 않습니다.", true],
+      ["report", "handover-report", "보고 문장", "확인된 사실, recoverable alarm, 재발 여부, open item, 다음 owner를 나눠 보고합니다.", true],
+      ["action", "hide-alarm", "Hide alarm", "통과했으니 recoverable alarm은 보고하지 않습니다.", false]
+    ],
+    choices: [
+      ["통과했으니 alarm은 언급하지 않고 완료 보고만 한다.", false, "고객 신뢰는 문제를 숨기지 않고 사실/위험/다음 행동을 분리할 때 생깁니다.", "handover"],
+      ["완료 evidence, recoverable alarm 기록, 재발 여부, open item, next owner를 분리해 handover한다.", true, "senior CE식 보고는 overpromise 없이 사실과 next action을 명확히 합니다."],
+      ["모든 open item을 process engineer에게 넘기고 CE 보고에서는 제외한다.", false, "handover에서는 owner 이관도 evidence로 남겨야 합니다.", "ownership"]
+    ],
+    report: "Dry run과 baseline evidence는 확보됐고, recoverable alarm은 timestamp/action/result/recurrence 여부로 분리 기록했습니다. open item과 owner를 합의한 뒤 handover 상태를 업데이트하겠습니다.",
+    stop: "unresolved safety risk, missing trace/metrology association, unclear owner, unapproved acceptance conclusion",
+    next: "Think Tank에 handover packet을 남기고 AI packet에 포함 가능한 요약으로 저장합니다."
+  }
+];
+
 const state = JSON.parse(localStorage.getItem("ceTrainerState") || "{}");
 let activeSystem = systems[0].id;
 let activeScenario = 0;
@@ -4033,6 +4289,7 @@ let activeFepProcessTwin = state.activeFepProcessTwin || fepProcessTwinSteps[0].
 let activeFepInstallGate = state.activeFepInstallGate || fepInstallGates[0].id;
 let activeFepGasGroup = state.activeFepGasGroup || "all";
 let activeFepCase = state.activeFepCase || fepFailureCases[0].id;
+let activeEpiMission = state.activeEpiMission || epiInstallCampaign[0].id;
 const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
@@ -4185,6 +4442,7 @@ function save() {
   renderCommandCenter();
   renderRunbook();
   renderLearningHud();
+  renderEpiMissionEngine();
 }
 
 function persistState() {
@@ -4709,6 +4967,9 @@ function renderCommandCenter() {
   const attempts = state.quizAttempts || [];
   const quizScore = attempts.length ? Math.round(attempts.filter(Boolean).length / attempts.length * 100) : 0;
   const routeProgress = getOperatingRouteProgress();
+  const epiAnswers = state.epiMissionAnswers || {};
+  const nextEpiMission = epiInstallCampaign.find(item => !epiAnswers[item.id]) || getActiveEpiMission();
+  const epiMissionCorrect = Object.values(epiAnswers).filter(item => item.correct).length;
 
   root.innerHTML = `
     <div class="command-head">
@@ -4768,14 +5029,20 @@ function renderCommandCenter() {
         <strong>${quizScore}%</strong>
         <small>최근 응답 기준</small>
       </article>
+      <article>
+        <span>EPI mission</span>
+        <strong>${epiMissionCorrect}/${Object.keys(epiAnswers).length || 0}</strong>
+        <small>v6 판단 훈련</small>
+      </article>
     </div>
     <div class="command-next">
       <span class="command-badge">Next</span>
       <div>
-        <strong>${nextMission.week} · ${nextMission.label}</strong>
-        <small>${nextMission.hint}</small>
+        <strong>${nextEpiMission.day} · ${nextEpiMission.title}</strong>
+        <small>${nextEpiMission.phase} · ${nextEpiMission.stop}</small>
       </div>
-      <button class="secondary" type="button" data-command-view="roadmap">로드맵에서 체크</button>
+      <button class="primary" type="button" data-command-epi-mission="${nextEpiMission.id}">오늘의 EPI 미션</button>
+      <button class="secondary" type="button" data-command-view="roadmap">로드맵도 보기</button>
     </div>
     <div class="command-actions">
       ${commandCenterActions.map(action => `
@@ -4791,6 +5058,17 @@ function renderCommandCenter() {
 
   root.querySelectorAll("[data-command-view]").forEach(button => {
     button.addEventListener("click", () => showView(button.dataset.commandView));
+  });
+  root.querySelector("[data-command-epi-mission]")?.addEventListener("click", event => {
+    activeEpiMission = event.currentTarget.dataset.commandEpiMission;
+    state.activeEpiMission = activeEpiMission;
+    persistState();
+    showView("process-visual");
+    window.setTimeout(() => {
+      renderEpiMissionEngine();
+      applyEpiMissionToTwin(getActiveEpiMission(), { scroll: false });
+      document.querySelector("#epi-mission-engine")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   });
   root.querySelector("[data-route-start]")?.addEventListener("click", () => showView(routeProgress.next.view));
   root.querySelector("[data-route-search]")?.addEventListener("click", () => openCommandPalette());
@@ -6175,6 +6453,242 @@ function processGasRisk(tag) {
   if (key.includes("vacuum")) return "진공 boundary 단계. door, slit valve, pumpdown curve, pressure equalization evidence가 중요합니다.";
   if (key.includes("abatement") || key.includes("exhaust")) return "배기/처리 단계. ready signal과 local actual state를 owner witness로 대조합니다.";
   return "공개자료 기준 개념 tag입니다. 실제 사용 여부와 위험 등급은 tool option, gas matrix, SDS, site EHS 문서로 확인합니다.";
+}
+
+function getActiveEpiMission() {
+  return epiInstallCampaign.find(item => item.id === activeEpiMission) || epiInstallCampaign[0];
+}
+
+function getEpiMissionStats() {
+  const answers = state.epiMissionAnswers || {};
+  const solved = Object.keys(answers).length;
+  const correct = Object.values(answers).filter(item => item.correct).length;
+  const selectedCards = state.epiMissionBoard?.[getActiveEpiMission().id] || [];
+  const topWeakness = Object.entries(state.epiMissionWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  return {
+    solved,
+    correct,
+    score: solved ? Math.round((correct / solved) * 100) : 0,
+    selectedCards,
+    topWeakness
+  };
+}
+
+function groupMissionCards(cards) {
+  return cards.reduce((groups, card) => {
+    const [lane] = card;
+    groups[lane] = groups[lane] || [];
+    groups[lane].push(card);
+    return groups;
+  }, {});
+}
+
+function scoreMissionEvidence(mission) {
+  const selected = new Set(state.epiMissionBoard?.[mission.id] || []);
+  const required = mission.cards.filter(card => card[4]).map(card => card[1]);
+  const wrong = mission.cards.filter(card => !card[4] && selected.has(card[1])).map(card => card[1]);
+  const hits = required.filter(id => selected.has(id)).length;
+  const pct = required.length ? Math.max(0, Math.round(((hits - wrong.length) / required.length) * 100)) : 0;
+  return { selected, required, wrong, hits, pct };
+}
+
+function applyEpiMissionToTwin(mission, options = {}) {
+  const twin = window.ProjectUniverseWebGLTwin;
+  const status = document.querySelector("#epi-mission-sync-status");
+  if (!twin) {
+    if (status) status.textContent = "3D twin이 아직 준비되지 않았습니다. 잠시 후 다시 누르세요.";
+    return false;
+  }
+  twin.pause?.();
+  twin.setRoute?.(mission.twin.route);
+  twin.setMode?.(mission.twin.mode);
+  Object.entries(mission.twin.layers || {}).forEach(([layer, value]) => twin.setLayer?.(layer, value));
+  twin.setStep?.(mission.twin.step);
+  twin.setCamera?.("iso");
+  if (mission.process) {
+    activeProcessFlow = mission.process.flow;
+    activeProcessStep = mission.process.step;
+  }
+  if (status) {
+    status.textContent = `3D 동기화됨: ${mission.phase} / ${mission.title}`;
+  }
+  if (options.scroll !== false) {
+    document.querySelector("#webgl-twin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  return true;
+}
+
+function renderEpiMissionEngine() {
+  const root = document.querySelector("#epi-mission-engine");
+  if (!root) return;
+  const mission = getActiveEpiMission();
+  const stats = getEpiMissionStats();
+  const evidence = scoreMissionEvidence(mission);
+  const grouped = groupMissionCards(mission.cards);
+  const answer = state.epiMissionAnswers?.[mission.id];
+  const mode = state.epiMissionMode || "CE";
+  const laneLabels = {
+    symptom: "Symptom",
+    risk: "Risk",
+    subsystem: "Subsystem",
+    evidence: "Evidence",
+    owner: "Owner",
+    stop: "Stop",
+    report: "Report",
+    action: "Wrong action"
+  };
+  root.innerHTML = `
+    <div class="mission-engine-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v6</p>
+        <h2>EPI Install Mission Engine</h2>
+        <p>읽는 페이지를 넘어, 3D twin을 실제 install day 흐름에 맞추고 symptom -> risk -> subsystem -> evidence -> stop -> report 순서로 판단하는 훈련 엔진입니다.</p>
+      </div>
+      <div class="mission-score-card">
+        <span>Mission score</span>
+        <strong>${stats.score}%</strong>
+        <small>${stats.correct}/${stats.solved || 0} correct · evidence ${evidence.hits}/${evidence.required.length}</small>
+      </div>
+    </div>
+    <div class="mission-mode-row" aria-label="mission training mode">
+      ${["Rookie", "CE", "Senior"].map(item => `
+        <button type="button" class="${mode === item ? "active" : ""}" data-epi-mission-mode="${item}">${item}</button>
+      `).join("")}
+      <span>${mode === "Rookie" ? "용어와 큰 그림을 더 천천히 봅니다." : mode === "Senior" ? "고객 보고와 재발 방지까지 생각합니다." : "evidence와 stop condition을 중심으로 봅니다."}</span>
+    </div>
+    <div class="mission-ladder" aria-label="install campaign mission list">
+      ${epiInstallCampaign.map((item, index) => {
+        const saved = state.epiMissionAnswers?.[item.id];
+        return `
+          <button type="button" class="${item.id === mission.id ? "active" : ""} ${saved?.correct ? "solved" : saved ? "review" : ""}" data-epi-mission="${item.id}">
+            <span>${String(index + 1).padStart(2, "0")}</span>
+            <strong>${item.day}</strong>
+            <b>${item.title}</b>
+            <small>${item.phase}</small>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="mission-main-grid">
+      <section class="mission-brief">
+        <div class="mission-brief-title">
+          <span>${mission.day}</span>
+          <h3>${mission.title}</h3>
+          <p>${mission.subtitle}</p>
+        </div>
+        <div class="mission-status-grid">
+          ${mission.status.map(([label, value]) => `
+            <article>
+              <span>${label}</span>
+              <strong>${value}</strong>
+            </article>
+          `).join("")}
+        </div>
+        <div class="mission-sync-row">
+          <button class="primary" type="button" data-epi-sync-twin>3D twin 동기화</button>
+          <button class="secondary" type="button" data-epi-sync-and-flow>3D + 공정 단계 동기화</button>
+          <span id="epi-mission-sync-status">미션을 누르면 3D route/mode/step이 맞춰집니다.</span>
+        </div>
+      </section>
+      <section class="mission-question">
+        <p class="eyebrow">CE Decision Loop</p>
+        <h3>${mission.prompt}</h3>
+        <div class="mission-choice-grid">
+          ${mission.choices.map(([label, good, why], index) => `
+            <button type="button" class="${answer && answer.selected === index ? "picked" : ""} ${answer && good ? "good" : ""} ${answer && answer.selected === index && !good ? "bad" : ""}" data-epi-choice="${index}">
+              ${label}
+            </button>
+          `).join("")}
+        </div>
+        <p class="mission-feedback" id="epi-mission-feedback">${answer ? mission.choices[answer.selected]?.[2] : "답을 선택하면 즉시 채점되고, 오답은 약점 그래프에 쌓입니다."}</p>
+        <textarea readonly class="mission-report-template">${mission.report}</textarea>
+      </section>
+    </div>
+    <section class="evidence-board" aria-label="mission evidence board">
+      <div class="evidence-board-head">
+        <div>
+          <p class="eyebrow">Evidence Board</p>
+          <h3>필요한 카드를 골라 현장 사고 순서를 완성하세요</h3>
+        </div>
+        <span class="${evidence.pct >= 80 && !evidence.wrong.length ? "ready" : ""}">${evidence.pct}% evidence</span>
+      </div>
+      <div class="evidence-lanes">
+        ${Object.entries(grouped).map(([lane, cards]) => `
+          <article>
+            <strong>${laneLabels[lane] || lane}</strong>
+            ${cards.map(([, id, label, text, good]) => `
+              <button type="button" class="${evidence.selected.has(id) ? "selected" : ""} ${!good && evidence.selected.has(id) ? "wrong" : ""}" data-epi-evidence="${id}">
+                <b>${label}</b>
+                <span>${text}</span>
+              </button>
+            `).join("")}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <div class="mission-weakness-row">
+      <strong>Weakness top</strong>
+      ${stats.topWeakness.length ? stats.topWeakness.map(([tag, count]) => `<span>${tag} ${count}</span>`).join("") : "<span>아직 누적 약점 없음</span>"}
+      <small>안전 경계: recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 의도적으로 제외합니다.</small>
+    </div>
+  `;
+
+  root.querySelectorAll("[data-epi-mission]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeEpiMission = button.dataset.epiMission;
+      state.activeEpiMission = activeEpiMission;
+      persistState();
+      renderEpiMissionEngine();
+      applyEpiMissionToTwin(getActiveEpiMission(), { scroll: false });
+    });
+  });
+  root.querySelectorAll("[data-epi-mission-mode]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.epiMissionMode = button.dataset.epiMissionMode;
+      persistState();
+      renderEpiMissionEngine();
+    });
+  });
+  root.querySelector("[data-epi-sync-twin]")?.addEventListener("click", () => applyEpiMissionToTwin(mission));
+  root.querySelector("[data-epi-sync-and-flow]")?.addEventListener("click", () => {
+    applyEpiMissionToTwin(mission, { scroll: false });
+    renderProcessVisual();
+    document.querySelector("#webgl-twin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  root.querySelectorAll("[data-epi-evidence]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.epiEvidence;
+      state.epiMissionBoard = state.epiMissionBoard || {};
+      const selected = new Set(state.epiMissionBoard[mission.id] || []);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      state.epiMissionBoard[mission.id] = [...selected];
+      persistState();
+      renderEpiMissionEngine();
+    });
+  });
+  root.querySelectorAll("[data-epi-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const selected = Number(button.dataset.epiChoice);
+      const choice = mission.choices[selected];
+      state.epiMissionAnswers = state.epiMissionAnswers || {};
+      state.epiMissionAnswers[mission.id] = {
+        selected,
+        correct: Boolean(choice?.[1]),
+        phase: mission.phase,
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice?.[1]) {
+        state.epiMissionWeakness = state.epiMissionWeakness || {};
+        const tag = choice?.[3] || mission.phase;
+        state.epiMissionWeakness[tag] = (state.epiMissionWeakness[tag] || 0) + 1;
+      }
+      persistState();
+      renderEpiMissionEngine();
+    });
+  });
 }
 
 const epiMasterSteps = [
@@ -7846,6 +8360,7 @@ function renderProcessVisual() {
   renderEpiMasterTheater(flow, step);
   renderEpiProcessEngineerLab();
   renderEpiTraceLab();
+  renderEpiMissionEngine();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>
