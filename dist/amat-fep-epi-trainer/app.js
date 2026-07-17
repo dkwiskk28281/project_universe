@@ -7780,23 +7780,114 @@ const ceCampaignMissions = [
   }
 ];
 
+const ceCampaignSeasons = [
+  {
+    id: "standard",
+    label: "Balanced install",
+    title: "Standard Evidence Run",
+    tone: "Normal pressure",
+    description: "Baseline campaign. The team has time to build evidence before each gate, so the main training focus is clean stop/go thinking.",
+    modifiers: { safety: 0, evidence: 0, trust: 0, risk: 0 },
+    hiddenRisks: [
+      { missionId: "day0-datum", label: "Datum drift", risk: 4, effect: "Small floor-mark ambiguity can become hook-up rework if it is not packeted early.", caseId: "move-in-floor-mark-mismatch" },
+      { missionId: "handover", label: "Punchlist blur", risk: 5, effect: "Open issues can look closed when owner, due date, and residual-risk wording are missing.", caseId: "handover-punchlist-open" }
+    ]
+  },
+  {
+    id: "schedule-pressure",
+    label: "Schedule pressure",
+    title: "Compressed Move-in Window",
+    tone: "High tempo",
+    description: "Customer wants fast set-in-place and first wafer. The trap is letting schedule language replace owner witness and evidence.",
+    modifiers: { safety: -5, evidence: -7, trust: -3, risk: 12 },
+    hiddenRisks: [
+      { missionId: "day0-datum", label: "Rigging clock", risk: 9, effect: "Move-in crew is waiting, so datum disagreement is easy to wave through.", caseId: "move-in-floor-mark-mismatch" },
+      { missionId: "wafer-handoff", label: "Retry pressure", risk: 8, effect: "Repeated handoff retry can hide host/load-port/physical state mismatch.", caseId: "e84-handoff-timeout" },
+      { missionId: "handover", label: "Verbal closeout pull", risk: 10, effect: "People may ask for verbal closure before evidence-linked punchlist closure.", caseId: "handover-punchlist-open" }
+    ]
+  },
+  {
+    id: "gas-safety",
+    label: "Gas safety event",
+    title: "First Gas Readiness Scrutiny",
+    tone: "EHS sensitive",
+    description: "A recent site event makes toxic, flammable, corrosive, exhaust, detector, and abatement evidence more important than schedule.",
+    modifiers: { safety: -9, evidence: -3, trust: -5, risk: 16 },
+    hiddenRisks: [
+      { missionId: "facility-exhaust", label: "Downstream blind spot", risk: 12, effect: "Tool-side connection can look ready while downstream exhaust/abatement actual is not witnessed.", caseId: "facility-exhaust-not-witnessed" },
+      { missionId: "first-gas", label: "Source-to-abatement chain", risk: 15, effect: "Gas family, SDS, detector health, exhaust actual, abatement actual, and owner witness must close as one chain.", caseId: "toxic-gas-cabinet-owner-gap" },
+      { missionId: "day1-loto", label: "Stored-energy ambiguity", risk: 7, effect: "Energized checks become more dangerous when boundary ownership is rushed.", caseId: "power-loto-boundary-unclear" }
+    ]
+  },
+  {
+    id: "qualification-drift",
+    label: "Qualification drift",
+    title: "Baseline Evidence Drift",
+    tone: "Process sensitive",
+    description: "The hardware looks stable, but traceability, chamber matching, wafer ID, and metrology linkage decide whether the result is defensible.",
+    modifiers: { safety: -1, evidence: -12, trust: -6, risk: 14 },
+    hiddenRisks: [
+      { missionId: "baseline-link", label: "Good number trap", risk: 14, effect: "A good value is not qualification evidence unless wafer, PM, trace, and metrology IDs are linked.", caseId: "baseline-metrology-link-broken" },
+      { missionId: "handover", label: "Residual-risk wording", risk: 8, effect: "Open process caveats must be separated from completed evidence.", caseId: "handover-punchlist-open" },
+      { missionId: "wafer-handoff", label: "Trace continuity", risk: 7, effect: "Carrier state ambiguity can break wafer-to-result traceability later.", caseId: "e84-handoff-timeout" }
+    ]
+  },
+  {
+    id: "customer-escalation",
+    label: "Customer escalation",
+    title: "Escalation Room Install",
+    tone: "Communication heavy",
+    description: "Every delay needs owner, evidence, stop condition, and next update wording. Overpromising damages trust faster than a controlled hold.",
+    modifiers: { safety: -3, evidence: -5, trust: -12, risk: 13 },
+    hiddenRisks: [
+      { missionId: "day0-datum", label: "Visible hold", risk: 7, effect: "A move-in hold needs clear datum/evidence language or it looks like indecision.", caseId: "move-in-floor-mark-mismatch" },
+      { missionId: "first-gas", label: "Safety wording", risk: 10, effect: "First gas hold must sound controlled, not vague or alarmist.", caseId: "toxic-gas-cabinet-owner-gap" },
+      { missionId: "handover", label: "Trust closeout", risk: 13, effect: "Final handover must show completed evidence and open risk separately.", caseId: "handover-punchlist-open" }
+    ]
+  }
+];
+
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
 function getCampaignState() {
   state.ceCampaign = state.ceCampaign || {
+    seasonId: ceCampaignSeasons[0].id,
     activeMission: ceCampaignMissions[0].id,
     decisions: {},
     recoveries: {},
     startedAt: new Date().toISOString()
   };
+  if (!ceCampaignSeasons.some(item => item.id === state.ceCampaign.seasonId)) {
+    state.ceCampaign.seasonId = ceCampaignSeasons[0].id;
+  }
   if (!ceCampaignMissions.some(item => item.id === state.ceCampaign.activeMission)) {
     state.ceCampaign.activeMission = ceCampaignMissions[0].id;
   }
   state.ceCampaign.decisions = state.ceCampaign.decisions || {};
   state.ceCampaign.recoveries = state.ceCampaign.recoveries || {};
   return state.ceCampaign;
+}
+
+function getActiveCampaignSeason() {
+  const campaign = getCampaignState();
+  return ceCampaignSeasons.find(item => item.id === campaign.seasonId) || ceCampaignSeasons[0];
+}
+
+function getSeasonHiddenRisks(missionId = "") {
+  const season = getActiveCampaignSeason();
+  const risks = season.hiddenRisks || [];
+  if (!missionId) return risks;
+  return risks.filter(item => item.missionId === missionId);
+}
+
+function getSeasonPressureForMission(missionId) {
+  const hiddenRisks = getSeasonHiddenRisks(missionId);
+  return {
+    hiddenRisks,
+    riskTotal: hiddenRisks.reduce((sum, item) => sum + Number(item.risk || 0), 0)
+  };
 }
 
 function getActiveCampaignMission() {
@@ -7851,6 +7942,7 @@ function getIncomingCampaignDebts(missionId) {
 
 function getCampaignMetrics() {
   const campaign = getCampaignState();
+  const season = getActiveCampaignSeason();
   const decisions = Object.entries(campaign.decisions || {});
   const totals = decisions.reduce((acc, decision) => {
     const [missionId, value] = decision;
@@ -7864,20 +7956,35 @@ function getCampaignMetrics() {
     else acc.bad += 1;
     if (recovered) acc.recovered += 1;
     return acc;
-  }, { safety: 62, evidence: 46, trust: 52, risk: 20, good: 0, bad: 0, recovered: 0 });
+  }, {
+    safety: 62 + Number(season.modifiers?.safety || 0),
+    evidence: 46 + Number(season.modifiers?.evidence || 0),
+    trust: 52 + Number(season.modifiers?.trust || 0),
+    risk: 20 + Number(season.modifiers?.risk || 0),
+    good: 0,
+    bad: 0,
+    recovered: 0
+  });
   const activeDebtPenalty = getCampaignDebtItems().filter(item => !item.recovered).reduce((sum, item) => sum + Math.min(8, item.risk), 0);
+  const seasonPressure = getSeasonPressureForMission(campaign.activeMission).riskTotal;
+  const seasonPenalty = Math.min(18, Math.round(seasonPressure * 0.55));
+  const riskTotal = totals.risk + activeDebtPenalty + seasonPenalty;
   return {
     safety: clampScore(totals.safety),
     evidence: clampScore(totals.evidence),
     trust: clampScore(totals.trust),
-    risk: clampScore(totals.risk + activeDebtPenalty),
+    risk: clampScore(riskTotal),
     good: totals.good,
     bad: totals.bad,
     recovered: totals.recovered,
     activeDebtPenalty,
+    seasonId: season.id,
+    seasonTitle: season.title,
+    seasonPressure,
+    seasonPenalty,
     completed: decisions.length,
     total: ceCampaignMissions.length,
-    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - clampScore(totals.risk + activeDebtPenalty))) / 4)
+    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - clampScore(riskTotal))) / 4)
   };
 }
 
@@ -7885,9 +7992,19 @@ function buildCampaignPacket() {
   const campaign = getCampaignState();
   const metrics = getCampaignMetrics();
   const debtItems = getCampaignDebtItems();
+  const season = getActiveCampaignSeason();
+  const activeSeasonPressure = getSeasonPressureForMission(campaign.activeMission);
   return {
-    schemaVersion: "ce-campaign-season-v1",
+    schemaVersion: "ce-campaign-season-director-v1",
     generatedAt: new Date().toISOString(),
+    season: {
+      id: season.id,
+      title: season.title,
+      label: season.label,
+      tone: season.tone,
+      modifiers: season.modifiers,
+      description: season.description
+    },
     activeMission: campaign.activeMission,
     metrics,
     decisions: ceCampaignMissions.map(mission => {
@@ -7916,6 +8033,12 @@ function buildCampaignPacket() {
       recoveryReady: item.recoveryReady,
       recovery: item.stop
     })),
+    seasonPressure: {
+      activeMission: campaign.activeMission,
+      riskTotal: activeSeasonPressure.riskTotal,
+      hiddenRisks: activeSeasonPressure.hiddenRisks
+    },
+    hiddenRisks: getSeasonHiddenRisks(),
     excludedDangerousInfo: [
       "recipe",
       "valve sequence",
@@ -7932,17 +8055,21 @@ function renderCeCampaignEngine() {
   if (!root) return;
   const campaign = getCampaignState();
   const mission = getActiveCampaignMission();
+  const season = getActiveCampaignSeason();
   const metrics = getCampaignMetrics();
   const selected = campaign.decisions?.[mission.id];
   const activeIndex = ceCampaignMissions.findIndex(item => item.id === mission.id);
   const packet = buildCampaignPacket();
   const debtItems = getCampaignDebtItems();
   const incomingDebts = getIncomingCampaignDebts(mission.id);
+  const seasonPressure = getSeasonPressureForMission(mission.id);
+  const hasPressure = incomingDebts.length || seasonPressure.hiddenRisks.length;
   root.innerHTML = `
     <div class="campaign-head">
       <div>
-        <p class="eyebrow">Project Universe OS v13</p>
-        <h2>CE Campaign Season Engine</h2>
+        <p class="eyebrow">Project Universe OS v14</p>
+        <h2>CE Campaign Season Director</h2>
+        <p>Same install, different pressure. Choose a season, then watch how schedule, gas safety, qualification, and customer escalation change the evidence-first path.</p>
         <p>설치 현장을 Day 0부터 handover까지 이어서 판단합니다. 잘못된 선택은 downstream risk debt로 남고, linked case와 War Room packet을 통해 recovery closeout해야 사라집니다.</p>
       </div>
       <div class="campaign-readiness">
@@ -7951,6 +8078,33 @@ function renderCeCampaignEngine() {
         <small>${metrics.completed}/${metrics.total} missions · active debt ${debtItems.filter(item => !item.recovered).length} · recovered ${metrics.recovered}</small>
       </div>
     </div>
+    <section class="campaign-season-director" aria-label="campaign season director">
+      <div class="campaign-season-copy">
+        <span>Active season</span>
+        <strong>${season.title}</strong>
+        <p>${season.description}</p>
+        <small>Modifier: safety ${season.modifiers.safety >= 0 ? "+" : ""}${season.modifiers.safety}, evidence ${season.modifiers.evidence >= 0 ? "+" : ""}${season.modifiers.evidence}, trust ${season.modifiers.trust >= 0 ? "+" : ""}${season.modifiers.trust}, risk ${season.modifiers.risk >= 0 ? "+" : ""}${season.modifiers.risk}</small>
+      </div>
+      <div class="campaign-season-grid">
+        ${ceCampaignSeasons.map(item => `
+          <button type="button" class="${item.id === season.id ? "active" : ""}" data-campaign-season="${item.id}">
+            <span>${item.label}</span>
+            <b>${item.title}</b>
+            <small>${item.tone} · ${item.hiddenRisks.length} hidden risks</small>
+          </button>
+        `).join("")}
+      </div>
+      <div class="campaign-season-radar ${seasonPressure.hiddenRisks.length ? "hot" : ""}">
+        <span>Mission pressure radar</span>
+        ${seasonPressure.hiddenRisks.length ? seasonPressure.hiddenRisks.map(item => `
+          <article>
+            <b>${item.label}</b>
+            <p>${item.effect}</p>
+            <small>risk +${item.risk} · linked case ${item.caseId}</small>
+          </article>
+        `).join("") : "<p>This mission has no extra hidden season pressure. Normal evidence gates still apply.</p>"}
+      </div>
+    </section>
     <div class="campaign-meter-grid">
       <article><span>Safety</span><strong>${metrics.safety}%</strong><i style="--w:${metrics.safety}%"></i></article>
       <article><span>Evidence</span><strong>${metrics.evidence}%</strong><i style="--w:${metrics.evidence}%"></i></article>
@@ -7960,11 +8114,12 @@ function renderCeCampaignEngine() {
     <div class="campaign-map" aria-label="campaign mission map">
       ${ceCampaignMissions.map((entry, index) => {
         const decision = campaign.decisions?.[entry.id];
+        const mapPressure = getSeasonPressureForMission(entry.id);
         return `
-          <button type="button" class="${entry.id === mission.id ? "active" : ""} ${decision?.good ? "good" : decision ? "bad" : ""}" data-campaign-mission="${entry.id}">
+          <button type="button" class="${entry.id === mission.id ? "active" : ""} ${decision?.good ? "good" : decision ? "bad" : ""} ${mapPressure.riskTotal ? "season-hot" : ""}" data-campaign-mission="${entry.id}">
             <span>${entry.day}</span>
             <strong>${entry.title}</strong>
-            <small>${decision ? (decision.good ? "contained" : "debt") : index === activeIndex ? "active" : "open"}</small>
+            <small>${decision ? (decision.good ? "contained" : "debt") : index === activeIndex ? "active" : "open"}${mapPressure.riskTotal ? ` · season +${mapPressure.riskTotal}` : ""}</small>
           </button>
         `;
       }).join("")}
@@ -7981,7 +8136,7 @@ function renderCeCampaignEngine() {
           <article><span>Stakes</span><p>${mission.stakes}</p></article>
           <article><span>Stop condition</span><p>${mission.stop}</p></article>
         </div>
-        <div class="campaign-pressure-panel ${incomingDebts.length ? "hot" : ""}">
+        <div class="campaign-pressure-panel ${hasPressure ? "hot" : ""}">
           <span>Incoming pressure</span>
           ${incomingDebts.length ? incomingDebts.map(item => `
             <article>
@@ -7990,6 +8145,16 @@ function renderCeCampaignEngine() {
               <small>Recovery: ${item.stop}</small>
             </article>
           `).join("") : "<p>이 mission에 끌려오는 unresolved debt가 없습니다.</p>"}
+        </div>
+        <div class="campaign-pressure-panel season-pressure ${seasonPressure.hiddenRisks.length ? "hot" : ""}">
+          <span>Season hidden pressure</span>
+          ${seasonPressure.hiddenRisks.length ? seasonPressure.hiddenRisks.map(item => `
+            <article class="season-risk">
+              <strong>${item.label}</strong>
+              <p>${item.effect}</p>
+              <small>risk +${item.risk} · linked case ${item.caseId}</small>
+            </article>
+          `).join("") : "<p>No extra hidden pressure from the active season on this mission.</p>"}
         </div>
         <div class="campaign-choice-grid">
           ${mission.choices.map(choice => `
@@ -8038,6 +8203,33 @@ function renderCeCampaignEngine() {
       </aside>
     </div>
   `;
+
+  const staleCampaignCopy = root.querySelector(".campaign-head > div:first-child p:nth-of-type(3)");
+  if (staleCampaignCopy) staleCampaignCopy.remove();
+  const readinessCopy = root.querySelector(".campaign-readiness small");
+  if (readinessCopy) readinessCopy.textContent = `${metrics.completed}/${metrics.total} missions · ${season.label} · active debt ${debtItems.filter(item => !item.recovered).length} · recovered ${metrics.recovered}`;
+  const emptyDebtCopy = root.querySelector(".campaign-pressure-panel > p");
+  if (emptyDebtCopy) emptyDebtCopy.textContent = "No unresolved campaign debt is entering this mission.";
+  const campaignLabels = [
+    ["[data-campaign-prev]", "Previous mission"],
+    ["[data-campaign-next]", "Next mission"],
+    ["[data-campaign-save]", "Save campaign packet"],
+    ["[data-campaign-reset]", "Reset season run"],
+    ["[data-campaign-open-case]", "Open linked case"]
+  ];
+  campaignLabels.forEach(([selector, label]) => {
+    const element = root.querySelector(selector);
+    if (element) element.textContent = label;
+  });
+
+  root.querySelectorAll("[data-campaign-season]").forEach(button => {
+    button.addEventListener("click", () => {
+      campaign.seasonId = button.dataset.campaignSeason;
+      persistState();
+      renderCeCampaignEngine();
+      renderCeMemoryLedger();
+    });
+  });
 
   root.querySelectorAll("[data-campaign-mission]").forEach(button => {
     button.addEventListener("click", () => {
@@ -8133,6 +8325,7 @@ function renderCeCampaignEngine() {
   });
   root.querySelector("[data-campaign-reset]")?.addEventListener("click", () => {
     state.ceCampaign = {
+      seasonId: campaign.seasonId || ceCampaignSeasons[0].id,
       activeMission: ceCampaignMissions[0].id,
       decisions: {},
       recoveries: {},
