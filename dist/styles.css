@@ -1779,6 +1779,337 @@ main,
   }
 }
 
+/* 20260717 v10 CE memory ledger */
+.ce-memory-ledger {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(0, 255, 149, 0.12), transparent 34%),
+    radial-gradient(circle at 86% 8%, rgba(94, 231, 255, 0.10), transparent 32%),
+    linear-gradient(145deg, rgba(0, 9, 10, 0.98), rgba(5, 7, 16, 0.97));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.ledger-head,
+.ledger-stat-grid,
+.ledger-queue-grid,
+.ledger-case-grid,
+.ledger-actions {
+  min-width: 0;
+}
+
+.ledger-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.26fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.ledger-head h2,
+.ledger-panel-head h3 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.18;
+}
+
+.ledger-head p:not(.eyebrow),
+.ledger-score small,
+.ledger-stat-grid p,
+.ledger-queue-grid p,
+.ledger-queue-grid small,
+.ledger-case-grid small,
+.ledger-actions span {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ledger-score,
+.ledger-stat-grid article,
+.ledger-queue,
+.ledger-map,
+.ledger-export {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.58);
+  box-shadow: inset 0 1px 0 rgba(236, 255, 248, 0.04);
+}
+
+.ledger-score {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 14px;
+}
+
+.ledger-score span,
+.ledger-stat-grid span,
+.ledger-queue-grid span,
+.ledger-case-grid span {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ledger-score strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(2.4rem, 5vw, 3.5rem);
+  line-height: 0.95;
+}
+
+.ledger-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ledger-stat-grid article {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.ledger-stat-grid strong {
+  color: #ffffff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  line-height: 1;
+}
+
+.ledger-stat-grid p {
+  margin: 0;
+  font-size: 0.84rem;
+}
+
+.ledger-queue,
+.ledger-map,
+.ledger-export {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ledger-panel-head {
+  display: grid;
+  gap: 4px;
+}
+
+.ledger-focus-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(0, 255, 149, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.10), transparent 64%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.ledger-focus-card > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.ledger-focus-card span {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ledger-focus-card strong {
+  color: #ffffff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.ledger-focus-card p {
+  margin: 0;
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ledger-queue-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ledger-queue-grid article {
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  min-height: 190px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.ledger-queue-grid article.active {
+  border-color: rgba(0, 255, 149, 0.55);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.ledger-queue-grid strong,
+.ledger-case-grid strong {
+  color: #ffffff;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.ledger-queue-grid p,
+.ledger-queue-grid small {
+  margin: 0;
+}
+
+.ledger-queue-grid article > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.ce-memory-ledger .primary,
+.ce-memory-ledger .secondary {
+  min-height: 36px;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.ce-memory-ledger .primary {
+  background: rgba(0, 255, 149, 0.18);
+  color: #ecfff8;
+}
+
+.ce-memory-ledger .secondary {
+  background: rgba(94, 231, 255, 0.08);
+  color: #ecfff8;
+}
+
+.ce-memory-ledger .primary:hover,
+.ce-memory-ledger .secondary:hover {
+  border-color: rgba(0, 255, 149, 0.46);
+  background: rgba(0, 255, 149, 0.14);
+}
+
+.ledger-case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 8px;
+}
+
+.ledger-case-grid button {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 118px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.ledger-case-grid button.packet {
+  border-color: rgba(0, 255, 149, 0.28);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.10), transparent 62%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.ledger-case-grid button.active {
+  border-color: rgba(0, 255, 149, 0.68);
+  box-shadow: 0 0 0 1px rgba(0, 255, 149, 0.18) inset;
+}
+
+.ledger-export textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 260px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  color: #d8ffea;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ledger-actions span {
+  flex: 1 1 240px;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 1180px) {
+  .ledger-head {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-stat-grid,
+  .ledger-queue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ce-memory-ledger {
+    padding: 12px;
+  }
+
+  .ledger-stat-grid,
+  .ledger-queue-grid,
+  .ledger-case-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-focus-card {
+    grid-template-columns: 1fr;
+  }
+
+  .ledger-focus-card .secondary {
+    width: 100%;
+  }
+
+  .ledger-queue-grid article {
+    min-height: auto;
+  }
+
+  .ledger-export textarea {
+    min-height: 220px;
+  }
+}
+
 /* 20260715 EPI master theater: hardware flow + gas state + wafer layer mental model */
 .epi-master-theater {
   display: grid;

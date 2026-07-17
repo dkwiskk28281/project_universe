@@ -4448,6 +4448,7 @@ function save() {
   renderEpiMentalModelBuilder();
   renderCeIncidentKernel();
   renderCeWarRoom();
+  renderCeMemoryLedger();
 }
 
 function persistState() {
@@ -7934,6 +7935,7 @@ function renderCeWarRoom() {
     };
     persistState();
     renderCeWarRoom();
+    renderCeMemoryLedger();
   });
   root.querySelector("[data-war-packet-copy]")?.addEventListener("click", async () => {
     const status = root.querySelector("#war-packet-status");
@@ -7942,6 +7944,207 @@ function renderCeWarRoom() {
       if (status) status.textContent = "Packet copied.";
     } catch {
       if (status) status.textContent = "Copy failed. Packet remains visible in the text box.";
+    }
+  });
+}
+
+function getCeLedgerRows() {
+  return ceIncidentCases.map(item => {
+    const readiness = getWarRoomReadiness(item);
+    const answer = state.ceIncidentAnswers?.[item.id];
+    const review = state.ceLedgerReviews?.[item.id];
+    const missing = readiness.gates.filter(([, passed]) => !passed).map(([label]) => label);
+    const wrongPenalty = answer && !answer.correct ? 18 : 0;
+    const noPacketPenalty = readiness.packet?.savedAt ? 0 : 18;
+    const reviewPenalty = review?.lastReviewedAt ? 0 : 10;
+    const priority = Math.min(100, Math.max(0, (100 - readiness.score) + wrongPenalty + noPacketPenalty + reviewPenalty));
+    return {
+      id: item.id,
+      title: item.title,
+      subsystem: item.subsystem,
+      severity: item.severity,
+      score: readiness.score,
+      packetSaved: Boolean(readiness.packet?.savedAt),
+      reportSaved: Boolean(readiness.report?.feedback),
+      rcaSaved: Boolean(state.ceWarRoomRca?.[item.id]?.savedAt),
+      decisionCorrect: Boolean(answer?.correct),
+      missing,
+      priority,
+      lastReviewedAt: review?.lastReviewedAt || "",
+      reviewCount: review?.count || 0
+    };
+  }).sort((a, b) => b.priority - a.priority || a.score - b.score);
+}
+
+function buildCeLedgerExport() {
+  const rows = getCeLedgerRows();
+  const weakness = {
+    incident: state.ceIncidentWeakness || {},
+    mission: state.epiMissionWeakness || {},
+    mentalModel: state.epiMentalWeakness || {}
+  };
+  return {
+    schemaVersion: "ce-memory-ledger-v1",
+    generatedAt: new Date().toISOString(),
+    activeIncidentCase,
+    summary: {
+      totalCases: ceIncidentCases.length,
+      packetSaved: rows.filter(row => row.packetSaved).length,
+      averageReadiness: rows.length ? Math.round(rows.reduce((sum, row) => sum + row.score, 0) / rows.length) : 0,
+      dueForReview: rows.filter(row => row.priority >= 35).length,
+      mastered: rows.filter(row => row.score >= 90 && row.packetSaved).length
+    },
+    nextReviewQueue: rows.slice(0, 5).map(row => ({
+      caseId: row.id,
+      title: row.title,
+      subsystem: row.subsystem,
+      priority: row.priority,
+      readinessScore: row.score,
+      missingGates: row.missing
+    })),
+    cases: rows,
+    savedIncidentPackets: state.ceWarRoomPackets || {},
+    rcaMemos: state.ceWarRoomRca || {},
+    reports: state.ceIncidentReports || {},
+    weakness,
+    excludedDangerousInfo: [
+      "recipe",
+      "valve sequence",
+      "detector setpoint",
+      "interlock bypass",
+      "site-specific acceptance limit",
+      "customer confidential procedure"
+    ]
+  };
+}
+
+function renderCeMemoryLedger() {
+  const root = document.querySelector("#ce-memory-ledger");
+  if (!root) return;
+  const rows = getCeLedgerRows();
+  const exportPacket = buildCeLedgerExport();
+  const stats = exportPacket.summary;
+  const queue = rows.slice(0, 5);
+  const weaknessTop = Object.entries(state.ceIncidentWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  root.innerHTML = `
+    <div class="ledger-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v10</p>
+        <h2>CE Memory Ledger</h2>
+        <p>Incident, War Room, RCA, packet을 장기 기억으로 묶고 오늘 복습할 케이스를 자동으로 정렬합니다.</p>
+      </div>
+      <div class="ledger-score">
+        <span>Average readiness</span>
+        <strong>${stats.averageReadiness}%</strong>
+        <small>${stats.packetSaved}/${stats.totalCases} packets saved</small>
+      </div>
+    </div>
+    <div class="ledger-stat-grid">
+      <article><span>Due</span><strong>${stats.dueForReview}</strong><p>priority >= 35</p></article>
+      <article><span>Mastered</span><strong>${stats.mastered}</strong><p>score >= 90 + packet</p></article>
+      <article><span>Weak tags</span><strong>${weaknessTop.length}</strong><p>${weaknessTop[0]?.[0] || "none"}</p></article>
+      <article><span>Active case</span><strong>${activeIncidentCase.split("-").slice(0, 2).join("/")}</strong><p>${getActiveIncidentCase().subsystem}</p></article>
+    </div>
+    <section class="ledger-queue">
+      <div class="ledger-panel-head">
+        <p class="eyebrow">Today Review Queue</p>
+        <h3>지금 다시 봐야 할 케이스</h3>
+      </div>
+      <div class="ledger-queue-grid">
+        ${queue.map((row, index) => `
+          <article class="${row.id === activeIncidentCase ? "active" : ""}">
+            <span>#${index + 1} · priority ${row.priority}</span>
+            <strong>${row.title}</strong>
+            <p>${row.subsystem} · readiness ${row.score}%</p>
+            <small>${row.missing.length ? `Missing: ${row.missing.join(", ")}` : "All gates passed"}</small>
+            <div>
+              <button class="primary" type="button" data-ledger-open="${row.id}">열기</button>
+              <button class="secondary" type="button" data-ledger-reviewed="${row.id}">복습 완료</button>
+            </div>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <section class="ledger-map">
+      <div class="ledger-panel-head">
+        <p class="eyebrow">Case Memory Map</p>
+        <h3>전체 incident 상태</h3>
+      </div>
+      <div class="ledger-focus-card">
+        <div>
+          <span>Current focus</span>
+          <strong>${getActiveIncidentCase().title}</strong>
+          <p>${getActiveIncidentCase().subsystem} · 지금 보고 있는 케이스도 큐 순위와 관계없이 복습 완료 처리할 수 있습니다.</p>
+        </div>
+        <button class="secondary" type="button" data-ledger-reviewed="${activeIncidentCase}">현재 케이스 복습 완료</button>
+      </div>
+      <div class="ledger-case-grid">
+        ${rows.map(row => `
+          <button type="button" class="${row.id === activeIncidentCase ? "active" : ""} ${row.packetSaved ? "packet" : ""}" data-ledger-open="${row.id}">
+            <span>${row.score}%</span>
+            <strong>${row.title}</strong>
+            <small>${row.packetSaved ? "packet" : "no packet"} · ${row.rcaSaved ? "RCA" : "RCA wait"} · review ${row.reviewCount}</small>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+    <section class="ledger-export">
+      <div class="ledger-panel-head">
+        <p class="eyebrow">CE Growth Export</p>
+        <h3>AI에게 보여줄 장기 기억 패킷</h3>
+      </div>
+      <textarea readonly id="ledger-export-output"></textarea>
+      <div class="ledger-actions">
+        <button class="primary" type="button" data-ledger-snapshot>Ledger snapshot 저장</button>
+        <button class="secondary" type="button" data-ledger-copy>Export 복사</button>
+        <span id="ledger-status">${state.ceLedgerSnapshot?.savedAt ? `Saved ${state.ceLedgerSnapshot.savedAt}` : "아직 저장된 ledger snapshot 없음"}</span>
+      </div>
+    </section>
+  `;
+  const output = root.querySelector("#ledger-export-output");
+  if (output) output.value = JSON.stringify(exportPacket, null, 2);
+
+  root.querySelectorAll("[data-ledger-open]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeIncidentCase = button.dataset.ledgerOpen;
+      state.activeIncidentCase = activeIncidentCase;
+      persistState();
+      renderCeIncidentKernel();
+      renderCeWarRoom();
+      renderCeMemoryLedger();
+      syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
+      document.querySelector("#ce-incident-kernel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  root.querySelectorAll("[data-ledger-reviewed]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.ledgerReviewed;
+      state.ceLedgerReviews = state.ceLedgerReviews || {};
+      state.ceLedgerReviews[id] = {
+        lastReviewedAt: new Date().toISOString(),
+        count: (state.ceLedgerReviews[id]?.count || 0) + 1
+      };
+      persistState();
+      renderCeMemoryLedger();
+    });
+  });
+  root.querySelector("[data-ledger-snapshot]")?.addEventListener("click", () => {
+    state.ceLedgerSnapshot = {
+      packet: buildCeLedgerExport(),
+      savedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeMemoryLedger();
+  });
+  root.querySelector("[data-ledger-copy]")?.addEventListener("click", async () => {
+    const status = root.querySelector("#ledger-status");
+    try {
+      await navigator.clipboard.writeText(root.querySelector("#ledger-export-output")?.value || JSON.stringify(buildCeLedgerExport(), null, 2));
+      if (status) status.textContent = "Ledger export copied.";
+    } catch {
+      if (status) status.textContent = "Copy failed. Export remains visible in the text box.";
     }
   });
 }
@@ -9618,6 +9821,8 @@ function renderProcessVisual() {
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
   renderCeIncidentKernel();
+  renderCeWarRoom();
+  renderCeMemoryLedger();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>
