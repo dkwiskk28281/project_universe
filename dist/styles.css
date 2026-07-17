@@ -1108,6 +1108,359 @@ main,
   }
 }
 
+/* 20260717 v8 CE incident kernel */
+.ce-incident-kernel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(255, 211, 138, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(255, 211, 138, 0.12), transparent 30%),
+    radial-gradient(circle at 94% 8%, rgba(94, 231, 255, 0.11), transparent 32%),
+    linear-gradient(145deg, rgba(10, 8, 2, 0.98), rgba(2, 17, 17, 0.97));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.incident-head,
+.incident-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.44fr);
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.incident-head h2,
+.incident-title h3,
+.incident-decision h3,
+.incident-board-head h3,
+.incident-report-lab h3 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.18;
+}
+
+.incident-head p:not(.eyebrow),
+.incident-title p,
+.incident-timeline p,
+.incident-feedback,
+.incident-prevention p,
+.incident-report-actions span,
+.incident-weakness small {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.incident-score,
+.incident-brief,
+.incident-decision,
+.incident-board,
+.incident-report-lab,
+.incident-weakness {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.64);
+  box-shadow: inset 0 1px 0 rgba(236, 255, 248, 0.04);
+}
+
+.incident-score {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  padding: 14px;
+}
+
+.incident-score span,
+.incident-case-row button b,
+.incident-title span,
+.incident-board-head span,
+.incident-weakness strong,
+.incident-report-lab .eyebrow {
+  color: #ffd38a;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.incident-score strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(2.4rem, 5vw, 3.7rem);
+  line-height: 0.95;
+}
+
+.incident-score small,
+.incident-case-row button strong,
+.incident-case-row button small,
+.incident-sync-row span,
+.incident-lanes button span {
+  color: rgba(236, 255, 248, 0.66);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.incident-case-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.incident-case-row button,
+.incident-choice-grid button,
+.incident-lanes button {
+  min-width: 0;
+  border: 1px solid rgba(255, 211, 138, 0.18);
+  border-radius: 8px;
+  background: rgba(14, 10, 2, 0.72);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.incident-case-row button {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: 5px;
+  min-height: 132px;
+  padding: 10px;
+}
+
+.incident-case-row button > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: rgba(255, 211, 138, 0.13);
+  color: #ffd38a;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-weight: 950;
+}
+
+.incident-case-row button.active,
+.incident-choice-grid button.good,
+.incident-lanes button.selected {
+  border-color: rgba(0, 255, 149, 0.7);
+  background: rgba(0, 255, 149, 0.11);
+  box-shadow: 0 0 24px rgba(0, 255, 149, 0.08);
+}
+
+.incident-case-row button.done {
+  border-color: rgba(0, 255, 149, 0.42);
+}
+
+.incident-case-row button.review {
+  border-color: rgba(255, 211, 138, 0.5);
+}
+
+.incident-brief,
+.incident-decision,
+.incident-board,
+.incident-report-lab {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.incident-timeline {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.incident-timeline article {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.incident-timeline b {
+  color: #5ee7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.incident-timeline strong,
+.incident-lanes button b,
+.incident-prevention strong {
+  color: #ffffff;
+  line-height: 1.25;
+}
+
+.incident-sync-row,
+.incident-report-actions,
+.incident-weakness {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.incident-sync-row span,
+.incident-report-actions span {
+  flex: 1 1 220px;
+  font-size: 0.86rem;
+}
+
+.incident-choice-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.incident-choice-grid button {
+  padding: 11px;
+  line-height: 1.45;
+}
+
+.incident-choice-grid button.picked {
+  outline: 2px solid rgba(94, 231, 255, 0.58);
+  outline-offset: 1px;
+}
+
+.incident-choice-grid button.bad,
+.incident-lanes button.wrong {
+  border-color: rgba(255, 107, 107, 0.7);
+  background: rgba(255, 107, 107, 0.12);
+}
+
+.incident-prevention {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(255, 211, 138, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 211, 138, 0.07);
+}
+
+.incident-prevention p {
+  margin: 0;
+}
+
+.incident-board-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.incident-board-head span {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 211, 138, 0.38);
+  color: #ffd38a;
+  background: rgba(255, 211, 138, 0.08);
+}
+
+.incident-board-head span.ready {
+  border-color: rgba(0, 255, 149, 0.48);
+  color: #00ff95;
+  background: rgba(0, 255, 149, 0.1);
+}
+
+.incident-lanes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.incident-lanes article {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.incident-lanes article > strong {
+  color: #5ee7ff;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.incident-lanes button {
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+}
+
+.incident-lanes button span {
+  font-size: 0.82rem;
+}
+
+.incident-report-lab textarea {
+  width: 100%;
+  min-height: 122px;
+  resize: vertical;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.33);
+  color: #d8ffea;
+  padding: 10px;
+  line-height: 1.5;
+}
+
+.incident-weakness {
+  padding: 12px;
+}
+
+.incident-weakness span {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(94, 231, 255, 0.1);
+  color: #d8ffea;
+  font-size: 0.82rem;
+}
+
+.incident-weakness small {
+  flex-basis: 100%;
+}
+
+@media (max-width: 1180px) {
+  .incident-head,
+  .incident-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .incident-case-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .incident-timeline,
+  .incident-lanes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ce-incident-kernel {
+    padding: 12px;
+  }
+
+  .incident-case-row,
+  .incident-timeline,
+  .incident-lanes {
+    grid-template-columns: 1fr;
+  }
+
+  .incident-case-row button {
+    min-height: auto;
+  }
+
+  .incident-board-head {
+    display: grid;
+  }
+}
+
 /* 20260715 EPI master theater: hardware flow + gas state + wafer layer mental model */
 .epi-master-theater {
   display: grid;

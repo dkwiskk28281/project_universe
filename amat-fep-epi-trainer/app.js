@@ -4270,6 +4270,7 @@ let activeRunbookStage = fieldRunbookStages[0].id;
 let activeProcessFlow = processVisualFlows[0].id;
 let activeProcessStep = 0;
 let activeMentalFrame = state.activeMentalFrame || "carrier-context";
+let activeIncidentCase = state.activeIncidentCase || "ll-slow-pumpdown";
 let activePeTwinStep = 0;
 let activePeFailureIndex = 0;
 const peKnobs = { temp: 58, pressure: 46, precursor: 54, selectivity: 48, purge: 72, exhaust: 80 };
@@ -4445,6 +4446,7 @@ function save() {
   renderLearningHud();
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
+  renderCeIncidentKernel();
 }
 
 function persistState() {
@@ -7166,6 +7168,522 @@ function renderEpiMentalModelBuilder() {
   });
 }
 
+const ceIncidentCases = [
+  {
+    id: "ll-slow-pumpdown",
+    title: "Load Lock pumpdown slow",
+    subsystem: "Vacuum / Load Lock",
+    severity: "Hold before transfer",
+    symptom: "LL pumpdown trend가 baseline보다 느리고 TM pickup gate가 열리지 않습니다.",
+    twin: { route: "epi-a", mode: "vacuum", step: 3, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 0 },
+    timeline: [
+      ["T0", "Wafer in LL", "EFEM side handoff complete, TM side still closed"],
+      ["T1", "Pumpdown starts", "Pressure falls, then slope becomes shallow"],
+      ["T2", "Scheduler waits", "TM pickup permissive does not arrive"],
+      ["T3", "CE decision", "Separate leak, outgassing, gauge, pump, door seal evidence"]
+    ],
+    cards: [
+      ["risk", "risk-vacuum", "Vacuum integrity risk", "Pressure boundary is not proven, so TM transfer is not safe yet.", true],
+      ["risk", "risk-recipe", "Recipe correction", "Changing recipe is not the first action and is outside this evidence gate.", false],
+      ["subsystem", "sub-ll", "Load Lock seal/door", "Door seal, slit feedback, chamber isolation are primary candidates.", true],
+      ["subsystem", "sub-pm", "EPI PM chemistry", "PM chemistry cannot explain pumpdown before PM entry.", false],
+      ["evidence", "ev-curve", "Pumpdown curve", "Compare pressure slope, plateau, elapsed time, and previous baseline.", true],
+      ["evidence", "ev-gauge", "Gauge agreement", "Check whether gauges and controller state tell the same story.", true],
+      ["evidence", "ev-exhaust", "Pump/exhaust status", "Pump path and exhaust readiness are part of the boundary.", true],
+      ["evidence", "ev-thickness", "Film thickness", "There is no processed film yet, so this is not the first evidence.", false],
+      ["stop", "stop-pressure", "Stop transfer", "Hold before TM pickup until pressure boundary is defensible.", true],
+      ["report", "rep-clear", "Customer wording", "State confirmed symptom, risk, evidence being checked, and next update time.", true]
+    ],
+    decision: [
+      ["Hold transfer and compare pumpdown curve, gauge agreement, door/slit feedback, and pump/exhaust status.", true, "맞습니다. pressure boundary가 증명되기 전에는 transfer를 진행하지 않습니다.", "vacuum-boundary"],
+      ["Pressure가 천천히라도 내려가면 PM으로 보내서 공정 결과를 본다.", false, "위험합니다. transfer vacuum boundary가 불명확하면 wafer move 자체가 stop condition입니다.", "unsafe-go"],
+      ["Recipe parameter를 낮춰서 pumpdown 영향을 줄인다.", false, "recipe는 원인 분리 전 접근할 영역이 아니며 공개 학습 범위에서도 제외됩니다.", "unsafe-recipe"]
+    ],
+    reportTemplate: "Confirmed symptom: LL pumpdown is slower than expected and TM pickup permissive is not reached. Immediate risk: vacuum boundary is not proven. Current checks: pressure trend, gauge agreement, door/slit feedback, and pump/exhaust status. Next update: after evidence comparison with owner witness.",
+    prevention: "Keep a baseline pumpdown signature by LL, record gauge/pump/exhaust evidence together, and never treat a single ready bit as the whole boundary."
+  },
+  {
+    id: "efem-slot-mismatch",
+    title: "EFEM slot map mismatch",
+    subsystem: "EFEM / Host traceability",
+    severity: "Hold before wafer movement",
+    symptom: "Carrier ID는 들어왔지만 slot map 또는 wafer present transition이 host expectation과 맞지 않습니다.",
+    twin: { route: "epi-a", mode: "comm", step: 0, layers: { cutaway: false, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 0 },
+    timeline: [
+      ["T0", "Carrier dock", "Load port sees carrier present"],
+      ["T1", "Slot map read", "Tool/host context disagrees"],
+      ["T2", "Move request waits", "Scheduler cannot trust wafer identity"],
+      ["T3", "CE decision", "Freeze movement and protect traceability"]
+    ],
+    cards: [
+      ["risk", "risk-trace", "Traceability break", "Wrong wafer identity can poison every later trace and metrology link.", true],
+      ["risk", "risk-low", "Low risk", "It is not low risk; identity mismatch is a hold condition.", false],
+      ["subsystem", "sub-loadport", "Load port / FOUP", "Carrier present, clamp, door, slot map state are primary evidence.", true],
+      ["subsystem", "sub-gas", "Gas box", "Gas box is not the first subsystem before wafer move.", false],
+      ["evidence", "ev-carrier", "Carrier ID and slot map", "Compare host expectation, tool readback, and event timestamp.", true],
+      ["evidence", "ev-present", "Wafer present transition", "Sensor transition order can reveal mapping or handling ambiguity.", true],
+      ["evidence", "ev-host", "Host job permission", "Job context must match carrier and wafer identity.", true],
+      ["stop", "stop-move", "Stop movement", "Do not move an ambiguous wafer into LL or PM.", true],
+      ["report", "rep-fact", "Fact-first report", "Report mismatch as a traceability hold, not as a process delay excuse.", true]
+    ],
+    decision: [
+      ["Hold wafer movement and reconcile host expectation, carrier ID, slot map, and wafer-present transitions.", true, "맞습니다. traceability가 먼저입니다.", "traceability"],
+      ["Move the wafer and fix the slot map after processing.", false, "위험합니다. 후처리로 복구하기 어렵고 고객 보고 신뢰가 깨집니다.", "traceability"],
+      ["PM matching wafer로 대체한다.", false, "잘못된 우회입니다. identity problem은 대체 wafer 문제가 아닙니다.", "unsafe-workaround"]
+    ],
+    reportTemplate: "Confirmed symptom: carrier or slot context does not match expected job information. Immediate risk: wafer traceability is not defensible. We are holding wafer movement while checking carrier ID, slot map, wafer-present transitions, and host permission.",
+    prevention: "Treat ID, slot, event timestamp, and wafer present transition as one traceability packet before the first wafer move."
+  },
+  {
+    id: "tm-wafer-present-conflict",
+    title: "TM wafer-present conflict",
+    subsystem: "Transfer Module / Robot",
+    severity: "Stop motion",
+    symptom: "TM move 이후 source/destination wafer-present state가 예상과 다르게 남아 있습니다.",
+    twin: { route: "epi-a", mode: "material", step: 5, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 2 },
+    timeline: [
+      ["T0", "TM pickup", "Robot extends to LL or PM"],
+      ["T1", "Handoff event", "Source and destination sensors should transition"],
+      ["T2", "Conflict", "Wafer-present state is inconsistent"],
+      ["T3", "CE decision", "Stop motion and preserve evidence"]
+    ],
+    cards: [
+      ["risk", "risk-breakage", "Wafer damage risk", "Repeated motion can turn ambiguity into wafer damage.", true],
+      ["subsystem", "sub-robot", "Robot/slot/slit", "Robot position, slit state, and wafer present are the first split.", true],
+      ["subsystem", "sub-metrology", "Metrology tool", "Metrology is downstream and cannot explain immediate handoff conflict.", false],
+      ["evidence", "ev-event", "Event order", "Compare extend/retract, slit, source/destination present transitions.", true],
+      ["evidence", "ev-robot", "Robot position actual", "Do not rely on command state alone.", true],
+      ["evidence", "ev-door", "Slit valve permissive", "Motion boundary and vacuum boundary must both be clear.", true],
+      ["stop", "stop-motion", "Stop repeated moves", "Do not jog or retry without approved recovery path.", true],
+      ["report", "rep-owner", "Escalation owner", "Name the owner needed for robot/wafer recovery decision.", true]
+    ],
+    decision: [
+      ["Stop repeated motion, preserve event order, check robot actual, slit state, and wafer-present transitions.", true, "맞습니다. motion recovery는 evidence와 승인 절차가 우선입니다.", "robot-handoff"],
+      ["Repeat the same move until the sensor clears.", false, "위험합니다. wafer contact/damage 가능성이 커집니다.", "unsafe-motion"],
+      ["Ignore source sensor if destination sensor is on.", false, "source/destination disagreement 자체가 핵심 증상입니다.", "sensor-conflict"]
+    ],
+    reportTemplate: "Confirmed symptom: TM wafer-present state is inconsistent after handoff. Immediate risk: repeated motion may damage the wafer. We are holding motion and preserving event order while checking robot actual position, slit state, and source/destination sensor transitions.",
+    prevention: "Build recovery habits around event order and actual-state evidence, not repeated command attempts."
+  },
+  {
+    id: "gas-readiness-abatement",
+    title: "Gas readiness with abatement uncertainty",
+    subsystem: "Gas / Exhaust / Abatement",
+    severity: "Stop before first gas",
+    symptom: "Tool side appears ready, but exhaust or abatement actual readiness is uncertain before first gas introduction.",
+    twin: { route: "epi-a", mode: "gas", step: 6, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 3 },
+    timeline: [
+      ["T0", "Gas readiness review", "Tool gas panel status looks green"],
+      ["T1", "Facility uncertainty", "Exhaust/abatement actual state is not witnessed"],
+      ["T2", "First gas gate", "Safety chain must be proven before introduction"],
+      ["T3", "CE decision", "Hold and call gas/facility/EHS owner"]
+    ],
+    cards: [
+      ["risk", "risk-gas", "Hazardous gas path", "Gas source-to-abatement path must be defensible.", true],
+      ["risk", "risk-production", "Schedule pressure", "Schedule pressure is not evidence.", false],
+      ["subsystem", "sub-gasbox", "Gas box / MFC", "Gas delivery readiness is one part of the path.", true],
+      ["subsystem", "sub-abatement", "Exhaust / Abatement", "Downstream actual state is a first-gas gate.", true],
+      ["evidence", "ev-owner", "Owner witness", "Facility/gas/EHS owner confirmation matters.", true],
+      ["evidence", "ev-detector", "Detector health", "Detector/monitor state is part of readiness.", true],
+      ["evidence", "ev-sds", "SDS and gas family", "Toxic/flammable/corrosive/inert family changes controls.", true],
+      ["stop", "stop-firstgas", "Stop first gas", "No first gas without safety chain evidence.", true],
+      ["report", "rep-boundary", "Boundary language", "Say what is confirmed and what is not yet witnessed.", true]
+    ],
+    decision: [
+      ["Hold first gas and verify gas family, detector health, exhaust/abatement actual, and owner witness.", true, "맞습니다. first gas는 safety chain evidence가 먼저입니다.", "gas-safety"],
+      ["Tool side ready is enough, so proceed and monitor alarms.", false, "위험합니다. downstream readiness를 알람으로 시험하면 안 됩니다.", "unsafe-gas"],
+      ["Detector setpoint를 임의로 낮춰 민감하게 만든다.", false, "detector setpoint는 공식 승인 영역이며 임의 조정하면 안 됩니다.", "unsafe-setpoint"]
+    ],
+    reportTemplate: "Confirmed symptom: tool-side gas readiness is visible, but downstream exhaust/abatement actual readiness is not yet witnessed. Immediate risk: first gas introduction is not defensible. We are holding first gas until gas family, detector health, exhaust/abatement actual, and owner witness are confirmed.",
+    prevention: "Use source-to-abatement readiness checklists and keep gas/facility/EHS signoff evidence linked to first gas."
+  },
+  {
+    id: "pm-a-b-mismatch",
+    title: "PM-A / PM-B baseline mismatch",
+    subsystem: "Process Module / Shared utilities",
+    severity: "Hold qualification claim",
+    symptom: "Baseline wafer result shows PM-A and PM-B thickness or uniformity trend mismatch.",
+    twin: { route: "epi-b", mode: "gas", step: 6, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 4 },
+    timeline: [
+      ["T0", "Baseline wafers", "PM-A and PM-B run comparable checks"],
+      ["T1", "Metrology result", "Mismatch appears"],
+      ["T2", "Evidence split", "Shared facility vs module-local drift"],
+      ["T3", "CE decision", "Do not claim matching until evidence separates cause"]
+    ],
+    cards: [
+      ["risk", "risk-qual", "Qualification risk", "Mismatch can invalidate handover claim.", true],
+      ["subsystem", "sub-shared", "Shared gas/pressure/thermal reference", "Shared utilities can affect both modules differently through delivery path.", true],
+      ["subsystem", "sub-local", "Module-local condition", "PM wall condition, temperature trace, local pressure response are candidates.", true],
+      ["evidence", "ev-metrology", "Metrology association", "Wafer ID, PM ID, trace ID, and metrology ID must match.", true],
+      ["evidence", "ev-trace", "Trace comparison", "Compare MFC actual, pressure, temperature, exhaust state by PM.", true],
+      ["evidence", "ev-single", "One wafer conclusion", "One wafer is a signal, not a full cause conclusion.", false],
+      ["stop", "stop-handover", "Hold handover claim", "Do not call qualification complete until mismatch is bounded.", true],
+      ["report", "rep-compare", "Compare language", "Report as shared-vs-local evidence split, not guesswork.", true]
+    ],
+    decision: [
+      ["Hold qualification claim and compare PM-specific trace, shared utility evidence, and metrology linkage.", true, "맞습니다. mismatch는 shared/local split으로 봐야 합니다.", "module-matching"],
+      ["좋은 PM 결과만 고객에게 보여주고 나머지는 나중에 본다.", false, "위험합니다. handover 신뢰를 깨는 방식입니다.", "handover"],
+      ["Recipe를 PM별로 임의 보정한다.", false, "recipe 보정은 공식 절차와 process owner 영역입니다.", "unsafe-recipe"]
+    ],
+    reportTemplate: "Confirmed symptom: baseline result differs between PM-A and PM-B. Immediate risk: qualification matching is not yet defensible. We are comparing PM-specific trace, shared utility evidence, chamber condition indicators, and metrology linkage before making a handover claim.",
+    prevention: "Keep module matching packets by PM: trace, metrology, chamber state, shared utility status, and open issue owner."
+  },
+  {
+    id: "thermal-trace-unstable",
+    title: "RTP / thermal trace instability",
+    subsystem: "Thermal / Sensor confidence",
+    severity: "Hold thermal qualification",
+    symptom: "Ramp/soak/cool trace or pyrometry confidence appears unstable during thermal qualification.",
+    twin: { route: "rtp", mode: "gas", step: 6, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "rtp-ambient", step: 2 },
+    timeline: [
+      ["T0", "Thermal run", "Ramp or soak starts"],
+      ["T1", "Trace anomaly", "Temperature confidence or zone behavior looks unstable"],
+      ["T2", "Wafer risk", "Thermal budget and wafer damage risk rise"],
+      ["T3", "CE decision", "Separate sensor confidence from actual thermal behavior"]
+    ],
+    cards: [
+      ["risk", "risk-thermal", "Thermal budget risk", "Unstable trace can affect wafer stress, activation, or uniformity.", true],
+      ["subsystem", "sub-pyro", "Pyrometry / sensor path", "Sensor confidence is not the same as actual wafer result.", true],
+      ["subsystem", "sub-lamp", "Lamp zone / thermal hardware", "Zone behavior and control trace are relevant.", true],
+      ["evidence", "ev-ramp", "Ramp/soak/cool trace", "Use the whole time trace, not a single value.", true],
+      ["evidence", "ev-wafer", "Wafer result link", "Metrology or visual result must link to trace ID.", true],
+      ["evidence", "ev-gas", "Ambient readiness", "Ambient gas and pressure state can affect thermal process context.", true],
+      ["stop", "stop-thermal", "Hold qualification", "Do not qualify if thermal trace confidence is unresolved.", true],
+      ["report", "rep-thermal", "Trace language", "Separate observed trace from suspected hardware cause.", true]
+    ],
+    decision: [
+      ["Hold thermal qualification and compare ramp/soak/cool trace, sensor confidence, lamp zone behavior, and wafer result link.", true, "맞습니다. thermal issue는 time trace로 봐야 합니다.", "thermal-trace"],
+      ["Peak temperature만 맞으면 나머지는 무시한다.", false, "위험합니다. ramp/soak/cool 전체 thermal budget이 중요합니다.", "thermal-trace"],
+      ["Sensor를 bypass하고 wafer 결과만 본다.", false, "interlock/bypass는 위험 정보 영역이며 허용되지 않습니다.", "unsafe-bypass"]
+    ],
+    reportTemplate: "Confirmed symptom: thermal trace confidence is unstable during qualification. Immediate risk: thermal budget and wafer result are not yet defensible. We are comparing ramp/soak/cool trace, sensor confidence, lamp zone behavior, ambient readiness, and wafer result linkage.",
+    prevention: "Review thermal qualification as a time-series packet, not a single peak value."
+  },
+  {
+    id: "particle-after-pm",
+    title: "Particle excursion after PM recovery",
+    subsystem: "Maintenance / Chamber condition",
+    severity: "Hold release",
+    symptom: "PM recovery 또는 seasoning 이후 particle count가 baseline보다 높게 나옵니다.",
+    twin: { route: "epi-a", mode: "material", step: 7, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    process: { flow: "selective-sd", step: 6 },
+    timeline: [
+      ["T0", "PM recovery", "Maintenance or seasoning completed"],
+      ["T1", "Baseline wafer", "Particle result is high"],
+      ["T2", "Source split", "Handling, chamber, purge/exhaust, metrology path must be separated"],
+      ["T3", "CE decision", "Hold release until source is bounded"]
+    ],
+    cards: [
+      ["risk", "risk-particle", "Yield / contamination risk", "Particle excursion can be release-blocking.", true],
+      ["subsystem", "sub-chamber", "Chamber condition", "Recent PM/recovery/seasoning can affect particles.", true],
+      ["subsystem", "sub-handling", "Handling path", "FOUP/EFEM/TM contact or return path can also contribute.", true],
+      ["evidence", "ev-particlemap", "Particle map", "Map pattern can hint chamber vs handling source.", true],
+      ["evidence", "ev-history", "Maintenance history", "What changed since last baseline matters.", true],
+      ["evidence", "ev-purge", "Purge/exhaust state", "Residual or poor purge can show as particle/contamination issue.", true],
+      ["stop", "stop-release", "Hold release", "Do not release on a failed baseline without bounded source.", true],
+      ["report", "rep-prevention", "Prevention owner", "Report action owner and repeat check path.", true]
+    ],
+    decision: [
+      ["Hold release and compare particle map, maintenance change, handling path, purge/exhaust evidence, and repeat baseline plan.", true, "맞습니다. particle은 chamber-only로 단정하지 않습니다.", "particle-source"],
+      ["한 번 더 돌리면 낮아질 수 있으니 고객 wafer로 확인한다.", false, "위험합니다. failed baseline 뒤 고객 wafer 투입은 좋지 않습니다.", "unsafe-wafer"],
+      ["Metrology가 틀렸다고 가정하고 무시한다.", false, "metrology도 검증해야 하지만 무시가 아니라 evidence split입니다.", "metrology"]
+    ],
+    reportTemplate: "Confirmed symptom: particle result is above baseline after PM recovery. Immediate risk: release quality is not defensible. We are holding release while comparing particle map, maintenance change history, handling path, purge/exhaust evidence, and repeat baseline plan.",
+    prevention: "Tie every PM recovery to seasoning, baseline wafer, particle map, changed-parts history, and release owner."
+  },
+  {
+    id: "host-tool-state-gap",
+    title: "Host ready vs module actual gap",
+    subsystem: "Controls / Communication",
+    severity: "Hold automatic action",
+    symptom: "Host or UI shows ready, but module actual state or alarm/event order does not support the ready claim.",
+    twin: { route: "epi-a", mode: "comm", step: 8, layers: { cutaway: false, pressure: true, particles: true, packets: true } },
+    process: { flow: "epi-sige", step: 6 },
+    timeline: [
+      ["T0", "Ready indication", "High-level UI looks green"],
+      ["T1", "Actual mismatch", "Module event or alarm history conflicts"],
+      ["T2", "Action request", "Automatic move or process start is requested"],
+      ["T3", "CE decision", "Use actual-state evidence before action"]
+    ],
+    cards: [
+      ["risk", "risk-state", "State mismatch risk", "Command state and actual state are not always identical.", true],
+      ["subsystem", "sub-controller", "Tool controller / module I/O", "Actual module state is the evidence layer.", true],
+      ["subsystem", "sub-ui", "UI display only", "UI is useful but not the whole evidence set.", true],
+      ["evidence", "ev-alarm", "Alarm/event order", "Sequence tells whether ready is stale, derived, or current.", true],
+      ["evidence", "ev-module", "Module actual", "Pressure, door, robot, gas, thermal actuals must agree.", true],
+      ["evidence", "ev-permission", "Host permission", "Host permission must align with tool actual.", true],
+      ["stop", "stop-auto", "Hold automatic action", "Do not let automation move faster than evidence.", true],
+      ["report", "rep-state", "State wording", "Say ready indication is not yet backed by module actual evidence.", true]
+    ],
+    decision: [
+      ["Hold automatic action and reconcile host permission, UI ready, module actual, and alarm/event order.", true, "맞습니다. senior CE는 ready bit보다 state chain을 봅니다.", "controls-state"],
+      ["UI가 green이면 actual mismatch는 무시한다.", false, "위험합니다. stale/derived state일 수 있습니다.", "comm-actual"],
+      ["Interlock을 우회해서 actual state를 맞춘다.", false, "interlock bypass는 절대 다루지 않는 위험 영역입니다.", "unsafe-bypass"]
+    ],
+    reportTemplate: "Confirmed symptom: high-level ready indication is not yet supported by module actual state or event order. Immediate risk: automated action is not defensible. We are holding action while reconciling host permission, UI indication, module actuals, and alarm/event sequence.",
+    prevention: "Teach every ready signal as a state-chain question: who says ready, based on which actuals, at what timestamp?"
+  }
+];
+
+function getActiveIncidentCase() {
+  return ceIncidentCases.find(item => item.id === activeIncidentCase) || ceIncidentCases[0];
+}
+
+function getIncidentStats() {
+  const answers = state.ceIncidentAnswers || {};
+  const solved = Object.keys(answers).length;
+  const correct = Object.values(answers).filter(item => item.correct).length;
+  const weakness = Object.entries(state.ceIncidentWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  return {
+    solved,
+    correct,
+    score: solved ? Math.round((correct / solved) * 100) : 0,
+    weakness
+  };
+}
+
+function groupIncidentCards(cards) {
+  return cards.reduce((groups, card) => {
+    const [lane] = card;
+    groups[lane] = groups[lane] || [];
+    groups[lane].push(card);
+    return groups;
+  }, {});
+}
+
+function scoreIncidentEvidence(item) {
+  const selected = new Set(state.ceIncidentBoard?.[item.id] || []);
+  const required = item.cards.filter(card => card[4]).map(card => card[1]);
+  const wrong = item.cards.filter(card => !card[4] && selected.has(card[1])).map(card => card[1]);
+  const hits = required.filter(id => selected.has(id)).length;
+  const pct = required.length ? Math.max(0, Math.round(((hits - wrong.length) / required.length) * 100)) : 0;
+  return { selected, required, wrong, hits, pct };
+}
+
+function syncIncidentToTwin(item, options = {}) {
+  const twin = window.ProjectUniverseWebGLTwin;
+  const status = document.querySelector("#ce-incident-sync-status");
+  if (!twin) {
+    if (status) status.textContent = "3D twin is still loading. Try again in a moment.";
+    return false;
+  }
+  twin.pause?.();
+  twin.setRoute?.(item.twin.route);
+  twin.setMode?.(item.twin.mode);
+  Object.entries(item.twin.layers || {}).forEach(([layer, value]) => twin.setLayer?.(layer, value));
+  twin.setStep?.(item.twin.step);
+  twin.setCamera?.("iso");
+  if (item.process) {
+    activeProcessFlow = item.process.flow;
+    activeProcessStep = item.process.step;
+  }
+  if (status) status.textContent = `3D synced: ${item.title}`;
+  if (options.scroll !== false) {
+    document.querySelector("#webgl-twin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  return true;
+}
+
+function renderCeIncidentKernel() {
+  const root = document.querySelector("#ce-incident-kernel");
+  if (!root) return;
+  const item = getActiveIncidentCase();
+  const stats = getIncidentStats();
+  const evidence = scoreIncidentEvidence(item);
+  const grouped = groupIncidentCards(item.cards);
+  const answer = state.ceIncidentAnswers?.[item.id];
+  const report = state.ceIncidentReports?.[item.id];
+  const laneLabels = {
+    risk: "Risk",
+    subsystem: "Subsystem",
+    evidence: "Evidence",
+    stop: "Stop",
+    report: "Report"
+  };
+  root.innerHTML = `
+    <div class="incident-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v8</p>
+        <h2>CE Incident Kernel</h2>
+        <p>증상 하나를 받으면 3D 상태를 맞추고, 위험도, subsystem, evidence, stop condition, 고객 보고 문장을 고르는 fault-injection 훈련장입니다.</p>
+      </div>
+      <div class="incident-score">
+        <span>Incident score</span>
+        <strong>${stats.score}%</strong>
+        <small>${stats.correct}/${stats.solved || 0} correct · evidence ${evidence.hits}/${evidence.required.length}</small>
+      </div>
+    </div>
+    <div class="incident-case-row" aria-label="incident case selector">
+      ${ceIncidentCases.map((entry, index) => {
+        const saved = state.ceIncidentAnswers?.[entry.id];
+        return `
+          <button type="button" class="${entry.id === item.id ? "active" : ""} ${saved?.correct ? "done" : saved ? "review" : ""}" data-incident-case="${entry.id}">
+            <span>${String(index + 1).padStart(2, "0")}</span>
+            <b>${entry.subsystem}</b>
+            <strong>${entry.title}</strong>
+            <small>${entry.severity}</small>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="incident-layout">
+      <section class="incident-brief">
+        <div class="incident-title">
+          <span>${item.severity}</span>
+          <h3>${item.title}</h3>
+          <p>${item.symptom}</p>
+        </div>
+        <div class="incident-timeline">
+          ${item.timeline.map(([time, label, text]) => `
+            <article>
+              <b>${time}</b>
+              <strong>${label}</strong>
+              <p>${text}</p>
+            </article>
+          `).join("")}
+        </div>
+        <div class="incident-sync-row">
+          <button class="primary" type="button" data-incident-sync>3D fault sync</button>
+          <button class="secondary" type="button" data-incident-sync-flow>3D + process sync</button>
+          <span id="ce-incident-sync-status">Sync this incident to the 3D twin before deciding.</span>
+        </div>
+      </section>
+      <section class="incident-decision">
+        <p class="eyebrow">Stop / Go Decision</p>
+        <h3>첫 판단은 무엇인가?</h3>
+        <div class="incident-choice-grid">
+          ${item.decision.map(([text, good], index) => `
+            <button type="button" class="${answer && answer.selected === index ? "picked" : ""} ${answer && good ? "good" : ""} ${answer && answer.selected === index && !good ? "bad" : ""}" data-incident-choice="${index}">
+              ${text}
+            </button>
+          `).join("")}
+        </div>
+        <p class="incident-feedback">${answer ? item.decision[answer.selected]?.[2] : "선택하면 즉시 채점하고 틀린 사고축을 weakness에 누적합니다."}</p>
+        <div class="incident-prevention">
+          <strong>Prevention habit</strong>
+          <p>${item.prevention}</p>
+        </div>
+      </section>
+    </div>
+    <section class="incident-board" aria-label="incident evidence board">
+      <div class="incident-board-head">
+        <div>
+          <p class="eyebrow">Evidence Board</p>
+          <h3>사실을 골라 사고 흐름을 구성하세요</h3>
+        </div>
+        <span class="${evidence.pct >= 80 && !evidence.wrong.length ? "ready" : ""}">${evidence.pct}% evidence</span>
+      </div>
+      <div class="incident-lanes">
+        ${Object.entries(grouped).map(([lane, cards]) => `
+          <article>
+            <strong>${laneLabels[lane] || lane}</strong>
+            ${cards.map(([, id, label, text, good]) => `
+              <button type="button" class="${evidence.selected.has(id) ? "selected" : ""} ${!good && evidence.selected.has(id) ? "wrong" : ""}" data-incident-evidence="${id}">
+                <b>${label}</b>
+                <span>${text}</span>
+              </button>
+            `).join("")}
+          </article>
+        `).join("")}
+      </div>
+    </section>
+    <section class="incident-report-lab">
+      <div>
+        <p class="eyebrow">Customer Report Coach</p>
+        <h3>보고 문장을 직접 작성하고 구조를 점검하세요</h3>
+      </div>
+      <textarea id="incident-report-input" placeholder="Confirmed symptom / immediate risk / evidence being checked / owner / next update를 포함해 작성">${report?.text || item.reportTemplate}</textarea>
+      <div class="incident-report-actions">
+        <button class="primary" type="button" data-incident-report-save>보고문 평가 저장</button>
+        <span id="incident-report-feedback">${report?.feedback || "아직 저장된 평가 없음"}</span>
+      </div>
+    </section>
+    <div class="incident-weakness">
+      <strong>Weakness top</strong>
+      ${stats.weakness.length ? stats.weakness.map(([tag, count]) => `<span>${tag} ${count}</span>`).join("") : "<span>아직 누적 약점 없음</span>"}
+      <small>Safety boundary: recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit, customer confidential procedure는 제외합니다.</small>
+    </div>
+  `;
+
+  root.querySelectorAll("[data-incident-case]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeIncidentCase = button.dataset.incidentCase;
+      state.activeIncidentCase = activeIncidentCase;
+      persistState();
+      renderCeIncidentKernel();
+      syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
+    });
+  });
+  root.querySelector("[data-incident-sync]")?.addEventListener("click", () => syncIncidentToTwin(item));
+  root.querySelector("[data-incident-sync-flow]")?.addEventListener("click", () => {
+    syncIncidentToTwin(item, { scroll: false });
+    renderProcessVisual();
+    document.querySelector("#webgl-twin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  root.querySelectorAll("[data-incident-evidence]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.incidentEvidence;
+      state.ceIncidentBoard = state.ceIncidentBoard || {};
+      const selected = new Set(state.ceIncidentBoard[item.id] || []);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      state.ceIncidentBoard[item.id] = [...selected];
+      persistState();
+      renderCeIncidentKernel();
+    });
+  });
+  root.querySelectorAll("[data-incident-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const selected = Number(button.dataset.incidentChoice);
+      const choice = item.decision[selected];
+      state.ceIncidentAnswers = state.ceIncidentAnswers || {};
+      state.ceIncidentAnswers[item.id] = {
+        selected,
+        correct: Boolean(choice?.[1]),
+        subsystem: item.subsystem,
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice?.[1]) {
+        state.ceIncidentWeakness = state.ceIncidentWeakness || {};
+        const tag = choice?.[3] || item.subsystem;
+        state.ceIncidentWeakness[tag] = (state.ceIncidentWeakness[tag] || 0) + 1;
+      }
+      persistState();
+      renderCeIncidentKernel();
+    });
+  });
+  root.querySelector("[data-incident-report-save]")?.addEventListener("click", () => {
+    const text = root.querySelector("#incident-report-input")?.value.trim() || "";
+    const required = ["symptom", "risk", "evidence", "owner", "next", "update", "confirmed", "stop", "hold", "확인", "위험", "증거", "다음", "보류", "중지"];
+    const hits = required.filter(word => text.toLowerCase().includes(word.toLowerCase())).length;
+    const feedback = text.length < 50
+      ? "너무 짧습니다. confirmed symptom, risk, evidence, owner, next update를 분리해 작성하세요."
+      : hits >= 5
+        ? "좋습니다. fact/risk/evidence/owner/next update 구조가 보입니다."
+        : "보강 필요: 확인된 사실, 즉시 위험, 확인 중인 evidence, owner, 다음 update 시간이 빠졌는지 보세요.";
+    state.ceIncidentReports = state.ceIncidentReports || {};
+    state.ceIncidentReports[item.id] = {
+      text,
+      feedback,
+      savedAt: new Date().toISOString()
+    };
+    if (hits < 5) {
+      state.ceIncidentWeakness = state.ceIncidentWeakness || {};
+      state.ceIncidentWeakness["customer-report"] = (state.ceIncidentWeakness["customer-report"] || 0) + 1;
+    }
+    persistState();
+    renderCeIncidentKernel();
+  });
+}
+
 const epiMasterSteps = [
   {
     stage: "01",
@@ -8837,6 +9355,7 @@ function renderProcessVisual() {
   renderEpiTraceLab();
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
+  renderCeIncidentKernel();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>
