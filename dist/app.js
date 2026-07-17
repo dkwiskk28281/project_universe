@@ -4269,6 +4269,7 @@ let activeGlossaryCategory = "전체";
 let activeRunbookStage = fieldRunbookStages[0].id;
 let activeProcessFlow = processVisualFlows[0].id;
 let activeProcessStep = 0;
+let activeMentalFrame = state.activeMentalFrame || "carrier-context";
 let activePeTwinStep = 0;
 let activePeFailureIndex = 0;
 const peKnobs = { temp: 58, pressure: 46, precursor: 54, selectivity: 48, purge: 72, exhaust: 80 };
@@ -4443,6 +4444,7 @@ function save() {
   renderRunbook();
   renderLearningHud();
   renderEpiMissionEngine();
+  renderEpiMentalModelBuilder();
 }
 
 function persistState() {
@@ -6691,6 +6693,479 @@ function renderEpiMissionEngine() {
   });
 }
 
+const epiMentalFrames = [
+  {
+    id: "carrier-context",
+    day: "Day 0",
+    title: "FOUP arrival and job context",
+    focus: "Carrier가 load port에 도착하면 장비는 먼저 wafer를 움직이는 것이 아니라 lot, carrier, slot, permission context를 맞춥니다.",
+    twin: { route: "epi-a", mode: "comm", step: 0, layers: { cutaway: false, pressure: true, particles: true, packets: true } },
+    activeNodes: ["host", "toolpc", "foup", "lp"],
+    layers: {
+      physical: [
+        "FOUP은 sealed carrier이고 load port는 carrier를 고정하고 door/open boundary를 만듭니다.",
+        "EFEM robot은 아직 wafer를 꺼내기 전이며, slot map과 carrier present가 먼저 확정되어야 합니다."
+      ],
+      comm: [
+        "MES/EAP/host 계층은 lot, carrier ID, wafer slot, job permission을 tool controller와 주고받습니다.",
+        "Load port/E84 계열 handoff 개념은 AMHS와 tool 사이의 carrier transfer 상태를 정렬하는 mental model입니다."
+      ],
+      boundary: [
+        "이 단계는 대기압 영역입니다. process gas가 들어가는 단계가 아닙니다.",
+        "N2 purge나 mini-environment는 cleanliness/atmosphere 안정화 관점이며, 실제 site 설정은 승인 문서가 우선입니다."
+      ],
+      process: [
+        "Wafer 표면에는 아직 변화가 없습니다. 핵심은 traceability가 끊기지 않는 것입니다.",
+        "여기서 ID가 틀리면 이후 metrology, alarm trace, customer report가 모두 어긋납니다."
+      ],
+      evidence: [
+        "carrier ID, slot map, load port clamp/door state, host job permission, event timestamp",
+        "Stop: carrier/slot mismatch, unknown wafer present, host permission conflict"
+      ]
+    },
+    report: "Carrier and slot context are being verified before any wafer movement. We are holding movement until host, load port, and slot map evidence are aligned.",
+    teach: {
+      question: "이 단계에서 CE가 가장 먼저 맞춰야 할 mental model은?",
+      choices: [
+        ["process gas readiness보다 carrier/slot/job context 정합성이 먼저다.", true, "맞습니다. wafer를 움직이기 전 traceability를 고정해야 합니다.", "traceability"],
+        ["PM 온도 안정화가 우선이므로 carrier ID는 나중에 봐도 된다.", false, "위험합니다. ID/slot context가 틀리면 이후 모든 evidence가 흔들립니다.", "traceability"],
+        ["FOUP이 도착하면 곧바로 Load Lock pumpdown부터 확인한다.", false, "아직 wafer가 load lock에 들어가기 전입니다. carrier handoff가 먼저입니다.", "sequence"]
+      ]
+    }
+  },
+  {
+    id: "efem-slot-map",
+    day: "Day 0",
+    title: "EFEM pick, slot map, align",
+    focus: "EFEM/FI는 대기압 front interface입니다. FOUP 속 wafer를 인식하고 aligner를 거쳐 load lock으로 넘길 준비를 합니다.",
+    twin: { route: "epi-a", mode: "material", step: 1, layers: { cutaway: false, pressure: true, particles: true, packets: true } },
+    activeNodes: ["lp", "efem", "aligner", "lla"],
+    layers: {
+      physical: [
+        "EFEM robot은 FOUP에서 wafer를 pick하고 aligner에서 notch/center를 맞춥니다.",
+        "Load Lock의 EFEM-side door와 TM-side slit은 서로 다른 boundary입니다. 둘을 한 문처럼 생각하면 install 판단이 흐려집니다."
+      ],
+      comm: [
+        "Tool controller는 robot event, align result, wafer present sensor, load lock availability를 scheduler 관점으로 묶습니다.",
+        "Host는 개별 motor를 직접 움직인다기보다 lot/wafer/job/event trace를 통해 장비 상태와 연결됩니다."
+      ],
+      boundary: [
+        "EFEM은 atmospheric handling zone이고 Load Lock은 atmospheric-to-vacuum converter입니다.",
+        "Door/slit state가 모호하면 반복 pick을 시도하지 말고 wafer present와 mechanical state를 분리합니다."
+      ],
+      process: [
+        "Wafer 표면에는 아직 intentional film growth가 없습니다.",
+        "하지만 scratch, edge contact, wrong slot 같은 handling defect는 이후 공정 문제처럼 보일 수 있습니다."
+      ],
+      evidence: [
+        "aligner result, robot event order, wafer present transition, door feedback, slot map update",
+        "Stop: unexpected wafer present, alignment fail, door state mismatch, suspected contact"
+      ]
+    },
+    report: "The wafer handling path is being verified from FOUP through EFEM and aligner before load lock handoff. Current focus is robot event order and wafer-present transitions.",
+    teach: {
+      question: "EFEM 문제를 PM process 문제로 착각하지 않으려면 무엇을 봐야 할까?",
+      choices: [
+        ["wafer present transition과 aligner/robot event order를 먼저 본다.", true, "맞습니다. handling evidence가 PM 증상처럼 보이는 경우를 분리합니다.", "handling"],
+        ["성장률 trend부터 본다.", false, "아직 성장 단계가 아닙니다. 위치/slot/handling evidence가 먼저입니다.", "sequence"],
+        ["가스 box MFC actual을 먼저 본다.", false, "이 단계는 process gas introduction 전입니다.", "gas-boundary"]
+      ]
+    }
+  },
+  {
+    id: "loadlock-pumpdown",
+    day: "Day 1",
+    title: "Load Lock pumpdown boundary",
+    focus: "Load Lock은 대기압 EFEM과 vacuum TM 사이의 압력 번역기입니다. pumpdown curve가 wafer path의 gate가 됩니다.",
+    twin: { route: "epi-a", mode: "vacuum", step: 3, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    activeNodes: ["lla", "tm", "pump", "abatement"],
+    layers: {
+      physical: [
+        "Wafer는 Load Lock 안에서 격리되고 pumpdown을 통해 TM pressure boundary에 맞춰집니다.",
+        "LL door, TM slit, pump path, pressure gauge를 하나의 chain으로 봐야 합니다."
+      ],
+      comm: [
+        "Tool controller는 pressure ready, door closed, pump state, wafer present가 맞을 때 TM pickup을 허용합니다.",
+        "Host 화면의 ready 한 단어만 보지 말고 module actual state와 event order를 같이 봅니다."
+      ],
+      boundary: [
+        "Pumpdown은 단순히 압력이 내려가는 것이 아니라 leak/outgassing/gauge/seal 상태를 드러내는 signature입니다.",
+        "Exhaust/abatement readiness는 process gas 전부터 이미 safety chain의 일부입니다."
+      ],
+      process: [
+        "Wafer film은 아직 성장하지 않습니다. 표면을 건드리지 않고 vacuum transfer 준비를 하는 단계입니다.",
+        "Pumpdown abnormal은 이후 particle, moisture, interface issue처럼 연결될 수 있습니다."
+      ],
+      evidence: [
+        "pumpdown curve, elapsed time, pressure gauge agreement, door/slit feedback, pump/exhaust status",
+        "Stop: pressure plateau, gauge disagreement, unresolved exhaust alarm, seal/door conflict"
+      ]
+    },
+    report: "Load lock pumpdown is under verification. We are comparing pressure trend, gauge agreement, door/slit feedback, and exhaust readiness before allowing vacuum transfer.",
+    teach: {
+      question: "pumpdown이 느릴 때 가장 senior CE다운 첫 판단은?",
+      choices: [
+        ["leak/outgassing/gauge/seal/pump path를 evidence로 나눠 본다.", true, "맞습니다. 느리다는 증상을 subsystem 후보로 분해해야 합니다.", "vacuum-boundary"],
+        ["압력이 결국 내려가면 바로 process gas를 열어본다.", false, "위험합니다. gas introduction은 safety/evidence gate 뒤의 단계입니다.", "gas-safety"],
+        ["wafer recipe를 먼저 수정한다.", false, "비공개/위험 영역이며 원인 분리 전에 recipe 접근은 잘못된 방향입니다.", "unsafe-recipe"]
+      ]
+    }
+  },
+  {
+    id: "tm-dispatch",
+    day: "Day 1",
+    title: "TM robot dispatch to PM",
+    focus: "Transfer Module은 vacuum hub입니다. LL, PM, CM 사이에서 wafer를 움직이는 교차로이고, 각 slit/pressure/robot state가 맞아야 합니다.",
+    twin: { route: "epi-a", mode: "material", step: 5, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    activeNodes: ["tm", "lla", "pm1", "pm2", "preclean"],
+    layers: {
+      physical: [
+        "TM robot은 Load Lock에서 wafer를 받아 PM 또는 pre-clean/CM으로 넘깁니다.",
+        "Centura/Vantage류 cluster mental model에서는 TM이 중앙 hub, PM/CM이 주변 process node라고 그리면 좋습니다."
+      ],
+      comm: [
+        "Scheduler는 module ready, wafer present, slit permissive, robot position을 맞춰 dispatch합니다.",
+        "PM A/B mismatch를 볼 때 shared TM/facility issue인지 module-local issue인지 분리합니다."
+      ],
+      boundary: [
+        "TM과 PM은 transfer vacuum을 공유하거나 맞춰야 하며, slit valve는 pressure boundary와 motion boundary를 동시에 의미합니다.",
+        "Slit feedback이나 wafer handoff abnormal은 반복 동작으로 해결하려 하지 않습니다."
+      ],
+      process: [
+        "Wafer는 PM에 들어가기 전이며 film growth는 아직 시작되지 않았습니다.",
+        "Queue time, vacuum continuity, pre-clean pass 여부가 interface quality와 연결됩니다."
+      ],
+      evidence: [
+        "robot position, slit valve transition, wafer present handoff, module ready, queue time",
+        "Stop: wafer lost, slit/pressure not ready, wrong module route, suspected scrape/contact"
+      ]
+    },
+    report: "Transfer module dispatch is being checked through slit state, robot position, wafer-present handoff, and destination module readiness. We are separating shared TM path from module-local symptoms.",
+    teach: {
+      question: "TM에서 PM으로 wafer를 넘길 때 핵심 boundary는?",
+      choices: [
+        ["robot motion, slit permissive, pressure compatibility, wafer present transition이다.", true, "맞습니다. TM handoff는 motion과 vacuum evidence가 동시에 필요합니다.", "tm-handoff"],
+        ["PM gas family만 알면 충분하다.", false, "아직 gas introduction 전입니다. handoff boundary가 먼저입니다.", "sequence"],
+        ["host가 ready라면 module actual은 보지 않아도 된다.", false, "ready 표시와 actual state가 다를 수 있어 event/evidence 확인이 필요합니다.", "comm-actual"]
+      ]
+    }
+  },
+  {
+    id: "epi-reaction",
+    day: "Day 1",
+    title: "EPI PM reaction and film growth",
+    focus: "EPI PM 안에서는 heat, carrier gas, silicon/germanium precursor, dopant, exhaust가 surface reaction과 layer growth로 연결됩니다.",
+    twin: { route: "epi-a", mode: "gas", step: 6, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    activeNodes: ["pm1", "gasbox", "pump", "abatement", "toolpc"],
+    layers: {
+      physical: [
+        "Wafer는 susceptor/chuck 위에서 thermal state를 맞추고 gas delivery는 PM으로 들어갑니다.",
+        "Gas box, MFC, PM, pump, exhaust, abatement를 한 줄의 chemical path로 그립니다."
+      ],
+      comm: [
+        "Tool controller는 temperature trace, pressure trace, MFC actual, chamber state, abatement ready를 trace packet으로 묶습니다.",
+        "고객 보고는 결과값만 말하지 말고 어떤 evidence가 같은 시간축에 있었는지 설명해야 합니다."
+      ],
+      boundary: [
+        "H2는 flammable carrier/reducing ambient, chlorosilane/silane family는 silicon precursor, GeH4/PH3/B2H6류는 toxic/flammable hydride family로 조심합니다.",
+        "실제 gas 사용, setpoint, flow, valve sequence는 tool option/site document/official training 영역입니다."
+      ],
+      process: [
+        "Precursor가 heated wafer surface에서 반응하여 substrate crystal orientation을 따라 epitaxial layer를 성장시키는 개념입니다.",
+        "Byproduct와 residual gas는 pump/exhaust/abatement로 빠져야 하며, purge는 다음 상태로 넘어가는 safety/quality bridge입니다."
+      ],
+      evidence: [
+        "MFC setpoint vs actual, pressure response, thermal trace, exhaust/abatement ready, detector health, metrology link",
+        "Stop: gas readiness uncertain, detector/exhaust/abatement alarm, thermal instability, unknown gas line status"
+      ]
+    },
+    report: "The EPI reaction step is being treated as a linked gas, thermal, pressure, exhaust, and metrology system. We are not changing recipe parameters; we are collecting actual traces and safety readiness evidence.",
+    teach: {
+      question: "EPI PM에서 wafer 위에 막이 자라는 그림을 가장 안전하게 설명하면?",
+      choices: [
+        ["가열된 wafer 표면에서 precursor가 반응해 결정 방향을 따라 layer가 성장하고 byproduct는 exhaust로 빠진다.", true, "맞습니다. 표면 반응, crystal continuity, exhaust path를 함께 설명했습니다.", "epi-chemistry"],
+        ["가스를 많이 넣으면 막이 빨리 자라므로 flow를 임의로 올린다.", false, "위험하고 비공개 recipe 영역입니다. setpoint 변경은 공식 절차 밖에서 하면 안 됩니다.", "unsafe-recipe"],
+        ["막 성장은 PM 내부에서만 보므로 abatement 상태는 중요하지 않다.", false, "위험합니다. gas/byproduct path는 abatement까지 하나의 safety chain입니다.", "abatement"]
+      ]
+    }
+  },
+  {
+    id: "purge-abatement",
+    day: "Day 2",
+    title: "Purge, exhaust, abatement proof",
+    focus: "공정 후 purge/exhaust/abatement는 남은 gas와 byproduct를 안전하게 다음 상태로 넘기는 bridge입니다.",
+    twin: { route: "epi-a", mode: "gas", step: 7, layers: { cutaway: true, pressure: true, particles: true, packets: true } },
+    activeNodes: ["pm1", "pump", "abatement", "gasbox"],
+    layers: {
+      physical: [
+        "PM에서 pump/foreline/exhaust/abatement로 이어지는 downstream path를 하나의 system으로 봅니다.",
+        "Gas cabinet이나 gas box만 보는 것이 아니라 source-to-abatement walkdown mental model이 필요합니다."
+      ],
+      comm: [
+        "Ready signal은 실제 local 상태와 다를 수 있습니다. owner witness와 trend evidence로 맞춥니다.",
+        "Tool alarm, facility alarm, detector status, abatement ready를 같은 시간축으로 정렬합니다."
+      ],
+      boundary: [
+        "Purge는 residual을 없애는 품질 단계이면서 다음 motion/gas state로 넘어가기 위한 안전 단계입니다.",
+        "Toxic/corrosive/flammable gas family가 걸린 경우 SDS, EHS, gas owner, official procedure가 우선입니다."
+      ],
+      process: [
+        "Wafer layer stack은 완성된 상태로 보존되어야 하며 residual/byproduct가 defect나 safety issue로 이어지지 않게 합니다.",
+        "Purge/end state가 불명확하면 unload나 next wafer를 서두르지 않습니다."
+      ],
+      evidence: [
+        "purge complete evidence, exhaust flow trend, abatement ready/actual, detector health, alarm history",
+        "Stop: abatement not ready, detector unhealthy, unknown residual state, unresolved facility alarm"
+      ]
+    },
+    report: "We are verifying purge completion and downstream exhaust/abatement readiness before declaring the module ready for the next transfer or baseline wafer.",
+    teach: {
+      question: "왜 purge/abatement를 공정 뒤의 부가 단계로 보면 안 될까?",
+      choices: [
+        ["residual/byproduct safety와 다음 wafer quality를 동시에 좌우하기 때문이다.", true, "맞습니다. 안전과 품질이 같은 path에 묶여 있습니다.", "purge-abatement"],
+        ["wafer가 이미 나왔으므로 더 이상 중요하지 않다.", false, "위험합니다. residual과 downstream readiness가 다음 wafer와 안전에 영향을 줍니다.", "purge-abatement"],
+        ["host 화면 ready만 보면 충분하다.", false, "actual facility/detector/abatement evidence와 함께 봐야 합니다.", "comm-actual"]
+      ]
+    }
+  },
+  {
+    id: "qualification-handover",
+    day: "Day 2",
+    title: "Baseline wafer, metrology, handover",
+    focus: "Qualification은 장비가 켜졌다는 선언이 아니라 wafer result, trace, safety readiness, open issue가 연결됐다는 handover입니다.",
+    twin: { route: "epi-a", mode: "comm", step: 8, layers: { cutaway: false, pressure: true, particles: true, packets: true } },
+    activeNodes: ["host", "toolpc", "pm1", "tm", "foup"],
+    layers: {
+      physical: [
+        "Baseline wafer는 PM process, TM/LL transfer, return-to-FOUP까지 전체 chain을 검증하는 evidence carrier입니다.",
+        "장비 구조는 physical path로 끝나지 않고 metrology와 customer acceptance discussion으로 이어집니다."
+      ],
+      comm: [
+        "Wafer ID, process trace, metrology ID, alarm history, open punch가 하나의 handover packet이 됩니다.",
+        "고객에게는 confirmed fact, risk, next action, owner, update time을 분리해 말합니다."
+      ],
+      boundary: [
+        "Acceptance limit, recipe value, site-specific criteria는 공개 학습 자료가 아니라 공식 site document 영역입니다.",
+        "CE는 임의로 기준을 만들지 않고 고객/OEM 승인 문서와 senior witness를 우선합니다."
+      ],
+      process: [
+        "Thickness, uniformity, defect, Rs 같은 metrology는 gas/thermal/vacuum/handling trace와 연결해 해석합니다.",
+        "한 장의 wafer 결과를 바로 원인으로 단정하지 말고 evidence chain으로 분해합니다."
+      ],
+      evidence: [
+        "baseline wafer trace, metrology link, alarm history, facility readiness, punch list, owner/action/ETA",
+        "Stop: traceability broken, acceptance basis unclear, safety readiness unresolved, customer signoff gap"
+      ]
+    },
+    report: "Qualification status is being compiled from baseline wafer result, tool trace, alarm history, safety readiness, and open punch ownership. Acceptance basis will follow approved site and OEM documentation.",
+    teach: {
+      question: "handover에서 senior CE처럼 보이는 보고 방식은?",
+      choices: [
+        ["confirmed fact, remaining risk, evidence, owner, next action, ETA를 분리한다.", true, "맞습니다. 고객이 판단 가능한 구조로 말해야 합니다.", "handover"],
+        ["결과가 대충 좋아 보이면 통과라고 말한다.", false, "위험합니다. acceptance basis와 traceability가 필요합니다.", "handover"],
+        ["불확실한 acceptance limit을 공개자료로 단정한다.", false, "site-specific limit은 공식 승인 문서 영역입니다.", "site-specific"]
+      ]
+    }
+  }
+];
+
+const epiMentalMapNodes = [
+  ["host", "MES/EAP", "Host", 6, 13],
+  ["toolpc", "Tool controller", "Scheduler", 22, 22],
+  ["foup", "FOUP", "Carrier", 6, 58],
+  ["lp", "Load Port", "Dock", 20, 57],
+  ["efem", "EFEM/FI", "ATM robot", 35, 57],
+  ["aligner", "Aligner", "Notch/center", 36, 79],
+  ["lla", "Load Lock", "ATM-to-vac", 51, 47],
+  ["tm", "TM", "Vacuum hub", 66, 52],
+  ["preclean", "CM", "Pre-clean/cool", 67, 78],
+  ["pm1", "EPI PM-A", "Growth", 83, 32],
+  ["pm2", "EPI PM-B", "Matching", 88, 53],
+  ["gasbox", "Gas box", "MFC/purge", 85, 9],
+  ["pump", "Pump", "Foreline", 83, 74],
+  ["abatement", "Abatement", "Exhaust", 94, 83]
+];
+
+function getActiveMentalFrame() {
+  return epiMentalFrames.find(item => item.id === activeMentalFrame) || epiMentalFrames[0];
+}
+
+function getMentalStats() {
+  const answers = state.epiMentalAnswers || {};
+  const solved = Object.keys(answers).length;
+  const correct = Object.values(answers).filter(item => item.correct).length;
+  const weakness = Object.entries(state.epiMentalWeakness || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4);
+  return {
+    solved,
+    correct,
+    score: solved ? Math.round((correct / solved) * 100) : 0,
+    weakness
+  };
+}
+
+function syncMentalFrameToTwin(frame, options = {}) {
+  const twin = window.ProjectUniverseWebGLTwin;
+  const status = document.querySelector("#epi-mental-sync-status");
+  if (!twin) {
+    if (status) status.textContent = "3D twin is still loading. Try again in a moment.";
+    return false;
+  }
+  twin.pause?.();
+  twin.setRoute?.(frame.twin.route);
+  twin.setMode?.(frame.twin.mode);
+  Object.entries(frame.twin.layers || {}).forEach(([layer, value]) => twin.setLayer?.(layer, value));
+  twin.setStep?.(frame.twin.step);
+  twin.setCamera?.("iso");
+  if (status) status.textContent = `3D synced: ${frame.title}`;
+  if (options.scroll !== false) {
+    document.querySelector("#webgl-twin")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  return true;
+}
+
+function renderEpiMentalModelBuilder() {
+  const root = document.querySelector("#epi-mental-builder");
+  if (!root) return;
+  const frame = getActiveMentalFrame();
+  const layer = state.epiMentalLayer || "physical";
+  const answer = state.epiMentalAnswers?.[frame.id];
+  const stats = getMentalStats();
+  const layerLabels = {
+    physical: "Physical",
+    comm: "Communication",
+    boundary: "Vacuum/Gas",
+    process: "Wafer Process",
+    evidence: "CE Evidence"
+  };
+  const activeSet = new Set(frame.activeNodes);
+  root.innerHTML = `
+    <div class="mental-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v7</p>
+        <h2>EPI Mental Model Builder</h2>
+        <p>FOUP, EFEM, Load Lock, TM, PM, gas box, pump, abatement, host communication을 한 단계씩 겹쳐 보며 머릿속 3D 모델을 만드는 훈련장입니다.</p>
+      </div>
+      <div class="mental-score">
+        <span>Teach-back</span>
+        <strong>${stats.score}%</strong>
+        <small>${stats.correct}/${stats.solved || 0} correct</small>
+      </div>
+    </div>
+    <div class="mental-frame-row" aria-label="EPI mental model frame selector">
+      ${epiMentalFrames.map((item, index) => `
+        <button type="button" class="${item.id === frame.id ? "active" : ""} ${state.epiMentalAnswers?.[item.id]?.correct ? "done" : ""}" data-mental-frame="${item.id}">
+          <span>${String(index + 1).padStart(2, "0")}</span>
+          <b>${item.day}</b>
+          <strong>${item.title}</strong>
+        </button>
+      `).join("")}
+    </div>
+    <div class="mental-layout">
+      <section class="mental-map-card">
+        <div class="mental-map-head">
+          <div>
+            <p class="eyebrow">Equipment + Communication Map</p>
+            <h3>${frame.title}</h3>
+          </div>
+          <button class="primary" type="button" data-mental-sync>3D twin sync</button>
+        </div>
+        <div class="mental-map" data-layer="${layer}">
+          <svg class="mental-map-lines" viewBox="0 0 100 100" aria-hidden="true">
+            <path d="M6 58 L20 57 L35 57 L51 47 L66 52 L83 32" class="${layer === "physical" || layer === "process" ? "active" : ""}" />
+            <path d="M66 52 L88 53" class="${layer === "physical" ? "active" : ""}" />
+            <path d="M66 52 L67 78" class="${layer === "physical" ? "active" : ""}" />
+            <path d="M85 9 L83 32 L83 74 L94 83" class="${layer === "boundary" || layer === "process" ? "active gas" : ""}" />
+            <path d="M6 13 L22 22 L20 57 L35 57 L51 47 L66 52 L83 32" class="${layer === "comm" ? "active comm" : ""}" />
+          </svg>
+          ${epiMentalMapNodes.map(([id, label, note, x, y]) => `
+            <button type="button" class="mental-node ${activeSet.has(id) ? "active" : ""}" style="--x:${x}%; --y:${y}%;" data-node="${id}">
+              <b>${label}</b>
+              <span>${note}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="mental-sync-status" id="epi-mental-sync-status">Select a frame or sync it to the 3D twin.</div>
+      </section>
+      <section class="mental-loop-card">
+        <div class="mental-loop-head">
+          <p class="eyebrow">${frame.day}</p>
+          <h3>${frame.focus}</h3>
+        </div>
+        <div class="mental-layer-tabs" aria-label="mental model layer selector">
+          ${Object.entries(layerLabels).map(([id, label]) => `
+            <button type="button" class="${layer === id ? "active" : ""}" data-mental-layer="${id}">${label}</button>
+          `).join("")}
+        </div>
+        <div class="mental-layer-panel">
+          ${(frame.layers[layer] || []).map(item => `<p>${item}</p>`).join("")}
+        </div>
+        <div class="mental-report-card">
+          <strong>Customer report sentence</strong>
+          <p>${frame.report}</p>
+        </div>
+      </section>
+    </div>
+    <section class="mental-teachback">
+      <div>
+        <p class="eyebrow">Teach-back Drill</p>
+        <h3>${frame.teach.question}</h3>
+      </div>
+      <div class="mental-choice-grid">
+        ${frame.teach.choices.map(([text, correct], index) => `
+          <button type="button" class="${answer && answer.selected === index ? "picked" : ""} ${answer && correct ? "good" : ""} ${answer && answer.selected === index && !correct ? "bad" : ""}" data-mental-choice="${index}">
+            ${text}
+          </button>
+        `).join("")}
+      </div>
+      <p class="mental-feedback">${answer ? frame.teach.choices[answer.selected]?.[2] : "하나를 고르면 즉시 채점되고, 틀린 축은 weakness dashboard에 쌓입니다."}</p>
+      <div class="mental-weakness">
+        <strong>Weakness</strong>
+        ${stats.weakness.length ? stats.weakness.map(([tag, count]) => `<span>${tag} ${count}</span>`).join("") : "<span>아직 누적 약점 없음</span>"}
+        <small>Safety boundary: recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 제외합니다.</small>
+      </div>
+    </section>
+  `;
+
+  root.querySelectorAll("[data-mental-frame]").forEach(button => {
+    button.addEventListener("click", () => {
+      activeMentalFrame = button.dataset.mentalFrame;
+      state.activeMentalFrame = activeMentalFrame;
+      persistState();
+      renderEpiMentalModelBuilder();
+      syncMentalFrameToTwin(getActiveMentalFrame(), { scroll: false });
+    });
+  });
+  root.querySelectorAll("[data-mental-layer]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.epiMentalLayer = button.dataset.mentalLayer;
+      persistState();
+      renderEpiMentalModelBuilder();
+    });
+  });
+  root.querySelector("[data-mental-sync]")?.addEventListener("click", () => syncMentalFrameToTwin(frame));
+  root.querySelectorAll("[data-mental-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const selected = Number(button.dataset.mentalChoice);
+      const choice = frame.teach.choices[selected];
+      state.epiMentalAnswers = state.epiMentalAnswers || {};
+      state.epiMentalAnswers[frame.id] = {
+        selected,
+        correct: Boolean(choice?.[1]),
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice?.[1]) {
+        state.epiMentalWeakness = state.epiMentalWeakness || {};
+        const tag = choice?.[3] || frame.id;
+        state.epiMentalWeakness[tag] = (state.epiMentalWeakness[tag] || 0) + 1;
+      }
+      persistState();
+      renderEpiMentalModelBuilder();
+    });
+  });
+}
+
 const epiMasterSteps = [
   {
     stage: "01",
@@ -8361,6 +8836,7 @@ function renderProcessVisual() {
   renderEpiProcessEngineerLab();
   renderEpiTraceLab();
   renderEpiMissionEngine();
+  renderEpiMentalModelBuilder();
 
   flowTabs.innerHTML = `
     <p class="eyebrow">Process Book Page</p>
