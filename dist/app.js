@@ -7433,6 +7433,104 @@ const ceIncidentCases = [
   }
 ];
 
+const ceGeneratedCaseBlueprints = [
+  { id: "move-in-floor-mark-mismatch", campaign: "Install Day 0", title: "Move-in floor mark mismatch", subsystem: "Rigging / Facilities", severity: "Stop set-in-place", symptom: "Crate move-in 이후 장비 기준점과 고객 floor mark가 맞지 않아 downstream hook-up 위치가 불확실합니다.", riskLabel: "Set-in-place risk", riskText: "초기 위치 오차는 gas/exhaust/power 연결과 service clearance 전체에 번집니다.", primarySubsystem: "Rigging datum / floor mark", primaryText: "장비 기준점, customer datum, clearance evidence가 1차 확인 대상입니다.", decoySubsystem: "Process recipe", decoyText: "위치 기준 문제는 recipe로 판단하지 않습니다.", evidence: [["Datum check", "customer drawing, tool datum, floor mark를 같은 기준으로 비교합니다."], ["Clearance witness", "service door, panel, maintenance path clearance를 owner와 확인합니다."], ["Hook-up reach", "facility line reach와 bend stress risk를 구분합니다."]], decoyEvidence: ["Throughput estimate", "throughput은 set-in-place evidence가 아닙니다."], stopLabel: "Stop positioning", stopText: "기준점 불일치가 풀리기 전 anchoring/hook-up을 진행하지 않습니다.", reportText: "위치 기준, 영향 범위, 시설 owner, 다음 확인 시점을 분리해 보고합니다.", wrongA: "Floor mark보다 장비가 맞아 보이면 그대로 밀어 넣는다.", wrongB: "Hook-up하면서 line length로 보정한다.", weaknessTag: "install-datum", twin: { route: "epi-a", mode: "material", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "SEMI-compatible load port/facility integration public training boundary", prevention: "Move-in은 속도가 아니라 기준점 packet입니다: drawing, datum, clearance, owner signoff를 한 묶음으로 남깁니다." },
+  { id: "seismic-anchor-clearance-gap", campaign: "Install Day 0", title: "Seismic anchor clearance gap", subsystem: "Rigging / Facilities", severity: "Hold anchoring", symptom: "장비 위치는 맞지만 anchor hole, seismic bracket, service panel 접근성이 서로 충돌합니다.", riskLabel: "Mechanical integrity risk", riskText: "anchor와 service clearance가 충돌하면 설치 후 유지보수와 구조 안정성 모두 흔들립니다.", primarySubsystem: "Anchor / clearance interface", primaryText: "anchor drawing, floor condition, service panel swing을 함께 봅니다.", decoySubsystem: "EFEM slot map", decoyText: "wafer identity 문제와 다른 설치 기계 기준 문제입니다.", evidence: [["Anchor drawing", "승인 도면과 현장 hole 위치를 비교합니다."], ["Panel sweep", "panel/door sweep와 service access를 확인합니다."], ["Owner witness", "customer facility/rigging owner가 같은 기준을 봅니다."]], decoyEvidence: ["Wafer run result", "wafer를 돌릴 단계가 아닙니다."], stopLabel: "Hold anchor", stopText: "구조 기준과 접근성 충돌이 해결되기 전 anchor를 확정하지 않습니다.", reportText: "충돌 위치, 영향 panel, required owner decision을 짧게 남깁니다.", wrongA: "나중에 panel을 덜 열면 되니 anchor를 먼저 끝낸다.", wrongB: "bracket을 현장에서 임의 가공한다.", weaknessTag: "rigging-anchor", twin: { route: "epi-a", mode: "material", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "public install safety reasoning / site approved document required", prevention: "anchor는 mechanical signoff 전까지 reversible state로 유지합니다." },
+  { id: "leveling-drift-after-placement", campaign: "Install Day 0", title: "Leveling drift after placement", subsystem: "Mechanical / Leveling", severity: "Hold baseline", symptom: "set-in-place 후 leveling 값이 안정되지 않고 시간이 지나며 다시 벗어납니다.", riskLabel: "Transfer geometry risk", riskText: "level drift는 robot/slot/slit alignment confidence를 약하게 만듭니다.", primarySubsystem: "Leveling foot / floor contact", primaryText: "foot contact, floor flatness, vibration source를 분리합니다.", decoySubsystem: "Gas delivery", decoyText: "가스 계통은 wafer motion geometry drift의 1차 원인이 아닙니다.", evidence: [["Repeat level log", "시간별 level reading과 조정 이력을 남깁니다."], ["Foot contact", "각 foot의 load/contact 상태를 확인합니다."], ["Floor/vibration context", "nearby construction, vibration, floor condition을 owner와 확인합니다."]], decoyEvidence: ["Film thickness", "baseline 전 mechanical issue입니다."], stopLabel: "Hold robot teach / baseline", stopText: "level 안정성이 확보되기 전 alignment나 baseline claim을 진행하지 않습니다.", reportText: "level drift trend와 next mechanical owner action을 보고합니다.", wrongA: "한 번 맞춘 값이 있으니 baseline wafer로 검증한다.", wrongB: "software offset으로 mechanical drift를 가린다.", weaknessTag: "leveling", twin: { route: "epi-a", mode: "material", step: 1 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "install mechanical fit-up public training boundary", prevention: "leveling은 단일 값이 아니라 시간 안정성 evidence입니다." },
+  { id: "power-loto-boundary-unclear", campaign: "Install Day 1", title: "Power / LOTO boundary unclear", subsystem: "Electrical / Safety", severity: "Stop energized work", symptom: "power-on 전 어떤 panel/utility가 energized boundary인지 작업자 간 이해가 다릅니다.", riskLabel: "Electrical safety risk", riskText: "energized boundary가 불명확하면 DVM 측정보다 먼저 LOTO/승인 경계가 문제입니다.", primarySubsystem: "LOTO / power boundary", primaryText: "authorized owner, stored energy, panel scope를 확인합니다.", decoySubsystem: "Process module matching", decoyText: "PM matching 전 단계의 안전 경계 이슈입니다.", evidence: [["LOTO owner", "authorized person과 boundary를 같은 문서로 봅니다."], ["Panel scope", "어느 panel/utility가 포함되는지 표시를 확인합니다."], ["Stored energy", "capacitor, pneumatic, vacuum 등 residual energy를 구분합니다."]], decoyEvidence: ["Recipe approval", "recipe와 무관한 safety boundary입니다."], stopLabel: "Stop energized work", stopText: "승인 없는 live work나 임의 측정은 하지 않습니다.", reportText: "작업 중지 이유를 safety boundary와 owner confirmation 중심으로 보고합니다.", wrongA: "DVM으로 찍어보면 되니 먼저 panel을 연다.", wrongB: "green lamp가 있으니 energized risk는 없다.", weaknessTag: "electrical-safety", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "rtp-ambient", step: 0 }, sourceBasis: "NIOSH/OSHA hazardous energy control public safety principle", prevention: "DVM은 승인된 안전 경계 뒤에 쓰는 도구입니다." },
+  { id: "cda-n2-pressure-unstable", campaign: "Facility Hook-up", title: "CDA / N2 pressure unstable", subsystem: "Facilities / Utilities", severity: "Hold utility readiness", symptom: "CDA 또는 N2 utility가 ready로 보이지만 pressure trend가 흔들려 purge/actuation confidence가 낮습니다.", riskLabel: "Utility stability risk", riskText: "불안정한 utility는 purge, pneumatic actuation, wafer boundary에 영향을 줄 수 있습니다.", primarySubsystem: "CDA / N2 utility", primaryText: "facility supply, regulator, tool-side trend를 분리합니다.", decoySubsystem: "Metrology recipe", decoyText: "metrology recipe는 utility pressure stability evidence가 아닙니다.", evidence: [["Trend log", "momentary ready bit보다 시간 trend를 확인합니다."], ["Facility owner check", "customer utility owner와 supply condition을 맞춥니다."], ["Tool-side actual", "tool-side readback과 local gauge agreement를 비교합니다."]], decoyEvidence: ["Customer schedule", "일정은 utility evidence가 아닙니다."], stopLabel: "Hold readiness", stopText: "utility stability가 방어 가능할 때까지 purge/actuation readiness를 주장하지 않습니다.", reportText: "ready bit와 actual trend의 차이를 설명합니다.", wrongA: "압력이 평균적으로 맞으면 first operation을 진행한다.", wrongB: "alarm이 없으니 utility는 정상으로 닫는다.", weaknessTag: "facility-utility", twin: { route: "epi-a", mode: "gas", step: 2 }, process: { flow: "epi-sige", step: 1 }, sourceBasis: "SIA EHS fact sheet engineering controls / contained delivery concept", prevention: "utility readiness는 ready bit, local actual, owner witness, trend가 함께 있어야 합니다." },
+  { id: "cooling-water-leak-check-gap", campaign: "Facility Hook-up", title: "Cooling water leak-check gap", subsystem: "Facilities / Thermal", severity: "Hold thermal enable", symptom: "cooling water 연결 후 leak check evidence가 tool-side와 facility-side에서 서로 다르게 해석됩니다.", riskLabel: "Thermal hardware risk", riskText: "cooling evidence가 약하면 thermal hardware와 주변 electrical boundary를 함께 위험하게 만듭니다.", primarySubsystem: "Cooling water loop", primaryText: "supply/return, fitting, drip, flow indication을 같은 시간축으로 봅니다.", decoySubsystem: "Carrier ID", decoyText: "carrier ID는 water loop evidence가 아닙니다.", evidence: [["Leak witness", "fitting 주변, tray, return path를 owner와 확인합니다."], ["Flow/temperature", "flow indication과 temperature trend를 함께 봅니다."], ["Electrical proximity", "water와 electrical panel proximity risk를 확인합니다."]], decoyEvidence: ["Slot map read", "wafer mapping은 water leak-check와 무관합니다."], stopLabel: "Hold thermal enable", stopText: "leak check가 불명확하면 thermal enable을 주장하지 않습니다.", reportText: "확인된 위치, 불확실한 위치, owner next action을 보고합니다.", wrongA: "작은 물방울이면 thermal test 중 마른다.", wrongB: "tool UI flow가 있으면 leak check는 생략한다.", weaknessTag: "cooling-water", twin: { route: "rtp", mode: "gas", step: 6 }, process: { flow: "rtp-ambient", step: 1 }, sourceBasis: "public EHS engineering control principle / site document required", prevention: "water utility는 leak, flow, thermal, electrical proximity를 한 evidence packet으로 묶습니다." },
+  { id: "facility-exhaust-not-witnessed", campaign: "Facility Hook-up", title: "Facility exhaust not witnessed", subsystem: "Exhaust / Facilities", severity: "Stop hazardous operation", symptom: "tool exhaust connected 상태처럼 보이지만 local exhaust actual과 facility owner witness가 없습니다.", riskLabel: "Exhaust containment risk", riskText: "exhaust는 hazardous gas/chemical boundary의 downstream half입니다.", primarySubsystem: "Exhaust actual / owner witness", primaryText: "tool side connection과 facility actual을 같은 상태로 맞춥니다.", decoySubsystem: "Robot handoff", decoyText: "robot handoff는 exhaust containment evidence가 아닙니다.", evidence: [["Exhaust actual", "facility actual 상태와 tool-side indication을 비교합니다."], ["Owner witness", "facility/EHS owner confirmation을 확보합니다."], ["Alarm history", "exhaust related alarm/event history를 봅니다."]], decoyEvidence: ["Wafer thickness", "first hazardous operation 전에는 thickness evidence가 없습니다."], stopLabel: "Stop hazardous operation", stopText: "exhaust actual이 witness되지 않으면 first gas/clean operation을 진행하지 않습니다.", reportText: "tool side ready와 downstream actual gap을 고객에게 명확히 말합니다.", wrongA: "exhaust line이 연결되어 있으니 first gas로 시험한다.", wrongB: "냄새가 없으면 exhaust는 충분하다.", weaknessTag: "exhaust-boundary", twin: { route: "epi-a", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "SIA enclosed/ventilated equipment and leak detection public EHS facts", prevention: "exhaust는 visual connection이 아니라 actual-state witness입니다." },
+  { id: "toxic-gas-cabinet-owner-gap", campaign: "First Gas", title: "Toxic gas cabinet owner gap", subsystem: "Gas / EHS", severity: "Stop before gas enable", symptom: "gas cabinet readiness 이야기는 있지만 owner, SDS, detector, exhaust chain evidence가 하나로 묶이지 않았습니다.", riskLabel: "Toxic gas safety risk", riskText: "toxic/flammable/corrosive gas는 source-to-abatement chain이 방어 가능해야 합니다.", primarySubsystem: "Gas cabinet / EHS chain", primaryText: "gas family, cabinet state, detector health, abatement readiness를 묶습니다.", decoySubsystem: "Wafer alignment", decoyText: "wafer alignment는 toxic gas readiness evidence가 아닙니다.", evidence: [["Gas family/SDS", "gas hazard family를 SDS 기준으로 확인합니다."], ["Detector health", "monitor/detector state와 alarm history를 확인합니다."], ["EHS/facility owner", "gas/EHS/facility owner witness를 남깁니다."]], decoyEvidence: ["Chamber particle map", "particle map은 gas cabinet readiness의 1차 evidence가 아닙니다."], stopLabel: "Stop gas enable", stopText: "owner chain이 닫히기 전 gas enable을 주장하지 않습니다.", reportText: "gas family, missing owner evidence, next witness time을 보고합니다.", wrongA: "tool gas panel ready가 보이면 충분하다.", wrongB: "detector setpoint를 임의로 바꿔 안전하게 만든다.", weaknessTag: "toxic-gas-chain", twin: { route: "epi-a", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "OSHA semiconductor deposition hazards / SIA contained transfer and leak detection", prevention: "first gas packet에는 gas family, detector health, exhaust/abatement, owner witness가 모두 들어갑니다." },
+  { id: "gas-line-purge-certificate-gap", campaign: "First Gas", title: "Gas line purge evidence gap", subsystem: "Gas / Purge", severity: "Hold first gas", symptom: "gas line purge가 완료됐다는 말은 있으나 tool-side, facility-side, owner evidence가 연결되지 않습니다.", riskLabel: "Residual gas risk", riskText: "purge evidence가 약하면 residual/reactive hazard를 배제하기 어렵습니다.", primarySubsystem: "Purge boundary", primaryText: "purge status, line ownership, downstream path를 분리합니다.", decoySubsystem: "Host recipe", decoyText: "recipe로 purge certificate gap을 닫지 않습니다.", evidence: [["Purge record", "승인된 purge record와 timestamp를 확인합니다."], ["Line ownership", "tool/facility boundary owner를 분명히 합니다."], ["Downstream path", "exhaust/abatement path readiness와 연결합니다."]], decoyEvidence: ["Peak temperature", "thermal peak는 purge readiness evidence가 아닙니다."], stopLabel: "Hold first gas", stopText: "purge packet이 불완전하면 first gas를 진행하지 않습니다.", reportText: "완료 주장과 실제 evidence gap을 분리해 보고합니다.", wrongA: "한 번 더 짧게 purge하고 first gas로 검증한다.", wrongB: "alarm이 없으니 purge는 완료로 본다.", weaknessTag: "purge-evidence", twin: { route: "epi-a", mode: "gas", step: 4 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "SIA maintenance purge/public EHS control principles", prevention: "purge는 말이 아니라 record, owner, boundary, downstream path입니다." },
+  { id: "h2-flammable-alarm-context", campaign: "First Gas", title: "H2 / flammable alarm context unclear", subsystem: "Gas / Detector", severity: "Stop flammable operation", symptom: "flammable gas family 관련 alarm history가 있는데 원인 closeout과 owner witness가 분명하지 않습니다.", riskLabel: "Flammable gas risk", riskText: "flammable alarm context가 불명확하면 operation readiness를 주장할 수 없습니다.", primarySubsystem: "Gas detector / alarm history", primaryText: "alarm timestamp, detector health, owner closeout을 봅니다.", decoySubsystem: "PM matching", decoyText: "PM matching보다 safety closeout이 우선입니다.", evidence: [["Alarm history", "alarm 발생/해제/acknowledge 순서를 확인합니다."], ["Detector health", "monitor availability와 fault 여부를 확인합니다."], ["Owner closeout", "EHS/facility owner가 closeout 상태를 확인합니다."]], decoyEvidence: ["Throughput trend", "throughput은 flammable readiness evidence가 아닙니다."], stopLabel: "Stop flammable operation", stopText: "alarm context가 닫히기 전 flammable operation을 진행하지 않습니다.", reportText: "alarm history와 closeout gap을 숨기지 않고 보고합니다.", wrongA: "알람이 현재 꺼졌으니 바로 진행한다.", wrongB: "알람 sensitivity를 임의로 낮춰 nuisance를 줄인다.", weaknessTag: "flammable-gas", twin: { route: "epi-a", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "OSHA flammable/explosive gas hazard category", prevention: "alarm은 현재 상태만 아니라 history와 closeout packet입니다." },
+  { id: "hcl-residue-maintenance-boundary", campaign: "Maintenance Recovery", title: "HCl / residue maintenance boundary", subsystem: "Maintenance / EHS", severity: "Stop chamber open work", symptom: "deposition equipment maintenance 전 residue risk와 purge/vent/local exhaust evidence가 명확하지 않습니다.", riskLabel: "Residue exposure risk", riskText: "reaction-product residue는 chamber/pump maintenance 때 노출 위험이 될 수 있습니다.", primarySubsystem: "Residue / maintenance boundary", primaryText: "approved maintenance boundary, purge, local exhaust, owner를 봅니다.", decoySubsystem: "Carrier handoff", decoyText: "carrier handoff는 residue exposure control이 아닙니다.", evidence: [["Maintenance approval", "승인된 maintenance scope와 owner를 확인합니다."], ["Purge/vent status", "tool empty/purged/room-temperature boundary evidence를 확인합니다."], ["Local exhaust", "작업 위치의 exhaust/ventilation 상태를 확인합니다."]], decoyEvidence: ["Metrology ID", "metrology ID는 chamber open safety evidence가 아닙니다."], stopLabel: "Stop open work", stopText: "승인된 boundary가 없으면 chamber/pump open work를 진행하지 않습니다.", reportText: "maintenance boundary와 missing safety evidence를 보고합니다.", wrongA: "짧게 열어 확인만 하고 닫는다.", wrongB: "냄새가 없으면 residue risk가 낮다.", weaknessTag: "residue-safety", twin: { route: "epi-a", mode: "gas", step: 7 }, process: { flow: "selective-sd", step: 6 }, sourceBasis: "OSHA reaction-product residue hazard / SIA purge-before-maintenance facts", prevention: "maintenance는 empty, purged, room temperature, local exhaust, approval evidence가 먼저입니다." },
+  { id: "loadport-door-interlock-wait", campaign: "Wafer Handling", title: "Load port door interlock wait", subsystem: "EFEM / Load Port", severity: "Hold carrier access", symptom: "FOUP는 docked지만 door open permissive가 대기 상태로 멈춰 wafer mapping이 진행되지 않습니다.", riskLabel: "Carrier interface risk", riskText: "door/clamp/interface 상태가 불명확하면 wafer exposure와 handling 안정성이 약해집니다.", primarySubsystem: "Load port door / clamp", primaryText: "carrier present, clamp, door, map sequence를 확인합니다.", decoySubsystem: "Abatement", decoyText: "abatement는 door permissive의 1차 원인이 아닙니다.", evidence: [["Carrier present", "carrier present와 clamp 상태를 확인합니다."], ["Door sequence", "door open permissive와 interlock history를 봅니다."], ["Host context", "host job permission과 carrier state가 맞는지 봅니다."]], decoyEvidence: ["Exhaust flow", "door permissive 판단의 핵심 evidence가 아닙니다."], stopLabel: "Hold access", stopText: "door/interlock 상태가 불명확하면 access sequence를 반복하지 않습니다.", reportText: "carrier interface state와 host/load-port gap을 보고합니다.", wrongA: "door sequence를 반복하면 풀릴 수 있으니 계속 retry한다.", wrongB: "manual로 door를 열어 slot map을 확인한다.", weaknessTag: "loadport-door", twin: { route: "epi-a", mode: "comm", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "SEMI load port operation public overview", prevention: "load port issue는 carrier, clamp, door, host context를 한 chain으로 봅니다." },
+  { id: "mapper-wafer-count-intermittent", campaign: "Wafer Handling", title: "Mapper wafer count intermittent", subsystem: "EFEM / Mapping", severity: "Hold wafer identity", symptom: "같은 FOUP mapping에서 wafer count가 반복 측정마다 달라집니다.", riskLabel: "Traceability risk", riskText: "count가 흔들리면 wafer identity와 slot trace가 방어되지 않습니다.", primarySubsystem: "Mapper / wafer present", primaryText: "mapping repeatability, FOUP condition, sensor actual을 봅니다.", decoySubsystem: "RTP lamp", decoyText: "lamp zone은 mapping count issue와 무관합니다.", evidence: [["Repeated map", "반복 map 결과와 timestamp를 비교합니다."], ["FOUP/slot condition", "carrier condition과 slot obstruction 가능성을 확인합니다."], ["Sensor health", "mapper/wafer-present sensor event를 봅니다."]], decoyEvidence: ["Thermal trace", "thermal trace는 mapping 전 단계 evidence가 아닙니다."], stopLabel: "Hold movement", stopText: "identity가 불안정하면 wafer movement를 진행하지 않습니다.", reportText: "반복 map 차이와 traceability hold를 고객에게 설명합니다.", wrongA: "가장 최근 map을 정답으로 삼아 진행한다.", wrongB: "빈 slot로 표시된 wafer만 건너뛴다.", weaknessTag: "slot-map", twin: { route: "epi-a", mode: "comm", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "SEMI E87 carrier management public concept", prevention: "wafer count는 최신값보다 repeatability와 traceability가 중요합니다." },
+  { id: "efem-vacuum-grip-uncertain", campaign: "Wafer Handling", title: "EFEM vacuum grip uncertain", subsystem: "EFEM / Robot", severity: "Stop repeated pick", symptom: "EFEM pick 과정에서 grip/vacuum confirmation이 흔들리고 wafer present event가 늦게 들어옵니다.", riskLabel: "Wafer drop/contact risk", riskText: "grip confidence가 없으면 repeated pick이 wafer damage로 이어질 수 있습니다.", primarySubsystem: "EFEM end effector / grip", primaryText: "command, actual, vacuum/grip indication, present transition을 봅니다.", decoySubsystem: "Gas MFC", decoyText: "MFC는 EFEM atmospheric pick issue의 1차 원인이 아닙니다.", evidence: [["Pick event order", "extend/pick/retract/present event order를 확인합니다."], ["Grip actual", "grip/vacuum indication과 actual state를 봅니다."], ["Carrier slot condition", "slot obstruction 또는 wafer seating을 확인합니다."]], decoyEvidence: ["Film uniformity", "아직 film이 없습니다."], stopLabel: "Stop repeated pick", stopText: "grip confidence 전 반복 pick을 하지 않습니다.", reportText: "wafer handling risk와 recovery owner를 분리해 보고합니다.", wrongA: "속도를 낮춰 여러 번 pick을 시도한다.", wrongB: "성공할 때까지 같은 slot을 반복한다.", weaknessTag: "efem-grip", twin: { route: "epi-a", mode: "material", step: 1 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "public EFEM/load port wafer handling concept", prevention: "robot issue는 retry count보다 event order와 actual grip evidence입니다." },
+  { id: "aligner-orientation-ambiguity", campaign: "Wafer Handling", title: "Aligner orientation ambiguity", subsystem: "EFEM / Aligner", severity: "Hold LL handoff", symptom: "aligner 결과가 host expected orientation과 맞지 않아 LL handoff 전 wafer orientation confidence가 낮습니다.", riskLabel: "Orientation / process risk", riskText: "orientation ambiguity는 downstream process/metrology trace와 충돌합니다.", primarySubsystem: "Aligner / host expectation", primaryText: "align result, host job context, wafer ID를 맞춥니다.", decoySubsystem: "Foreline pump", decoyText: "foreline은 orientation evidence가 아닙니다.", evidence: [["Align result", "aligner result와 timestamp를 확인합니다."], ["Host expectation", "job context의 expected orientation을 비교합니다."], ["Wafer ID linkage", "wafer ID, slot, align event를 묶습니다."]], decoyEvidence: ["Pump current", "pump current는 orientation confidence와 무관합니다."], stopLabel: "Hold LL handoff", stopText: "orientation이 불명확하면 vacuum side로 넘기지 않습니다.", reportText: "orientation ambiguity를 traceability hold로 보고합니다.", wrongA: "LL 안에서 다시 맞으면 되니 넘긴다.", wrongB: "metrology에서 나중에 보정한다.", weaknessTag: "alignment", twin: { route: "epi-a", mode: "material", step: 2 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "public wafer handling / traceability training boundary", prevention: "align event는 wafer ID와 host context까지 한 packet이어야 합니다." },
+  { id: "ll-vent-rate-abnormal", campaign: "Vacuum Transfer", title: "Load Lock vent rate abnormal", subsystem: "Vacuum / Load Lock", severity: "Hold EFEM door open", symptom: "LL vent가 완료됐다고 보이나 vent rate 또는 pressure equalization trend가 baseline과 다릅니다.", riskLabel: "Pressure boundary risk", riskText: "vent boundary가 약하면 door open과 wafer handoff confidence가 낮습니다.", primarySubsystem: "LL vent / pressure equalization", primaryText: "pressure trend, vent source, door permissive를 함께 봅니다.", decoySubsystem: "Film growth", decoyText: "film growth는 LL vent 전 단계와 무관합니다.", evidence: [["Vent trend", "vent rate, plateau, elapsed time을 baseline과 비교합니다."], ["Door permissive", "door permissive와 pressure actual이 맞는지 봅니다."], ["Vent gas context", "approved vent gas/source context를 owner와 확인합니다."]], decoyEvidence: ["Sheet resistance", "공정 전 vent issue에는 맞지 않는 evidence입니다."], stopLabel: "Hold door open", stopText: "pressure equalization이 방어되지 않으면 door open을 진행하지 않습니다.", reportText: "vent complete indication과 trend mismatch를 설명합니다.", wrongA: "ready bit가 있으니 door open을 진행한다.", wrongB: "vent를 빠르게 만들기 위해 임의 조정한다.", weaknessTag: "vent-boundary", twin: { route: "epi-a", mode: "vacuum", step: 3 }, process: { flow: "epi-sige", step: 1 }, sourceBasis: "public vacuum boundary training / site document required", prevention: "vent도 pumpdown처럼 curve evidence로 봅니다." },
+  { id: "pm-slit-feedback-mismatch", campaign: "Vacuum Transfer", title: "PM slit valve feedback mismatch", subsystem: "PM / Slit Valve", severity: "Stop transfer", symptom: "TM에서 PM entry 요청 중 slit command와 feedback 상태가 맞지 않습니다.", riskLabel: "Motion/vacuum boundary risk", riskText: "slit mismatch는 robot motion과 vacuum boundary가 동시에 흔들리는 상황입니다.", primarySubsystem: "Slit valve feedback", primaryText: "command, feedback, pressure permissive, robot state를 같이 봅니다.", decoySubsystem: "Gas cabinet", decoyText: "gas cabinet은 slit feedback mismatch의 1차 원인이 아닙니다.", evidence: [["Command vs feedback", "slit command와 actual feedback timestamp를 비교합니다."], ["Pressure permissive", "PM/TM pressure boundary가 맞는지 확인합니다."], ["Robot position", "robot actual state와 slit state를 함께 봅니다."]], decoyEvidence: ["Metrology map", "metrology는 transfer gate issue 이후 evidence입니다."], stopLabel: "Stop transfer", stopText: "slit actual이 불명확하면 transfer를 진행하지 않습니다.", reportText: "motion boundary와 pressure boundary가 모두 확인 전이라고 보고합니다.", wrongA: "slit이 열린 것처럼 보이면 transfer한다.", wrongB: "feedback을 무시하고 command 기준으로 판단한다.", weaknessTag: "slit-feedback", twin: { route: "epi-a", mode: "vacuum", step: 5 }, process: { flow: "epi-sige", step: 2 }, sourceBasis: "cluster tool vacuum transfer public safety reasoning", prevention: "slit은 command가 아니라 actual feedback + pressure + robot state입니다." },
+  { id: "pm-pressure-controller-drift", campaign: "Process Module", title: "PM pressure controller drift", subsystem: "PM / Pressure", severity: "Hold process start", symptom: "PM pressure actual이 stable처럼 보이나 step 전후 drift가 반복되어 process boundary가 약합니다.", riskLabel: "Process condition risk", riskText: "pressure drift는 wafer result와 chamber state confidence를 낮춥니다.", primarySubsystem: "PM pressure control", primaryText: "pressure actual trend, pump path, gas off/on context를 나눕니다.", decoySubsystem: "Load port clamp", decoyText: "load port clamp는 PM pressure drift의 1차 evidence가 아닙니다.", evidence: [["Pressure trace", "stable bit보다 time trace를 비교합니다."], ["Pump/exhaust path", "pump and exhaust readiness를 함께 봅니다."], ["Module history", "recent vent/PM/seasoning history를 확인합니다."]], decoyEvidence: ["FOUP ID", "FOUP ID는 PM pressure drift evidence가 아닙니다."], stopLabel: "Hold process start", stopText: "pressure boundary가 안정되지 않으면 process start claim을 하지 않습니다.", reportText: "pressure trace와 suspected boundary를 분리해 보고합니다.", wrongA: "stable bit가 true면 process를 시작한다.", wrongB: "recipe pressure를 임의 변경한다.", weaknessTag: "pm-pressure", twin: { route: "epi-a", mode: "vacuum", step: 6 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "OSHA CVD pressure range public context / tool manual excluded", prevention: "PM pressure는 bit가 아니라 trace, history, boundary evidence입니다." },
+  { id: "lamp-temperature-stabilization-delay", campaign: "Process Module", title: "Lamp / temperature stabilization delay", subsystem: "Thermal / PM", severity: "Hold thermal process", symptom: "thermal stabilization 시간이 baseline보다 길고 wafer entry 또는 process start confidence가 낮습니다.", riskLabel: "Thermal uniformity risk", riskText: "unstable thermal state는 wafer stress, film uniformity, repeatability에 영향을 줄 수 있습니다.", primarySubsystem: "Lamp / thermal control", primaryText: "temperature trace, zone behavior, chamber condition을 봅니다.", decoySubsystem: "E84 handoff", decoyText: "carrier handoff는 thermal stabilization evidence가 아닙니다.", evidence: [["Temperature trace", "ramp/stabilization trend를 baseline과 비교합니다."], ["Zone behavior", "zone command/actual relation을 확인합니다."], ["Chamber condition", "recent PM, idle, seasoning context를 봅니다."]], decoyEvidence: ["Carrier clamp", "carrier clamp는 thermal trend evidence가 아닙니다."], stopLabel: "Hold thermal process", stopText: "thermal confidence가 낮으면 qualification/process claim을 멈춥니다.", reportText: "thermal trace와 wafer risk를 분리해 보고합니다.", wrongA: "목표값에 언젠가 도달하면 process start한다.", wrongB: "thermal sensor를 우회한다.", weaknessTag: "thermal-stability", twin: { route: "rtp", mode: "gas", step: 6 }, process: { flow: "rtp-ambient", step: 2 }, sourceBasis: "OSHA CVD heating methods / Applied radiant-heated chamber public notes", prevention: "thermal readiness는 peak보다 stabilization time trace입니다." },
+  { id: "insitu-clean-claim-unsupported", campaign: "Process Module", title: "In-situ clean claim unsupported", subsystem: "Chamber Clean / PM", severity: "Hold chamber-ready claim", symptom: "chamber clean이 완료됐다는 말은 있으나 clean 후 baseline, residue, exhaust evidence가 부족합니다.", riskLabel: "Chamber condition risk", riskText: "clean claim은 chamber release와 wafer quality에 직접 연결됩니다.", primarySubsystem: "Chamber clean evidence", primaryText: "clean completion, exhaust path, baseline/seasoning evidence를 봅니다.", decoySubsystem: "AMHS carrier handoff", decoyText: "carrier handoff는 clean completion evidence가 아닙니다.", evidence: [["Clean completion record", "승인된 clean completion evidence를 확인합니다."], ["Exhaust/abatement state", "clean byproduct downstream path를 확인합니다."], ["Baseline/seasoning link", "clean 이후 wafer/seasoning evidence와 연결합니다."]], decoyEvidence: ["Host lot priority", "lot priority는 clean evidence가 아닙니다."], stopLabel: "Hold ready claim", stopText: "chamber clean evidence가 닫히기 전 ready claim을 하지 않습니다.", reportText: "완료 주장과 release evidence gap을 보고합니다.", wrongA: "clean 버튼이 끝났으니 바로 customer wafer를 넣는다.", wrongB: "clean endpoint 세부값을 임의 판단한다.", weaknessTag: "chamber-clean", twin: { route: "epi-a", mode: "gas", step: 7 }, process: { flow: "selective-sd", step: 6 }, sourceBasis: "Applied public in-situ clean mention / detailed endpoint excluded", prevention: "clean은 endpoint 세부값이 아니라 approved completion + downstream + baseline packet입니다." },
+  { id: "mfc-actual-command-divergence", campaign: "Process Module", title: "MFC actual vs command divergence", subsystem: "Gas / MFC", severity: "Hold process gas", symptom: "gas command는 들어갔지만 actual response trend가 baseline과 맞지 않아 gas delivery confidence가 낮습니다.", riskLabel: "Gas delivery risk", riskText: "actual-command divergence는 process result와 safety boundary 모두에 영향을 줄 수 있습니다.", primarySubsystem: "MFC / gas delivery actual", primaryText: "command, actual, pressure, owner status를 분리합니다.", decoySubsystem: "FOUP slot", decoyText: "FOUP slot은 MFC actual evidence가 아닙니다.", evidence: [["Command/actual trace", "command와 actual response time trace를 비교합니다."], ["Pressure context", "line/chamber pressure context와 연결합니다."], ["Gas owner status", "gas supply owner evidence를 확인합니다."]], decoyEvidence: ["Wafer orientation", "orientation은 gas delivery evidence가 아닙니다."], stopLabel: "Hold process gas", stopText: "gas actual이 방어되지 않으면 process gas operation을 진행하지 않습니다.", reportText: "command와 actual의 차이를 fact 중심으로 보고합니다.", wrongA: "command가 정상이라 actual mismatch는 무시한다.", wrongB: "MFC setpoint를 임의 보정한다.", weaknessTag: "mfc-actual", twin: { route: "epi-a", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 3 }, sourceBasis: "public gas delivery training / setpoint excluded", prevention: "gas는 commanded가 아니라 delivered actual evidence로 판단합니다." },
+  { id: "pump-vibration-foreline-trend", campaign: "Vacuum Transfer", title: "Pump vibration / foreline trend abnormal", subsystem: "Vacuum / Pump", severity: "Hold pump-dependent operation", symptom: "pump는 running이지만 vibration, sound, foreline trend가 baseline과 달라 pump confidence가 낮습니다.", riskLabel: "Vacuum reliability risk", riskText: "pump health가 불확실하면 pumpdown, pressure stability, exhaust path를 모두 약하게 만듭니다.", primarySubsystem: "Pump / foreline", primaryText: "pump status, foreline trend, exhaust/backpressure를 봅니다.", decoySubsystem: "Aligner", decoyText: "aligner는 pump health evidence가 아닙니다.", evidence: [["Pump trend", "running bit보다 current/vibration/trend evidence를 봅니다."], ["Foreline/backpressure", "foreline condition과 exhaust readiness를 연결합니다."], ["Maintenance history", "recent pump/foreline maintenance 이력을 확인합니다."]], decoyEvidence: ["Slot map", "slot map은 pump trend evidence가 아닙니다."], stopLabel: "Hold pump-dependent operation", stopText: "pump confidence 전 pump-dependent operation을 진행하지 않습니다.", reportText: "running bit와 health evidence gap을 보고합니다.", wrongA: "running이면 정상으로 보고 pumpdown을 계속한다.", wrongB: "알람이 뜰 때까지 기다린다.", weaknessTag: "pump-health", twin: { route: "epi-a", mode: "vacuum", step: 3 }, process: { flow: "epi-sige", step: 1 }, sourceBasis: "public vacuum system reasoning / tool manual excluded", prevention: "pump health는 on/off가 아니라 trend와 downstream context입니다." },
+  { id: "exhaust-scrubber-backpressure", campaign: "Facility Hook-up", title: "Exhaust / scrubber backpressure alarm", subsystem: "Exhaust / Abatement", severity: "Stop gas process", symptom: "exhaust 또는 scrubber/backpressure 관련 alarm history가 있는데 process gas readiness가 요구됩니다.", riskLabel: "Downstream containment risk", riskText: "downstream restriction은 gas delivery보다 먼저 닫아야 할 safety gate입니다.", primarySubsystem: "Exhaust / abatement downstream", primaryText: "backpressure, exhaust flow, abatement owner closeout을 봅니다.", decoySubsystem: "Robot teach", decoyText: "robot teach는 downstream containment evidence가 아닙니다.", evidence: [["Backpressure history", "alarm history와 clear/acknowledge 순서를 봅니다."], ["Exhaust flow", "actual exhaust status와 trend를 확인합니다."], ["Abatement owner", "abatement owner closeout을 확인합니다."]], decoyEvidence: ["Wafer count", "wafer count는 backpressure evidence가 아닙니다."], stopLabel: "Stop gas process", stopText: "downstream containment closeout 전 gas process를 진행하지 않습니다.", reportText: "downstream closeout gap과 next owner action을 보고합니다.", wrongA: "tool gas panel이 ready면 downstream은 별도 문제다.", wrongB: "alarm을 acknowledge하고 process를 진행한다.", weaknessTag: "abatement-backpressure", twin: { route: "epi-a", mode: "gas", step: 7 }, process: { flow: "epi-sige", step: 5 }, sourceBasis: "SIA exhaust ventilation/leak detection public EHS facts", prevention: "source-to-abatement chain에서 downstream은 선택사항이 아닙니다." },
+  { id: "baseline-metrology-link-broken", campaign: "Qualification", title: "Baseline wafer metrology link broken", subsystem: "Qualification / Metrology", severity: "Hold qualification claim", symptom: "baseline wafer 결과는 있지만 wafer ID, PM ID, trace ID, metrology ID 연결이 불완전합니다.", riskLabel: "Qualification trace risk", riskText: "측정값만 있고 linkage가 없으면 qualification claim을 방어할 수 없습니다.", primarySubsystem: "Traceability / metrology linkage", primaryText: "wafer, PM, trace, metrology ID를 하나로 묶습니다.", decoySubsystem: "Gas cabinet pressure", decoyText: "gas cabinet은 metrology linkage의 직접 evidence가 아닙니다.", evidence: [["Wafer ID", "wafer ID와 slot/PM path를 확인합니다."], ["Trace ID", "run trace와 PM ID를 연결합니다."], ["Metrology ID", "측정 파일/시간/recipe association을 확인합니다."]], decoyEvidence: ["Door clamp", "door clamp는 baseline result linkage evidence가 아닙니다."], stopLabel: "Hold qual claim", stopText: "linkage가 닫히기 전 pass/fail claim을 하지 않습니다.", reportText: "값이 아니라 linkage gap을 보고합니다.", wrongA: "결과가 좋아 보이면 qual pass로 보고한다.", wrongB: "나중에 파일명을 맞춰 정리한다.", weaknessTag: "metrology-link", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "epi-sige", step: 6 }, sourceBasis: "public traceability / qualification training boundary", prevention: "baseline은 value packet이 아니라 ID-linkage packet입니다." },
+  { id: "thickness-edge-pattern-mismatch", campaign: "Qualification", title: "Thickness edge-pattern mismatch", subsystem: "EPI Process / Metrology", severity: "Hold module matching", symptom: "baseline thickness map에서 edge pattern이 반복되어 module/local condition 의심이 생깁니다.", riskLabel: "Film uniformity risk", riskText: "edge pattern은 chamber/local condition 또는 metrology association 문제일 수 있습니다.", primarySubsystem: "Film uniformity / chamber condition", primaryText: "map pattern, PM trace, chamber history를 같이 봅니다.", decoySubsystem: "AMHS OHT", decoyText: "OHT handoff는 thickness edge pattern evidence가 아닙니다.", evidence: [["Map pattern", "edge/center/asymmetry pattern을 확인합니다."], ["PM trace", "temperature, pressure, gas actual trace를 association합니다."], ["Chamber history", "seasoning/clean/PM history와 비교합니다."]], decoyEvidence: ["Carrier handoff", "carrier handoff는 film pattern의 1차 evidence가 아닙니다."], stopLabel: "Hold matching claim", stopText: "pattern 원인이 bounded되기 전 module matching claim을 하지 않습니다.", reportText: "pattern, candidate split, owner next action을 보고합니다.", wrongA: "평균 두께가 맞으면 edge pattern은 무시한다.", wrongB: "recipe를 edge 보정 쪽으로 임의 변경한다.", weaknessTag: "film-uniformity", twin: { route: "epi-b", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 4 }, sourceBasis: "Applied Epi public uniformity objective / recipe excluded", prevention: "film map은 평균보다 pattern과 trace association이 중요합니다." },
+  { id: "resistivity-trend-shift", campaign: "Qualification", title: "Resistivity trend shift", subsystem: "EPI Process / Doping", severity: "Hold electrical qual", symptom: "baseline wafer resistivity 또는 electrical trend가 이전 baseline과 다르게 이동합니다.", riskLabel: "Electrical property risk", riskText: "epi film은 dopant placement/electrical property와 연결되므로 trend shift를 단정하면 안 됩니다.", primarySubsystem: "Electrical metrology / process trace", primaryText: "metrology linkage, gas/dopant family context, PM trace를 봅니다.", decoySubsystem: "Load lock vent", decoyText: "LL vent는 processed electrical trend의 1차 evidence가 아닙니다.", evidence: [["Electrical metrology", "resistivity data와 measurement association을 확인합니다."], ["Process trace", "gas actual/pressure/thermal trace를 연결합니다."], ["Baseline comparison", "same PM, same qual context와 비교합니다."]], decoyEvidence: ["FOUP clamp", "FOUP clamp는 resistivity trend evidence가 아닙니다."], stopLabel: "Hold electrical qual", stopText: "electrical trend가 설명되기 전 qual pass를 주장하지 않습니다.", reportText: "observed trend와 unknown cause를 분리해 보고합니다.", wrongA: "한 장이면 noise로 보고 pass한다.", wrongB: "dopant 관련 recipe를 임의 보정한다.", weaknessTag: "resistivity-trend", twin: { route: "epi-a", mode: "gas", step: 6 }, process: { flow: "epi-sige", step: 4 }, sourceBasis: "Applied Epitaxy precise dopant placement public note / recipe excluded", prevention: "electrical trend는 metrology linkage + process trace + baseline context로 봅니다." },
+  { id: "haze-defect-inspection-excursion", campaign: "Qualification", title: "Haze / defect inspection excursion", subsystem: "Metrology / Defect", severity: "Hold release", symptom: "inspection 결과 haze 또는 defect count가 baseline보다 높아 release confidence가 낮습니다.", riskLabel: "Defect/yield risk", riskText: "defect excursion은 handling, chamber, purge, metrology 모두 후보입니다.", primarySubsystem: "Defect source split", primaryText: "map pattern, handling path, chamber history, metrology association을 봅니다.", decoySubsystem: "Host button state", decoyText: "UI ready state는 defect source evidence가 아닙니다.", evidence: [["Defect map", "location/pattern과 edge/center 분포를 봅니다."], ["Handling path", "FOUP/EFEM/TM/PM path와 contact clue를 비교합니다."], ["Chamber history", "recent PM/clean/seasoning을 확인합니다."]], decoyEvidence: ["Ready bit", "ready bit는 defect source evidence가 아닙니다."], stopLabel: "Hold release", stopText: "defect source가 bounded되기 전 release하지 않습니다.", reportText: "map pattern과 candidate split을 보고합니다.", wrongA: "inspection tool 오차로 보고 무시한다.", wrongB: "고객 wafer로 실제 영향만 확인한다.", weaknessTag: "defect-source", twin: { route: "epi-a", mode: "material", step: 8 }, process: { flow: "selective-sd", step: 6 }, sourceBasis: "public Epi low defect objective / metrology training boundary", prevention: "defect는 chamber-only가 아니라 path pattern 문제로 봅니다." },
+  { id: "qual-recipe-approval-gap", campaign: "Qualification", title: "Qualification recipe approval gap", subsystem: "Qualification / Governance", severity: "Hold qualification run", symptom: "qualification run을 요구받았지만 승인된 qual plan, owner, acceptance boundary가 분명하지 않습니다.", riskLabel: "Governance risk", riskText: "승인 경계 없는 qual은 결과가 좋아도 handover evidence가 되기 어렵습니다.", primarySubsystem: "Qual plan / owner approval", primaryText: "approved plan, owner, acceptance document를 확인합니다.", decoySubsystem: "Pump vibration", decoyText: "pump health와 별개로 governance gate가 먼저입니다.", evidence: [["Approved plan", "qual plan과 run purpose가 승인됐는지 확인합니다."], ["Owner", "customer/process/CE owner boundary를 확인합니다."], ["Acceptance boundary", "site-specific limit은 문서 우선이며 여기서 단정하지 않습니다."]], decoyEvidence: ["Tool color", "UI 색상은 qual governance evidence가 아닙니다."], stopLabel: "Hold qual run", stopText: "승인된 qual plan 없이는 qualification claim을 만들지 않습니다.", reportText: "공식 문서가 필요한 gap을 명확히 보고합니다.", wrongA: "일단 run하고 결과로 승인받는다.", wrongB: "과거 site 기준을 추정해서 pass/fail 한다.", weaknessTag: "qual-governance", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "epi-sige", step: 6 }, sourceBasis: "site-specific acceptance limit intentionally excluded", prevention: "qualification은 run이 아니라 approved plan + evidence + owner signoff입니다." },
+  { id: "gem-event-missing", campaign: "Controls / Host", title: "GEM event missing in trace", subsystem: "Controls / Host", severity: "Hold automated handoff", symptom: "module actual은 변했지만 host/GEM event 또는 collection event가 expected trace에 남지 않습니다.", riskLabel: "Automation trace risk", riskText: "event gap은 host-tool traceability와 automatic recovery를 약하게 만듭니다.", primarySubsystem: "Host/tool event chain", primaryText: "tool actual, event timestamp, host receive state를 비교합니다.", decoySubsystem: "Chamber clean", decoyText: "clean completion은 event transmission gap의 1차 evidence가 아닙니다.", evidence: [["Tool actual", "module actual transition을 확인합니다."], ["Event timestamp", "event 발생/전송/수신 시각을 비교합니다."], ["Host receive", "host side received context와 alarm history를 확인합니다."]], decoyEvidence: ["Particle map", "particle map은 GEM event gap evidence가 아닙니다."], stopLabel: "Hold automated action", stopText: "event trace가 불완전하면 automatic action을 신뢰하지 않습니다.", reportText: "actual state와 host trace gap을 보고합니다.", wrongA: "tool actual이 맞으면 host event는 나중에 맞춘다.", wrongB: "host alarm을 무시하고 local로 진행한다.", weaknessTag: "host-event", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "epi-sige", step: 6 }, sourceBasis: "SEMI E30/GEM referenced by SEMI E84 public abstract", prevention: "automation은 actual과 event trace가 함께 닫혀야 합니다." },
+  { id: "e84-handoff-timeout", campaign: "Controls / Host", title: "E84 carrier handoff timeout", subsystem: "AMHS / Load Port", severity: "Hold carrier handoff", symptom: "AMHS와 load port 사이 handoff가 timeout되고 carrier state가 ambiguous합니다.", riskLabel: "Carrier handoff risk", riskText: "carrier handoff timeout은 physical carrier와 automation state를 동시에 흔듭니다.", primarySubsystem: "E84 / load port handoff", primaryText: "AMHS active side, load port passive side, carrier present를 분리합니다.", decoySubsystem: "PM pressure", decoyText: "PM pressure는 carrier handoff timeout의 1차 evidence가 아닙니다.", evidence: [["AMHS state", "OHT/AMHS side state와 handoff stage를 확인합니다."], ["Load port state", "load port present/clamp/ready state를 확인합니다."], ["Carrier physical", "carrier 위치와 ownership handoff boundary를 확인합니다."]], decoyEvidence: ["Film thickness", "film thickness는 handoff timeout evidence가 아닙니다."], stopLabel: "Hold handoff", stopText: "carrier ownership이 불명확하면 handoff retry를 반복하지 않습니다.", reportText: "active/passive equipment boundary와 owner를 보고합니다.", wrongA: "handoff retry를 계속하면 풀릴 수 있다.", wrongB: "host가 관리하니 tool side는 볼 필요 없다.", weaknessTag: "e84-handoff", twin: { route: "epi-a", mode: "comm", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "SEMI E84 public abstract: carrier handoff PI/O interface", prevention: "E84 issue는 AMHS active, load port passive, carrier physical state를 동시에 봅니다." },
+  { id: "e87-carrier-state-stale", campaign: "Controls / Host", title: "E87 carrier state stale", subsystem: "Host / Carrier Management", severity: "Hold job start", symptom: "carrier ID는 맞지만 host carrier state가 이전 job context에 머물러 job start confidence가 없습니다.", riskLabel: "Carrier management risk", riskText: "stale carrier state는 wrong wafer/job association으로 이어질 수 있습니다.", primarySubsystem: "E87 carrier management", primaryText: "carrier ID, state model, job context, timestamp를 비교합니다.", decoySubsystem: "Cooling water", decoyText: "cooling water는 carrier state evidence가 아닙니다.", evidence: [["Carrier state", "host/tool carrier state와 timestamp를 확인합니다."], ["Job context", "job permission, lot context, slot map을 비교합니다."], ["Event order", "previous abort/retry event가 stale state를 만들었는지 봅니다."]], decoyEvidence: ["Water flow", "water flow는 carrier management evidence가 아닙니다."], stopLabel: "Hold job start", stopText: "carrier state가 최신인지 증명되기 전 job start를 하지 않습니다.", reportText: "carrier ID match와 carrier state stale을 분리해 보고합니다.", wrongA: "ID가 맞으니 state는 무시해도 된다.", wrongB: "wafer를 먼저 넣고 host를 나중에 sync한다.", weaknessTag: "e87-carrier", twin: { route: "epi-a", mode: "comm", step: 0 }, process: { flow: "epi-sige", step: 0 }, sourceBasis: "SEMI E87 carrier management public concept", prevention: "ID match는 충분조건이 아닙니다. carrier state와 job context가 최신이어야 합니다." },
+  { id: "time-sync-event-order-gap", campaign: "Controls / Host", title: "Time sync / event order gap", subsystem: "Controls / Data Integrity", severity: "Hold RCA claim", symptom: "tool, host, metrology timestamp가 서로 어긋나 event order 기반 RCA가 불명확합니다.", riskLabel: "RCA integrity risk", riskText: "timestamp가 어긋나면 증상-원인 순서 자체가 틀릴 수 있습니다.", primarySubsystem: "Time sync / event order", primaryText: "tool, host, metrology timestamps와 source clock을 봅니다.", decoySubsystem: "Gas valve sequence", decoyText: "valve sequence 세부정보는 제외 영역이며 time sync 문제 해결책이 아닙니다.", evidence: [["Tool timestamp", "tool event timestamp 기준을 확인합니다."], ["Host timestamp", "host receive/write timestamp와 비교합니다."], ["Metrology timestamp", "measurement file time과 wafer ID를 연결합니다."]], decoyEvidence: ["Recipe detail", "recipe detail은 공개 학습/안전 경계 밖입니다."], stopLabel: "Hold RCA claim", stopText: "event order가 불명확하면 root cause 단정을 하지 않습니다.", reportText: "timebase gap과 next data owner action을 보고합니다.", wrongA: "가장 편한 로그 하나만 기준으로 RCA를 닫는다.", wrongB: "세부 sequence를 추정해서 빈칸을 채운다.", weaknessTag: "data-integrity", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "epi-sige", step: 6 }, sourceBasis: "public data integrity training boundary", prevention: "RCA는 clock alignment가 없으면 추정으로 무너집니다." },
+  { id: "handover-punchlist-open", campaign: "Handover", title: "Customer handover punchlist open", subsystem: "Customer Communication", severity: "Hold final handover", symptom: "qualification은 거의 끝났지만 open issue, owner, due date, residual risk가 명확히 닫히지 않았습니다.", riskLabel: "Handover trust risk", riskText: "open punchlist가 모호하면 설치 완료 후 책임과 재발 방지가 흐려집니다.", primarySubsystem: "Handover packet", primaryText: "open issue, owner, risk, next action, evidence link를 확인합니다.", decoySubsystem: "Single wafer result", decoyText: "좋은 wafer 한 장은 handover packet을 대체하지 않습니다.", evidence: [["Open issue list", "남은 issue와 severity를 정리합니다."], ["Owner/due date", "각 issue owner와 due date를 확인합니다."], ["Evidence links", "qual data, report, RCA, waiver/hold note를 연결합니다."]], decoyEvidence: ["Verbal agreement only", "구두 합의만으로 장기 handover evidence가 되기 어렵습니다."], stopLabel: "Hold final handover", stopText: "open punchlist가 owner와 due date 없이 남으면 final handover를 닫지 않습니다.", reportText: "완료된 것, 남은 것, owner, next update를 분리해 보고합니다.", wrongA: "대부분 됐으니 완료로 보고하고 issue는 따로 처리한다.", wrongB: "고객이 바쁘면 구두로만 넘긴다.", weaknessTag: "handover", twin: { route: "epi-a", mode: "comm", step: 8 }, process: { flow: "epi-sige", step: 6 }, sourceBasis: "public project handover discipline / site-specific limits excluded", prevention: "handover는 finished feeling이 아니라 evidence-linked punchlist closeout입니다." }
+];
+
+function buildGeneratedIncidentCase(cfg) {
+  const safeId = cfg.id;
+  const sourceBasis = cfg.sourceBasis || "public source based training, official site document required";
+  return {
+    id: safeId,
+    title: cfg.title,
+    campaign: cfg.campaign,
+    stage: cfg.campaign,
+    subsystem: cfg.subsystem,
+    severity: cfg.severity,
+    symptom: cfg.symptom,
+    sourceBasis,
+    difficulty: "campaign",
+    twin: {
+      route: cfg.twin?.route || "epi-a",
+      mode: cfg.twin?.mode || "material",
+      step: Number.isFinite(cfg.twin?.step) ? cfg.twin.step : 0,
+      layers: { cutaway: true, pressure: true, particles: true, packets: true }
+    },
+    process: cfg.process || { flow: "epi-sige", step: 0 },
+    timeline: [
+      ["T0", "Symptom appears", cfg.symptom],
+      ["T1", "Boundary check", `${cfg.riskLabel}: ${cfg.riskText}`],
+      ["T2", "Evidence split", `${cfg.primarySubsystem} 중심으로 evidence를 모읍니다.`],
+      ["T3", "CE decision", cfg.stopText]
+    ],
+    cards: [
+      ["risk", `risk-${safeId}`, cfg.riskLabel, cfg.riskText, true],
+      ["risk", `risk-schedule-${safeId}`, "Schedule pressure", "일정 압박은 evidence가 아니며 stop/go 판단 근거가 아닙니다.", false],
+      ["subsystem", `sub-primary-${safeId}`, cfg.primarySubsystem, cfg.primaryText, true],
+      ["subsystem", `sub-decoy-${safeId}`, cfg.decoySubsystem, cfg.decoyText, false],
+      ["evidence", `ev-a-${safeId}`, cfg.evidence[0][0], cfg.evidence[0][1], true],
+      ["evidence", `ev-b-${safeId}`, cfg.evidence[1][0], cfg.evidence[1][1], true],
+      ["evidence", `ev-c-${safeId}`, cfg.evidence[2][0], cfg.evidence[2][1], true],
+      ["evidence", `ev-decoy-${safeId}`, cfg.decoyEvidence[0], cfg.decoyEvidence[1], false],
+      ["stop", `stop-${safeId}`, cfg.stopLabel, cfg.stopText, true],
+      ["report", `rep-${safeId}`, "Fact / risk / owner", cfg.reportText, true]
+    ],
+    decision: [
+      [`Hold and verify ${cfg.primarySubsystem}, required evidence, owner witness, and stop condition before proceeding.`, true, "맞습니다. 증상 -> 위험 경계 -> evidence -> owner -> stop/go 순서가 senior CE 사고입니다.", cfg.weaknessTag],
+      [cfg.wrongA, false, "위험합니다. evidence가 닫히기 전 진행하거나 반복 retry하는 것은 CE 사고력이 아닙니다.", cfg.weaknessTag],
+      [cfg.wrongB, false, "허용되지 않습니다. 비공개 절차 추정, 임의 우회, 임의 보정은 공식 교육/현장 승인 문서 영역입니다.", "unsafe-shortcut"]
+    ],
+    reportTemplate: `Confirmed symptom: ${cfg.symptom} Immediate risk: ${cfg.riskText} Current checks: ${cfg.evidence.map(item => item[0]).join(", ")}. Owner boundary: confirm with the approved customer/tool/facility owner. Next update: after evidence comparison without using recipe, valve sequence, detector setpoint, interlock bypass, or site-specific acceptance limits.`,
+    prevention: cfg.prevention,
+    playbook: [
+      [cfg.primarySubsystem, cfg.evidence.map(item => item[0]).join(", "), "Evidence does not correlate with the observed symptom", "CE + responsible owner"],
+      ["Shared boundary / owner gap", "Compare tool-side indication with facility/customer owner evidence", "Owner witness proves boundary is already closed", "Customer / facility owner"],
+      ["Traceability / data integrity gap", "Match event order, ID, timestamp, and saved report packet", "IDs and timestamps align without contradiction", "Controls / CE"]
+    ]
+  };
+}
+
+ceIncidentCases.push(...ceGeneratedCaseBlueprints.map(buildGeneratedIncidentCase));
+
+ceIncidentCases.forEach((item, index) => {
+  item.campaign = item.campaign || (index < 8 ? "Core Scenarios" : "Campaign");
+  item.stage = item.stage || item.campaign;
+  item.difficulty = item.difficulty || (index < 8 ? "core" : "campaign");
+  item.sourceBasis = item.sourceBasis || "Public source based training; official training and site-approved documents remain authoritative.";
+});
+
 function getActiveIncidentCase() {
   return ceIncidentCases.find(item => item.id === activeIncidentCase) || ceIncidentCases[0];
 }
@@ -7450,6 +7548,71 @@ function getIncidentStats() {
     score: solved ? Math.round((correct / solved) * 100) : 0,
     weakness
   };
+}
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function getIncidentFilters() {
+  return {
+    campaign: state.ceIncidentFilters?.campaign || "all",
+    subsystem: state.ceIncidentFilters?.subsystem || "all",
+    status: state.ceIncidentFilters?.status || "all",
+    query: state.ceIncidentFilters?.query || ""
+  };
+}
+
+function getIncidentCaseStatus(item) {
+  const answer = state.ceIncidentAnswers?.[item.id];
+  const review = state.ceLedgerReviews?.[item.id];
+  const packet = state.ceWarRoomPackets?.[item.id];
+  if (answer?.correct && packet?.savedAt) return "packet";
+  if (answer?.correct) return "done";
+  if (answer && !answer.correct) return "review";
+  if (review?.lastReviewedAt) return "reviewed";
+  return "new";
+}
+
+function getIncidentCaseFilterOptions() {
+  const campaigns = [...new Set(ceIncidentCases.map(item => item.campaign || "Core Scenarios"))].sort();
+  const subsystems = [...new Set(ceIncidentCases.map(item => item.subsystem))].sort();
+  return { campaigns, subsystems };
+}
+
+function getFilteredIncidentCases() {
+  const filters = getIncidentFilters();
+  const query = filters.query.trim().toLowerCase();
+  return ceIncidentCases.filter(item => {
+    const status = getIncidentCaseStatus(item);
+    const text = `${item.title} ${item.subsystem} ${item.severity} ${item.symptom} ${item.campaign} ${item.sourceBasis}`.toLowerCase();
+    const campaignOk = filters.campaign === "all" || item.campaign === filters.campaign;
+    const subsystemOk = filters.subsystem === "all" || item.subsystem === filters.subsystem;
+    const statusOk = filters.status === "all" || status === filters.status || (filters.status === "open" && status !== "packet");
+    const queryOk = !query || text.includes(query);
+    return campaignOk && subsystemOk && statusOk && queryOk;
+  });
+}
+
+function getIncidentCampaignStats() {
+  const groups = ceIncidentCases.reduce((acc, item) => {
+    const key = item.campaign || "Core Scenarios";
+    acc[key] = acc[key] || { total: 0, solved: 0, packets: 0 };
+    acc[key].total += 1;
+    if (state.ceIncidentAnswers?.[item.id]) acc[key].solved += 1;
+    if (state.ceWarRoomPackets?.[item.id]?.savedAt) acc[key].packets += 1;
+    return acc;
+  }, {});
+  return Object.entries(groups).map(([campaign, data]) => ({
+    campaign,
+    ...data,
+    score: data.total ? Math.round((data.packets / data.total) * 100) : 0
+  }));
 }
 
 function groupIncidentCards(cards) {
@@ -7503,6 +7666,10 @@ function renderCeIncidentKernel() {
   const grouped = groupIncidentCards(item.cards);
   const answer = state.ceIncidentAnswers?.[item.id];
   const report = state.ceIncidentReports?.[item.id];
+  const filters = getIncidentFilters();
+  const filteredCases = getFilteredIncidentCases();
+  const options = getIncidentCaseFilterOptions();
+  const campaignStats = getIncidentCampaignStats();
   const laneLabels = {
     risk: "Risk",
     subsystem: "Subsystem",
@@ -7513,35 +7680,92 @@ function renderCeIncidentKernel() {
   root.innerHTML = `
     <div class="incident-head">
       <div>
-        <p class="eyebrow">Project Universe OS v8</p>
+        <p class="eyebrow">Project Universe OS v11</p>
         <h2>CE Incident Kernel</h2>
-        <p>증상 하나를 받으면 3D 상태를 맞추고, 위험도, subsystem, evidence, stop condition, 고객 보고 문장을 고르는 fault-injection 훈련장입니다.</p>
+        <p>40+ case campaign bank입니다. 증상 하나를 받으면 3D 상태를 맞추고, 위험도, subsystem, evidence, stop condition, 고객 보고 문장을 고르는 fault-injection 훈련장입니다.</p>
       </div>
       <div class="incident-score">
         <span>Incident score</span>
         <strong>${stats.score}%</strong>
-        <small>${stats.correct}/${stats.solved || 0} correct · evidence ${evidence.hits}/${evidence.required.length}</small>
+        <small>${stats.correct}/${stats.solved || 0} correct · ${ceIncidentCases.length} cases · evidence ${evidence.hits}/${evidence.required.length}</small>
       </div>
     </div>
+    <section class="incident-campaign-console" aria-label="incident campaign filters">
+      <div class="incident-campaign-strip">
+        ${campaignStats.map(entry => `
+          <button type="button" class="${filters.campaign === entry.campaign ? "active" : ""}" data-incident-filter="campaign" data-filter-value="${escapeHtml(entry.campaign)}">
+            <span>${entry.score}%</span>
+            <strong>${escapeHtml(entry.campaign)}</strong>
+            <small>${entry.packets}/${entry.total} packets · ${entry.solved} touched</small>
+          </button>
+        `).join("")}
+      </div>
+      <div class="incident-filter-bar">
+        <label>
+          <span>Campaign</span>
+          <select data-incident-filter-select="campaign">
+            <option value="all">All campaigns</option>
+            ${options.campaigns.map(value => `<option value="${escapeHtml(value)}" ${filters.campaign === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Subsystem</span>
+          <select data-incident-filter-select="subsystem">
+            <option value="all">All subsystems</option>
+            ${options.subsystems.map(value => `<option value="${escapeHtml(value)}" ${filters.subsystem === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Status</span>
+          <select data-incident-filter-select="status">
+            ${[
+              ["all", "All"],
+              ["open", "Open"],
+              ["new", "New"],
+              ["review", "Wrong / Review"],
+              ["done", "Correct only"],
+              ["packet", "Packet saved"]
+            ].map(([value, label]) => `<option value="${value}" ${filters.status === value ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
+        <label>
+          <span>Search</span>
+          <input type="search" data-incident-search value="${escapeHtml(filters.query)}" placeholder="gas, LL, handoff, metrology..." />
+        </label>
+        <button class="secondary" type="button" data-incident-filter-clear>Clear</button>
+      </div>
+      <p class="incident-bank-note">${filteredCases.length}/${ceIncidentCases.length} cases visible · 공개자료 기반 훈련과 합리적 사고 프레임만 포함하며 recipe, valve sequence, detector setpoint, interlock bypass, site-specific acceptance limit은 제외합니다.</p>
+    </section>
     <div class="incident-case-row" aria-label="incident case selector">
-      ${ceIncidentCases.map((entry, index) => {
+      ${filteredCases.length ? filteredCases.map((entry, index) => {
         const saved = state.ceIncidentAnswers?.[entry.id];
+        const status = getIncidentCaseStatus(entry);
         return `
-          <button type="button" class="${entry.id === item.id ? "active" : ""} ${saved?.correct ? "done" : saved ? "review" : ""}" data-incident-case="${entry.id}">
+          <button type="button" class="${entry.id === item.id ? "active" : ""} ${saved?.correct ? "done" : saved ? "review" : ""} ${status === "packet" ? "packet" : ""}" data-incident-case="${entry.id}">
             <span>${String(index + 1).padStart(2, "0")}</span>
-            <b>${entry.subsystem}</b>
+            <b>${escapeHtml(entry.campaign || "Core")}</b>
             <strong>${entry.title}</strong>
-            <small>${entry.severity}</small>
+            <small>${entry.subsystem} · ${entry.severity}</small>
           </button>
         `;
-      }).join("")}
+      }).join("") : `
+        <article class="incident-empty">
+          <strong>No cases match this filter.</strong>
+          <span>필터를 지우거나 다른 campaign/subsystem을 선택하세요.</span>
+        </article>
+      `}
     </div>
     <div class="incident-layout">
       <section class="incident-brief">
         <div class="incident-title">
-          <span>${item.severity}</span>
+          <span>${item.campaign} · ${item.severity}</span>
           <h3>${item.title}</h3>
           <p>${item.symptom}</p>
+        </div>
+        <div class="incident-source-strip">
+          <span>Public basis</span>
+          <strong>${escapeHtml(item.sourceBasis)}</strong>
+          <small>공식 교육/현장 승인 문서가 언제나 우선입니다.</small>
         </div>
         <div class="incident-timeline">
           ${item.timeline.map(([time, label, text]) => `
@@ -7615,6 +7839,33 @@ function renderCeIncidentKernel() {
     </div>
   `;
 
+  root.querySelectorAll("[data-incident-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      state.ceIncidentFilters = state.ceIncidentFilters || {};
+      state.ceIncidentFilters[button.dataset.incidentFilter] = button.dataset.filterValue || "all";
+      persistState();
+      renderCeIncidentKernel();
+    });
+  });
+  root.querySelectorAll("[data-incident-filter-select]").forEach(select => {
+    select.addEventListener("change", () => {
+      state.ceIncidentFilters = state.ceIncidentFilters || {};
+      state.ceIncidentFilters[select.dataset.incidentFilterSelect] = select.value;
+      persistState();
+      renderCeIncidentKernel();
+    });
+  });
+  root.querySelector("[data-incident-search]")?.addEventListener("input", event => {
+    state.ceIncidentFilters = state.ceIncidentFilters || {};
+    state.ceIncidentFilters.query = event.target.value;
+    persistState();
+    renderCeIncidentKernel();
+  });
+  root.querySelector("[data-incident-filter-clear]")?.addEventListener("click", () => {
+    state.ceIncidentFilters = { campaign: "all", subsystem: "all", status: "all", query: "" };
+    persistState();
+    renderCeIncidentKernel();
+  });
   root.querySelectorAll("[data-incident-case]").forEach(button => {
     button.addEventListener("click", () => {
       activeIncidentCase = button.dataset.incidentCase;
@@ -7734,6 +7985,7 @@ const ceWarRoomPlaybooks = {
 };
 
 function getWarRoomPlaybook(item) {
+  if (Array.isArray(item.playbook) && item.playbook.length) return item.playbook;
   return ceWarRoomPlaybooks[item.id] || [
     ["Primary subsystem hypothesis", "Collect direct actual-state evidence", "Evidence disproves the subsystem candidate", "Senior CE"],
     ["Shared utility hypothesis", "Compare shared facility and module-local trends", "Shared trend does not correlate", "Facility owner"],
