@@ -1108,6 +1108,307 @@ main,
   }
 }
 
+/* 20260717 v12 CE campaign game engine */
+.ce-campaign-engine {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 9% 2%, rgba(0, 255, 149, 0.13), transparent 32%),
+    radial-gradient(circle at 90% 0%, rgba(185, 140, 255, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(0, 12, 12, 0.98), rgba(8, 5, 18, 0.97));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.campaign-head,
+.campaign-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.38fr);
+  gap: 14px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.campaign-head h2,
+.campaign-title-row h3 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.18;
+}
+
+.campaign-head p:not(.eyebrow),
+.campaign-readiness small,
+.campaign-objective-grid p,
+.campaign-choice-grid span,
+.campaign-result p,
+.campaign-case-link p {
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.campaign-readiness,
+.campaign-meter-grid article,
+.campaign-scene,
+.campaign-ops {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.62);
+  box-shadow: inset 0 1px 0 rgba(236, 255, 248, 0.04);
+}
+
+.campaign-readiness {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding: 14px;
+}
+
+.campaign-readiness span,
+.campaign-meter-grid span,
+.campaign-map span,
+.campaign-title-row span,
+.campaign-objective-grid span,
+.campaign-case-link span {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.campaign-readiness strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(2.35rem, 5vw, 3.6rem);
+  line-height: 0.95;
+}
+
+.campaign-meter-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.campaign-meter-grid article {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+}
+
+.campaign-meter-grid strong {
+  color: #ffffff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 1.3rem;
+}
+
+.campaign-meter-grid i {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.9) var(--w), rgba(94, 231, 255, 0.12) var(--w));
+}
+
+.campaign-meter-grid article.risk i {
+  background:
+    linear-gradient(90deg, rgba(255, 107, 107, 0.86) var(--w), rgba(94, 231, 255, 0.12) var(--w));
+}
+
+.campaign-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.campaign-map button,
+.campaign-choice-grid button {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.campaign-map button {
+  display: grid;
+  gap: 4px;
+  min-height: 100px;
+  padding: 10px;
+}
+
+.campaign-map button.active,
+.campaign-choice-grid button.picked {
+  border-color: rgba(0, 255, 149, 0.66);
+  background: rgba(0, 255, 149, 0.1);
+}
+
+.campaign-map button.good,
+.campaign-choice-grid button.good {
+  border-color: rgba(0, 255, 149, 0.42);
+}
+
+.campaign-map button.bad,
+.campaign-choice-grid button.bad {
+  border-color: rgba(255, 107, 107, 0.66);
+  background: rgba(255, 107, 107, 0.11);
+}
+
+.campaign-map strong,
+.campaign-choice-grid b,
+.campaign-result strong,
+.campaign-case-link strong {
+  color: #ffffff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.campaign-map small {
+  color: rgba(236, 255, 248, 0.64);
+}
+
+.campaign-scene,
+.campaign-ops {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.campaign-title-row {
+  display: grid;
+  gap: 6px;
+}
+
+.campaign-title-row p {
+  margin: 0;
+  color: rgba(236, 255, 248, 0.76);
+  line-height: 1.58;
+}
+
+.campaign-objective-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.campaign-objective-grid article,
+.campaign-result,
+.campaign-case-link {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.campaign-objective-grid p,
+.campaign-result p,
+.campaign-case-link p {
+  margin: 0;
+}
+
+.campaign-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.campaign-choice-grid button {
+  display: grid;
+  gap: 6px;
+  min-height: 112px;
+  padding: 11px;
+}
+
+.campaign-result.good {
+  border-color: rgba(0, 255, 149, 0.38);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.campaign-result.bad {
+  border-color: rgba(255, 107, 107, 0.48);
+  background: rgba(255, 107, 107, 0.10);
+}
+
+.campaign-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ce-campaign-engine .primary,
+.ce-campaign-engine .secondary {
+  min-height: 38px;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.ce-campaign-engine .primary {
+  background: rgba(0, 255, 149, 0.18);
+  color: #ecfff8;
+}
+
+.ce-campaign-engine .secondary {
+  background: rgba(94, 231, 255, 0.08);
+  color: #ecfff8;
+}
+
+.ce-campaign-engine textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 260px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #d8ffea;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+@media (max-width: 1180px) {
+  .campaign-head,
+  .campaign-layout,
+  .campaign-objective-grid,
+  .campaign-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-meter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ce-campaign-engine {
+    padding: 12px;
+  }
+
+  .campaign-meter-grid,
+  .campaign-map,
+  .campaign-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-choice-grid button,
+  .campaign-map button {
+    min-height: auto;
+  }
+}
+
 /* 20260717 v8 CE incident kernel */
 .ce-incident-kernel {
   display: grid;

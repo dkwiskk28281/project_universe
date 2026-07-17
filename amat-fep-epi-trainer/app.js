@@ -4446,6 +4446,7 @@ function save() {
   renderLearningHud();
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
+  renderCeCampaignEngine();
   renderCeIncidentKernel();
   renderCeWarRoom();
   renderCeMemoryLedger();
@@ -7657,6 +7658,375 @@ function syncIncidentToTwin(item, options = {}) {
   return true;
 }
 
+const ceCampaignMissions = [
+  {
+    id: "day0-datum",
+    day: "Day 0",
+    title: "Move-in datum conflict",
+    caseId: "move-in-floor-mark-mismatch",
+    owner: "Rigging + customer facility",
+    objective: "장비 기준점, floor mark, service clearance가 같은 좌표계인지 확정한다.",
+    scene: "Crate가 line 앞에 도착했고 고객은 빠른 set-in-place를 원합니다. 그런데 floor mark와 tool datum이 미세하게 어긋나 보입니다.",
+    stakes: "여기서 밀어붙이면 hook-up reach, panel clearance, anchor 위치가 모두 후속 부채가 됩니다.",
+    stop: "datum/clearance owner witness 없이는 anchor 또는 hook-up 확정 금지",
+    customerLine: "We are holding set-in-place until tool datum, customer floor mark, and service clearance are aligned with the facility owner.",
+    choices: [
+      { id: "hold-datum", label: "Hold and build datum packet", good: true, safety: 14, evidence: 18, trust: 11, risk: -10, result: "기준점, clearance, owner witness가 하나의 packet으로 묶였습니다. 후속 hook-up risk가 줄어듭니다." },
+      { id: "push-place", label: "Set in place first", good: false, safety: -12, evidence: -15, trust: -10, risk: 18, result: "겉으로는 빨라 보이지만 hook-up stress와 anchor 재작업 risk가 캠페인 부채로 남습니다." },
+      { id: "adjust-lines", label: "Later adjust facility lines", good: false, safety: -8, evidence: -12, trust: -8, risk: 14, result: "facility line으로 datum 문제를 흡수하려는 선택입니다. 승인 없는 현장 보정 사고가 됩니다." }
+    ]
+  },
+  {
+    id: "day1-loto",
+    day: "Day 1",
+    title: "Power-on boundary gate",
+    caseId: "power-loto-boundary-unclear",
+    owner: "Electrical + EHS",
+    objective: "LOTO, stored energy, panel scope를 모른 채 DVM부터 들이대지 않는다.",
+    scene: "power-on readiness 회의 중 panel boundary가 사람마다 다르게 이해되고 있습니다.",
+    stakes: "전기 작업은 빠른 확인보다 승인된 boundary가 먼저입니다.",
+    stop: "authorized owner와 LOTO scope가 맞기 전 energized work 금지",
+    customerLine: "Before any energized check, we need the approved LOTO boundary and stored-energy scope confirmed by the authorized owner.",
+    choices: [
+      { id: "confirm-loto", label: "Confirm LOTO boundary first", good: true, safety: 20, evidence: 13, trust: 9, risk: -16, result: "DVM 사용 전 safety boundary가 닫혔습니다. 이후 측정은 expected value 기반으로 진행할 수 있습니다." },
+      { id: "quick-dvm", label: "Open panel and quick-check with DVM", good: false, safety: -22, evidence: -8, trust: -14, risk: 24, result: "위험한 energized work shortcut입니다. senior CE 사고에서는 즉시 stop입니다." },
+      { id: "trust-lamp", label: "Trust green lamp", good: false, safety: -14, evidence: -10, trust: -8, risk: 16, result: "indicator는 evidence의 일부일 뿐입니다. boundary와 stored energy를 대체하지 않습니다." }
+    ]
+  },
+  {
+    id: "facility-exhaust",
+    day: "Day 1",
+    title: "Exhaust witness gap",
+    caseId: "facility-exhaust-not-witnessed",
+    owner: "Facilities + abatement",
+    objective: "tool-side ready와 downstream exhaust actual을 구분한다.",
+    scene: "exhaust line은 연결된 것처럼 보이지만 facility owner witness와 actual trend가 없습니다.",
+    stakes: "downstream containment가 없으면 first gas는 절대 방어되지 않습니다.",
+    stop: "exhaust/abatement actual witness 없이는 hazardous operation 금지",
+    customerLine: "Tool-side connection is visible, but downstream exhaust actual readiness is not yet witnessed; we are holding hazardous operation.",
+    choices: [
+      { id: "witness-exhaust", label: "Require exhaust/abatement witness", good: true, safety: 19, evidence: 15, trust: 10, risk: -14, result: "source-to-abatement chain의 downstream half가 evidence로 닫힙니다." },
+      { id: "visual-enough", label: "Visual connection is enough", good: false, safety: -20, evidence: -14, trust: -12, risk: 24, result: "line이 보인다는 것은 actual readiness가 아닙니다. first gas gate가 잠깁니다." },
+      { id: "alarm-test", label: "Let alarms prove it during gas", good: false, safety: -24, evidence: -12, trust: -16, risk: 28, result: "알람으로 safety chain을 시험하는 선택입니다. 즉시 stop입니다." }
+    ]
+  },
+  {
+    id: "first-gas",
+    day: "Day 2",
+    title: "First gas authorization",
+    caseId: "toxic-gas-cabinet-owner-gap",
+    owner: "Gas + EHS + CE",
+    objective: "gas family, SDS, detector health, exhaust/abatement owner evidence를 한 chain으로 묶는다.",
+    scene: "tool gas panel은 green에 가깝지만 toxic/flammable/corrosive family별 owner packet이 완전하지 않습니다.",
+    stakes: "first gas는 schedule gate가 아니라 safety chain gate입니다.",
+    stop: "gas family/detector/exhaust/abatement owner chain 없이는 gas enable 금지",
+    customerLine: "First gas remains on hold until gas family, detector health, exhaust/abatement actual, and owner witness are in one packet.",
+    choices: [
+      { id: "chain-packet", label: "Build source-to-abatement packet", good: true, safety: 22, evidence: 18, trust: 12, risk: -18, result: "gas readiness가 source, detector, exhaust, abatement, owner witness로 닫혔습니다." },
+      { id: "tool-ready", label: "Trust tool-side ready", good: false, safety: -22, evidence: -16, trust: -12, risk: 26, result: "tool-side ready bit는 downstream actual과 gas family control을 대체하지 않습니다." },
+      { id: "change-detector", label: "Adjust detector behavior", good: false, safety: -26, evidence: -15, trust: -18, risk: 30, result: "detector setpoint/behavior 임의 조정은 제외된 위험 정보 영역입니다." }
+    ]
+  },
+  {
+    id: "wafer-handoff",
+    day: "Day 2",
+    title: "Carrier handoff timeout",
+    caseId: "e84-handoff-timeout",
+    owner: "AMHS + load port + host",
+    objective: "AMHS active side, load port passive side, physical carrier ownership을 분리한다.",
+    scene: "OHT/AMHS handoff가 timeout되고 carrier state가 ambiguous합니다.",
+    stakes: "handoff retry를 반복하면 carrier ownership과 slot traceability가 무너집니다.",
+    stop: "carrier ownership ambiguous 상태에서 repeated handoff retry 금지",
+    customerLine: "We are holding repeated handoff until AMHS state, load port state, and physical carrier ownership are reconciled.",
+    choices: [
+      { id: "state-chain", label: "Reconcile AMHS/load-port/physical state", good: true, safety: 13, evidence: 17, trust: 10, risk: -11, result: "E84 handoff를 active/passive/physical state chain으로 분리했습니다." },
+      { id: "retry", label: "Retry handoff repeatedly", good: false, safety: -11, evidence: -14, trust: -9, risk: 18, result: "반복 retry는 원인 분리 없이 state를 더 흐리게 만듭니다." },
+      { id: "host-only", label: "Assume host owns it", good: false, safety: -8, evidence: -13, trust: -8, risk: 14, result: "host state만으로 physical carrier ownership을 대체할 수 없습니다." }
+    ]
+  },
+  {
+    id: "baseline-link",
+    day: "Day 3",
+    title: "Baseline metrology linkage",
+    caseId: "baseline-metrology-link-broken",
+    owner: "Process + metrology + CE",
+    objective: "wafer ID, PM ID, trace ID, metrology ID가 하나로 연결된 qualification packet을 만든다.",
+    scene: "baseline wafer 결과는 나왔지만 trace/metrology linkage가 불완전합니다.",
+    stakes: "좋은 숫자만 있어도 linkage가 없으면 handover evidence가 아닙니다.",
+    stop: "ID linkage가 닫히기 전 qualification claim 금지",
+    customerLine: "The value alone is not enough; we are holding the qualification claim until wafer, PM, trace, and metrology IDs are linked.",
+    choices: [
+      { id: "link-packet", label: "Build ID-linkage packet", good: true, safety: 8, evidence: 22, trust: 14, risk: -12, result: "qualification result가 defendable evidence packet으로 바뀝니다." },
+      { id: "value-pass", label: "Pass because value looks good", good: false, safety: -4, evidence: -22, trust: -16, risk: 18, result: "숫자는 좋지만 linkage가 없어 handover에서 무너집니다." },
+      { id: "rename-later", label: "Fix file names later", good: false, safety: -2, evidence: -18, trust: -14, risk: 16, result: "사후 파일명 정리는 timestamp/data integrity 문제를 해결하지 못합니다." }
+    ]
+  },
+  {
+    id: "handover",
+    day: "Day 3",
+    title: "Final handover punchlist",
+    caseId: "handover-punchlist-open",
+    owner: "Customer + CE + process owner",
+    objective: "open issue, owner, due date, residual risk, evidence link를 닫는다.",
+    scene: "설치는 거의 끝났고 모두가 끝났다고 느끼지만 punchlist의 owner/due date가 불명확합니다.",
+    stakes: "handover는 느낌이 아니라 evidence-linked closeout입니다.",
+    stop: "owner/due date 없는 open punchlist 상태에서 final handover 금지",
+    customerLine: "We can summarize completed evidence today, but final handover should wait until open issues have owner, due date, and residual-risk wording.",
+    choices: [
+      { id: "closeout", label: "Close evidence-linked punchlist", good: true, safety: 8, evidence: 16, trust: 20, risk: -14, result: "완료 evidence와 open issue가 분리되어 고객 신뢰가 올라갑니다." },
+      { id: "verbal", label: "Close verbally", good: false, safety: -4, evidence: -14, trust: -18, risk: 18, result: "구두 종료는 장기 운영에서 owner ambiguity를 만듭니다." },
+      { id: "hide-open", label: "Report only completed items", good: false, safety: -6, evidence: -16, trust: -22, risk: 22, result: "open issue를 숨기면 다음 장애에서 신뢰를 크게 잃습니다." }
+    ]
+  }
+];
+
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function getCampaignState() {
+  state.ceCampaign = state.ceCampaign || {
+    activeMission: ceCampaignMissions[0].id,
+    decisions: {},
+    startedAt: new Date().toISOString()
+  };
+  if (!ceCampaignMissions.some(item => item.id === state.ceCampaign.activeMission)) {
+    state.ceCampaign.activeMission = ceCampaignMissions[0].id;
+  }
+  state.ceCampaign.decisions = state.ceCampaign.decisions || {};
+  return state.ceCampaign;
+}
+
+function getActiveCampaignMission() {
+  const campaign = getCampaignState();
+  return ceCampaignMissions.find(item => item.id === campaign.activeMission) || ceCampaignMissions[0];
+}
+
+function getCampaignMetrics() {
+  const campaign = getCampaignState();
+  const decisions = Object.values(campaign.decisions || {});
+  const totals = decisions.reduce((acc, decision) => {
+    acc.safety += decision.safety || 0;
+    acc.evidence += decision.evidence || 0;
+    acc.trust += decision.trust || 0;
+    acc.risk += decision.risk || 0;
+    if (decision.good) acc.good += 1;
+    else acc.bad += 1;
+    return acc;
+  }, { safety: 62, evidence: 46, trust: 52, risk: 20, good: 0, bad: 0 });
+  return {
+    safety: clampScore(totals.safety),
+    evidence: clampScore(totals.evidence),
+    trust: clampScore(totals.trust),
+    risk: clampScore(totals.risk),
+    good: totals.good,
+    bad: totals.bad,
+    completed: decisions.length,
+    total: ceCampaignMissions.length,
+    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - totals.risk)) / 4)
+  };
+}
+
+function buildCampaignPacket() {
+  const campaign = getCampaignState();
+  const metrics = getCampaignMetrics();
+  return {
+    schemaVersion: "ce-campaign-v1",
+    generatedAt: new Date().toISOString(),
+    activeMission: campaign.activeMission,
+    metrics,
+    decisions: ceCampaignMissions.map(mission => {
+      const decision = campaign.decisions?.[mission.id];
+      return {
+        missionId: mission.id,
+        title: mission.title,
+        day: mission.day,
+        caseId: mission.caseId,
+        owner: mission.owner,
+        selected: decision?.choiceId || null,
+        good: decision?.good ?? null,
+        result: decision?.result || null,
+        customerLine: mission.customerLine,
+        stopCondition: mission.stop
+      };
+    }),
+    openDebts: ceCampaignMissions
+      .filter(mission => campaign.decisions?.[mission.id] && !campaign.decisions[mission.id].good)
+      .map(mission => ({
+        missionId: mission.id,
+        title: mission.title,
+        caseId: mission.caseId,
+        debt: campaign.decisions[mission.id].result,
+        recovery: mission.stop
+      })),
+    excludedDangerousInfo: [
+      "recipe",
+      "valve sequence",
+      "detector setpoint",
+      "interlock bypass",
+      "site-specific acceptance limit",
+      "customer confidential procedure"
+    ]
+  };
+}
+
+function renderCeCampaignEngine() {
+  const root = document.querySelector("#ce-campaign-engine");
+  if (!root) return;
+  const campaign = getCampaignState();
+  const mission = getActiveCampaignMission();
+  const metrics = getCampaignMetrics();
+  const selected = campaign.decisions?.[mission.id];
+  const activeIndex = ceCampaignMissions.findIndex(item => item.id === mission.id);
+  const packet = buildCampaignPacket();
+  root.innerHTML = `
+    <div class="campaign-head">
+      <div>
+        <p class="eyebrow">Project Universe OS v12</p>
+        <h2>CE Campaign Game Engine</h2>
+        <p>설치 현장을 Day 0부터 handover까지 이어서 판단합니다. 선택을 잘못하면 다음 단계에 risk debt가 남고, 필요한 순간 41-case bank로 뛰어들어 evidence 훈련을 합니다.</p>
+      </div>
+      <div class="campaign-readiness">
+        <span>Campaign readiness</span>
+        <strong>${metrics.readiness}%</strong>
+        <small>${metrics.completed}/${metrics.total} missions · risk debt ${metrics.risk}%</small>
+      </div>
+    </div>
+    <div class="campaign-meter-grid">
+      <article><span>Safety</span><strong>${metrics.safety}%</strong><i style="--w:${metrics.safety}%"></i></article>
+      <article><span>Evidence</span><strong>${metrics.evidence}%</strong><i style="--w:${metrics.evidence}%"></i></article>
+      <article><span>Customer trust</span><strong>${metrics.trust}%</strong><i style="--w:${metrics.trust}%"></i></article>
+      <article class="risk"><span>Risk debt</span><strong>${metrics.risk}%</strong><i style="--w:${metrics.risk}%"></i></article>
+    </div>
+    <div class="campaign-map" aria-label="campaign mission map">
+      ${ceCampaignMissions.map((entry, index) => {
+        const decision = campaign.decisions?.[entry.id];
+        return `
+          <button type="button" class="${entry.id === mission.id ? "active" : ""} ${decision?.good ? "good" : decision ? "bad" : ""}" data-campaign-mission="${entry.id}">
+            <span>${entry.day}</span>
+            <strong>${entry.title}</strong>
+            <small>${decision ? (decision.good ? "contained" : "debt") : index === activeIndex ? "active" : "open"}</small>
+          </button>
+        `;
+      }).join("")}
+    </div>
+    <div class="campaign-layout">
+      <section class="campaign-scene">
+        <div class="campaign-title-row">
+          <span>${mission.day} · ${mission.owner}</span>
+          <h3>${mission.title}</h3>
+          <p>${mission.scene}</p>
+        </div>
+        <div class="campaign-objective-grid">
+          <article><span>Objective</span><p>${mission.objective}</p></article>
+          <article><span>Stakes</span><p>${mission.stakes}</p></article>
+          <article><span>Stop condition</span><p>${mission.stop}</p></article>
+        </div>
+        <div class="campaign-choice-grid">
+          ${mission.choices.map(choice => `
+            <button type="button" class="${selected?.choiceId === choice.id ? "picked" : ""} ${selected?.choiceId === choice.id && choice.good ? "good" : ""} ${selected?.choiceId === choice.id && !choice.good ? "bad" : ""}" data-campaign-choice="${choice.id}">
+              <b>${choice.label}</b>
+              <span>${choice.good ? "Evidence-first path" : "Risk debt path"}</span>
+            </button>
+          `).join("")}
+        </div>
+        <div class="campaign-result ${selected ? (selected.good ? "good" : "bad") : ""}">
+          <strong>${selected ? (selected.good ? "Contained" : "Debt created") : "선택 대기"}</strong>
+          <p>${selected?.result || "현장 CE처럼 stop/go를 선택하세요. 정답은 빠른 진행이 아니라 evidence chain을 닫는 선택입니다."}</p>
+        </div>
+      </section>
+      <aside class="campaign-ops">
+        <div class="campaign-case-link">
+          <span>Linked case</span>
+          <strong>${getActiveIncidentCase().id === mission.caseId ? "현재 case synced" : mission.caseId}</strong>
+          <p>${mission.customerLine}</p>
+          <button class="primary" type="button" data-campaign-open-case>Linked case 열기</button>
+        </div>
+        <div class="campaign-actions">
+          <button class="secondary" type="button" data-campaign-prev>이전 mission</button>
+          <button class="primary" type="button" data-campaign-next>다음 mission</button>
+          <button class="secondary" type="button" data-campaign-save>Campaign packet 저장</button>
+          <button class="secondary" type="button" data-campaign-reset>Reset</button>
+        </div>
+        <textarea readonly id="campaign-packet-output">${JSON.stringify(packet, null, 2)}</textarea>
+      </aside>
+    </div>
+  `;
+
+  root.querySelectorAll("[data-campaign-mission]").forEach(button => {
+    button.addEventListener("click", () => {
+      campaign.activeMission = button.dataset.campaignMission;
+      persistState();
+      renderCeCampaignEngine();
+    });
+  });
+  root.querySelectorAll("[data-campaign-choice]").forEach(button => {
+    button.addEventListener("click", () => {
+      const choice = mission.choices.find(item => item.id === button.dataset.campaignChoice);
+      if (!choice) return;
+      campaign.decisions[mission.id] = {
+        choiceId: choice.id,
+        label: choice.label,
+        good: Boolean(choice.good),
+        safety: choice.safety,
+        evidence: choice.evidence,
+        trust: choice.trust,
+        risk: choice.risk,
+        result: choice.result,
+        caseId: mission.caseId,
+        answeredAt: new Date().toISOString()
+      };
+      if (!choice.good) {
+        state.ceIncidentWeakness = state.ceIncidentWeakness || {};
+        state.ceIncidentWeakness["campaign-risk-debt"] = (state.ceIncidentWeakness["campaign-risk-debt"] || 0) + 1;
+      }
+      persistState();
+      renderCeCampaignEngine();
+      renderCeMemoryLedger();
+    });
+  });
+  root.querySelector("[data-campaign-open-case]")?.addEventListener("click", () => {
+    activeIncidentCase = mission.caseId;
+    state.activeIncidentCase = activeIncidentCase;
+    state.ceIncidentFilters = { campaign: "all", subsystem: "all", status: "all", query: "" };
+    persistState();
+    renderCeIncidentKernel();
+    renderCeWarRoom();
+    renderCeMemoryLedger();
+    syncIncidentToTwin(getActiveIncidentCase(), { scroll: false });
+    document.querySelector("#ce-incident-kernel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  root.querySelector("[data-campaign-next]")?.addEventListener("click", () => {
+    const next = ceCampaignMissions[Math.min(ceCampaignMissions.length - 1, activeIndex + 1)];
+    campaign.activeMission = next.id;
+    persistState();
+    renderCeCampaignEngine();
+  });
+  root.querySelector("[data-campaign-prev]")?.addEventListener("click", () => {
+    const prev = ceCampaignMissions[Math.max(0, activeIndex - 1)];
+    campaign.activeMission = prev.id;
+    persistState();
+    renderCeCampaignEngine();
+  });
+  root.querySelector("[data-campaign-save]")?.addEventListener("click", () => {
+    state.ceCampaignSnapshot = {
+      packet: buildCampaignPacket(),
+      savedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeCampaignEngine();
+  });
+  root.querySelector("[data-campaign-reset]")?.addEventListener("click", () => {
+    state.ceCampaign = {
+      activeMission: ceCampaignMissions[0].id,
+      decisions: {},
+      startedAt: new Date().toISOString()
+    };
+    persistState();
+    renderCeCampaignEngine();
+  });
+}
+
 function renderCeIncidentKernel() {
   const root = document.querySelector("#ce-incident-kernel");
   if (!root) return;
@@ -10072,6 +10442,7 @@ function renderProcessVisual() {
   renderEpiTraceLab();
   renderEpiMissionEngine();
   renderEpiMentalModelBuilder();
+  renderCeCampaignEngine();
   renderCeIncidentKernel();
   renderCeWarRoom();
   renderCeMemoryLedger();
