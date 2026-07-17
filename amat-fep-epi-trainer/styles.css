@@ -1561,6 +1561,12 @@ main,
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+
+.webgl-canvas-wrap canvas:active {
+  cursor: grabbing;
 }
 
 .webgl-label-layer {
@@ -3117,6 +3123,52 @@ body:not(.auth-unlocked) .global-nav .nav-btn[data-view]:not([data-view="bookshe
 
 .book-context-actions button {
   min-height: 34px;
+}
+
+.book-context-select-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 260px;
+  min-width: 210px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.book-context-select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid color-mix(in srgb, var(--accent), transparent 58%);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-2), transparent 5%);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  padding: 0 34px 0 10px;
+}
+
+.book-context-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent), transparent 30%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .book-context-select-label {
+    flex: 1 1 100%;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .book-context-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .book-context-actions button {
+    flex: 1 1 130px;
+  }
 }
 
 :root[data-theme="dark"] .app-header,
@@ -7617,6 +7669,18 @@ main {
     padding: 12px;
   }
 
+  .process-timeline {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+  }
+
+  .process-step-chip {
+    min-width: 0;
+    width: 100%;
+    flex: initial;
+  }
+
   .process-tool-map,
   .process-state-grid,
   .process-gas-grid,
@@ -7656,6 +7720,12 @@ main {
   .wafer-layer {
     grid-template-columns: 1fr;
     gap: 2px;
+  }
+}
+
+@media (max-width: 420px) {
+  .process-timeline {
+    grid-template-columns: 1fr;
   }
 }
 

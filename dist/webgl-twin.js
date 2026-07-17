@@ -131,6 +131,8 @@ const flowParticles = [];
 const packetParticles = [];
 const tempVec = new THREE.Vector3();
 const drag = { active: false, moved: false, x: 0, y: 0 };
+const activePointers = new Map();
+let pinchDistance = 0;
 const orbit = { theta: -0.72, phi: 0.86, radius: 7.45, target: new THREE.Vector3(0.12, 0.48, 0.08) };
 
 function routePmId() {
@@ -529,7 +531,7 @@ function kindVisible(kind) {
   if (kind === "gas") return layerState.particles && (activeMode === "gas" || step.id === "process");
   if (kind === "exhaust") return layerState.particles && (activeMode === "gas" || ["process", "unload"].includes(step.id));
   if (kind === "purge") return layerState.particles && (activeMode === "vacuum" || ["ll-load", "pumpdown", "return"].includes(step.id));
-  return layerState.packets && (activeMode === "comm" || step.mode === "comm");
+  return layerState.packets;
 }
 
 function updateParticles(tick) {
@@ -717,13 +719,15 @@ function updateLabels() {
 
 function updateDiagnostics() {
   const pressure = pressureModel();
+  const liveFlow = flowParticles.filter(mesh => mesh.visible).length;
+  const livePackets = packetParticles.filter(mesh => mesh.visible).length;
   if (diagnostics) {
     diagnostics.style.setProperty("--pressure-fill", `${Math.round(pressure.fill)}%`);
     diagnostics.innerHTML = `
       <h3>Live mental model</h3>
       <div class="webgl-diagnostic-cell"><b>LL pressure</b>${pressure.label}</div>
-      <div class="webgl-diagnostic-cell"><b>Flow</b>${flowLabel()}</div>
-      <div class="webgl-diagnostic-cell"><b>Packets</b>${packetLabel()}</div>
+      <div class="webgl-diagnostic-cell"><b>Flow</b>${liveFlow} live · ${flowLabel()}</div>
+      <div class="webgl-diagnostic-cell"><b>Packets</b>${livePackets} live · ${packetLabel()}</div>
       <div class="webgl-diagnostic-cell"><b>View</b>${layerState.cutaway ? "cutaway on" : "shell view"} / ${activeCamera}</div>
       <div class="webgl-pressure-bar"><i></i></div>
       <small>${pressure.note}</small>
@@ -786,15 +790,56 @@ function pickComponent(event) {
   }
 }
 
+function capturePointer(event) {
+  try {
+    renderer.domElement.setPointerCapture?.(event.pointerId);
+  } catch {
+    // Synthetic or cancelled touch streams may not have an active pointer to capture.
+  }
+}
+
+function releasePointer(event) {
+  try {
+    if (renderer.domElement.hasPointerCapture?.(event.pointerId)) {
+      renderer.domElement.releasePointerCapture(event.pointerId);
+    }
+  } catch {
+    // Keep unusual browser pointer states from breaking the 3D twin controls.
+  }
+}
+
 function onPointerDown(event) {
-  drag.active = true;
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   drag.moved = false;
+  if (activePointers.size >= 2) {
+    const points = [...activePointers.values()];
+    pinchDistance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    drag.active = false;
+    drag.moved = true;
+  } else {
+    drag.active = true;
+  }
   drag.x = event.clientX;
   drag.y = event.clientY;
-  renderer.domElement.setPointerCapture?.(event.pointerId);
+  capturePointer(event);
 }
 
 function onPointerMove(event) {
+  if (!activePointers.has(event.pointerId)) return;
+  activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (activePointers.size >= 2) {
+    const points = [...activePointers.values()];
+    const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+    if (pinchDistance > 0) {
+      orbit.radius = THREE.MathUtils.clamp(orbit.radius - (distance - pinchDistance) * 0.018, 4.8, 10.5);
+      activeCamera = "orbit";
+      updateCameraButtons();
+      updateCamera();
+    }
+    pinchDistance = distance;
+    drag.moved = true;
+    return;
+  }
   if (!drag.active) return;
   const dx = event.clientX - drag.x;
   const dy = event.clientY - drag.y;
@@ -809,9 +854,11 @@ function onPointerMove(event) {
 }
 
 function onPointerUp(event) {
-  if (!drag.active) return;
-  renderer.domElement.releasePointerCapture?.(event.pointerId);
-  const wasMoved = drag.moved;
+  const wasMoved = drag.moved || activePointers.size > 1;
+  activePointers.delete(event.pointerId);
+  if (activePointers.size < 2) pinchDistance = 0;
+  releasePointer(event);
+  if (!drag.active && activePointers.size === 0) return;
   drag.active = false;
   if (!wasMoved) pickComponent(event);
 }

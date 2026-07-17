@@ -4247,6 +4247,12 @@ function renderBookContextBar(id) {
       <strong>${chapter} / ${getNavLabel(id)}</strong>
       <small>이 화면은 책장 속 FEP/EPI 책의 한 장입니다. 방문 ${visits}회</small>
     </div>
+    <label class="book-context-select-label">
+      <span>장 이동</span>
+      <select class="book-context-select" data-context-select aria-label="FEP/EPI 책 장 선택">
+        ${BOOK_VIEW_SEQUENCE.map(view => `<option value="${view}" ${view === id ? "selected" : ""}>${getNavLabel(view)}</option>`).join("")}
+      </select>
+    </label>
     <div class="book-context-actions">
       <button class="secondary" type="button" data-context-view="bookshelf">책장으로</button>
       <button class="secondary" type="button" data-context-search>검색</button>
@@ -4256,6 +4262,7 @@ function renderBookContextBar(id) {
   bar.querySelectorAll("[data-context-view]").forEach(button => {
     button.addEventListener("click", () => showView(button.dataset.contextView));
   });
+  bar.querySelector("[data-context-select]")?.addEventListener("change", event => showView(event.target.value));
   bar.querySelector("[data-context-search]")?.addEventListener("click", () => openCommandPalette());
 }
 
