@@ -12296,6 +12296,24 @@ function renderPaperNotes() {
   `).join("");
 }
 
+async function renderBuildVersion() {
+  const pill = document.querySelector("#build-version-pill");
+  if (!pill) return;
+  try {
+    const response = await fetch(`/build-info.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const info = await response.json();
+    const shortSha = info.gitShortSha || String(info.gitSha || "").slice(0, 12) || "unknown";
+    const dirty = info.gitDirty ? "+dirty" : "";
+    const source = info.source || "unknown";
+    pill.textContent = `build ${shortSha}${dirty} · ${source}`;
+    pill.title = `Git SHA: ${info.gitSha || "unknown"}\nBuilt: ${info.buildTime || "unknown"}`;
+  } catch {
+    pill.textContent = "build local/unknown";
+    pill.title = "build-info.json을 읽지 못했습니다.";
+  }
+}
+
 document.querySelectorAll("[data-view]").forEach(btn => btn.addEventListener("click", () => showView(btn.dataset.view)));
 document.querySelectorAll("[data-view-jump]").forEach(btn => btn.addEventListener("click", () => showView(btn.dataset.viewJump)));
 document.querySelector("#prev-question").addEventListener("click", () => {
@@ -12341,6 +12359,7 @@ renderGlossary();
 renderFab101();
 renderPaperNotes();
 renderMetrics();
+renderBuildVersion();
 bindGlobalUx();
 showView("cognitive", { instant: true, skipMemory: true });
 renderLearningHud();

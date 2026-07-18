@@ -79,11 +79,24 @@ jobs:
         run: |
           for attempt in {1..18}; do
             echo "Smoke check attempt ${attempt}/18"
-            if curl -fsS "${PUBLIC_WORKER_URL}/vision-training.js" | grep -q "ProjectUniverseVisionTraining"; then
-              echo "Deployment smoke check passed: ${PUBLIC_WORKER_URL}"
-              exit 0
+            if curl -fsS "${PUBLIC_WORKER_URL}/build-info.json?sha=${GITHUB_SHA}&attempt=${attempt}" -o live-build-info.json; then
+              if node -e "const fs=require('fs'); const info=JSON.parse(fs.readFileSync('live-build-info.json','utf8')); if(info.gitSha !== process.env.GITHUB_SHA){ console.error('Expected', process.env.GITHUB_SHA, 'but public Worker serves', info.gitSha); process.exit(1); }"; then
+                echo "Deployment smoke check passed: ${PUBLIC_WORKER_URL} serves ${GITHUB_SHA}"
+                exit 0
+              fi
             fi
-            sleep 10
+            if curl -fsS "${PUBLIC_WORKER_URL}/vision-training.js?sha=${GITHUB_SHA}" | grep -q "ProjectUniverseVisionTraining"; then
+              echo "Fallback asset smoke check passed, but build-info SHA is not current yet."
+            else
+              echo "Fallback asset smoke check did not find the expected vision training asset yet."
+            fi
+            if [[ "${attempt}" -lt 18 ]]; then
+              sleep 10
+            fi
           done
-          echo "::error title=Smoke check failed::The Worker deployed, but the public URL did not serve the expected vision-training asset."
+          echo "::error title=Smoke check failed::The Worker deployed, but the public URL did not serve build-info.json for ${GITHUB_SHA}."
+          if [[ -f live-build-info.json ]]; then
+            echo "Last live build-info.json:"
+            cat live-build-info.json
+          fi
           exit 1

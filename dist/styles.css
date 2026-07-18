@@ -6675,10 +6675,23 @@ body:not(.auth-unlocked) .global-nav .nav-btn[data-view]:not([data-view="bookshe
   line-height: 1.2;
 }
 
-.brand span:last-child {
+.brand div > span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.build-version-pill {
+  width: fit-content;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.08);
+  color: #00ff95;
+  padding: 3px 7px;
+  font-family: Consolas, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
 }
 
 .top-nav {

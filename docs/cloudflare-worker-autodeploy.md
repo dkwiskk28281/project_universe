@@ -46,14 +46,16 @@ npm ci --progress=false
 npm run build
 npx wrangler deploy --dry-run
 npx wrangler deploy
-curl smoke check for /vision-training.js
+curl smoke check for /build-info.json
 ```
 
-The smoke check confirms that the public Worker serves the expected post-build asset:
+The smoke check confirms that the public Worker serves the exact Git commit that triggered the workflow. The build writes:
 
 ```text
-https://projectuniverse.chang2058.workers.dev/vision-training.js
+https://projectuniverse.chang2058.workers.dev/build-info.json
 ```
+
+The workflow compares `build-info.json.gitSha` to `GITHUB_SHA`. If the public URL still serves an older commit, the deploy job fails instead of silently passing.
 
 ## Failure Meanings
 
@@ -75,7 +77,25 @@ The local build output, `wrangler.jsonc`, Worker entrypoint, assets directory, o
 
 `Smoke check failed`
 
-The deploy command returned successfully, but the public URL did not serve the expected new asset. Check Worker route, deployment status, cache, and project name.
+The deploy command returned successfully, but the public URL did not serve `build-info.json` with the expected `GITHUB_SHA`. Check Worker route, deployment status, cache, project name, and whether another deployment overwrote the Worker.
+
+## Build Version UI
+
+The app header reads `/build-info.json` and shows:
+
+```text
+build <short-sha> · github-actions
+```
+
+When checking the production site manually, compare this short SHA to the latest GitHub commit. This is the fastest way to confirm that the public URL is serving the version you expect.
+
+Local builds may show:
+
+```text
+build <short-sha>+dirty · local
+```
+
+`+dirty` means the local working tree had uncommitted changes at build time. Production GitHub Actions deployments should normally be clean and show `github-actions` without `+dirty`.
 
 ## D1 Binding
 

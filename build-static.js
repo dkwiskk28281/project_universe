@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const root = __dirname;
 const appRoot = path.join(root, "amat-fep-epi-trainer");
@@ -44,6 +45,37 @@ function copyWebApp(destRoot) {
     copyFile(path.join(appRoot, file), path.join(destRoot, file));
   }
   copyDir(path.join(appRoot, "assets"), path.join(destRoot, "assets"));
+}
+
+function safeExec(command, fallback = "") {
+  try {
+    return execSync(command, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return fallback;
+  }
+}
+
+function buildInfo() {
+  const gitSha = process.env.GITHUB_SHA || safeExec("git rev-parse HEAD", "local-unknown");
+  const gitBranch = process.env.GITHUB_REF_NAME || safeExec("git branch --show-current", "local");
+  const gitDirty = Boolean(safeExec("git status --porcelain", ""));
+  return {
+    app: "Project Universe",
+    deployment: "cloudflare-worker",
+    schemaVersion: "project-universe-build-info-v1",
+    gitSha,
+    gitShortSha: gitSha.slice(0, 12),
+    gitBranch,
+    gitDirty,
+    buildTime: new Date().toISOString(),
+    workflowRunId: process.env.GITHUB_RUN_ID || null,
+    workflowRunAttempt: process.env.GITHUB_RUN_ATTEMPT || null,
+    source: process.env.GITHUB_ACTIONS ? "github-actions" : "local"
+  };
+}
+
+function writeBuildInfo(destRoot) {
+  fs.writeFileSync(path.join(destRoot, "build-info.json"), `${JSON.stringify(buildInfo(), null, 2)}\n`, "utf8");
 }
 
 function writeFallbackBuild(destRoot, packageName) {
@@ -91,6 +123,8 @@ console.log("Static fallback build completed.");
 fs.rmSync(distRoot, { recursive: true, force: true });
 copyWebApp(distRoot);
 copyWebApp(path.join(distRoot, "amat-fep-epi-trainer"));
+writeBuildInfo(distRoot);
+writeBuildInfo(path.join(distRoot, "amat-fep-epi-trainer"));
 
 copyFile(path.join(appRoot, "_worker.js"), path.join(distRoot, "_worker.js"));
 copyFile(path.join(appRoot, "cloudflare-d1-schema.sql"), path.join(distRoot, "cloudflare-d1-schema.sql"));
