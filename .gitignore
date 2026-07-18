@@ -3,4 +3,11 @@ dist/
 build/
 .env
 *.log
+*.tsbuildinfo
 .wrangler/
+.next/
+coverage/
+playwright-report/
+test-results/
+apps/web/.env
+apps/web/.next/

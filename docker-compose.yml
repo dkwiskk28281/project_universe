@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: epi-materials-mastery-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: epi_materials_mastery
+    ports:
+      - "5432:5432"
+    volumes:
+      - epi_materials_mastery_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:8-alpine
+    container_name: epi-materials-mastery-redis
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    container_name: epi-materials-mastery-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - epi_materials_mastery_minio:/data
+
+volumes:
+  epi_materials_mastery_pg:
+  epi_materials_mastery_minio:

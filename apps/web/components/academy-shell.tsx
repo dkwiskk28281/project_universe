@@ -1,0 +1,463 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { knowledgeNodes, unresolvedPrerequisites } from "@/lib/curriculum/knowledge-graph";
+import { mvpLessons, ratioGasFlowLesson } from "@/lib/curriculum/courses";
+import {
+  estimateDiagnosticLevel,
+  evaluateChoice,
+  ratioDiagnosticQuestions,
+  selectNextDiagnosticQuestion
+} from "@/lib/diagnostics/diagnostic-engine";
+import { evaluateRatioAttempt } from "@/lib/exercises/ratio-gas-flow";
+import { classifyMastery, initialMastery, updateMastery } from "@/lib/mastery/mastery-engine";
+import { scheduleReview } from "@/lib/review/review-scheduler";
+import { mockTutorResponse } from "@/lib/ai/tutor";
+import type { DiagnosticAnswer, MasteryState, ReviewItem, TutorResponse } from "@/lib/types";
+
+type View = "dashboard" | "diagnostic" | "lesson" | "practice" | "review" | "tutor" | "map";
+
+type AcademyState = {
+  answers: DiagnosticAnswer[];
+  mastery: Record<string, MasteryState>;
+  reviews: ReviewItem[];
+  xp: number;
+  streak: number;
+  h2Slm: number;
+  precursorSccm: number;
+  submittedRatio: string;
+  ratioFeedback: string;
+  tutorResponse: TutorResponse;
+  note: string;
+};
+
+const STORAGE_KEY = "epiMaterialsMasteryMvpState";
+const USER_ID = "local-mvp-user";
+
+const defaultState: AcademyState = {
+  answers: [],
+  mastery: {},
+  reviews: [],
+  xp: 0,
+  streak: 1,
+  h2Slm: 20,
+  precursorSccm: 200,
+  submittedRatio: "",
+  ratioFeedback: "아직 제출 전입니다. 이 값들은 특정 장비 recipe가 아닌 교육용 가상값입니다.",
+  tutorResponse: mockTutorResponse({
+    nodeId: "epi-gas-ratio",
+    userMessage: "비율과 가스 유량을 수포자 관점으로 설명해줘.",
+    learnerLevel: "math-anxious-field-engineer",
+    mode: "beginner"
+  }),
+  note: ""
+};
+
+export function AcademyShell({ initialView }: { initialView: View }) {
+  const [view, setView] = useState<View>(initialView);
+  const [state, setState] = useState<AcademyState>(defaultState);
+  const nextQuestion = selectNextDiagnosticQuestion(state.answers);
+  const activeMastery = state.mastery["epi-gas-ratio"] ?? initialMastery(USER_ID, "epi-gas-ratio");
+  const masteryByNode = useMemo(
+    () => Object.fromEntries(Object.entries(state.mastery).map(([nodeId, mastery]) => [nodeId, mastery.masteryScore])),
+    [state.mastery]
+  );
+  const gaps = unresolvedPrerequisites("epi-gas-ratio", masteryByNode);
+  const diagnosticLevel = estimateDiagnosticLevel(state.answers);
+  const ratio = state.precursorSccm > 0 ? state.h2Slm * 1000 / state.precursorSccm : 0;
+
+  useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setState({ ...defaultState, ...JSON.parse(stored) as AcademyState });
+      } catch {
+        setState(defaultState);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, [state]);
+
+  const readiness = computeReadiness(state.mastery, state.answers);
+  const packet = buildLocalPacket(state, readiness, gaps.map((item) => item.titleKo));
+
+  return (
+    <main className="shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark">MS</span>
+          <div>
+            <strong>EPI Materials Mastery</strong>
+            <div className="muted">From Field Technician to Materials Science Master's and Semiconductor Fellow</div>
+          </div>
+        </div>
+        <nav className="nav" aria-label="main navigation">
+          <Link href="/">홈</Link>
+          <Link href="/diagnostic">진단</Link>
+          <Link href="/lesson/ratio-gas-flow">수업</Link>
+          <Link href="/practice">실습</Link>
+          <Link href="/review">복습</Link>
+          <Link href="/tutor">AI Tutor</Link>
+          <Link href="/knowledge-map">지도</Link>
+        </nav>
+      </header>
+
+      <section className="layout">
+        <section className="hero">
+          <div>
+            <p className="eyebrow">MVP vertical slice</p>
+            <h1>비율과 가스 유량으로 시작하는 재료공학 석사 준비 루프</h1>
+            <p>
+              이 MVP는 수학 공포를 줄이기 위해 현상, 그림, 숫자, 공식 순서로 갑니다.
+              H2와 precursor 유량 예시는 교육용 가상값이며 실제 장비 recipe나 setpoint가 아닙니다.
+            </p>
+            <div className="nav">
+              {(["dashboard", "diagnostic", "lesson", "practice", "review", "tutor", "map"] as const).map((item) => (
+                <button key={item} className={`tab-button ${view === item ? "active" : ""}`} onClick={() => setView(item)} type="button">
+                  {viewLabel(item)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <article className="stat">
+            <span>Current mastery</span>
+            <strong>{activeMastery.masteryScore}%</strong>
+            <small>{classifyMastery(activeMastery.masteryScore)} · XP {state.xp} · streak {state.streak}</small>
+          </article>
+        </section>
+
+        {view === "dashboard" && (
+          <>
+            <section className="stats-grid" aria-label="readiness dashboard">
+              {readiness.map((item) => (
+                <article className="stat" key={item.label}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}%</strong>
+                  <small>{item.reason}</small>
+                </article>
+              ))}
+            </section>
+            <section className="grid-2">
+              <article className="panel">
+                <p className="eyebrow">Today's learning</p>
+                <h2>현재 가장 중요한 학습: 비율과 단위 환산</h2>
+                <p>
+                  이유: Arrhenius plot, gas ratio, wafer uniformity, SPC를 이해하려면 먼저 숫자와 단위를 두려워하지 않아야 합니다.
+                  오늘 권장 시간은 25분입니다.
+                </p>
+                <button className="btn primary" type="button" onClick={() => setView("diagnostic")}>진단 시작</button>
+              </article>
+              <article className="panel">
+                <p className="eyebrow">Prerequisite gaps</p>
+                <h2>선수개념 자동 보충</h2>
+                {gaps.length ? (
+                  gaps.slice(0, 6).map((gap) => <p key={gap.id}>• {gap.titleKo}: {gap.learningObjectives[0]}</p>)
+                ) : (
+                  <p>현재 `EPI 가스 유량 비율`의 선행 노드는 기준 이상입니다. 다음은 growth-rate regime으로 확장할 수 있습니다.</p>
+                )}
+              </article>
+            </section>
+            <section className="panel">
+              <p className="eyebrow">MVP course spine</p>
+              <h2>첫 출시용 10개 실제 수업</h2>
+              <div className="roadmap">
+                {mvpLessons.slice(0, 10).map((lesson) => (
+                  <article className={`stage-card ${lesson.id === ratioGasFlowLesson.id ? "current" : ""}`} key={lesson.id}>
+                    <span>{lesson.estimatedMinutes} min · {lesson.nodeId}</span>
+                    <strong>{lesson.title}</strong>
+                    <small>{lesson.masteryEvidence[0]}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {view === "diagnostic" && (
+          <section className="grid-2">
+            <article className="panel">
+              <p className="eyebrow">Adaptive diagnostic</p>
+              <h2>비율 사전 진단</h2>
+              <p>오답이면 더 쉬운 선수개념으로 돌아갑니다. 자신감, 풀이시간, 힌트 사용량까지 숙련도에 반영합니다.</p>
+              {nextQuestion ? (
+                <DiagnosticQuestionCard
+                  question={nextQuestion}
+                  onAnswer={(choice) => {
+                    const correct = evaluateChoice(nextQuestion, choice);
+                    const answer: DiagnosticAnswer = {
+                      questionId: nextQuestion.id,
+                      nodeId: nextQuestion.nodeId,
+                      correct,
+                      confidence: correct ? 3 : 2,
+                      secondsSpent: 42,
+                      hintsUsed: 0,
+                      explanationQuality: correct ? 2 : 1,
+                      answeredAt: new Date().toISOString()
+                    };
+                    setState((current) => ({ ...current, answers: [...current.answers, answer], xp: current.xp + (correct ? 12 : 4) }));
+                  }}
+                />
+              ) : (
+                <div className="exercise-card panel">
+                  <h3>진단 완료</h3>
+                  <p>추정 레벨: {diagnosticLevel}. 이제 개인 로드맵이 `비율 → 단위환산 → 농도 → EPI gas ratio`로 열립니다.</p>
+                </div>
+              )}
+            </article>
+            <article className="panel">
+              <p className="eyebrow">Result so far</p>
+              <h2>진단 기록</h2>
+              {state.answers.length ? state.answers.map((answer) => (
+                <p key={`${answer.questionId}-${answer.answeredAt}`}>{answer.questionId}: {answer.correct ? "정답" : "오답"} · confidence {answer.confidence}</p>
+              )) : <p>아직 답변이 없습니다.</p>}
+            </article>
+          </section>
+        )}
+
+        {view === "lesson" && (
+          <section className="grid-2">
+            <article className="panel">
+              <p className="eyebrow">Lesson</p>
+              <h2>{ratioGasFlowLesson.title}</h2>
+              {ratioGasFlowLesson.blocks.map((block) => (
+                <article className="lesson-card" key={block.title}>
+                  <p className="kicker">{block.kind}</p>
+                  <h3>{block.title}</h3>
+                  <small>{block.body}</small>
+                </article>
+              ))}
+            </article>
+            <article className="panel">
+              <p className="eyebrow">Mastery evidence</p>
+              <h2>완료 기준</h2>
+              {ratioGasFlowLesson.masteryEvidence.map((item) => <p key={item}>• {item}</p>)}
+              <button className="btn primary" type="button" onClick={() => completeLesson(setState, activeMastery)}>수업 완료하고 mastery 업데이트</button>
+            </article>
+          </section>
+        )}
+
+        {view === "practice" && (
+          <section className="grid-2">
+            <article className="panel">
+              <p className="eyebrow">Interactive lab</p>
+              <h2>가스 유량 비율 슬라이더</h2>
+              <div className="lab">
+                <label className="range">H2 carrier flow: {state.h2Slm} slm
+                  <input type="range" min="1" max="50" value={state.h2Slm} onChange={(event) => setState((current) => ({ ...current, h2Slm: Number(event.target.value) }))} />
+                </label>
+                <label className="range">Precursor flow: {state.precursorSccm} sccm
+                  <input type="range" min="20" max="1000" value={state.precursorSccm} onChange={(event) => setState((current) => ({ ...current, precursorSccm: Number(event.target.value) }))} />
+                </label>
+                <div className="flow-strip">
+                  <span>H2<br />{state.h2Slm * 1000} sccm</span>
+                  <span>+</span>
+                  <span>Precursor<br />{state.precursorSccm} sccm</span>
+                  <span>=</span>
+                  <span>Ratio<br />{ratio.toFixed(1)}:1</span>
+                </div>
+              </div>
+            </article>
+            <article className="panel">
+              <p className="eyebrow">Exercise</p>
+              <h2>EPI 스타일 응용문제</h2>
+              <p>H2 {state.h2Slm} slm, precursor {state.precursorSccm} sccm일 때 H2:precursor 비율을 계산하세요.</p>
+              <input
+                aria-label="submitted ratio"
+                className="note-textarea"
+                style={{ minHeight: 46 }}
+                value={state.submittedRatio}
+                onChange={(event) => setState((current) => ({ ...current, submittedRatio: event.target.value }))}
+                placeholder="예: 100"
+              />
+              <button className="btn primary" type="button" onClick={() => submitRatio(setState, activeMastery)}>
+                제출하고 피드백 받기
+              </button>
+              <p className="feedback">{state.ratioFeedback}</p>
+            </article>
+          </section>
+        )}
+
+        {view === "review" && (
+          <section className="panel">
+            <p className="eyebrow">Spaced repetition</p>
+            <h2>오늘 생성된 복습 카드</h2>
+            {state.reviews.length ? state.reviews.map((review) => (
+              <article className="exercise-card" key={review.id}>
+                <h3>{review.cardType} · {review.nodeId}</h3>
+                <small>{review.prompt}</small>
+                <p className="muted">due {new Date(review.dueAt).toLocaleDateString("ko-KR")} · interval {review.intervalDays} days</p>
+              </article>
+            )) : <p>아직 복습 카드가 없습니다. 수업 완료 또는 문제 제출을 하면 자동 생성됩니다.</p>}
+          </section>
+        )}
+
+        {view === "tutor" && (
+          <section className="grid-2">
+            <article className="panel">
+              <p className="eyebrow">AI Tutor mock provider</p>
+              <h2>{state.tutorResponse.explanation.shortSummary}</h2>
+              {state.tutorResponse.explanation.steps.map((step) => (
+                <article className="lesson-card" key={step.title}>
+                  <h3>{step.title}</h3>
+                  <small>{step.content}</small>
+                </article>
+              ))}
+              <button className="btn" type="button" onClick={() => setState((current) => ({
+                ...current,
+                tutorResponse: mockTutorResponse({
+                  nodeId: "epi-gas-ratio",
+                  userMessage: "소크라테스식으로 다시 설명해줘.",
+                  learnerLevel: "math-anxious-field-engineer",
+                  mode: "socratic"
+                })
+              }))}>소크라테스식 설명으로 전환</button>
+            </article>
+            <article className="panel">
+              <p className="eyebrow">AI packet</p>
+              <h2>구조화된 학습 상태</h2>
+              <textarea className="packet" readOnly value={JSON.stringify(packet, null, 2)} />
+            </article>
+          </section>
+        )}
+
+        {view === "map" && (
+          <section className="panel">
+            <p className="eyebrow">Knowledge graph</p>
+            <h2>분수에서 EPI gas ratio까지 이어지는 선수지식 그래프</h2>
+            <div className="roadmap">
+              {knowledgeNodes.map((node) => {
+                const mastery = state.mastery[node.id]?.masteryScore ?? 0;
+                const locked = node.prerequisites.some((id) => (state.mastery[id]?.masteryScore ?? 0) < 60);
+                return (
+                  <article className={`stage-card ${node.id === "epi-gas-ratio" ? "current" : ""} ${locked ? "locked" : ""}`} key={node.id}>
+                    <span>{node.domain} L{node.level}</span>
+                    <strong>{node.titleKo}</strong>
+                    <small>{node.learningObjectives[0]}</small>
+                    <small>mastery {mastery}% · prereq {node.prerequisites.length}</small>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
+function DiagnosticQuestionCard({
+  question,
+  onAnswer
+}: {
+  question: typeof ratioDiagnosticQuestions[number];
+  onAnswer: (choice: number) => void;
+}) {
+  return (
+    <div className="exercise-card panel">
+      <p className="kicker">difficulty {question.difficulty}</p>
+      <h3>{question.prompt}</h3>
+      <div className="question-options">
+        {question.options.map((option, index) => (
+          <button key={option} onClick={() => onAnswer(index)} type="button">{option}</button>
+        ))}
+      </div>
+      <small>정답 후 해설이 즉시 기록되고 다음 문제 난도가 조정됩니다.</small>
+    </div>
+  );
+}
+
+function completeLesson(setState: Dispatch<SetStateAction<AcademyState>>, previous: MasteryState) {
+  const updated = updateMastery(previous, {
+    nodeId: "epi-gas-ratio",
+    correct: true,
+    confidence: 3,
+    secondsSpent: 900,
+    hintsUsed: 0,
+    explanationQuality: 2,
+    applicationCorrect: true
+  });
+  const review = scheduleReview(USER_ID, updated);
+  setState((current) => ({
+    ...current,
+    mastery: { ...current.mastery, "epi-gas-ratio": updated, "math-ratio": updateMastery(current.mastery["math-ratio"] ?? initialMastery(USER_ID, "math-ratio"), { nodeId: "math-ratio", correct: true, confidence: 3, secondsSpent: 600, hintsUsed: 0, explanationQuality: 2, applicationCorrect: true }) },
+    reviews: [review, ...current.reviews].slice(0, 20),
+    xp: current.xp + 30
+  }));
+}
+
+function submitRatio(setState: Dispatch<SetStateAction<AcademyState>>, previous: MasteryState) {
+  setState((current) => {
+    const parsed = Number(current.submittedRatio);
+    const result = evaluateRatioAttempt({
+      h2Slm: current.h2Slm,
+      precursorSccm: current.precursorSccm,
+      submittedRatio: Number.isFinite(parsed) ? parsed : 0,
+      explanation: "local mvp attempt"
+    });
+    const updated = updateMastery(previous, {
+      nodeId: "epi-gas-ratio",
+      correct: result.correct,
+      confidence: result.correct ? 4 : 2,
+      secondsSpent: 120,
+      hintsUsed: result.correct ? 0 : 1,
+      explanationQuality: result.correct ? 2 : 1,
+      applicationCorrect: result.correct
+    });
+    return {
+      ...current,
+      mastery: { ...current.mastery, "epi-gas-ratio": updated },
+      reviews: [scheduleReview(USER_ID, updated), ...current.reviews].slice(0, 20),
+      ratioFeedback: `${result.correct ? "정답" : "다시 시도"} · 예상 비율 ${result.expectedRatio.toFixed(1)}:1. ${result.feedback}`,
+      xp: current.xp + (result.correct ? 18 : 6)
+    };
+  });
+}
+
+function computeReadiness(mastery: Record<string, MasteryState>, answers: DiagnosticAnswer[]) {
+  const score = (nodeIds: string[]) => Math.round(nodeIds.reduce((sum, id) => sum + (mastery[id]?.masteryScore ?? 0), 0) / nodeIds.length);
+  const diagnostic = answers.length ? Math.round(answers.filter((answer) => answer.correct).length / answers.length * 100) : 0;
+  const math = Math.round((score(["math-ratio", "eng-unit-conversion"]) + diagnostic) / 2);
+  const epi = mastery["epi-gas-ratio"]?.masteryScore ?? 0;
+  return [
+    { label: "Math readiness", value: math, reason: "비율, 백분율, 단위환산 기준" },
+    { label: "EPI readiness", value: epi, reason: "gas ratio 응용문제 기준" },
+    { label: "MS readiness", value: Math.round((math + epi) / 2), reason: "첫 vertical slice 기준의 임시 추정" },
+    { label: "Review load", value: Math.min(100, answers.length * 20), reason: "진단 답변과 복습 카드 기반" }
+  ];
+}
+
+function buildLocalPacket(state: AcademyState, readiness: ReturnType<typeof computeReadiness>, gaps: string[]) {
+  return {
+    schemaVersion: "epi-materials-mastery-local-packet-v1",
+    generatedAt: new Date().toISOString(),
+    learnerProfile: "Korean field semiconductor engineer preparing Applied Materials EPI, Materials Science MS, PSE, SME, Principal, Fellow path",
+    readiness,
+    diagnosticAnswers: state.answers,
+    mastery: state.mastery,
+    reviewItems: state.reviews,
+    prerequisiteGaps: gaps,
+    activeVerticalSlice: "ratio-and-gas-flow",
+    safetyBoundary: "All gas numbers are educational virtual values, not equipment recipes, setpoints, or site-specific limits."
+  };
+}
+
+function viewLabel(view: View): string {
+  return {
+    dashboard: "대시보드",
+    diagnostic: "진단",
+    lesson: "수업",
+    practice: "실습",
+    review: "복습",
+    tutor: "AI Tutor",
+    map: "지식지도"
+  }[view];
+}
