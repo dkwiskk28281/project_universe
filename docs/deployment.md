@@ -36,3 +36,13 @@ The app UI currently uses localStorage for the vertical slice. The Prisma schema
 ## Future Production Target
 
 Deploy the Next.js app to Vercel or AWS with managed PostgreSQL, object storage, environment variable validation, Sentry, and GitHub Actions preview deployments.
+
+## Project Universe Cloudflare Worker
+
+The current production static Worker deployment is documented in:
+
+```text
+docs/cloudflare-worker-autodeploy.md
+```
+
+It uses GitHub Actions to build, dry-run, deploy, and smoke-check the Cloudflare Worker after pushes to `main`, once the repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` are configured.

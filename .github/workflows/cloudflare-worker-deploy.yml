@@ -1,0 +1,89 @@
+name: Deploy Project Universe Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "amat-fep-epi-trainer/**"
+      - "build-static.js"
+      - "package.json"
+      - "package-lock.json"
+      - "wrangler.jsonc"
+      - ".github/workflows/cloudflare-worker-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you redeploying?"
+        required: false
+        default: "manual redeploy"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-worker-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build, dry-run, deploy, smoke-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PUBLIC_WORKER_URL: https://projectuniverse.chang2058.workers.dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify Cloudflare deployment secrets
+        shell: bash
+        run: |
+          missing=0
+          if [[ -z "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
+            echo "::error title=Missing CLOUDFLARE_ACCOUNT_ID::Add the Cloudflare account ID as a GitHub Actions secret."
+            missing=1
+          fi
+          if [[ -z "${CLOUDFLARE_API_TOKEN}" ]]; then
+            echo "::error title=Missing CLOUDFLARE_API_TOKEN::Add a Cloudflare API token with the Edit Cloudflare Workers permission as a GitHub Actions secret."
+            missing=1
+          fi
+          if [[ "${missing}" -ne 0 ]]; then
+            echo "Required repository secrets: CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci --progress=false
+
+      - name: Build static Worker bundle
+        run: npm run build
+
+      - name: Validate deploy package
+        run: npx wrangler deploy --dry-run
+
+      - name: Deploy Worker
+        run: npx wrangler deploy
+
+      - name: Smoke check public deployment
+        shell: bash
+        run: |
+          for attempt in {1..18}; do
+            echo "Smoke check attempt ${attempt}/18"
+            if curl -fsS "${PUBLIC_WORKER_URL}/vision-training.js" | grep -q "ProjectUniverseVisionTraining"; then
+              echo "Deployment smoke check passed: ${PUBLIC_WORKER_URL}"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error title=Smoke check failed::The Worker deployed, but the public URL did not serve the expected vision-training asset."
+          exit 1
