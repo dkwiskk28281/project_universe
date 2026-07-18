@@ -61,6 +61,8 @@ export function AcademyShell({ initialView }: { initialView: View }) {
   const [view, setView] = useState<View>(initialView);
   const [state, setState] = useState<AcademyState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
+  const [selectedLessonId, setSelectedLessonId] = useState(ratioGasFlowLesson.id);
+  const [packetFeedback, setPacketFeedback] = useState("아직 복사하지 않았습니다.");
   const nextQuestion = selectNextDiagnosticQuestion(state.answers);
   const activeMastery = state.mastery["epi-gas-ratio"] ?? initialMastery(USER_ID, "epi-gas-ratio");
   const masteryByNode = useMemo(
@@ -72,6 +74,8 @@ export function AcademyShell({ initialView }: { initialView: View }) {
   const ratio = state.precursorSccm > 0 ? state.h2Slm * 1000 / state.precursorSccm : 0;
   const h2Sccm = state.h2Slm * 1000;
   const learningLoop = buildLearningLoop(state, activeMastery.masteryScore);
+  const selectedLesson = mvpLessons.find((lesson) => lesson.id === selectedLessonId) ?? ratioGasFlowLesson;
+  const selectedLessonNode = knowledgeNodes.find((node) => node.id === selectedLesson.nodeId);
 
   useEffect(() => {
     setView(initialView);
@@ -139,6 +143,7 @@ export function AcademyShell({ initialView }: { initialView: View }) {
             <strong>{activeMastery.masteryScore}%</strong>
             <small>{classifyMastery(activeMastery.masteryScore)} · XP {state.xp} · streak {state.streak}</small>
             <ProgressBar value={activeMastery.masteryScore} />
+            <small>{hydrated ? "로컬 저장 활성" : "저장 상태 확인 중"}</small>
           </article>
         </section>
 
@@ -212,13 +217,45 @@ export function AcademyShell({ initialView }: { initialView: View }) {
               <h2>첫 출시용 10개 실제 수업</h2>
               <div className="roadmap">
                 {mvpLessons.slice(0, 10).map((lesson) => (
-                  <article className={`stage-card ${lesson.id === ratioGasFlowLesson.id ? "current" : ""}`} key={lesson.id}>
+                  <button
+                    className={`stage-card lesson-option ${lesson.id === selectedLesson.id ? "current" : ""}`}
+                    key={lesson.id}
+                    onClick={() => setSelectedLessonId(lesson.id)}
+                    type="button"
+                  >
                     <span>{lesson.estimatedMinutes} min · {lesson.nodeId}</span>
                     <strong>{lesson.title}</strong>
                     <small>{lesson.masteryEvidence[0]}</small>
-                  </article>
+                  </button>
                 ))}
               </div>
+            </section>
+            <section className="grid-2">
+              <article className="panel selected-lesson">
+                <p className="eyebrow">Selected lesson</p>
+                <h2>{selectedLesson.title}</h2>
+                <p>{selectedLessonNode?.learningObjectives[0] ?? "이 수업은 다음 단계로 가는 연결 수업입니다."}</p>
+                <div className="lesson-meta-grid">
+                  <span>{selectedLesson.estimatedMinutes}분</span>
+                  <span>{selectedLesson.courseSlug}</span>
+                  <span>{selectedLesson.nodeId}</span>
+                </div>
+                <div className="mini-list">
+                  {selectedLesson.masteryEvidence.map((item) => <p key={item}>• {item}</p>)}
+                </div>
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => setView(selectedLesson.id === ratioGasFlowLesson.id ? "lesson" : "map")}
+                >
+                  {selectedLesson.id === ratioGasFlowLesson.id ? "이 수업 열기" : "선수지식에서 위치 보기"}
+                </button>
+              </article>
+              <article className="panel">
+                <p className="eyebrow">Quick glossary</p>
+                <h2>막히기 쉬운 영어/현장 용어</h2>
+                <TermGrid />
+              </article>
             </section>
           </>
         )}
@@ -291,6 +328,14 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                 <span>현장 보고 문장</span>
                 <strong>“이 계산은 교육용 예시이며, 실제 gas setting은 승인된 recipe와 site 절차로만 확인하겠습니다.”</strong>
               </div>
+              <label className="reflection-box">
+                <span>오늘 내 말로 정리</span>
+                <textarea
+                  value={state.note}
+                  onChange={(event) => setState((current) => ({ ...current, note: event.target.value }))}
+                  placeholder="예: slm과 sccm이 섞이면 먼저 sccm으로 맞춘다..."
+                />
+              </label>
               <button className="btn primary" type="button" onClick={() => completeLesson(setState, activeMastery)}>수업 완료하고 mastery 업데이트</button>
             </article>
           </section>
@@ -349,7 +394,7 @@ export function AcademyShell({ initialView }: { initialView: View }) {
               <button className="btn primary" type="button" onClick={() => submitRatio(setState, activeMastery)}>
                 제출하고 피드백 받기
               </button>
-              <p className="feedback">{state.ratioFeedback}</p>
+              <p className={`feedback-card ${state.ratioFeedback.startsWith("정답") ? "good" : state.ratioFeedback.startsWith("다시") ? "bad" : ""}`}>{state.ratioFeedback}</p>
             </article>
           </section>
         )}
@@ -402,6 +447,22 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                 <span>answers {state.answers.length}</span>
                 <span>reviews {state.reviews.length}</span>
                 <span>mastery {activeMastery.masteryScore}%</span>
+              </div>
+              <div className="hero-actions">
+                <button
+                  className="btn primary"
+                  type="button"
+                  onClick={() => {
+                    const text = JSON.stringify(packet, null, 2);
+                    void navigator.clipboard?.writeText(text).then(
+                      () => setPacketFeedback("AI packet을 클립보드에 복사했습니다."),
+                      () => setPacketFeedback("클립보드 복사는 실패했지만 아래 JSON은 그대로 사용할 수 있습니다.")
+                    );
+                  }}
+                >
+                  AI packet 복사
+                </button>
+                <span className="copy-feedback">{packetFeedback}</span>
               </div>
               <textarea className="packet" readOnly value={JSON.stringify(packet, null, 2)} />
             </article>
@@ -513,6 +574,28 @@ function computeReadiness(mastery: Record<string, MasteryState>, answers: Diagno
     { label: "MS readiness", value: Math.round((math + epi) / 2), reason: "첫 vertical slice 기준의 임시 추정" },
     { label: "Review load", value: Math.min(100, answers.length * 20), reason: "진단 답변과 복습 카드 기반" }
   ];
+}
+
+function TermGrid() {
+  const terms = [
+    { en: "sccm", ko: "분당 표준 cc 유량", field: "가스 유량을 작은 단위로 읽을 때 사용합니다." },
+    { en: "slm", ko: "분당 표준 리터 유량", field: "carrier gas처럼 큰 유량을 볼 때 자주 나옵니다." },
+    { en: "precursor", ko: "막 성장을 위한 원료 가스", field: "교육 예시에서는 숫자만 다루고 실제 recipe는 제외합니다." },
+    { en: "carrier gas", ko: "원료를 운반하는 큰 흐름", field: "비율 계산에서 기준 흐름으로 볼 수 있습니다." },
+    { en: "uniformity", ko: "wafer 위 균일도", field: "평균만 아니라 center-edge 산포까지 봅니다." },
+    { en: "Arrhenius plot", ko: "온도와 반응속도 관계 그래프", field: "로그와 지수 개념이 필요한 다음 산입니다." }
+  ];
+  return (
+    <div className="term-grid">
+      {terms.map((term) => (
+        <article key={term.en}>
+          <strong>{term.en}</strong>
+          <span>{term.ko}</span>
+          <small>{term.field}</small>
+        </article>
+      ))}
+    </div>
+  );
 }
 
 function ProgressBar({ value }: { value: number }) {

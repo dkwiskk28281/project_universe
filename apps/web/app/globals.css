@@ -311,6 +311,15 @@ textarea:focus-visible {
   text-align: left;
 }
 
+button.stage-card {
+  cursor: pointer;
+}
+
+button.stage-card:hover {
+  border-color: rgba(118, 247, 255, 0.38);
+  background: rgba(118, 247, 255, 0.08);
+}
+
 .stage-card span {
   color: var(--cyan);
   font-family: Consolas, monospace;
@@ -428,7 +437,8 @@ textarea:focus-visible {
 .field-sentence,
 .feedback-card,
 .empty-state,
-.packet-summary {
+.packet-summary,
+.reflection-box {
   border: 1px solid rgba(118, 247, 255, 0.14);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.24);
@@ -436,13 +446,15 @@ textarea:focus-visible {
 }
 
 .formula-card,
-.field-sentence {
+.field-sentence,
+.reflection-box {
   display: grid;
   gap: 8px;
 }
 
 .formula-card span,
-.field-sentence span {
+.field-sentence span,
+.reflection-box span {
   color: var(--cyan);
   font-family: Consolas, monospace;
   font-size: 0.75rem;
@@ -459,6 +471,16 @@ textarea:focus-visible {
 .feedback-card {
   color: #dffdf2;
   line-height: 1.55;
+}
+
+.feedback-card.good {
+  border-color: rgba(0, 255, 149, 0.42);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.feedback-card.bad {
+  border-color: rgba(255, 159, 159, 0.42);
+  background: rgba(255, 159, 159, 0.08);
 }
 
 .empty-state {
@@ -481,6 +503,79 @@ textarea:focus-visible {
   padding: 6px 10px;
   font-family: Consolas, monospace;
   font-size: 0.78rem;
+}
+
+.copy-feedback {
+  align-self: center;
+  color: var(--dim);
+  font-size: 0.9rem;
+}
+
+.lesson-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lesson-meta-grid span {
+  border: 1px solid rgba(0, 255, 149, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 255, 149, 0.07);
+  color: var(--accent);
+  padding: 8px;
+  font-family: Consolas, monospace;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.mini-list {
+  display: grid;
+  gap: 4px;
+}
+
+.mini-list p {
+  margin: 0;
+}
+
+.term-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.term-grid article {
+  display: grid;
+  gap: 4px;
+  min-height: 104px;
+  border: 1px solid rgba(118, 247, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  padding: 10px;
+}
+
+.term-grid strong {
+  color: var(--accent);
+  font-family: Consolas, monospace;
+}
+
+.term-grid span {
+  color: var(--text);
+}
+
+.term-grid small {
+  color: var(--dim);
+  line-height: 1.45;
+}
+
+.reflection-box textarea {
+  min-height: 120px;
+  width: 100%;
+  border: 1px solid rgba(118, 247, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  color: var(--text);
+  padding: 10px;
+  resize: vertical;
 }
 
 .progress-track {
@@ -562,6 +657,12 @@ input.note-textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .term-grid,
+  .lesson-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .top-nav a,
   .tab-button,
   .btn {
@@ -575,5 +676,13 @@ input.note-textarea {
 
   .rail-step {
     min-height: 64px;
+  }
+
+  .stage-card {
+    min-height: 104px;
+  }
+
+  .term-grid article {
+    min-height: auto;
   }
 }
