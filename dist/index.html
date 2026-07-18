@@ -19,7 +19,7 @@
     })();
   </script>
   <link rel="icon" href="assets/project-universe-favicon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=20260718-v18msacademy" />
+  <link rel="stylesheet" href="styles.css?v=20260718-v19vision" />
 </head>
 <body class="auth-public entry-choice-open">
   <div id="entry-choice-gate" class="entry-choice-gate" role="dialog" aria-modal="true" aria-labelledby="entry-choice-title">
@@ -62,6 +62,7 @@
     <nav class="top-nav global-nav" aria-label="전체 책장 내비게이션">
       <button class="nav-btn active" data-view="bookshelf">책장</button>
       <button class="nav-btn global-only" data-view="cognitive">인지능력향상 프로젝트</button>
+      <button class="nav-btn" data-view="vision-training">시기능 회복훈련</button>
       <button class="nav-btn global-only" id="open-active-book" type="button">현재 책</button>
       <button class="nav-btn global-only" id="open-command-search" type="button">검색</button>
       <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="true">콘솔</button>
@@ -619,6 +620,18 @@
       <div id="cognitive-root"></div>
     </section>
 
+    <section id="vision-training" class="view no-term">
+      <div class="page-title">
+        <p>Vision Function Recovery Book</p>
+        <h1>시기능 회복훈련</h1>
+      </div>
+      <article class="source-note vision-medical-note">
+        <h2>안전 경계</h2>
+        <p>이 책은 간헐적외사시, 복시, 융합 조절을 스스로 진단하거나 치료 처방하는 화면이 아닙니다. 안과/사시 전문의, 검안사, orthoptist의 평가와 지시를 우선하고, 새로 생긴 지속 복시·시력저하·심한 두통·눈 통증·어지럼·눈꺼풀 처짐·말/힘 빠짐이 있으면 훈련하지 말고 진료를 우선합니다.</p>
+      </article>
+      <div id="vision-training-root"></div>
+    </section>
+
     <section id="bookshelf" class="view no-term">
       <div class="page-title">
         <p>PRIVATE OPERATIONS SHELF</p>
@@ -759,7 +772,7 @@
     </section>
   </main>
 
-  <script src="app.js?v=20260718-v17fellowroute"></script>
+  <script src="app.js?v=20260718-v19vision"></script>
   <script type="module" src="webgl-twin.js?v=20260718-v17fellowroute"></script>
   <script src="mastery.js?v=20260621-extreme1"></script>
   <script src="readiness.js?v=20260621-extreme1"></script>
@@ -768,8 +781,9 @@
   <script src="english-test.js?v=20260713-v5command"></script>
   <script src="term-helper.js?v=20260713-fepbigbang"></script>
   <script src="cognitive.js?v=20260713-fepbigbang"></script>
-  <script src="bookshelf.js?v=20260718-v17fellowroute"></script>
+  <script src="bookshelf.js?v=20260718-v19vision"></script>
   <script src="materials-ms.js?v=20260718-v18msacademy"></script>
+  <script src="vision-training.js?v=20260718-v19vision"></script>
   <script src="think-tank.js?v=20260713-fepbigbang"></script>
 </body>
 </html>

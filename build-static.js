@@ -19,6 +19,7 @@ const webFiles = [
   "cognitive.js",
   "bookshelf.js",
   "materials-ms.js",
+  "vision-training.js",
   "think-tank.js"
 ];
 

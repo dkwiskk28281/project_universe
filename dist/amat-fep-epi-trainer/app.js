@@ -4318,13 +4318,14 @@ const VIEW_LABELS = {
   papers: "논문노트",
   "english-test": "영어시험",
   english: "영어풀이",
+  "vision-training": "시기능 회복훈련",
   glossary: "용어집",
   diagnostics: "진단훈련",
   quiz: "퀴즈"
 };
 
 VIEW_LABELS.fellow = "Fellow 로드맵";
-const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cognitive"].includes(id));
+const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cognitive", "vision-training"].includes(id));
 
 const BOOK_VIEW_SEQUENCE = [
   "dashboard",
@@ -4381,6 +4382,7 @@ const VIEW_CHAPTERS = {
   papers: "면접과 영어",
   "english-test": "면접과 영어",
   english: "면접과 영어",
+  "vision-training": "건강",
   quiz: "면접과 영어"
 };
 
@@ -4388,6 +4390,7 @@ VIEW_CHAPTERS.fellow = "Fellow 성장";
 
 const uxHotViews = [
   ["cognitive", "인지"],
+  ["vision-training", "시기능"],
   ["runbook", "런북"],
   ["process-visual", "공정"],
   ["cluster", "구성"],
@@ -4628,7 +4631,9 @@ function getUxSearchItems() {
       ? "책장으로 이동"
       : view === "cognitive"
         ? "인지능력향상 프로젝트의 오늘 훈련으로 이동"
-        : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
+        : view === "vision-training"
+          ? "시기능 회복훈련 책으로 이동"
+          : `FEP/EPI 현장 엔지니어 책의 ${title} 장으로 이동`,
     view
   }));
   const commandItems = commandCenterActions.map(item => ({

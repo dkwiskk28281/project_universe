@@ -22,6 +22,7 @@
 
   const BOOK_VIEW_LABELS = {
     cognitive: "인지능력향상 프로젝트",
+    "vision-training": "시기능 회복훈련",
     dashboard: "EPI 홈",
     curriculum: "성장 커리큘럼",
     roadmap: "학습 로드맵",
@@ -115,6 +116,14 @@
       ["사회적 연결", "대화, 만남, 전화, 공동 활동처럼 인지 자극이 있는 연결 계획"],
       ["진료 질문", "인지 저하가 걱정될 때 의료진에게 물어볼 질문과 관찰 근거"],
       ["AI 공개 요약", "원문 개인정보 없이 주간 패턴과 다음 행동만 AI에게 보여줄 수 있게 정리"]
+    ],
+    "vision-function-recovery": [
+      ["시기능 훈련 로그", "훈련 모드, 시간, 피로도, 복시 느낌, 조절 상태를 비식별로 기록"],
+      ["복시 트리거", "수면, 피로, 거리, 밝기, 장시간 근거리 작업처럼 증상이 늘어나는 조건"],
+      ["전문가 지시 메모", "안과/검안사/orthoptist가 실제로 지시한 운동과 금지 조건만 요약"],
+      ["진료 질문", "IXT subtype, NPC, fusional vergence amplitude, stereoacuity 관련 질문"],
+      ["주간 패턴", "복시 빈도, 회복 시간, 과훈련 신호, 쉬었을 때 회복 여부"],
+      ["AI 공개 요약", "검사 원문 없이 비식별 패턴과 다음 질문만 AI에게 보여줄 수 있게 정리"]
     ],
     "family-health": [
       ["증상 타임라인", "증상, 날짜, 지속시간, 악화/완화 요인을 기록하는 내부 페이지"],
@@ -286,6 +295,7 @@
 
   const LIFE_ACTION_RECIPES = {
     "cognitive-resilience": "오늘 10분 인지 루틴을 1세션 수행하고, 약한 영역 1개를 기록하세요.",
+    "vision-function-recovery": "오늘 피로·복시·조절 상태를 60초 이하로 짧게 기록하고, 반복 악화 신호가 있는지 확인하세요.",
     "career-fep-epi": "FEP/EPI 책에서 한 챕터를 열고 evidence-stop-report 문장 1개를 저장하세요.",
     "life-os": "오늘 에너지와 다음 24시간의 가장 작은 행동 1개를 기록하세요.",
     "family-health": "증상, 질문, 다음 예약/상담 행동을 원문 없이 요약하세요.",
@@ -352,6 +362,22 @@
       starterQuestions: ["오늘 집중이 흐려진 순간은 언제였나?", "잠, 운동, 대화 중 무엇이 부족했나?", "의료진에게 확인할 만한 변화가 있었나?"],
       reviewCadence: "매일 10-12분, 주 1회 패턴 점검",
       linkedViews: ["cognitive", "bookshelf", "thinktank"]
+    },
+    {
+      id: "vision-function-recovery",
+      code: "시기능",
+      shelf: "건강",
+      title: "시기능 회복훈련",
+      subtitle: "간헐적외사시·복시 조절 패턴을 안전하게 기록하고 전문가 상담 질문으로 정리",
+      privacyLevel: "sensitive-summary",
+      purpose: "자가 진단이나 치료 처방이 아니라, 피로·복시·융합 조절·회복 시간을 비식별 요약으로 기록해 안과/사시 전문가와 더 정확히 소통한다.",
+      allowed: ["피로도/복시 느낌 요약", "훈련 시간과 조절 상태", "전문가에게 물어볼 질문", "악화/완화 트리거", "비식별 주간 패턴"],
+      neverStore: ["진단서 원본", "처방전 사진", "검사 결과 원문", "환자번호", "병원 예약번호", "타인의 의료정보"],
+      pageTypes: ["시기능 훈련 로그", "복시 트리거", "진료 질문", "전문가 지시 메모", "주간 패턴", "AI 공개 요약"],
+      aiUse: ["피로·복시 패턴 요약", "진료 전 질문 정리", "과훈련 위험 신호 체크", "AI 공개 가능한 비식별 요약 생성"],
+      starterQuestions: ["복시가 언제 더 잘 나타나는가?", "피곤함, 수면, 거리, 밝기 중 어떤 트리거가 있었나?", "의료진에게 확인해야 할 질문은 무엇인가?"],
+      reviewCadence: "짧은 세션 후 기록, 주 1회 패턴 점검",
+      linkedViews: ["vision-training", "bookshelf", "thinktank"]
     },
     {
       id: "career-fep-epi",
@@ -2581,6 +2607,7 @@
       electrical: "전기/DVM",
       "english-test": "영어시험",
       thinktank: "싱크탱크",
+      "vision-training": "시기능 회복훈련",
       english: "영어풀이",
       papers: "논문노트",
       glossary: "용어집",
@@ -2719,6 +2746,29 @@
     };
   }
 
+  function localVisionInsight() {
+    const state = safeJsonParse("projectUniverseVisionTrainingState", {});
+    const logs = Array.isArray(state.logs) ? state.logs : [];
+    const recent = logs.slice(0, 8);
+    const weeklyCutoff = Date.now() - 7 * 86400000;
+    const weeklySeconds = logs
+      .filter(log => new Date(log.createdAt || 0).getTime() >= weeklyCutoff)
+      .reduce((sum, log) => sum + Number(log.seconds || 0), 0);
+    const avg = key => recent.length
+      ? Math.round(recent.reduce((sum, log) => sum + Number(log[key] || 0), 0) / recent.length * 10) / 10
+      : 0;
+    const frequentDouble = recent.filter(log => log.control === "frequent-double" || Number(log.diplopia || 0) >= 4).length;
+    return {
+      sessions: logs.length,
+      weeklyMinutes: Math.round(weeklySeconds / 60),
+      avgFatigue: avg("fatigue"),
+      avgDiplopia: avg("diplopia"),
+      frequentDouble,
+      latestMode: logs[0]?.mode || "",
+      latestAt: logs[0]?.createdAt || ""
+    };
+  }
+
   function localCareerInsight() {
     const trainer = safeJsonParse("ceTrainerState", {});
     const missions = Object.values(trainer.missions || {}).filter(Boolean).length;
@@ -2851,12 +2901,14 @@
   function buildTodayAgenda() {
     const english = localEnglishInsight();
     const cognitive = localCognitiveInsight();
+    const vision = localVisionInsight();
     const career = localCareerInsight();
     const weakBook = BOOKSHELF_BOOKS
       .map(book => ({ book, stats: getBookStats(book) }))
       .sort((a, b) => a.stats.score - b.stats.score)[0];
     return [
       { lane: "인지", action: cognitive.sessions ? "오늘 인지 루틴을 이어서 streak를 유지하세요." : "인지훈련 첫 세션을 시작하세요.", evidence: `${cognitive.sessions} sessions · streak ${cognitive.streak}` },
+      { lane: "시기능", action: vision.sessions ? "피로·복시 패턴을 1분 이내로 점검하고 과훈련 신호가 없는지 확인하세요." : "시기능 회복훈련 책에서 첫 안전 기록을 남기세요.", evidence: `${vision.sessions} sessions · weekly ${vision.weeklyMinutes}min · double ${vision.frequentDouble}` },
       { lane: "직무", action: career.quizAccuracy < 70 ? "FEP/EPI 판단형 퀴즈와 runbook evidence를 복습하세요." : "install 또는 process visual 장을 하나 열어 현장 보고 문장을 만드세요.", evidence: `quiz ${career.quizAccuracy}% · missions ${career.missions}` },
       { lane: "영어", action: english.weaknesses[0] ? `${english.weaknesses[0].skill} 유형을 10분 보강하세요.` : "영어 CBT 1세트를 시작해 약점 태그를 만드세요.", evidence: `${english.totalQuestions} questions · ${english.accuracy}%` },
       { lane: "책장", action: weakBook ? todayActionForBook(weakBook.book, weakBook.stats) : "첫 기록을 저장하세요.", evidence: weakBook ? `${weakBook.book.title} 정리도 ${weakBook.stats.score}` : "기록 대기" }
@@ -3112,6 +3164,7 @@
     const patterns = buildPatternSignals();
     const english = localEnglishInsight();
     const cognitive = localCognitiveInsight();
+    const vision = localVisionInsight();
     const career = localCareerInsight();
     const reviewQueue = safeJsonParse("amkEnglishSpacedReviewQueue", []);
     const dueEnglish = reviewQueue.filter(item => new Date(item.dueAt || 0).getTime() <= Date.now()).length;
@@ -3128,6 +3181,15 @@
         why: "주의, 처리속도, 기억 회상은 짧고 꾸준한 retrieval practice가 효과적입니다.",
         view: "cognitive",
         bookId: "cognitive-resilience"
+      },
+      {
+        id: "vision-check",
+        lane: "시기능",
+        title: vision.frequentDouble ? "복시 잦음 기록 점검 및 전문가 상담 질문 정리" : "시기능 60초 안전 기록",
+        evidence: `${vision.sessions} sessions / weekly ${vision.weeklyMinutes}min / frequent double ${vision.frequentDouble}`,
+        why: "간헐외사시는 피로와 조절 상태에 따라 흔들릴 수 있어 짧은 기록이 진료 상담의 증거가 됩니다.",
+        view: "vision-training",
+        bookId: "vision-function-recovery"
       },
       {
         id: "english-review",
@@ -3823,6 +3885,7 @@
       localSignals: {
         english: localEnglishInsight(),
         cognitive: localCognitiveInsight(),
+        vision: localVisionInsight(),
         career: localCareerInsight()
       },
       books: BOOKSHELF_BOOKS.map(book => ({

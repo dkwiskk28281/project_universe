@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { Route } from "next";
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { knowledgeNodes, unresolvedPrerequisites } from "@/lib/curriculum/knowledge-graph";
@@ -119,6 +120,7 @@ export function AcademyShell({ initialView }: { initialView: View }) {
           <Link href="/review">복습</Link>
           <Link href="/tutor">AI Tutor</Link>
           <Link href="/knowledge-map">지도</Link>
+          <Link href={"/vision-training" as Route}>시기능</Link>
         </nav>
       </header>
 
