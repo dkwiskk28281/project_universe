@@ -1,7 +1,10 @@
 (() => {
   const ROOT_ID = "operating-core-root";
   const DONE_KEY = "projectUniverseOperatingCoreDoneV1";
+  const ROUTINE_KEY = "projectUniverseDailyRoutineLogV1";
+  const INTEGRITY_LEDGER_KEY = "projectUniverseIntegrityLedgerV1";
   const EXPORT_VERSION = "project-universe-operating-core-v6";
+  const REQUIRED_RECORD_FIELDS = ["schemaVersion", "privacyLevel", "syncStatus", "sourceDevice", "createdAt", "updatedAt", "exportPolicy"];
   const SENSITIVE_BLOCKLIST = [
     "password",
     "seed phrase",
@@ -179,6 +182,176 @@
     return `${todayKey()}:${task.lane}:${task.title}`;
   }
 
+  function hashString(value) {
+    let hash = 2166136261;
+    const text = String(value);
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+  }
+
+  function routineLog() {
+    return safeJson(ROUTINE_KEY, {});
+  }
+
+  function routineDoneState() {
+    return routineLog()[todayKey()] || {};
+  }
+
+  function segmentId(segment) {
+    return `${todayKey()}:${segment.id}`;
+  }
+
+  function fieldDebtForRecord(record = {}) {
+    return REQUIRED_RECORD_FIELDS.filter(field => !record[field]);
+  }
+
+  function dataIntegrity(signals) {
+    const pages = Array.isArray(signals.pages) ? signals.pages : [];
+    const thinkTank = Array.isArray(signals.thinkTank) ? signals.thinkTank : [];
+    const recordSets = [
+      ...pages.map(record => ({ type: "bookshelf", record })),
+      ...thinkTank.map(record => ({ type: "thinkTank", record }))
+    ];
+    const missingFieldRows = recordSets
+      .map(item => ({ ...item, missing: fieldDebtForRecord(item.record) }))
+      .filter(item => item.missing.length);
+    const duplicateIds = [...recordSets.reduce((map, item) => {
+      const id = item.record?.id || item.record?.title || "unknown";
+      map.set(id, (map.get(id) || 0) + 1);
+      return map;
+    }, new Map()).entries()].filter(([, count]) => count > 1);
+    const pending = signals.pendingSync.reduce((sum, item) => sum + item.count, 0);
+    const evidenceMissing = pages.filter(page => !(page.evidence || page.sourceUrl || page.sourceTitle)).length;
+    const fileIndexes = pages.reduce((sum, page) => sum + (Array.isArray(page.fileIndex) ? page.fileIndex.length : 0), 0);
+    const nextStepMissing = signals.thinkTankSummary.missingNextStep;
+    const lastCheckpoint = safeJson(INTEGRITY_LEDGER_KEY, []).slice(-1)[0] || null;
+    const score = Math.max(10, Math.round(
+      96
+      - Math.min(28, missingFieldRows.length * 2)
+      - Math.min(22, pending * 4)
+      - Math.min(18, evidenceMissing * 2)
+      - Math.min(14, duplicateIds.length * 5)
+    ));
+    return {
+      score,
+      schemaDebt: missingFieldRows.length,
+      duplicateIds: duplicateIds.length,
+      pendingSync: pending,
+      evidenceMissing,
+      fileIndexes,
+      nextStepMissing,
+      lastCheckpoint,
+      status: score >= 85 ? "stable" : score >= 65 ? "needs-review" : "repair-first",
+      checklist: [
+        missingFieldRows.length ? `${missingFieldRows.length}개 기록에 schema metadata 보강 필요` : "schema metadata debt 없음",
+        pending ? `${pending}개 sync pending 기록 확인 필요` : "sync pending 없음",
+        evidenceMissing ? `${evidenceMissing}개 기록에 evidence/source 보강 권장` : "근거 없는 책장 기록 없음",
+        duplicateIds.length ? `${duplicateIds.length}개 중복 id 후보` : "중복 id 후보 없음",
+        fileIndexes ? `${fileIndexes}개 file index: 원문은 R2/D-drive, D1은 summary/hash만` : "File Vault index 없음: 원문 파일은 D1에 넣지 않기",
+        lastCheckpoint ? `마지막 checkpoint ${new Date(lastCheckpoint.createdAt).toLocaleString()}` : "아직 integrity checkpoint 없음"
+      ]
+    };
+  }
+
+  function makeDailyRoutine(signals, tasks, integrity) {
+    const englishWeak = signals.english.weaknesses[0]?.skill || "technical English";
+    const ceWeak = signals.ce.weaknesses[0]?.skill || "evidence-first 판단";
+    const msReady = signals.pages.some(page => page.bookId === "materials-ms-academy") || Object.keys(signals.trainer.curriculumDone || {}).length;
+    return [
+      {
+        id: "warmup",
+        minutes: 3,
+        lane: "정렬",
+        view: "operating-core",
+        title: "오늘의 운영 브리핑 읽기",
+        reason: "기록, 약점, 저장 상태를 먼저 보고 공부 순서를 고정합니다.",
+        evidence: `${tasks.length} actions · integrity ${integrity.score}`
+      },
+      {
+        id: "ce-case",
+        minutes: 8,
+        lane: "CE",
+        view: "diagnostics",
+        title: `${ceWeak} 케이스 판단 1개`,
+        reason: "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
+        evidence: `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
+      },
+      {
+        id: "epi-visual",
+        minutes: 7,
+        lane: "EPI",
+        view: signals.ce.weaknesses.length ? "process-visual" : "systems",
+        title: "wafer path와 공정 상태를 눈으로 복기",
+        reason: "FOUP, EFEM, Load Lock, TM, PM, gas, pump, exhaust가 하나의 머릿속 모델로 연결돼야 합니다.",
+        evidence: "module map · pressure/gas/robot state"
+      },
+      {
+        id: "english",
+        minutes: 5,
+        lane: "영어",
+        view: "english-test",
+        title: `${englishWeak} 즉시채점 복습`,
+        reason: "한 문제를 풀고 해설과 변형문제를 바로 봐야 실제 CBT와 고객 보고 영어가 쌓입니다.",
+        evidence: `${signals.english.due} due · accuracy ${signals.english.accuracy ?? "n/a"}%`
+      },
+      {
+        id: "fellow-route",
+        minutes: 5,
+        lane: "Fellow",
+        view: msReady ? "materials-ms" : "fellow",
+        title: msReady ? "Materials MS 선수개념 1개" : "Fellow 로드맵 gap 확인",
+        reason: "수학, 물리, 화학, 재료공학, 결정성장, 박막, 통계, DOE를 장기 커리큘럼으로 이어갑니다.",
+        evidence: `${signals.ce.curriculumDone} curriculum marks · ${signals.pages.length} records`
+      },
+      {
+        id: "record",
+        minutes: 2,
+        lane: "기록",
+        view: "bookshelf",
+        title: integrity.nextStepMissing ? "nextStep 없는 기록 1개 닫기" : "AI packet checkpoint 생성",
+        reason: "공부가 기억으로 남으려면 action/result/nextStep 또는 checkpoint가 필요합니다.",
+        evidence: `${integrity.nextStepMissing} missing nextStep · ${integrity.pendingSync} sync pending`
+      }
+    ];
+  }
+
+  function routineProgress(routine) {
+    const done = routineDoneState();
+    const total = routine.reduce((sum, segment) => sum + segment.minutes, 0);
+    const completed = routine.filter(segment => done[segmentId(segment)]).reduce((sum, segment) => sum + segment.minutes, 0);
+    return {
+      total,
+      completed,
+      percent: total ? Math.round(completed / total * 100) : 0
+    };
+  }
+
+  function aiAnalysis(signals, tasks, integrity) {
+    const weak = [
+      ...signals.ce.weaknesses.slice(0, 3).map(item => `CE:${item.skill}`),
+      ...signals.english.weaknesses.slice(0, 3).map(item => `EN:${item.skill}`)
+    ];
+    const patterns = [
+      integrity.nextStepMissing ? "open-loop 기록이 남아 있어 다음 행동이 흐려질 수 있음" : "기록의 다음 행동 연결이 안정적",
+      integrity.evidenceMissing ? "근거 없는 기록이 있어 AI 분석 신뢰도가 낮아질 수 있음" : "evidence 기반 기록 비율 양호",
+      signals.english.due ? "영어 복습 대기열이 오늘 루틴 우선순위에 들어감" : "영어 복습 대기열은 낮음",
+      signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요"
+    ];
+    return {
+      weak,
+      patterns,
+      nextActions: tasks.slice(0, 4).map(task => task.title),
+      exportBoundary: [
+        "AI에게는 redacted packet 먼저 제공",
+        "건강/자산/가족 기록은 privacyLevel 확인 후 별도 packet",
+        "recipe, setpoint, bypass, 고객자료, manual 원문은 제외"
+      ]
+    };
+  }
+
   function priorityTasks(signals) {
     const tasks = [];
     const englishWeak = signals.english.weaknesses[0];
@@ -292,14 +465,16 @@
     return tasks.sort((a, b) => b.score - a.score).slice(0, 7);
   }
 
-  function readinessScore(signals, tasks) {
+  function readinessScore(signals, tasks, integrity = null) {
     const storageScore = signals.pendingSync.reduce((score, item) => score - Math.min(15, item.count * 3), 92);
     const learningScore = Math.min(94, 50 + signals.ce.curriculumDone * 2 + signals.ce.caseAnswers * 2 + signals.english.microAttempts);
     const routineScore = Math.min(96, 55 + Object.keys(doneState()).filter(key => key.startsWith(todayKey())).length * 10);
     const safetyScore = signals.vision.frequentDouble ? 74 : 88;
+    const integrityScore = integrity?.score ?? storageScore;
     return {
-      total: Math.max(20, Math.round((storageScore * 0.25) + (learningScore * 0.3) + (routineScore * 0.25) + (safetyScore * 0.2))),
+      total: Math.max(20, Math.round((integrityScore * 0.24) + (learningScore * 0.28) + (routineScore * 0.24) + (safetyScore * 0.14) + (storageScore * 0.1))),
       storage: Math.max(0, Math.round(storageScore)),
+      integrity: integrityScore,
       learning: Math.round(learningScore),
       routine: Math.round(routineScore),
       safety: safetyScore,
@@ -307,8 +482,8 @@
     };
   }
 
-  function buildPacket(signals, tasks, score) {
-    return {
+  function buildPacket(signals, tasks, score, routine = [], integrity = null, analysis = null) {
+    const packet = {
       schemaVersion: EXPORT_VERSION,
       generatedAt: new Date().toISOString(),
       privacyMode: "redacted-summary-only",
@@ -320,6 +495,14 @@
         gitDirty: Boolean(signals.build?.gitDirty)
       },
       readiness: score,
+      dailyRoutine30m: routine.map(segment => ({
+        lane: segment.lane,
+        title: segment.title,
+        minutes: segment.minutes,
+        why: segment.reason,
+        evidence: segment.evidence,
+        linkedView: segment.view
+      })),
       todayTasks: tasks.map(task => ({
         lane: task.lane,
         title: task.title,
@@ -340,8 +523,10 @@
         thinkTankEntries: signals.thinkTankSummary.entries,
         pendingSync: signals.pendingSync,
         localStorageMb: signals.storage.totalMb,
+        integrity,
         remoteStatus: state.remote.error ? "remote-unavailable" : state.remote.ops ? "remote-connected" : "local-only"
       },
+      aiAnalysis: analysis,
       neverInclude: SENSITIVE_BLOCKLIST,
       nextSevenDays: tasks.slice(0, 5).map((task, index) => ({
         day: index + 1,
@@ -349,6 +534,16 @@
         reason: task.why
       }))
     };
+    packet.integrityHash = hashString(JSON.stringify({
+      schemaVersion: packet.schemaVersion,
+      generatedAt: packet.generatedAt,
+      readiness: packet.readiness,
+      dailyRoutine30m: packet.dailyRoutine30m,
+      dataHealth: packet.dataHealth,
+      weaknesses: packet.weaknesses,
+      aiAnalysis: packet.aiAnalysis
+    }));
+    return packet;
   }
 
   async function loadBuildInfo() {
@@ -421,6 +616,129 @@
           <button class="primary" type="button" data-core-done="${escapeHtml(taskId(task))}">${done ? "완료됨" : "완료"}</button>
         </div>
       </article>
+    `;
+  }
+
+  function renderDailyRoutine(routine) {
+    const done = routineDoneState();
+    const progress = routineProgress(routine);
+    return `
+      <section class="ops-card ops-routine-card">
+        <div class="ops-card-head">
+          <div>
+            <p class="eyebrow">30-minute operating routine</p>
+            <h2>오늘 30분 루틴</h2>
+          </div>
+          <div class="ops-mini-ring" aria-label="오늘 루틴 진행률">
+            <strong>${progress.percent}%</strong>
+            <span>${progress.completed}/${progress.total}분</span>
+          </div>
+        </div>
+        <div class="ops-routine-timeline">
+          ${routine.map(segment => {
+            const isDone = Boolean(done[segmentId(segment)]);
+            return `
+              <article class="${isDone ? "done" : ""}">
+                <time>${segment.minutes}분</time>
+                <div>
+                  <span>${escapeHtml(segment.lane)}</span>
+                  <strong>${escapeHtml(segment.title)}</strong>
+                  <p>${escapeHtml(segment.reason)}</p>
+                  <small>${escapeHtml(segment.evidence)}</small>
+                </div>
+                <div class="ops-routine-actions">
+                  <button class="secondary" type="button" data-core-view="${escapeHtml(segment.view)}">열기</button>
+                  <button class="primary" type="button" data-routine-done="${escapeHtml(segmentId(segment))}">${isDone ? "완료됨" : "완료"}</button>
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderIntegrityPanel(integrity) {
+    return `
+      <section class="ops-card ops-integrity-card">
+        <div class="ops-card-head">
+          <div>
+            <p class="eyebrow">data integrity OS</p>
+            <h2>데이터 무결성 운영판</h2>
+          </div>
+          <span class="ops-integrity-state ${escapeHtml(integrity.status)}">${escapeHtml(integrity.status)}</span>
+        </div>
+        <div class="ops-integrity-score">
+          <strong>${integrity.score}</strong>
+          <span>schema · sync · evidence · conflict</span>
+        </div>
+        <div class="ops-integrity-list">
+          ${integrity.checklist.map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+        </div>
+        <div class="ops-actions">
+          <button class="primary" type="button" data-integrity-checkpoint>checkpoint 저장</button>
+          <button class="secondary" type="button" data-core-view="bookshelf">기록 정리</button>
+          <small class="ops-integrity-status">${integrity.lastCheckpoint ? "마지막 checkpoint가 있습니다." : "첫 checkpoint를 만들면 AI packet 신뢰도를 추적할 수 있습니다."}</small>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderAiAnalysisPanel(analysis) {
+    return `
+      <section class="ops-card ops-analysis-card">
+        <p class="eyebrow">AI think tank center</p>
+        <h2>AI가 읽기 좋은 오늘의 해석</h2>
+        <div class="ops-analysis-grid">
+          <article>
+            <strong>반복 약점</strong>
+            <div>${analysis.weak.length ? analysis.weak.map(item => `<span class="ops-chip">${escapeHtml(item)}</span>`).join("") : `<span class="ops-chip calm">데이터 대기</span>`}</div>
+          </article>
+          <article>
+            <strong>패턴</strong>
+            ${analysis.patterns.map(item => `<p>${escapeHtml(item)}</p>`).join("")}
+          </article>
+          <article>
+            <strong>다음 행동</strong>
+            ${analysis.nextActions.map(item => `<p>${escapeHtml(item)}</p>`).join("")}
+          </article>
+          <article>
+            <strong>AI export 경계</strong>
+            ${analysis.exportBoundary.map(item => `<p>${escapeHtml(item)}</p>`).join("")}
+          </article>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderFellowBridge(signals, integrity) {
+    const mathGap = signals.pages.some(page => /math|수학|log|calculus|통계|DOE/i.test(`${page.topic || ""} ${page.title || ""}`)) ? "진행 중" : "진단 필요";
+    const epiEvidence = signals.ce.weaknesses.length ? `${signals.ce.weaknesses[0].skill} 약점부터` : "새 CE case 필요";
+    return `
+      <section class="ops-card ops-fellow-bridge">
+        <p class="eyebrow">Fellow route bridge</p>
+        <h2>FEP/EPI에서 Fellow까지 이어지는 다음 산</h2>
+        <div class="ops-bridge-grid">
+          <article>
+            <span>Materials MS Academy</span>
+            <strong>${escapeHtml(mathGap)}</strong>
+            <small>수학 → 물리 → 화학 → 재료공학 → 박막/EPI로 이어지는 선수지식 엔진</small>
+            <button class="secondary" type="button" data-core-view="materials-ms">열기</button>
+          </article>
+          <article>
+            <span>CE Campaign Game</span>
+            <strong>${escapeHtml(epiEvidence)}</strong>
+            <small>증상, evidence, owner, stop condition, customer report를 게임처럼 반복</small>
+            <button class="secondary" type="button" data-core-view="diagnostics">시작</button>
+          </article>
+          <article>
+            <span>Data Quality</span>
+            <strong>${integrity.score}</strong>
+            <small>Fellow급 사고는 기억이 아니라 추적 가능한 evidence portfolio에서 나옵니다.</small>
+            <button class="secondary" type="button" data-core-view="bookshelf">정리</button>
+          </article>
+        </div>
+      </section>
     `;
   }
 
@@ -497,12 +815,24 @@
   }
 
   function renderPacketPanel(packet) {
+    const previewPacket = {
+      integrityHash: packet.integrityHash,
+      schemaVersion: packet.schemaVersion,
+      generatedAt: packet.generatedAt,
+      privacyMode: packet.privacyMode,
+      readiness: packet.readiness,
+      dailyRoutine30m: packet.dailyRoutine30m,
+      dataHealth: packet.dataHealth,
+      aiAnalysis: packet.aiAnalysis,
+      weaknesses: packet.weaknesses,
+      neverInclude: packet.neverInclude
+    };
     return `
       <section class="ops-card ops-packet-card">
         <p class="eyebrow">AI packet center</p>
         <h2>오늘 AI에게 보여줄 요약</h2>
         <p>민감 원문, 건강/자산 원본, 고객자료, recipe, setpoint, bypass 정보는 제외하고 행동 가능한 요약만 만듭니다.</p>
-        <pre>${escapeHtml(JSON.stringify(packet, null, 2).slice(0, 2400))}</pre>
+        <pre>${escapeHtml(JSON.stringify(previewPacket, null, 2).slice(0, 3200))}</pre>
         <div class="ops-actions">
           <button class="primary" type="button" data-core-copy-packet>packet 복사</button>
           <button class="secondary" type="button" data-core-download-packet>JSON 다운로드</button>
@@ -517,9 +847,12 @@
     if (!root) return;
     const signals = collectLocalSignals();
     const tasks = priorityTasks(signals);
-    const score = readinessScore(signals, tasks);
+    const integrity = dataIntegrity(signals);
+    const routine = makeDailyRoutine(signals, tasks, integrity);
+    const analysis = aiAnalysis(signals, tasks, integrity);
+    const score = readinessScore(signals, tasks, integrity);
     const done = doneState();
-    const packet = buildPacket(signals, tasks, score);
+    const packet = buildPacket(signals, tasks, score, routine, integrity, analysis);
     state.lastRenderAt = new Date().toISOString();
 
     root.innerHTML = `
@@ -540,10 +873,13 @@
 
         <section class="ops-score-grid">
           <article><span>Storage</span><strong>${score.storage}</strong><small>pending sync와 local cache</small></article>
+          <article><span>Integrity</span><strong>${score.integrity}</strong><small>schema/sync/conflict</small></article>
           <article><span>Learning</span><strong>${score.learning}</strong><small>CE/영어/커리큘럼 신호</small></article>
           <article><span>Routine</span><strong>${score.routine}</strong><small>오늘 완료 루틴</small></article>
           <article><span>Safety</span><strong>${score.safety}</strong><small>시기능/위험 경계</small></article>
         </section>
+
+        ${renderDailyRoutine(routine)}
 
         <section class="ops-main-grid">
           <article class="ops-card ops-today-card">
@@ -563,6 +899,13 @@
             ${renderDeployment(signals)}
           </aside>
         </section>
+
+        <section class="ops-main-grid compact">
+          ${renderIntegrityPanel(integrity)}
+          ${renderAiAnalysisPanel(analysis)}
+        </section>
+
+        ${renderFellowBridge(signals, integrity)}
 
         <section class="ops-main-grid compact">
           ${renderWeakness(signals)}
@@ -587,6 +930,39 @@
         saveJson(DONE_KEY, next);
         render();
       });
+    });
+    document.querySelectorAll("[data-routine-done]").forEach(button => {
+      button.addEventListener("click", () => {
+        const log = routineLog();
+        log[todayKey()] = log[todayKey()] || {};
+        log[todayKey()][button.dataset.routineDone] = new Date().toISOString();
+        saveJson(ROUTINE_KEY, log);
+        render();
+      });
+    });
+    document.querySelector("[data-integrity-checkpoint]")?.addEventListener("click", () => {
+      const signals = collectLocalSignals();
+      const integrity = dataIntegrity(signals);
+      const ledger = safeJson(INTEGRITY_LEDGER_KEY, []);
+      const checkpoint = {
+        schemaVersion: "project-universe-integrity-checkpoint-v1",
+        createdAt: new Date().toISOString(),
+        score: integrity.score,
+        status: integrity.status,
+        schemaDebt: integrity.schemaDebt,
+        pendingSync: integrity.pendingSync,
+        evidenceMissing: integrity.evidenceMissing,
+        nextStepMissing: integrity.nextStepMissing,
+        hash: hashString(JSON.stringify({
+          pages: signals.pages.map(page => [page.id, page.updatedAt, page.title, page.nextStep, page.evidence]),
+          thinkTank: signals.thinkTank.map(entry => [entry.id, entry.updatedAt, entry.symptom, entry.nextStep, entry.evidence]),
+          storageMb: signals.storage.totalMb
+        }))
+      };
+      saveJson(INTEGRITY_LEDGER_KEY, [...ledger.slice(-29), checkpoint]);
+      const status = document.querySelector(".ops-integrity-status");
+      if (status) status.textContent = `checkpoint 저장 완료 · ${checkpoint.hash}`;
+      render();
     });
     document.querySelector("[data-core-refresh]")?.addEventListener("click", async () => {
       await loadBuildInfo();
@@ -615,7 +991,10 @@
     buildPacket: () => {
       const signals = collectLocalSignals();
       const tasks = priorityTasks(signals);
-      return buildPacket(signals, tasks, readinessScore(signals, tasks));
+      const integrity = dataIntegrity(signals);
+      const routine = makeDailyRoutine(signals, tasks, integrity);
+      const analysis = aiAnalysis(signals, tasks, integrity);
+      return buildPacket(signals, tasks, readinessScore(signals, tasks, integrity), routine, integrity, analysis);
     },
     refreshRemote: loadRemote
   };
