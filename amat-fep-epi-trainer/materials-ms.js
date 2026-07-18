@@ -1,6 +1,7 @@
 (() => {
   const STATE_KEY = "materialsMsAcademyStateV1";
-  const SOURCE_VERSION = "materials-ms-academy-v1";
+  const STATE_SCHEMA_VERSION = "materials-ms-state-v2";
+  const SOURCE_VERSION = "materials-ms-academy-v2-adaptive";
 
   const domainLabels = {
     math: "수학",
@@ -297,6 +298,7 @@
     try {
       const parsed = JSON.parse(localStorage.getItem(STATE_KEY) || "{}");
       return {
+        schemaVersion: STATE_SCHEMA_VERSION,
         answers: parsed.answers || {},
         lessonMastery: parsed.lessonMastery || {},
         activeStage: parsed.activeStage || "",
@@ -304,13 +306,17 @@
         activeQuestion: parsed.activeQuestion || "",
         teacherMode: parsed.teacherMode || "tutor",
         labValue: Number.isFinite(Number(parsed.labValue)) ? Number(parsed.labValue) : 55,
+        attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
         reviews: Array.isArray(parsed.reviews) ? parsed.reviews : [],
+        sessionLog: Array.isArray(parsed.sessionLog) ? parsed.sessionLog : [],
+        masteryCheckpoints: Array.isArray(parsed.masteryCheckpoints) ? parsed.masteryCheckpoints : [],
         journal: Array.isArray(parsed.journal) ? parsed.journal : [],
         createdAt: parsed.createdAt || new Date().toISOString(),
         updatedAt: parsed.updatedAt || new Date().toISOString()
       };
     } catch {
       return {
+        schemaVersion: STATE_SCHEMA_VERSION,
         answers: {},
         lessonMastery: {},
         activeStage: "",
@@ -318,7 +324,10 @@
         activeQuestion: "",
         teacherMode: "tutor",
         labValue: 55,
+        attempts: [],
         reviews: [],
+        sessionLog: [],
+        masteryCheckpoints: [],
         journal: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -347,6 +356,180 @@
 
   function isCorrect(q) {
     return answerFor(q.id)?.choice === q.correct;
+  }
+
+  function conceptId(domain, topic) {
+    return `${domain}:${topic}`.toLowerCase().replace(/\s+/g, "-");
+  }
+
+  function conceptFromQuestion(q) {
+    return {
+      id: conceptId(q.domain, q.topic),
+      domain: q.domain,
+      topic: q.topic,
+      stage: q.stage,
+      title: `${domainLabels[q.domain] || q.domain} · ${q.topic}`,
+      prerequisites: prerequisiteConcepts(q),
+      objectives: [
+        "개념을 쉬운 말로 설명",
+        "그래프/단위/공식으로 표현",
+        "EPI 또는 반도체 현장 예시로 번역"
+      ]
+    };
+  }
+
+  function prerequisiteConcepts(q) {
+    const byStage = {
+      0: ["engineering:units", "engineering:scientific notation"],
+      1: ["math:arithmetic", "math:fractions", "math:ratios"],
+      2: ["math:equations", "math:graphs", "math:functions"],
+      3: ["math:functions", "math:logarithms", "engineering:graphs"],
+      4: ["engineering:units", "math:functions"],
+      5: ["chemistry:atoms", "chemistry:bonding"],
+      6: ["chemistry:bonding", "materials:crystal structures"],
+      7: ["physics:electricity", "materials:crystal structures"],
+      8: ["chemistry:gases", "materials:crystal defects"],
+      9: ["materials:crystal structures", "materials:crystal defects"],
+      10: ["semiconductor:yield", "engineering:graphs"],
+      11: ["epi:mass transport", "programming:statistics"],
+      12: ["english:reading", "english:technical vocabulary"],
+      13: ["programming:statistics", "epi:SPC"]
+    };
+    return (byStage[q.stage] || []).filter(item => item !== conceptId(q.domain, q.topic));
+  }
+
+  function conceptNodes() {
+    const map = new Map();
+    questions.forEach(q => {
+      const node = conceptFromQuestion(q);
+      if (!map.has(node.id)) map.set(node.id, node);
+    });
+    return [...map.values()].sort((a, b) => a.stage - b.stage || a.domain.localeCompare(b.domain) || a.topic.localeCompare(b.topic));
+  }
+
+  function answersForConcept(node) {
+    return questions.filter(q => conceptId(q.domain, q.topic) === node.id);
+  }
+
+  function attemptsForConcept(node) {
+    return (state.attempts || []).filter(item => item.conceptId === node.id);
+  }
+
+  function dueReviews() {
+    const now = Date.now();
+    return (state.reviews || [])
+      .filter(item => new Date(item.dueAt || 0).getTime() <= now)
+      .sort((a, b) => new Date(a.dueAt || 0) - new Date(b.dueAt || 0));
+  }
+
+  function lessonBoostForConcept(node) {
+    const completed = Object.values(state.lessonMastery || {}).filter(item => item.domain === node.domain);
+    return Math.min(100, completed.length * 24);
+  }
+
+  function conceptMastery(node) {
+    const related = answersForConcept(node);
+    const answered = related.filter(q => answerFor(q.id));
+    const correct = answered.filter(isCorrect).length;
+    const attempts = attemptsForConcept(node);
+    const misses = attempts.filter(item => !item.correct).length;
+    const latest = attempts[0]?.answeredAt || "";
+    const due = (state.reviews || []).filter(item => conceptId(item.domain || "", item.topic || item.skill || "") === node.id || item.topic === node.topic);
+    const dueNow = due.filter(item => new Date(item.dueAt || 0).getTime() <= Date.now()).length;
+    const diagnosticScore = related.length ? correct / related.length * 100 : 0;
+    const attemptQuality = attempts.length ? Math.max(0, 100 - misses / attempts.length * 75) : 35;
+    const lessonBoost = lessonBoostForConcept(node);
+    const retention = dueNow ? Math.max(20, 82 - dueNow * 18) : latest ? 88 : 45;
+    const score = clamp(diagnosticScore * 0.46 + attemptQuality * 0.2 + lessonBoost * 0.18 + retention * 0.16 - Math.min(18, dueNow * 5));
+    return {
+      ...node,
+      score,
+      answered: answered.length,
+      total: related.length,
+      correct,
+      attempts: attempts.length,
+      misses,
+      dueNow,
+      status: score >= 85 ? "숙련" : score >= 70 ? "실전 가능" : score >= 45 ? "학습 중" : answered.length ? "기초 보강" : "미진단",
+      latest
+    };
+  }
+
+  function masteryMap() {
+    return conceptNodes().map(conceptMastery);
+  }
+
+  function weakestConcepts(limit = 8) {
+    return masteryMap()
+      .sort((a, b) => a.score - b.score || b.dueNow - a.dueNow || b.misses - a.misses)
+      .slice(0, limit);
+  }
+
+  function adaptiveSession() {
+    const due = dueReviews();
+    const gap = weakestConcepts(1)[0];
+    const stage = currentStage();
+    const lessonItem = activeLesson();
+    return [
+      {
+        id: "review",
+        minutes: 4,
+        title: due[0] ? `복습: ${due[0].topic || due[0].skill}` : "복습 큐 점검",
+        action: due[0] ? due[0].prompt : "아직 due review가 없으면 최근 오답을 1개 설명",
+        evidence: `${due.length} due reviews`
+      },
+      {
+        id: "diagnostic-gap",
+        minutes: 6,
+        title: `약점 진단: ${gap?.title || "units"}`,
+        action: "같은 개념 문제를 풀고 왜 틀렸는지 한 문장으로 기록",
+        evidence: `${gap?.score ?? 0}% mastery · ${gap?.misses ?? 0} misses`
+      },
+      {
+        id: "lesson",
+        minutes: 9,
+        title: `수업: ${lessonItem.title}`,
+        action: stage.gate,
+        evidence: lessonItem.bridge
+      },
+      {
+        id: "visual",
+        minutes: 6,
+        title: "시각화/그래프 직관",
+        action: "슬라이더를 움직이며 개념을 그래프, wafer, chamber state로 번역",
+        evidence: lessonItem.visual
+      },
+      {
+        id: "explain",
+        minutes: 3,
+        title: "내 말 설명",
+        action: "초보자에게 설명하듯 5문장으로 말하기",
+        evidence: "explain-to-learn"
+      },
+      {
+        id: "record",
+        minutes: 2,
+        title: "Think Tank 기록",
+        action: "오늘 배운 개념, evidence, next review를 책장에 남기기",
+        evidence: "AI packet quality"
+      }
+    ];
+  }
+
+  function unlockReport() {
+    return stages.map((stage, index) => {
+      const previous = index > 0 ? stages[index - 1] : null;
+      const unlocked = isStageUnlocked(index);
+      return {
+        id: stage.id,
+        no: stage.no,
+        title: stage.title,
+        score: stageScore(stage),
+        unlocked,
+        blocker: unlocked ? "" : `이전 단계 ${previous?.title || ""} score ${previous ? stageScore(previous) : 0}% / 필요 72%`,
+        nextEvidence: stage.gate
+      };
+    });
   }
 
   function domainScore(domain) {
@@ -459,6 +642,7 @@
     const lessonItem = activeLesson();
     return {
       schemaVersion: "materials-ms-academy-packet-v1",
+      stateSchemaVersion: state.schemaVersion || STATE_SCHEMA_VERSION,
       sourceVersion: SOURCE_VERSION,
       generatedAt: new Date().toISOString(),
       learnerProfile: {
@@ -469,6 +653,13 @@
       },
       readiness: r,
       diagnosticProgress: diagnosticProgress(),
+      adaptiveEngine: {
+        todaySession: adaptiveSession(),
+        dueReviews: dueReviews().slice(0, 12),
+        masteryMap: masteryMap().slice(0, 80),
+        weakestConcepts: weakestConcepts(12),
+        unlockReport: unlockReport()
+      },
       currentStage: { id: stage.id, no: stage.no, title: stage.title, score: stageScore(stage), gate: stage.gate },
       currentLesson: lessonItem,
       weakTopics: weakTopics(12),
@@ -531,6 +722,8 @@
     const lessonItem = activeLesson();
     const q = nextQuestion();
     const answered = answerFor(q.id);
+    const session = adaptiveSession();
+    const mastery = weakestConcepts(10);
     const packet = buildPacket();
     root.innerHTML = `
       <section class="ms-hero">
@@ -562,6 +755,9 @@
           </article>
         `).join("")}
       </section>
+
+      ${renderAdaptiveSession(session)}
+      ${renderMasteryEngine(mastery)}
 
       <section class="ms-main-grid">
         <article class="ms-panel ms-diagnostic-panel">
@@ -710,6 +906,73 @@
     ].map(([label, value, hint]) => ({ label, value, hint }));
   }
 
+  function todaySessionDone() {
+    const key = new Date().toISOString().slice(0, 10);
+    const row = (state.sessionLog || []).find(item => item.date === key);
+    return row?.segments || {};
+  }
+
+  function renderAdaptiveSession(session) {
+    const done = todaySessionDone();
+    const completed = session.filter(item => done[item.id]).reduce((sum, item) => sum + item.minutes, 0);
+    const total = session.reduce((sum, item) => sum + item.minutes, 0);
+    return `
+      <section class="ms-adaptive-session" aria-label="adaptive daily study session">
+        <div class="ms-panel-head">
+          <div>
+            <p class="eyebrow">Adaptive 30-minute Session</p>
+            <h3>오늘 자동 배정된 MS/Fellow 학습 루틴</h3>
+            <p>진단 오답, due review, 수업 완료 evidence를 조합해 오늘 해야 할 학습 순서를 만듭니다.</p>
+          </div>
+          <span>${completed}/${total}분</span>
+        </div>
+        <div class="ms-session-grid">
+          ${session.map(item => `
+            <article class="${done[item.id] ? "done" : ""}">
+              <time>${item.minutes}분</time>
+              <div>
+                <strong>${html(item.title)}</strong>
+                <p>${html(item.action)}</p>
+                <small>${html(item.evidence)}</small>
+              </div>
+              <button class="secondary" type="button" data-ms-session-done="${item.id}">${done[item.id] ? "완료됨" : "완료"}</button>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderMasteryEngine(mastery) {
+    const due = dueReviews();
+    return `
+      <section class="ms-mastery-engine" aria-label="concept mastery engine">
+        <div class="ms-panel-head">
+          <div>
+            <p class="eyebrow">Mastery Engine</p>
+            <h3>개념 숙련도와 복습 큐</h3>
+            <p>정답률만 보지 않고 시도 횟수, 오답, 복습 대기, 수업 evidence를 합쳐 다음 학습을 정합니다.</p>
+          </div>
+          <span>${due.length} due</span>
+        </div>
+        <div class="ms-mastery-grid">
+          ${mastery.map(item => `
+            <article>
+              <div>
+                <span>${html(domainLabels[item.domain] || item.domain)} / Stage ${item.stage}</span>
+                <strong>${html(item.topic)}</strong>
+                <small>${html(item.status)} · ${item.answered}/${item.total} answered · ${item.misses} misses</small>
+              </div>
+              <i><em style="width:${item.score}%"></em></i>
+              <b>${item.score}%</b>
+              ${item.prerequisites.length ? `<p>선수개념: ${item.prerequisites.map(html).join(", ")}</p>` : `<p>선수개념: 바로 학습 가능</p>`}
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function teacherLabel(mode) {
     return {
       professor: "교수",
@@ -809,11 +1072,25 @@
         const q = questions.find(item => item.id === button.dataset.msAnswer);
         if (!q) return;
         const choice = Number(button.dataset.choice);
-        state.answers[q.id] = { choice, correct: choice === q.correct, answeredAt: new Date().toISOString(), domain: q.domain, topic: q.topic };
+        const answeredAt = new Date().toISOString();
+        state.answers[q.id] = { choice, correct: choice === q.correct, answeredAt, domain: q.domain, topic: q.topic };
+        state.attempts = [
+          {
+            id: `attempt-${q.id}-${Date.now()}`,
+            questionId: q.id,
+            conceptId: conceptId(q.domain, q.topic),
+            domain: q.domain,
+            topic: q.topic,
+            choice,
+            correct: choice === q.correct,
+            answeredAt
+          },
+          ...(state.attempts || [])
+        ].slice(0, 600);
         state.activeQuestion = q.id;
         if (choice !== q.correct) {
           state.reviews = [
-            { id: `review-${q.id}-${Date.now()}`, topic: q.topic, prompt: q.prompt, explain: q.explain, dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
+            { id: `review-${q.id}-${Date.now()}`, domain: q.domain, topic: q.topic, prompt: q.prompt, explain: q.explain, dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), source: "diagnostic-miss" },
             ...state.reviews
           ].slice(0, 60);
         }
@@ -835,6 +1112,17 @@
       persist();
       render();
       document.querySelector(".ms-teacher-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    root.querySelectorAll("[data-ms-session-done]").forEach(button => {
+      button.addEventListener("click", () => {
+        const date = new Date().toISOString().slice(0, 10);
+        const existing = (state.sessionLog || []).find(item => item.date === date) || { date, segments: {}, createdAt: new Date().toISOString() };
+        existing.segments[button.dataset.msSessionDone] = new Date().toISOString();
+        existing.updatedAt = new Date().toISOString();
+        state.sessionLog = [existing, ...(state.sessionLog || []).filter(item => item.date !== date)].slice(0, 120);
+        persist();
+        render();
+      });
     });
     root.querySelectorAll("[data-ms-stage]").forEach(button => {
       button.addEventListener("click", () => {
@@ -872,6 +1160,27 @@
         evidence: "learner marked concept explanation, visual intuition, and field bridge as complete",
         nextReviewAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
       };
+      state.reviews = [
+        {
+          id: `review-${lessonId}-${Date.now()}`,
+          domain: lessonItem.domain,
+          topic: lessonItem.title,
+          prompt: `${lessonItem.title}을 EPI 장비/wafer evidence와 연결해 5문장으로 설명하세요.`,
+          explain: lessonItem.bridge,
+          dueAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+          source: "lesson-complete"
+        },
+        ...state.reviews
+      ].slice(0, 80);
+      state.masteryCheckpoints = [
+        {
+          at: new Date().toISOString(),
+          lessonId,
+          readiness: readiness(),
+          weakestConcepts: weakestConcepts(5).map(item => ({ id: item.id, topic: item.topic, score: item.score }))
+        },
+        ...(state.masteryCheckpoints || [])
+      ].slice(0, 60);
       state.journal = [
         { at: new Date().toISOString(), type: "lesson-complete", lessonId, title: lessonItem.title, stage: activeStage().title },
         ...state.journal

@@ -92,6 +92,7 @@
     const englishQueue = safeJson("amkEnglishSpacedReviewQueue", []);
     const cognitive = safeJson("projectUniverseCognitiveResilienceV1", {});
     const vision = safeJson("projectUniverseVisionTrainingState", {});
+    const materialsMs = safeJson("materialsMsAcademyStateV1", {});
     const lifeTasks = safeJson("projectUniverseLifeOsTaskLogV2", {});
     const bookshelfRestore = safeJson("projectUniverseBookshelfRestoreEvents", []);
     const storage = localStorageStats();
@@ -116,6 +117,17 @@
       .map(([skill, count]) => ({ skill, count: Number(count || 0) }))
       .filter(item => item.count > 0)
       .sort((a, b) => b.count - a.count);
+
+    const msReviews = Array.isArray(materialsMs.reviews) ? materialsMs.reviews : [];
+    const msDue = msReviews.filter(item => new Date(item.dueAt || 0).getTime() <= now);
+    const msAttempts = Array.isArray(materialsMs.attempts) ? materialsMs.attempts : [];
+    const msWrongByTopic = {};
+    msAttempts.filter(item => item.correct === false).forEach(item => {
+      const skill = item.topic || item.conceptId || "materials prerequisite";
+      msWrongByTopic[skill] = msWrongByTopic[skill] || { skill, count: 0 };
+      msWrongByTopic[skill].count += 1;
+    });
+    const msWeak = Object.values(msWrongByTopic).sort((a, b) => b.count - a.count);
 
     const cognitiveLogs = Array.isArray(cognitive.logs) ? cognitive.logs : Array.isArray(cognitive.sessions) ? cognitive.sessions : [];
     const visionLogs = Array.isArray(vision.logs) ? vision.logs : [];
@@ -151,6 +163,14 @@
         weaknesses: ceWeak.slice(0, 8),
         curriculumDone: Object.keys(trainer.curriculumDone || {}).length,
         caseAnswers: Object.keys(trainer.ceCampaignAnswers || {}).length + Object.keys(trainer.epiMentalAnswers || {}).length
+      },
+      materialsMs: {
+        attempts: msAttempts.length,
+        due: msDue.length,
+        sessions: Array.isArray(materialsMs.sessionLog) ? materialsMs.sessionLog.length : 0,
+        completedLessons: Object.keys(materialsMs.lessonMastery || {}).length,
+        weakness: msWeak.slice(0, 6),
+        latestCheckpoint: Array.isArray(materialsMs.masteryCheckpoints) ? materialsMs.masteryCheckpoints[0] || null : null
       },
       cognitive: {
         sessions: cognitiveLogs.length,
@@ -260,7 +280,7 @@
   function makeDailyRoutine(signals, tasks, integrity) {
     const englishWeak = signals.english.weaknesses[0]?.skill || "technical English";
     const ceWeak = signals.ce.weaknesses[0]?.skill || "evidence-first 판단";
-    const msReady = signals.pages.some(page => page.bookId === "materials-ms-academy") || Object.keys(signals.trainer.curriculumDone || {}).length;
+    const msWeak = signals.materialsMs?.weakness?.[0]?.skill || "비율/단위환산";
     return [
       {
         id: "warmup",
@@ -302,10 +322,10 @@
         id: "fellow-route",
         minutes: 5,
         lane: "Fellow",
-        view: msReady ? "materials-ms" : "fellow",
-        title: msReady ? "Materials MS 선수개념 1개" : "Fellow 로드맵 gap 확인",
-        reason: "수학, 물리, 화학, 재료공학, 결정성장, 박막, 통계, DOE를 장기 커리큘럼으로 이어갑니다.",
-        evidence: `${signals.ce.curriculumDone} curriculum marks · ${signals.pages.length} records`
+        view: "materials-ms",
+        title: `Materials MS: ${msWeak} 1개`,
+        reason: "수학, 물리, 화학, 재료공학, 결정성장, 박막, 통계, DOE를 adaptive curriculum으로 이어갑니다.",
+        evidence: `${signals.materialsMs?.due || 0} MS reviews due · ${signals.materialsMs?.attempts || 0} attempts · ${signals.materialsMs?.completedLessons || 0} lessons`
       },
       {
         id: "record",
@@ -339,7 +359,8 @@
       integrity.nextStepMissing ? "open-loop 기록이 남아 있어 다음 행동이 흐려질 수 있음" : "기록의 다음 행동 연결이 안정적",
       integrity.evidenceMissing ? "근거 없는 기록이 있어 AI 분석 신뢰도가 낮아질 수 있음" : "evidence 기반 기록 비율 양호",
       signals.english.due ? "영어 복습 대기열이 오늘 루틴 우선순위에 들어감" : "영어 복습 대기열은 낮음",
-      signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요"
+      signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요",
+      signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음"
     ];
     return {
       weak,
@@ -514,6 +535,7 @@
       weaknesses: {
         ce: signals.ce.weaknesses,
         english: signals.english.weaknesses,
+        materialsMs: signals.materialsMs?.weakness || [],
         vision: {
           sessions: signals.vision.sessions,
           highDiplopiaSignals: signals.vision.frequentDouble
@@ -525,6 +547,7 @@
         pendingSync: signals.pendingSync,
         localStorageMb: signals.storage.totalMb,
         integrity,
+        materialsMs: signals.materialsMs,
         remoteStatus: state.remote.error ? "remote-unavailable" : state.remote.ops ? "remote-connected" : "local-only"
       },
       aiAnalysis: analysis,
@@ -737,7 +760,7 @@
   }
 
   function renderFellowBridge(signals, integrity) {
-    const mathGap = signals.pages.some(page => /math|수학|log|calculus|통계|DOE/i.test(`${page.topic || ""} ${page.title || ""}`)) ? "진행 중" : "진단 필요";
+    const mathGap = signals.materialsMs?.attempts ? `${signals.materialsMs.attempts} attempts` : signals.pages.some(page => /math|수학|log|calculus|통계|DOE/i.test(`${page.topic || ""} ${page.title || ""}`)) ? "진행 중" : "진단 필요";
     const epiEvidence = signals.ce.weaknesses.length ? `${signals.ce.weaknesses[0].skill} 약점부터` : "새 CE case 필요";
     return `
       <section class="ops-card ops-fellow-bridge">
@@ -747,7 +770,7 @@
           <article>
             <span>Materials MS Academy</span>
             <strong>${escapeHtml(mathGap)}</strong>
-            <small>수학 → 물리 → 화학 → 재료공학 → 박막/EPI로 이어지는 선수지식 엔진</small>
+            <small>${signals.materialsMs?.due || 0} due reviews · ${signals.materialsMs?.completedLessons || 0} completed lessons</small>
             <button class="secondary" type="button" data-core-view="materials-ms">열기</button>
           </article>
           <article>
