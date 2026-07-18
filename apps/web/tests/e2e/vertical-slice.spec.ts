@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("learner can complete the ratio gas-flow vertical slice", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /비율과 가스 유량/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /단위와 비율/ })).toBeVisible();
 
   await page.getByRole("button", { name: "진단", exact: true }).click();
   await page.getByRole("button", { name: "1%", exact: true }).click();
@@ -22,6 +22,6 @@ test("learner can complete the ratio gas-flow vertical slice", async ({ page }) 
   await page.getByRole("button", { name: "복습", exact: true }).click();
   await expect(page.getByText(/epi-gas-ratio/).first()).toBeVisible();
 
-  await page.getByRole("button", { name: "AI Tutor" }).click();
+  await page.getByRole("button", { name: "AI 정리" }).click();
   await expect(page.getByText(/구조화된 학습 상태/)).toBeVisible();
 });

@@ -29,6 +29,7 @@ type AcademyState = {
   precursorSccm: number;
   submittedRatio: string;
   ratioFeedback: string;
+  diagnosticFeedback: string;
   tutorResponse: TutorResponse;
   note: string;
 };
@@ -46,6 +47,7 @@ const defaultState: AcademyState = {
   precursorSccm: 200,
   submittedRatio: "",
   ratioFeedback: "아직 제출 전입니다. 이 값들은 특정 장비 recipe가 아닌 교육용 가상값입니다.",
+  diagnosticFeedback: "첫 문제를 풀면 정답 여부와 보충해야 할 선수개념이 바로 표시됩니다.",
   tutorResponse: mockTutorResponse({
     nodeId: "epi-gas-ratio",
     userMessage: "비율과 가스 유량을 수포자 관점으로 설명해줘.",
@@ -58,6 +60,7 @@ const defaultState: AcademyState = {
 export function AcademyShell({ initialView }: { initialView: View }) {
   const [view, setView] = useState<View>(initialView);
   const [state, setState] = useState<AcademyState>(defaultState);
+  const [hydrated, setHydrated] = useState(false);
   const nextQuestion = selectNextDiagnosticQuestion(state.answers);
   const activeMastery = state.mastery["epi-gas-ratio"] ?? initialMastery(USER_ID, "epi-gas-ratio");
   const masteryByNode = useMemo(
@@ -67,6 +70,8 @@ export function AcademyShell({ initialView }: { initialView: View }) {
   const gaps = unresolvedPrerequisites("epi-gas-ratio", masteryByNode);
   const diagnosticLevel = estimateDiagnosticLevel(state.answers);
   const ratio = state.precursorSccm > 0 ? state.h2Slm * 1000 / state.precursorSccm : 0;
+  const h2Sccm = state.h2Slm * 1000;
+  const learningLoop = buildLearningLoop(state, activeMastery.masteryScore);
 
   useEffect(() => {
     setView(initialView);
@@ -81,11 +86,13 @@ export function AcademyShell({ initialView }: { initialView: View }) {
         setState(defaultState);
       }
     }
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+  }, [hydrated, state]);
 
   const readiness = computeReadiness(state.mastery, state.answers);
   const packet = buildLocalPacket(state, readiness, gaps.map((item) => item.titleKo));
@@ -97,10 +104,10 @@ export function AcademyShell({ initialView }: { initialView: View }) {
           <span className="brand-mark">MS</span>
           <div>
             <strong>EPI Materials Mastery</strong>
-            <div className="muted">From Field Technician to Materials Science Master's and Semiconductor Fellow</div>
+            <div className="muted">Field Technician → Materials Science M.S. → EPI Fellow path</div>
           </div>
         </div>
-        <nav className="nav" aria-label="main navigation">
+        <nav className="top-nav" aria-label="main navigation">
           <Link href="/">홈</Link>
           <Link href="/diagnostic">진단</Link>
           <Link href="/lesson/ratio-gas-flow">수업</Link>
@@ -114,25 +121,41 @@ export function AcademyShell({ initialView }: { initialView: View }) {
       <section className="layout">
         <section className="hero">
           <div>
-            <p className="eyebrow">MVP vertical slice</p>
-            <h1>비율과 가스 유량으로 시작하는 재료공학 석사 준비 루프</h1>
+            <p className="eyebrow">오늘의 운영 브리핑</p>
+            <h1>오늘은 단위와 비율을 장비 언어로 바꾸는 날입니다.</h1>
             <p>
-              이 MVP는 수학 공포를 줄이기 위해 현상, 그림, 숫자, 공식 순서로 갑니다.
-              H2와 precursor 유량 예시는 교육용 가상값이며 실제 장비 recipe나 setpoint가 아닙니다.
+              수포자 친화 루프는 현상, 그림, 숫자, 공식, 현장 문장 순서로 갑니다.
+              H2와 precursor 유량은 교육용 가상값이며 실제 장비 recipe나 setpoint가 아닙니다.
             </p>
-            <div className="nav">
-              {(["dashboard", "diagnostic", "lesson", "practice", "review", "tutor", "map"] as const).map((item) => (
-                <button key={item} className={`tab-button ${view === item ? "active" : ""}`} onClick={() => setView(item)} type="button">
-                  {viewLabel(item)}
-                </button>
-              ))}
+            <div className="hero-actions">
+              <button className="btn primary" type="button" onClick={() => setView(nextQuestion ? "diagnostic" : "practice")}>
+                {nextQuestion ? "진단 이어가기" : "실습으로 이동"}
+              </button>
+              <button className="btn" type="button" onClick={() => setView("map")}>지식지도 보기</button>
             </div>
           </div>
           <article className="stat">
             <span>Current mastery</span>
             <strong>{activeMastery.masteryScore}%</strong>
             <small>{classifyMastery(activeMastery.masteryScore)} · XP {state.xp} · streak {state.streak}</small>
+            <ProgressBar value={activeMastery.masteryScore} />
           </article>
+        </section>
+
+        <section className="session-rail" aria-label="daily learning loop">
+          {learningLoop.map((step) => (
+            <button
+              className={`rail-step ${step.done ? "done" : ""} ${view === step.view ? "active" : ""}`}
+              key={step.label}
+              aria-label={step.label}
+              onClick={() => setView(step.view)}
+              type="button"
+            >
+              <span>{step.index}</span>
+              <strong>{step.label}</strong>
+              <small>{step.detail}</small>
+            </button>
+          ))}
         </section>
 
         {view === "dashboard" && (
@@ -143,11 +166,12 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                   <span>{item.label}</span>
                   <strong>{item.value}%</strong>
                   <small>{item.reason}</small>
+                  <ProgressBar value={item.value} />
                 </article>
               ))}
             </section>
             <section className="grid-2">
-              <article className="panel">
+              <article className="panel action-panel">
                 <p className="eyebrow">Today's learning</p>
                 <h2>현재 가장 중요한 학습: 비율과 단위 환산</h2>
                 <p>
@@ -164,6 +188,23 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                 ) : (
                   <p>현재 `EPI 가스 유량 비율`의 선행 노드는 기준 이상입니다. 다음은 growth-rate regime으로 확장할 수 있습니다.</p>
                 )}
+              </article>
+            </section>
+            <section className="grid-3">
+              <article className="panel compact">
+                <p className="eyebrow">Why this matters</p>
+                <h2>장비 화면의 숫자를 무서워하지 않게 만드는 첫 단계</h2>
+                <p>유량, 압력, 두께, 온도, uniformity는 모두 단위와 비율 감각 위에 올라갑니다.</p>
+              </article>
+              <article className="panel compact">
+                <p className="eyebrow">Today's output</p>
+                <h2>내 말로 설명할 문장</h2>
+                <p>“먼저 단위를 sccm으로 맞춘 뒤 H2와 precursor를 비교하면 비율을 안전하게 계산할 수 있습니다.”</p>
+              </article>
+              <article className="panel compact warning-panel">
+                <p className="eyebrow">Safety boundary</p>
+                <h2>교육용 값과 현장 recipe는 분리</h2>
+                <p>이 앱의 숫자는 연습용입니다. 실제 조건은 공식 교육과 승인 문서만 따릅니다.</p>
               </article>
             </section>
             <section className="panel">
@@ -203,7 +244,12 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                       explanationQuality: correct ? 2 : 1,
                       answeredAt: new Date().toISOString()
                     };
-                    setState((current) => ({ ...current, answers: [...current.answers, answer], xp: current.xp + (correct ? 12 : 4) }));
+                    setState((current) => ({
+                      ...current,
+                      answers: [...current.answers, answer],
+                      diagnosticFeedback: buildDiagnosticFeedback(nextQuestion, correct),
+                      xp: current.xp + (correct ? 12 : 4)
+                    }));
                   }}
                 />
               ) : (
@@ -216,6 +262,7 @@ export function AcademyShell({ initialView }: { initialView: View }) {
             <article className="panel">
               <p className="eyebrow">Result so far</p>
               <h2>진단 기록</h2>
+              <div className="feedback-card">{state.diagnosticFeedback}</div>
               {state.answers.length ? state.answers.map((answer) => (
                 <p key={`${answer.questionId}-${answer.answeredAt}`}>{answer.questionId}: {answer.correct ? "정답" : "오답"} · confidence {answer.confidence}</p>
               )) : <p>아직 답변이 없습니다.</p>}
@@ -240,6 +287,10 @@ export function AcademyShell({ initialView }: { initialView: View }) {
               <p className="eyebrow">Mastery evidence</p>
               <h2>완료 기준</h2>
               {ratioGasFlowLesson.masteryEvidence.map((item) => <p key={item}>• {item}</p>)}
+              <div className="field-sentence">
+                <span>현장 보고 문장</span>
+                <strong>“이 계산은 교육용 예시이며, 실제 gas setting은 승인된 recipe와 site 절차로만 확인하겠습니다.”</strong>
+              </div>
               <button className="btn primary" type="button" onClick={() => completeLesson(setState, activeMastery)}>수업 완료하고 mastery 업데이트</button>
             </article>
           </section>
@@ -257,12 +308,29 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                 <label className="range">Precursor flow: {state.precursorSccm} sccm
                   <input type="range" min="20" max="1000" value={state.precursorSccm} onChange={(event) => setState((current) => ({ ...current, precursorSccm: Number(event.target.value) }))} />
                 </label>
+                <div className="flow-bars" aria-label="visual ratio bars">
+                  <div>
+                    <span>H2 carrier</span>
+                    <strong>{h2Sccm.toLocaleString("ko-KR")} sccm</strong>
+                    <i style={{ width: "100%" }} />
+                  </div>
+                  <div>
+                    <span>Precursor</span>
+                    <strong>{state.precursorSccm.toLocaleString("ko-KR")} sccm</strong>
+                    <i style={{ width: `${Math.max(4, Math.min(100, state.precursorSccm / h2Sccm * 100))}%` }} />
+                  </div>
+                </div>
                 <div className="flow-strip">
-                  <span>H2<br />{state.h2Slm * 1000} sccm</span>
+                  <span>H2<br />{h2Sccm} sccm</span>
                   <span>+</span>
                   <span>Precursor<br />{state.precursorSccm} sccm</span>
                   <span>=</span>
                   <span>Ratio<br />{ratio.toFixed(1)}:1</span>
+                </div>
+                <div className="formula-card">
+                  <span>계산 순서</span>
+                  <strong>{state.h2Slm} slm × 1000 = {h2Sccm.toLocaleString("ko-KR")} sccm</strong>
+                  <strong>{h2Sccm.toLocaleString("ko-KR")} ÷ {state.precursorSccm.toLocaleString("ko-KR")} = {ratio.toFixed(1)} : 1</strong>
                 </div>
               </div>
             </article>
@@ -296,7 +364,13 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                 <small>{review.prompt}</small>
                 <p className="muted">due {new Date(review.dueAt).toLocaleDateString("ko-KR")} · interval {review.intervalDays} days</p>
               </article>
-            )) : <p>아직 복습 카드가 없습니다. 수업 완료 또는 문제 제출을 하면 자동 생성됩니다.</p>}
+            )) : (
+              <div className="empty-state">
+                <h3>아직 복습 카드가 없습니다.</h3>
+                <p>수업 완료 또는 문제 제출을 하면 자동으로 복습 큐가 만들어집니다.</p>
+                <button className="btn primary" type="button" onClick={() => setView("practice")}>실습에서 카드 만들기</button>
+              </div>
+            )}
           </section>
         )}
 
@@ -324,6 +398,11 @@ export function AcademyShell({ initialView }: { initialView: View }) {
             <article className="panel">
               <p className="eyebrow">AI packet</p>
               <h2>구조화된 학습 상태</h2>
+              <div className="packet-summary">
+                <span>answers {state.answers.length}</span>
+                <span>reviews {state.reviews.length}</span>
+                <span>mastery {activeMastery.masteryScore}%</span>
+              </div>
               <textarea className="packet" readOnly value={JSON.stringify(packet, null, 2)} />
             </article>
           </section>
@@ -343,6 +422,7 @@ export function AcademyShell({ initialView }: { initialView: View }) {
                     <strong>{node.titleKo}</strong>
                     <small>{node.learningObjectives[0]}</small>
                     <small>mastery {mastery}% · prereq {node.prerequisites.length}</small>
+                    <ProgressBar value={mastery} />
                   </article>
                 );
               })}
@@ -435,6 +515,32 @@ function computeReadiness(mastery: Record<string, MasteryState>, answers: Diagno
   ];
 }
 
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="progress-track" aria-label={`progress ${value}%`}>
+      <span style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    </div>
+  );
+}
+
+function buildDiagnosticFeedback(question: typeof ratioDiagnosticQuestions[number], correct: boolean): string {
+  if (correct) return `정답입니다. ${question.explanation} 다음 문제는 이 개념을 EPI 계산으로 연결합니다.`;
+  if (question.prerequisiteIfMissed) {
+    return `오답입니다. 지금은 실패가 아니라 '${question.prerequisiteIfMissed}' 선수개념을 다시 확인하라는 신호입니다. ${question.explanation}`;
+  }
+  return `오답입니다. ${question.explanation} 단위, 비교 대상, 약분 순서로 다시 보겠습니다.`;
+}
+
+function buildLearningLoop(state: AcademyState, masteryScore: number): { index: string; label: string; detail: string; view: View; done: boolean }[] {
+  return [
+    { index: "01", label: "진단", detail: `${state.answers.length}/3 questions`, view: "diagnostic", done: state.answers.length >= 3 },
+    { index: "02", label: "수업", detail: "개념을 현장 문장으로", view: "lesson", done: masteryScore >= 35 },
+    { index: "03", label: "실습", detail: "단위 변환과 비율", view: "practice", done: masteryScore >= 55 },
+    { index: "04", label: "복습", detail: `${state.reviews.length} cards`, view: "review", done: state.reviews.length > 0 },
+    { index: "05", label: "AI 정리", detail: "packet 업데이트", view: "tutor", done: masteryScore >= 60 && state.reviews.length > 0 }
+  ];
+}
+
 function buildLocalPacket(state: AcademyState, readiness: ReturnType<typeof computeReadiness>, gaps: string[]) {
   return {
     schemaVersion: "epi-materials-mastery-local-packet-v1",
@@ -448,16 +554,4 @@ function buildLocalPacket(state: AcademyState, readiness: ReturnType<typeof comp
     activeVerticalSlice: "ratio-and-gas-flow",
     safetyBoundary: "All gas numbers are educational virtual values, not equipment recipes, setpoints, or site-specific limits."
   };
-}
-
-function viewLabel(view: View): string {
-  return {
-    dashboard: "대시보드",
-    diagnostic: "진단",
-    lesson: "수업",
-    practice: "실습",
-    review: "복습",
-    tutor: "AI Tutor",
-    map: "지식지도"
-  }[view];
 }

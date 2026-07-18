@@ -11,3 +11,4 @@ playwright-report/
 test-results/
 apps/web/.env
 apps/web/.next/
+apps/web/*.png
