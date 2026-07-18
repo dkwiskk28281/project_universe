@@ -1936,6 +1936,293 @@ main,
   }
 }
 
+/* 20260718 v16 Fellow ascent OS */
+.fellow-path-root {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fellow-hero-panel,
+.fellow-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.38fr);
+  gap: 14px;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.fellow-hero-panel,
+.fellow-level-ladder,
+.fellow-domain-rail,
+.fellow-domain-detail,
+.fellow-review-board,
+.fellow-guardrail {
+  min-width: 0;
+  border: 1px solid rgba(0, 255, 149, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(0, 255, 149, 0.12), transparent 30%),
+    radial-gradient(circle at 90% 0%, rgba(94, 231, 255, 0.10), transparent 30%),
+    linear-gradient(145deg, rgba(0, 12, 12, 0.96), rgba(7, 6, 17, 0.96));
+  color: #ecfff8;
+}
+
+.fellow-hero-panel {
+  padding: 16px;
+}
+
+.fellow-hero-panel h2,
+.fellow-domain-head h3 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.16;
+}
+
+.fellow-hero-panel p:not(.eyebrow),
+.fellow-hero-panel small,
+.fellow-level-ladder p,
+.fellow-domain-rail small,
+.fellow-domain-head p,
+.fellow-daily-move p,
+.fellow-evidence-list p,
+.fellow-evidence-list small,
+.fellow-review-board p,
+.fellow-guardrail p {
+  margin: 0;
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.fellow-hero-panel > article {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 13, 13, 0.62);
+}
+
+.fellow-hero-panel span,
+.fellow-level-ladder span,
+.fellow-domain-rail span,
+.fellow-domain-head span,
+.fellow-evidence-form span,
+.fellow-review-board span,
+.fellow-guardrail strong {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fellow-hero-panel > article strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: clamp(2.4rem, 5vw, 3.8rem);
+  line-height: 0.95;
+}
+
+.fellow-level-ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  padding: 12px;
+}
+
+.fellow-level-ladder article,
+.fellow-daily-move,
+.fellow-evidence-list article,
+.fellow-review-board > div,
+.fellow-review-board label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.fellow-level-ladder article.active {
+  border-color: rgba(0, 255, 149, 0.46);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.09), transparent 70%),
+    rgba(0, 0, 0, 0.22);
+}
+
+.fellow-level-ladder strong,
+.fellow-domain-rail b,
+.fellow-daily-move strong,
+.fellow-evidence-list b,
+.fellow-review-board strong,
+.fellow-review-board b {
+  color: #ffffff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.fellow-dashboard-grid {
+  grid-template-columns: minmax(230px, 0.3fr) minmax(0, 1fr) minmax(310px, 0.42fr);
+}
+
+.fellow-domain-rail,
+.fellow-domain-detail,
+.fellow-review-board {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fellow-domain-rail button {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  min-height: 98px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.fellow-domain-rail button.active {
+  border-color: rgba(0, 255, 149, 0.6);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.11), transparent 72%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.fellow-domain-head {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.fellow-domain-head i {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.9) var(--w), rgba(94, 231, 255, 0.12) var(--w));
+}
+
+.fellow-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.fellow-proof-grid span {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(255, 211, 138, 0.18);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #ffd38a;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.fellow-evidence-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.fellow-evidence-form label,
+.fellow-review-board label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fellow-evidence-form textarea,
+.fellow-review-board textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 92px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #d8ffea;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.fellow-evidence-form .primary {
+  grid-column: 1 / -1;
+}
+
+.fellow-evidence-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fellow-review-board #fellow-packet-output {
+  min-height: 300px;
+}
+
+.fellow-path-root .primary,
+.fellow-path-root .secondary {
+  min-height: 38px;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.fellow-path-root .primary {
+  background: rgba(0, 255, 149, 0.18);
+  color: #ecfff8;
+}
+
+.fellow-path-root .secondary {
+  background: rgba(94, 231, 255, 0.08);
+  color: #ecfff8;
+}
+
+.fellow-guardrail {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-color: rgba(255, 211, 138, 0.22);
+}
+
+@media (max-width: 1180px) {
+  .fellow-hero-panel,
+  .fellow-dashboard-grid,
+  .fellow-evidence-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .fellow-hero-panel,
+  .fellow-level-ladder,
+  .fellow-domain-rail,
+  .fellow-domain-detail,
+  .fellow-review-board {
+    padding: 12px;
+  }
+
+  .fellow-domain-rail button {
+    min-height: auto;
+  }
+}
+
 /* 20260717 v8 CE incident kernel */
 .ce-incident-kernel {
   display: grid;

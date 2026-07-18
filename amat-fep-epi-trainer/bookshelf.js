@@ -100,6 +100,13 @@
     }
   ];
 
+  BOOK_VIEW_LABELS.fellow = "Fellow 로드맵";
+  const fellowModuleGroup = FEP_EPI_BOOK_MODULES.find(group => group.items.some(item => item[0] === "thinktank"));
+  if (fellowModuleGroup && !fellowModuleGroup.items.some(item => item[0] === "fellow")) {
+    const thinkTankIndex = fellowModuleGroup.items.findIndex(item => item[0] === "thinktank");
+    fellowModuleGroup.items.splice(Math.max(0, thinkTankIndex), 0, ["fellow", "Fellow 로드맵", "Fellow급 증거 포트폴리오, 기술 영향력, 재사용 가능한 프레임"]);
+  }
+
   const BOOK_BLUEPRINTS = {
     "cognitive-resilience": [
       ["오늘 훈련 로그", "주의전환, 회상, 실행기능, 생활 루틴을 1일 1세션으로 기록"],
@@ -360,7 +367,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["curriculum", "dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
+      linkedViews: ["curriculum", "dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "life-os",

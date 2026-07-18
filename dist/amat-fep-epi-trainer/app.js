@@ -4323,6 +4323,7 @@ const VIEW_LABELS = {
   quiz: "퀴즈"
 };
 
+VIEW_LABELS.fellow = "Fellow 로드맵";
 const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cognitive"].includes(id));
 
 const BOOK_VIEW_SEQUENCE = [
@@ -4351,6 +4352,9 @@ const BOOK_VIEW_SEQUENCE = [
   "english",
   "quiz"
 ];
+if (!BOOK_VIEW_SEQUENCE.includes("fellow")) {
+  BOOK_VIEW_SEQUENCE.splice(Math.max(0, BOOK_VIEW_SEQUENCE.indexOf("readiness")), 0, "fellow");
+}
 
 const VIEW_CHAPTERS = {
   cognitive: "인지 건강",
@@ -4379,6 +4383,8 @@ const VIEW_CHAPTERS = {
   english: "면접과 영어",
   quiz: "면접과 영어"
 };
+
+VIEW_CHAPTERS.fellow = "Fellow 성장";
 
 const uxHotViews = [
   ["cognitive", "인지"],
@@ -4448,6 +4454,7 @@ function save() {
   renderEpiMentalModelBuilder();
   renderCeCampaignEngine();
   renderCeStakeholderRoom();
+  renderFellowPath();
   renderCeIncidentKernel();
   renderCeWarRoom();
   renderCeMemoryLedger();
@@ -8824,6 +8831,325 @@ function renderCeStakeholderRoom() {
   });
 }
 
+const fellowLevels = [
+  { id: "ce-foundation", label: "CE Foundation", threshold: 0, aim: "안전 경계, 장비 구조, 현장 용어를 정확히 설명한다." },
+  { id: "senior-ce", label: "Senior CE", threshold: 35, aim: "증상에서 subsystem/evidence/stop condition/customer report로 사고한다." },
+  { id: "principal-solver", label: "Principal Solver", threshold: 55, aim: "반복 문제를 개인 숙련이 아니라 재사용 가능한 runbook과 데이터 구조로 바꾼다." },
+  { id: "fellow-candidate", label: "Fellow Candidate", threshold: 72, aim: "여러 팀이 따라 쓸 수 있는 technical framework, review packet, mentoring system을 만든다." },
+  { id: "fellow-track", label: "Fellow Track", threshold: 86, aim: "기술 방향, 안전 문화, 고객 신뢰, 지식 전파에 장기 영향력을 만든다." }
+];
+
+const fellowDomains = [
+  {
+    id: "process-physics",
+    title: "Process Physics",
+    subtitle: "EPI/RTP에서 wafer 위에 실제로 일어나는 일을 물리/화학/열 budget 언어로 설명한다.",
+    proof: ["gas role map", "film growth explanation", "thermal budget tradeoff", "metrology correlation"],
+    daily: "오늘 한 공정 단계를 gas/pump/purge/exhaust/wafer effect/evidence로 6줄 설명한다."
+  },
+  {
+    id: "tool-architecture",
+    title: "Tool Architecture",
+    subtitle: "EFEM, LL, TM, PM, CM, gas box, pump, exhaust, abatement, host 통신을 하나의 시스템으로 본다.",
+    proof: ["3D mental model", "wafer path", "communication boundary", "facility dependency"],
+    daily: "한 failure를 hardware boundary와 data boundary로 동시에 그린다."
+  },
+  {
+    id: "safety-authority",
+    title: "Safety Authority",
+    subtitle: "toxic/flammable/corrosive/asphyxiant/electrical/vacuum 위험에서 멈출 조건을 정확히 말한다.",
+    proof: ["stop line", "owner witness", "LOTO boundary", "source-to-abatement chain"],
+    daily: "오늘의 stop condition 하나를 고객에게 설명 가능한 문장으로 바꾼다."
+  },
+  {
+    id: "diagnostic-science",
+    title: "Diagnostic Science",
+    subtitle: "증상을 찍어맞히지 않고 evidence quality와 hypothesis tree로 좁힌다.",
+    proof: ["symptom tree", "evidence board", "wrong action avoided", "RCA packet"],
+    daily: "증상 하나를 risk/subsystem/evidence/stop/report/prevention으로 정리한다."
+  },
+  {
+    id: "data-metrology",
+    title: "Data & Metrology",
+    subtitle: "baseline wafer, trace ID, PM ID, metrology ID, drift signal을 연결해 defendable claim을 만든다.",
+    proof: ["trace linkage", "baseline comparison", "drift hypothesis", "qualification packet"],
+    daily: "숫자 하나가 왜 evidence인지, 왜 아직 evidence가 아닌지 구분한다."
+  },
+  {
+    id: "customer-influence",
+    title: "Customer Influence",
+    subtitle: "고객/시설/EHS/Process/AMHS 사이에서 속도보다 신뢰 가능한 정렬을 만든다.",
+    proof: ["owner alignment", "customer update", "RACI", "handover wording"],
+    daily: "hold/update 문장을 owner/evidence/next update가 보이게 다시 쓴다."
+  },
+  {
+    id: "knowledge-leverage",
+    title: "Knowledge Leverage",
+    subtitle: "내 숙련을 문서, checklist, simulator, mentoring loop로 바꾸어 다른 사람이 빨리 성장하게 한다.",
+    proof: ["teaching artifact", "checklist", "case library", "review template"],
+    daily: "오늘 배운 것을 후배가 재사용 가능한 한 장의 프레임으로 만든다."
+  },
+  {
+    id: "innovation-portfolio",
+    title: "Innovation Portfolio",
+    subtitle: "반복 문제를 줄이는 공개 가능 아이디어, 논문노트, 특허 후보, 안전 개선 프레임을 쌓는다.",
+    proof: ["problem statement", "prior art note", "novel mechanism", "impact estimate"],
+    daily: "불편한 반복 문제 하나를 '왜 아직 해결되지 않았는가' 질문으로 바꾼다."
+  }
+];
+
+const fellowReviewPrompts = [
+  "내가 반복적으로 줄이고 있는 현장 risk debt는 무엇인가?",
+  "이 해결책이 나 혼자만 잘하는 skill이 아니라 여러 CE가 재사용할 framework인가?",
+  "내 evidence packet은 고객/Process/EHS/Facilities가 각자 납득할 언어로 되어 있는가?",
+  "내가 절대 기록하지 말아야 할 비공개 정보와 공개 가능한 추상화의 경계는 명확한가?",
+  "이번 달에 후배 한 명의 판단 속도를 높인 teaching artifact는 무엇인가?"
+];
+
+function getFellowState() {
+  state.ceFellowPath = state.ceFellowPath || {
+    activeDomain: fellowDomains[0].id,
+    portfolio: {},
+    reviewAnswers: {},
+    savedPackets: [],
+    startedAt: new Date().toISOString()
+  };
+  if (!fellowDomains.some(item => item.id === state.ceFellowPath.activeDomain)) {
+    state.ceFellowPath.activeDomain = fellowDomains[0].id;
+  }
+  state.ceFellowPath.portfolio = state.ceFellowPath.portfolio || {};
+  state.ceFellowPath.reviewAnswers = state.ceFellowPath.reviewAnswers || {};
+  state.ceFellowPath.savedPackets = state.ceFellowPath.savedPackets || [];
+  return state.ceFellowPath;
+}
+
+function getFellowBookPageCount() {
+  try {
+    const pages = JSON.parse(localStorage.getItem("projectUniverseBookshelfPages") || "[]");
+    return Array.isArray(pages) ? pages.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function getFellowSignals() {
+  const curriculum = getCurriculumProgress();
+  const campaign = getCampaignMetrics();
+  const stakeholder = getStakeholderScores();
+  const incidents = typeof getIncidentStats === "function" ? getIncidentStats() : { score: 0, solved: 0 };
+  return {
+    curriculum,
+    campaign,
+    stakeholder,
+    incidents,
+    bookPages: getFellowBookPageCount(),
+    campaignSnapshot: Boolean(state.ceCampaignSnapshot?.savedAt),
+    stakeholderSnapshot: Boolean(state.ceStakeholderSnapshot?.savedAt)
+  };
+}
+
+function getFellowDomainScore(domain, signals) {
+  const fellow = getFellowState();
+  const count = (fellow.portfolio?.[domain.id] || []).length;
+  const portfolioScore = Math.min(45, count * 12);
+  const signalMap = {
+    "process-physics": Math.round((signals.curriculum.percent + signals.campaign.evidence) / 2),
+    "tool-architecture": Math.round((signals.campaign.readiness + signals.incidents.score) / 2),
+    "safety-authority": Math.round((signals.campaign.safety + (100 - signals.campaign.risk)) / 2),
+    "diagnostic-science": Math.round((signals.incidents.score + signals.campaign.evidence) / 2),
+    "data-metrology": Math.round((signals.campaign.evidence + signals.curriculum.quizPercent) / 2),
+    "customer-influence": Math.round((signals.stakeholder.leadership + signals.stakeholder.trust) / 2),
+    "knowledge-leverage": Math.min(100, signals.bookPages * 4 + signals.curriculum.percent),
+    "innovation-portfolio": Math.min(100, portfolioScore + signals.bookPages * 3 + (signals.stakeholderSnapshot ? 12 : 0))
+  };
+  const connected = signalMap[domain.id] || 0;
+  return clampScore(portfolioScore + connected * 0.55);
+}
+
+function getFellowMetrics() {
+  const signals = getFellowSignals();
+  const domainScores = fellowDomains.map(domain => ({
+    ...domain,
+    score: getFellowDomainScore(domain, signals),
+    evidenceCount: (getFellowState().portfolio?.[domain.id] || []).length
+  }));
+  const readiness = clampScore(domainScores.reduce((sum, item) => sum + item.score, 0) / domainScores.length);
+  const level = [...fellowLevels].reverse().find(item => readiness >= item.threshold) || fellowLevels[0];
+  const weakest = [...domainScores].sort((a, b) => a.score - b.score).slice(0, 3);
+  return { readiness, level, domainScores, weakest, signals };
+}
+
+function buildFellowPacket() {
+  const fellow = getFellowState();
+  const metrics = getFellowMetrics();
+  return {
+    schemaVersion: "ce-fellow-ascent-v1",
+    generatedAt: new Date().toISOString(),
+    goal: "Fellow-level technical influence through public-safe evidence, reusable frameworks, safety authority, customer trust, and mentoring leverage.",
+    readiness: metrics.readiness,
+    level: metrics.level,
+    domains: metrics.domainScores.map(item => ({
+      id: item.id,
+      title: item.title,
+      score: item.score,
+      evidenceCount: item.evidenceCount,
+      proofTypes: item.proof
+    })),
+    weakestDomains: metrics.weakest.map(item => ({ id: item.id, title: item.title, score: item.score, daily: item.daily })),
+    portfolio: fellow.portfolio,
+    reviewAnswers: fellow.reviewAnswers,
+    connectedSignals: {
+      curriculumPercent: metrics.signals.curriculum.percent,
+      campaignReadiness: metrics.signals.campaign.readiness,
+      stakeholderLeadership: metrics.signals.stakeholder.leadership,
+      incidentScore: metrics.signals.incidents.score,
+      bookPages: metrics.signals.bookPages
+    },
+    excludedDangerousInfo: [
+      "recipe",
+      "valve sequence",
+      "detector setpoint",
+      "interlock bypass",
+      "site-specific acceptance limit",
+      "customer confidential procedure",
+      "manual source text"
+    ]
+  };
+}
+
+function renderFellowPath() {
+  const root = document.querySelector("#fellow-path-root");
+  if (!root) return;
+  const fellow = getFellowState();
+  const metrics = getFellowMetrics();
+  const activeDomain = fellowDomains.find(item => item.id === fellow.activeDomain) || fellowDomains[0];
+  const activeScore = metrics.domainScores.find(item => item.id === activeDomain.id)?.score || 0;
+  const evidenceItems = fellow.portfolio?.[activeDomain.id] || [];
+  const packet = buildFellowPacket();
+  root.innerHTML = `
+    <section class="fellow-hero-panel">
+      <div>
+        <p class="eyebrow">Project Universe OS v16</p>
+        <h2>Fellow Ascent OS</h2>
+        <p>Fellow급은 더 오래 일한 사람이 아니라, 큰 문제를 구조화하고 안전하게 해결하며 다른 사람이 재사용할 수 있는 지식 체계를 남기는 사람입니다.</p>
+      </div>
+      <article>
+        <span>Fellow readiness</span>
+        <strong>${metrics.readiness}%</strong>
+        <small>${metrics.level.label} · weakest ${metrics.weakest.map(item => item.title).join(", ")}</small>
+      </article>
+    </section>
+    <section class="fellow-level-ladder" aria-label="Fellow level ladder">
+      ${fellowLevels.map(level => `
+        <article class="${metrics.readiness >= level.threshold ? "active" : ""}">
+          <span>${level.threshold}%+</span>
+          <strong>${level.label}</strong>
+          <p>${level.aim}</p>
+        </article>
+      `).join("")}
+    </section>
+    <section class="fellow-dashboard-grid">
+      <aside class="fellow-domain-rail">
+        ${metrics.domainScores.map(domain => `
+          <button type="button" class="${domain.id === activeDomain.id ? "active" : ""}" data-fellow-domain="${domain.id}">
+            <span>${domain.score}%</span>
+            <b>${domain.title}</b>
+            <small>${domain.evidenceCount} proofs · ${domain.daily}</small>
+          </button>
+        `).join("")}
+      </aside>
+      <article class="fellow-domain-detail">
+        <div class="fellow-domain-head">
+          <span>Active domain</span>
+          <h3>${activeDomain.title}</h3>
+          <p>${activeDomain.subtitle}</p>
+          <i style="--w:${activeScore}%"></i>
+        </div>
+        <div class="fellow-proof-grid">
+          ${activeDomain.proof.map(item => `<span>${item}</span>`).join("")}
+        </div>
+        <div class="fellow-daily-move">
+          <strong>Today's Fellow move</strong>
+          <p>${activeDomain.daily}</p>
+        </div>
+        <div class="fellow-evidence-form">
+          <label><span>Problem / question</span><textarea data-fellow-input="problem" placeholder="What recurring problem are you reducing?"></textarea></label>
+          <label><span>Evidence artifact</span><textarea data-fellow-input="evidence" placeholder="What public-safe proof, framework, packet, chart, case, or teaching artifact did you create?"></textarea></label>
+          <label><span>Impact</span><textarea data-fellow-input="impact" placeholder="Who can reuse it? What risk, time, ambiguity, or rework does it reduce?"></textarea></label>
+          <label><span>Next proof</span><textarea data-fellow-input="nextStep" placeholder="What is the next evidence that would make this stronger?"></textarea></label>
+          <button class="primary" type="button" data-fellow-save-evidence>Save Fellow evidence</button>
+        </div>
+        <div class="fellow-evidence-list">
+          ${evidenceItems.length ? evidenceItems.slice(0, 6).map(item => `
+            <article>
+              <b>${escapeHtml(item.problem || "Untitled proof")}</b>
+              <p>${escapeHtml(item.evidence || "")}</p>
+              <small>${escapeHtml(item.impact || "")} · next: ${escapeHtml(item.nextStep || "")}</small>
+            </article>
+          `).join("") : "<p>No evidence saved for this domain yet. Start with one public-safe proof artifact.</p>"}
+        </div>
+      </article>
+      <aside class="fellow-review-board">
+        <div>
+          <span>Review board simulator</span>
+          <strong>Fellow 질문에 답하기</strong>
+          <p>승진/직함 자체가 아니라, 장기 영향력을 증명하는 질문입니다.</p>
+        </div>
+        ${fellowReviewPrompts.map((prompt, index) => `
+          <label>
+            <span>Q${index + 1}</span>
+            <b>${prompt}</b>
+            <textarea data-fellow-review="${index}" placeholder="Your answer...">${escapeHtml(fellow.reviewAnswers?.[index] || "")}</textarea>
+          </label>
+        `).join("")}
+        <button class="secondary" type="button" data-fellow-save-packet>Save Fellow packet</button>
+        <textarea readonly id="fellow-packet-output">${JSON.stringify(packet, null, 2)}</textarea>
+      </aside>
+    </section>
+    <section class="fellow-guardrail">
+      <strong>Fellow path guardrail</strong>
+      <p>여기에는 공개 가능한 추상화, 개인 학습, 비밀이 제거된 문제정의, 재사용 가능한 프레임만 저장합니다. 고객 자료, 장비 manual 원문, recipe, setpoint, bypass, site-specific limit은 저장하지 않습니다.</p>
+    </section>
+  `;
+
+  root.querySelectorAll("[data-fellow-domain]").forEach(button => {
+    button.addEventListener("click", () => {
+      fellow.activeDomain = button.dataset.fellowDomain;
+      persistState();
+      renderFellowPath();
+    });
+  });
+  root.querySelector("[data-fellow-save-evidence]")?.addEventListener("click", () => {
+    const payload = {};
+    root.querySelectorAll("[data-fellow-input]").forEach(input => {
+      payload[input.dataset.fellowInput] = input.value.trim();
+    });
+    if (!payload.problem && !payload.evidence && !payload.impact && !payload.nextStep) return;
+    fellow.portfolio[activeDomain.id] = [
+      { ...payload, domainId: activeDomain.id, createdAt: new Date().toISOString(), privacyLevel: "public-safe-abstraction" },
+      ...(fellow.portfolio[activeDomain.id] || [])
+    ].slice(0, 20);
+    persistState();
+    renderFellowPath();
+  });
+  root.querySelectorAll("[data-fellow-review]").forEach(input => {
+    input.addEventListener("input", () => {
+      fellow.reviewAnswers[input.dataset.fellowReview] = input.value;
+      persistState();
+    });
+  });
+  root.querySelector("[data-fellow-save-packet]")?.addEventListener("click", () => {
+    const nextPacket = buildFellowPacket();
+    fellow.savedPackets = [
+      { savedAt: new Date().toISOString(), packet: nextPacket },
+      ...(fellow.savedPackets || [])
+    ].slice(0, 10);
+    state.ceFellowSnapshot = { packet: nextPacket, savedAt: new Date().toISOString() };
+    persistState();
+    renderFellowPath();
+  });
+}
+
 function renderCeIncidentKernel() {
   const root = document.querySelector("#ce-incident-kernel");
   if (!root) return;
@@ -11727,6 +12053,7 @@ renderQuiz();
 renderFlashcards();
 renderInstall();
 renderRunbook();
+renderFellowPath();
 renderFacility();
 renderElectrical();
 renderGasSafety();
