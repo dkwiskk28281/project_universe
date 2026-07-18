@@ -62,8 +62,9 @@
     </div>
     <nav class="top-nav global-nav" aria-label="전체 책장 내비게이션">
       <button class="nav-btn active" data-view="bookshelf">책장</button>
+      <button class="nav-btn global-only" data-view="operating-core">운영코어</button>
       <button class="nav-btn global-only" data-view="cognitive">인지능력향상 프로젝트</button>
-      <button class="nav-btn" data-view="vision-training">시기능 회복훈련</button>
+      <button class="nav-btn global-only" data-view="vision-training">시기능 회복훈련</button>
       <button class="nav-btn global-only" id="open-active-book" type="button">현재 책</button>
       <button class="nav-btn global-only" id="open-command-search" type="button">검색</button>
       <button class="nav-btn global-only theme-toggle" id="theme-toggle" type="button" aria-pressed="true">콘솔</button>
@@ -116,6 +117,18 @@
   </div>
 
   <main>
+    <section id="operating-core" class="view no-term">
+      <div class="page-title">
+        <p>Project Universe OS v6</p>
+        <h1>운영코어</h1>
+      </div>
+      <article class="source-note">
+        <h2>오늘의 행동과 데이터 건강도를 한 화면에 묶는 지휘실</h2>
+        <p>이 화면은 책장, 영어, CE 케이스, 인지훈련, 시기능, Think Tank, 배포 상태를 읽어 오늘의 우선순위와 AI용 요약 packet을 생성합니다. 민감 원문, 고객자료, recipe, setpoint, bypass 정보는 포함하지 않습니다.</p>
+      </article>
+      <div id="operating-core-root"></div>
+    </section>
+
     <section id="dashboard" class="view">
       <div class="hero">
         <img src="assets/cleanroom-hero.png" alt="클린룸 반도체 장비 설치 교육용 이미지" />
@@ -785,6 +798,7 @@
   <script src="bookshelf.js?v=20260718-v19vision"></script>
   <script src="materials-ms.js?v=20260718-v18msacademy"></script>
   <script src="vision-training.js?v=20260718-v19vision"></script>
+  <script src="operating-core.js?v=20260718-v20ops"></script>
   <script src="think-tank.js?v=20260713-fepbigbang"></script>
 </body>
 </html>

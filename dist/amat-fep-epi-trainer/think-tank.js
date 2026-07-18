@@ -852,6 +852,7 @@ function lockPrivateSession(reason = "manual") {
   document.body.dataset.lockReason = reason;
   document.body.classList.remove("auth-unlocked");
   showEntryChoice();
+  document.dispatchEvent(new CustomEvent("project-universe-locked", { detail: { reason } }));
 }
 
 function startIdleLockWatcher() {
@@ -913,6 +914,7 @@ function unlockApp(targetView = pendingPrivateView || "bookshelf") {
   startIdleLockWatcher();
   renderThinkTank();
   if (window.showView) window.showView(targetView || "bookshelf", { instant: true });
+  document.dispatchEvent(new CustomEvent("project-universe-unlocked", { detail: { targetView: targetView || "bookshelf" } }));
   if (!privateSyncStarted) {
     privateSyncStarted = true;
     refreshVaultStatus().then(async () => {

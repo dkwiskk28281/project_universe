@@ -18,6 +18,7 @@ const webFiles = [
   "cognitive.js",
   "bookshelf.js",
   "vision-training.js",
+  "operating-core.js",
   "think-tank.js",
   "_worker.js",
   "cloudflare-d1-schema.sql",

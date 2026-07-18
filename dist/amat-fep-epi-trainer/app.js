@@ -4296,6 +4296,7 @@ const uxPaletteState = { query: "", results: [] };
 
 const VIEW_LABELS = {
   bookshelf: "책장",
+  "operating-core": "운영코어",
   cognitive: "인지능력",
   dashboard: "EPI 홈",
   curriculum: "커리큘럼",
@@ -4325,7 +4326,7 @@ const VIEW_LABELS = {
 };
 
 VIEW_LABELS.fellow = "Fellow 로드맵";
-const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "cognitive", "vision-training"].includes(id));
+const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "operating-core", "cognitive", "vision-training"].includes(id));
 
 const BOOK_VIEW_SEQUENCE = [
   "dashboard",
@@ -4358,6 +4359,7 @@ if (!BOOK_VIEW_SEQUENCE.includes("fellow")) {
 }
 
 const VIEW_CHAPTERS = {
+  "operating-core": "인생 정보실",
   cognitive: "인지 건강",
   dashboard: "방향 잡기",
   curriculum: "성장 커리큘럼",
@@ -4389,6 +4391,7 @@ const VIEW_CHAPTERS = {
 VIEW_CHAPTERS.fellow = "Fellow 성장";
 
 const uxHotViews = [
+  ["operating-core", "운영"],
   ["cognitive", "인지"],
   ["vision-training", "시기능"],
   ["runbook", "런북"],
@@ -4629,6 +4632,8 @@ function getUxSearchItems() {
     meta: view === "bookshelf" ? "인생 정보실" : VIEW_CHAPTERS[view] || "책 안의 장",
     body: view === "bookshelf"
       ? "책장으로 이동"
+      : view === "operating-core"
+        ? "오늘의 운영 브리핑, 데이터 건강도, AI packet 센터로 이동"
       : view === "cognitive"
         ? "인지능력향상 프로젝트의 오늘 훈련으로 이동"
         : view === "vision-training"

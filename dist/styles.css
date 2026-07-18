@@ -21736,6 +21736,286 @@ body[data-current-view="cognitive"] .learning-hud {
   line-height: 1.45;
 }
 
+.ops-core-shell {
+  display: grid;
+  gap: 16px;
+}
+
+.ops-hero,
+.ops-card,
+.ops-score-grid > article {
+  border: 1px solid rgba(118, 247, 255, 0.16);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(0, 255, 149, 0.1), transparent 34%),
+    rgba(2, 12, 13, 0.92);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24);
+}
+
+.ops-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 0.28fr);
+  gap: 16px;
+  align-items: stretch;
+  padding: 18px;
+}
+
+.ops-hero h2,
+.ops-card h2 {
+  margin: 0;
+  color: var(--text-strong, #ecfff8);
+  line-height: 1.16;
+}
+
+.ops-hero p,
+.ops-card p,
+.ops-note {
+  color: rgba(236, 255, 248, 0.7);
+  line-height: 1.62;
+}
+
+.ops-score-card {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  border: 1px solid rgba(0, 255, 149, 0.23);
+  border-radius: 14px;
+  background: rgba(0, 255, 149, 0.08);
+  padding: 14px;
+}
+
+.ops-score-card span,
+.ops-score-card small,
+.ops-score-grid span,
+.ops-score-grid small,
+.ops-metric-grid span,
+.ops-metric-grid small,
+.ops-deploy-row span,
+.ops-deploy-row small {
+  color: rgba(236, 255, 248, 0.62);
+}
+
+.ops-score-card strong {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 0.95;
+}
+
+.ops-score-card i {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(118, 247, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ops-score-card em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00ff95, #76f7ff);
+}
+
+.ops-score-grid,
+.ops-metric-grid,
+.ops-deploy-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ops-score-grid > article,
+.ops-metric-grid > article,
+.ops-deploy-row > article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(118, 247, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+}
+
+.ops-score-grid strong,
+.ops-metric-grid strong,
+.ops-deploy-row strong {
+  color: #ecfff8;
+  font-family: Consolas, monospace;
+  font-size: 1.4rem;
+  line-height: 1.1;
+}
+
+.ops-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(330px, 0.6fr);
+  gap: 14px;
+}
+
+.ops-main-grid.compact {
+  grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
+}
+
+.ops-side-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.ops-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.ops-card-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ops-task-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ops-task {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.26);
+  padding: 12px;
+}
+
+.ops-task.done {
+  border-color: rgba(0, 255, 149, 0.28);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.ops-task span,
+.ops-task small {
+  color: rgba(236, 255, 248, 0.58);
+}
+
+.ops-task strong {
+  display: block;
+  color: #ecfff8;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.ops-task p {
+  margin: 5px 0;
+  color: rgba(236, 255, 248, 0.68);
+}
+
+.ops-task-actions,
+.ops-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ops-flow,
+.ops-chip-grid,
+.ops-chip-grid article,
+.ops-chip-grid article > div {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-flow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-flow span,
+.ops-chip,
+.ops-copy-status {
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(236, 255, 248, 0.7);
+  padding: 9px;
+}
+
+.ops-flow b,
+.ops-chip-grid strong,
+.ops-chip b {
+  color: #00ff95;
+}
+
+.ops-chip-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-chip-grid article {
+  border: 1px solid rgba(118, 247, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 12px;
+}
+
+.ops-chip {
+  display: inline-grid;
+  margin: 0 6px 6px 0;
+  color: #ecfff8;
+}
+
+.ops-chip.calm {
+  border-color: rgba(0, 255, 149, 0.22);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.ops-chip.risk {
+  border-color: rgba(255, 133, 133, 0.35);
+  background: rgba(255, 133, 133, 0.09);
+  color: #ffb3b3;
+}
+
+.ops-packet-card pre {
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.34);
+  color: rgba(236, 255, 248, 0.78);
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 980px) {
+  .ops-hero,
+  .ops-main-grid,
+  .ops-main-grid.compact,
+  .ops-score-grid,
+  .ops-metric-grid,
+  .ops-deploy-row,
+  .ops-flow,
+  .ops-chip-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-task {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-task-actions,
+  .ops-actions {
+    justify-content: stretch;
+  }
+
+  .ops-task-actions button,
+  .ops-actions button {
+    flex: 1 1 140px;
+  }
+}
+
 @media (max-width: 980px) {
   .vision-recovery-hero,
   .vision-grid,
