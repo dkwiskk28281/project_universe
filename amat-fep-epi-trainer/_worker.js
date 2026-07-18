@@ -1746,6 +1746,284 @@ async function buildV4AiPacket(request, env, db, packetType = "redacted-life-int
   return packet;
 }
 
+function extractPacketActions(packet = {}, briefing = {}) {
+  const graphActions = packet.knowledgeGraph?.nextSevenDays || [];
+  const commandActions = briefing.actions || [];
+  return [
+    ...commandActions.map(item => ({
+      lane: item.lane || "ops",
+      title: item.title || item.action || "운영 action",
+      action: item.action || item.title || "",
+      why: item.why || "",
+      evidence: item.evidence || item.source || ""
+    })),
+    ...graphActions.map(item => ({
+      lane: item.bookId || "knowledge",
+      title: item.title || item.action || "nextStep",
+      action: item.action || "",
+      why: "knowledge graph nextStep",
+      evidence: item.evidence || ""
+    }))
+  ].filter(item => item.title || item.action);
+}
+
+function buildV6DeterministicAnalysis(packet = {}, briefing = {}) {
+  const weaknesses = packet.knowledgeGraph?.recurringWeaknesses || briefing.graphInsights?.weaknessesTop10 || [];
+  const patterns = packet.knowledgeGraph?.recurringPatternsTop10 || briefing.graphInsights?.recurringPatternsTop10 || [];
+  const actions = extractPacketActions(packet, briefing);
+  const ops = packet.operatingStatus || {};
+  const fileVault = packet.fileVault || {};
+  const storageNeeds = [
+    !ops.auth?.cloudflareAccessConfigured ? "Cloudflare Access/Passkey hardening 필요" : "",
+    !ops.storage?.r2Binding ? "R2 FILE_VAULT binding 전까지 원문 파일은 D1에 넣지 말고 index만 유지" : "",
+    fileVault.total ? `${fileVault.total}개 file index는 summary/hash/locationHint 중심으로 유지` : "file index가 없으면 원문 파일 관리 구조를 먼저 만들기"
+  ].filter(Boolean);
+  const topWeak = weaknesses.slice(0, 5).map(item => ({
+    lane: item.lane || "weakness",
+    skill: item.skill || item.label || "unknown",
+    count: Number(item.count || 0),
+    latest: item.latest || ""
+  }));
+  const nextThirtyMinutes = [
+    {
+      minutes: 5,
+      lane: "정렬",
+      action: "운영코어에서 data health와 오늘 action을 확인",
+      evidence: `operating score ${ops.score ?? "n/a"}`
+    },
+    {
+      minutes: 10,
+      lane: "약점",
+      action: topWeak[0] ? `${topWeak[0].lane}/${topWeak[0].skill} 복습` : "새 영어/CE 문제를 풀어 weakness seed 생성",
+      evidence: topWeak[0] ? `${topWeak[0].count} repeated signals` : "weakness data missing"
+    },
+    {
+      minutes: 10,
+      lane: "FEP/EPI",
+      action: "증상 → risk → subsystem → evidence → stop → report 프레임으로 케이스 1개 작성",
+      evidence: "CE campaign / evidence board"
+    },
+    {
+      minutes: 5,
+      lane: "기록",
+      action: actions[0]?.action || "오늘 배운 내용에 result와 nextStep 추가",
+      evidence: actions[0]?.evidence || "nextStep closure"
+    }
+  ];
+  const researchLadder = [
+    "수학: 비율/로그/미분/통계/DOE를 EPI gas, growth-rate, uniformity 데이터로 연결",
+    "물리/화학: 열전달, 진공, 기체, 반응속도, 표면반응을 chamber state와 연결",
+    "재료공학: 결정구조, defect, diffusion, thin film, characterization을 wafer result와 연결",
+    "EPI Fellow: open problem을 정의하고 evidence portfolio, DOE, 논문/특허 읽기, customer-safe report로 확장"
+  ];
+  return {
+    schema: "project-universe-ai-thinktank-analysis-v6",
+    generatedAt: new Date().toISOString(),
+    mode: "deterministic-redacted-analysis",
+    sourcePacketHash: hashText(stableJson({
+      generatedAt: packet.generatedAt,
+      counts: packet.knowledgeGraph?.counts,
+      weaknesses: topWeak,
+      fileVault: packet.fileVault?.total,
+      actions: actions.slice(0, 8)
+    })),
+    executiveSummary: [
+      actions[0] ? `오늘 최우선 행동은 ${actions[0].title || actions[0].action}입니다.` : "아직 action 데이터가 부족하므로 기록과 오답을 먼저 만들어야 합니다.",
+      topWeak[0] ? `반복 약점은 ${topWeak[0].lane}/${topWeak[0].skill}입니다.` : "반복 약점 데이터가 충분하지 않습니다.",
+      storageNeeds[0] || "저장/보안 경계는 현재 구조 안에서 추적 가능합니다."
+    ],
+    weaknessTop5: topWeak,
+    recurringPatterns: patterns.slice(0, 10),
+    nextThirtyMinutes,
+    nextSevenDays: actions.slice(0, 7).map((item, index) => ({
+      day: index + 1,
+      lane: item.lane,
+      action: item.action || item.title,
+      why: item.why,
+      evidence: item.evidence
+    })),
+    dataReliability: {
+      operatingScore: ops.score ?? null,
+      d1Binding: ops.storage?.d1Binding || ops.storage?.binding || null,
+      r2Binding: ops.storage?.r2Binding || null,
+      fileVaultTotal: fileVault.total || 0,
+      storageNeeds,
+      rule: "D1 stores structured records and indexes only. Raw files stay in R2 or D-drive vault."
+    },
+    fellowRoadmap: researchLadder,
+    aiExportPolicy: {
+      defaultPacket: "redacted-life-intelligence",
+      allowed: "summaries, metadata, evidence/action/result/nextStep, file indexes, weakness events",
+      blocked: packet.doNotAskFor || []
+    },
+    safetyBoundary: "No recipe, valve sequence, detector setpoint, interlock bypass, equipment manual text, site-specific limit, or customer confidential data."
+  };
+}
+
+function projectUniverseAnalysisSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["executiveSummary", "weaknessTop5", "nextThirtyMinutes", "nextSevenDays", "fellowRoadmap", "safetyBoundary"],
+    properties: {
+      executiveSummary: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 5 },
+      weaknessTop5: {
+        type: "array",
+        maxItems: 5,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["lane", "skill", "reason", "nextAction"],
+          properties: {
+            lane: { type: "string" },
+            skill: { type: "string" },
+            reason: { type: "string" },
+            nextAction: { type: "string" }
+          }
+        }
+      },
+      nextThirtyMinutes: {
+        type: "array",
+        minItems: 3,
+        maxItems: 6,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["minutes", "lane", "action", "evidence"],
+          properties: {
+            minutes: { type: "number" },
+            lane: { type: "string" },
+            action: { type: "string" },
+            evidence: { type: "string" }
+          }
+        }
+      },
+      nextSevenDays: {
+        type: "array",
+        maxItems: 7,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["day", "action", "why"],
+          properties: {
+            day: { type: "number" },
+            action: { type: "string" },
+            why: { type: "string" }
+          }
+        }
+      },
+      fellowRoadmap: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 8 },
+      safetyBoundary: { type: "string" }
+    }
+  };
+}
+
+async function callOpenAiThinkTank(env, safeInput) {
+  const apiKey = env.OPENAI_API_KEY || "";
+  if (!apiKey) return { ok: false, status: "not-configured", reason: "OPENAI_API_KEY is not configured" };
+  const model = env.OPENAI_MODEL || "gpt-4.1-mini";
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      input: [
+        {
+          role: "system",
+          content: [{
+            type: "input_text",
+            text: [
+              "You are Project Universe's private AI Think Tank analyst.",
+              "Analyze only the redacted packet. Do not request or infer secrets, recipes, site-specific limits, equipment manual text, valve sequences, detector setpoints, or interlock bypasses.",
+              "Return concise Korean coaching for daily execution, data reliability, FEP/EPI growth, and Fellow-level learning."
+            ].join(" ")
+          }]
+        },
+        {
+          role: "user",
+          content: [{
+            type: "input_text",
+            text: JSON.stringify(safeInput).slice(0, 14000)
+          }]
+        }
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "project_universe_ai_analysis",
+          strict: true,
+          schema: projectUniverseAnalysisSchema()
+        }
+      },
+      max_output_tokens: 1800
+    })
+  });
+  if (!response.ok) {
+    return { ok: false, status: "request-failed", reason: `OpenAI HTTP ${response.status}` };
+  }
+  const data = await response.json();
+  const outputText = data.output_text || (data.output || [])
+    .flatMap(item => item.content || [])
+    .map(item => item.text || "")
+    .join("");
+  try {
+    return { ok: true, status: "llm-analysis-ready", model, analysis: JSON.parse(outputText), rawId: data.id || null };
+  } catch {
+    return { ok: false, status: "parse-failed", reason: "OpenAI response was not valid JSON", model };
+  }
+}
+
+async function buildV6AiAnalysis(request, env, db, options = {}) {
+  const packetType = options.packetType || "redacted-life-intelligence";
+  const [packet, briefing] = await Promise.all([
+    buildV4AiPacket(request, env, db, packetType),
+    buildV5CommandBriefing(request, env, db)
+  ]);
+  const deterministic = buildV6DeterministicAnalysis(packet, briefing);
+  const safeInput = {
+    packet: {
+      generatedAt: packet.generatedAt,
+      privacyMode: packet.privacyMode,
+      operatingStatus: packet.operatingStatus,
+      knowledgeGraph: packet.knowledgeGraph,
+      fileVault: {
+        total: packet.fileVault?.total || 0,
+        byTarget: packet.fileVault?.byTarget || {},
+        files: (packet.fileVault?.files || []).slice(0, 40)
+      },
+      doNotAskFor: packet.doNotAskFor
+    },
+    commandBriefing: {
+      actions: (briefing.actions || []).slice(0, 9),
+      opsChecklist: briefing.opsChecklist || [],
+      graphInsights: briefing.graphInsights || {},
+      safetyBoundary: briefing.safetyBoundary
+    },
+    deterministic
+  };
+  const llm = options.useLlm === false ? { ok: false, status: "disabled" } : await callOpenAiThinkTank(env, safeInput).catch(error => ({
+    ok: false,
+    status: "request-error",
+    reason: error.message || "OpenAI request failed"
+  }));
+  const analysis = {
+    ...deterministic,
+    mode: llm.ok ? "llm-assisted-redacted-analysis" : deterministic.mode,
+    llmStatus: {
+      configured: Boolean(env.OPENAI_API_KEY),
+      status: llm.status,
+      model: llm.model || env.OPENAI_MODEL || null,
+      reason: llm.reason || null,
+      rawId: llm.rawId || null
+    },
+    llmAnalysis: llm.ok ? llm.analysis : null
+  };
+  return analysis;
+}
+
 async function reindexV4FromEntries(db, limit = 1000) {
   const result = await db.prepare("SELECT id, created_at, title, payload FROM entries ORDER BY created_at DESC LIMIT ?").bind(limit).all();
   let indexed = 0;
@@ -3223,6 +3501,26 @@ async function handleApi(request, env, url) {
 
   if (url.pathname === "/api/v4/coach-briefing" && request.method === "GET") {
     return jsonResponse(request, { ok: true, briefing: await buildV4CoachBriefing(request, env, db) });
+  }
+
+  if (url.pathname === "/api/v6/ai-analysis" && (request.method === "GET" || request.method === "POST")) {
+    const payload = request.method === "POST" ? await readBody(request) : {};
+    const packetType = payload.packetType || url.searchParams.get("type") || "redacted-life-intelligence";
+    const useLlm = payload.useLlm === false || url.searchParams.get("llm") === "false" ? false : true;
+    const analysis = await buildV6AiAnalysis(request, env, db, { packetType, useLlm });
+    if (request.method === "POST" || url.searchParams.get("save") === "true") {
+      const id = crypto.randomUUID();
+      const createdAt = new Date().toISOString();
+      await db.prepare("INSERT INTO ai_packets (id, created_at, packet_type, privacy_scope, payload) VALUES (?, ?, ?, ?, ?)")
+        .bind(id, createdAt, "v6-ai-analysis", "redacted-analysis", JSON.stringify(analysis))
+        .run();
+      await insertAuditEvent(db, "v6-ai-analysis-created", id, "info", "Generated Project Universe v6 AI Think Tank analysis.", {
+        mode: analysis.mode,
+        llmStatus: analysis.llmStatus?.status || ""
+      });
+      return jsonResponse(request, { ok: true, id, createdAt, analysis });
+    }
+    return jsonResponse(request, { ok: true, analysis });
   }
 
   if (url.pathname === "/api/v4/ai-packet" && request.method === "GET") {

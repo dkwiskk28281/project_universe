@@ -25,6 +25,7 @@
       ops: null,
       briefing: null,
       packet: null,
+      analysis: null,
       error: ""
     },
     buildInfo: null,
@@ -560,10 +561,11 @@
     state.remote.error = "";
     render();
     try {
-      const [opsResponse, briefingResponse, packetResponse] = await Promise.all([
+      const [opsResponse, briefingResponse, packetResponse, analysisResponse] = await Promise.all([
         fetch("/api/v4/ops-status", { cache: "no-store" }),
         fetch("/api/v4/coach-briefing", { cache: "no-store" }),
-        fetch("/api/v4/ai-packet?type=redacted-life-intelligence", { cache: "no-store" })
+        fetch("/api/v4/ai-packet?type=redacted-life-intelligence", { cache: "no-store" }),
+        fetch("/api/v6/ai-analysis?type=redacted-life-intelligence", { cache: "no-store" }).catch(() => null)
       ]);
       if (!opsResponse.ok) throw new Error(`ops ${opsResponse.status}`);
       if (!briefingResponse.ok) throw new Error(`briefing ${briefingResponse.status}`);
@@ -571,11 +573,13 @@
       state.remote.ops = (await opsResponse.json()).status || null;
       state.remote.briefing = (await briefingResponse.json()).briefing || null;
       state.remote.packet = (await packetResponse.json()).packet || null;
+      if (analysisResponse?.ok) state.remote.analysis = (await analysisResponse.json()).analysis || null;
     } catch (error) {
       state.remote.error = error.message || "remote unavailable";
       state.remote.ops = null;
       state.remote.briefing = null;
       state.remote.packet = null;
+      state.remote.analysis = null;
     } finally {
       state.remote.loading = false;
       render();
@@ -685,10 +689,31 @@
   }
 
   function renderAiAnalysisPanel(analysis) {
+    const remote = state.remote.analysis || null;
+    const remoteSummary = remote?.llmAnalysis?.executiveSummary || remote?.executiveSummary || [];
+    const remoteThirty = remote?.llmAnalysis?.nextThirtyMinutes || remote?.nextThirtyMinutes || [];
+    const llmStatus = remote?.llmStatus || null;
     return `
       <section class="ops-card ops-analysis-card">
         <p class="eyebrow">AI think tank center</p>
         <h2>AI가 읽기 좋은 오늘의 해석</h2>
+        <div class="ops-ai-status">
+          <span>${remote ? "Worker v6 analysis connected" : "local analysis only"}</span>
+          <strong>${escapeHtml(llmStatus?.status || (remote ? remote.mode : "browser-derived"))}</strong>
+          <small>${escapeHtml(llmStatus?.configured ? `model ${llmStatus.model || "configured"}` : "OPENAI_API_KEY가 없으면 deterministic 분석으로 유지")}</small>
+        </div>
+        ${remote ? `
+          <div class="ops-remote-analysis">
+            <article>
+              <strong>서버 분석 요약</strong>
+              ${remoteSummary.slice(0, 3).map(item => `<p>${escapeHtml(item)}</p>`).join("")}
+            </article>
+            <article>
+              <strong>서버 추천 30분</strong>
+              ${remoteThirty.slice(0, 4).map(item => `<p><b>${escapeHtml(item.minutes || "?")}분</b> ${escapeHtml(item.action || item.title || "")}</p>`).join("")}
+            </article>
+          </div>
+        ` : ""}
         <div class="ops-analysis-grid">
           <article>
             <strong>반복 약점</strong>

@@ -22031,33 +22031,65 @@ body[data-current-view="cognitive"] .learning-hud {
 
 .ops-integrity-list,
 .ops-analysis-grid,
-.ops-bridge-grid {
+.ops-bridge-grid,
+.ops-remote-analysis {
   display: grid;
   gap: 10px;
 }
 
 .ops-integrity-list span,
 .ops-analysis-grid article,
-.ops-bridge-grid article {
+.ops-bridge-grid article,
+.ops-ai-status,
+.ops-remote-analysis article {
   border: 1px solid rgba(118, 247, 255, 0.12);
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.22);
   padding: 12px;
 }
 
+.ops-ai-status {
+  display: grid;
+  gap: 4px;
+  border-color: rgba(0, 255, 149, 0.18);
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.08), rgba(118, 247, 255, 0.035)),
+    rgba(0, 0, 0, 0.22);
+}
+
+.ops-ai-status span,
+.ops-ai-status small {
+  color: rgba(236, 255, 248, 0.62);
+}
+
+.ops-ai-status strong {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+}
+
 .ops-analysis-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.ops-remote-analysis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .ops-analysis-grid strong,
-.ops-bridge-grid strong {
+.ops-bridge-grid strong,
+.ops-remote-analysis strong {
   display: block;
   color: #ecfff8;
   line-height: 1.25;
 }
 
-.ops-analysis-grid p {
+.ops-analysis-grid p,
+.ops-remote-analysis p {
   margin: 7px 0 0;
+}
+
+.ops-remote-analysis b {
+  color: #76f7ff;
 }
 
 .ops-fellow-bridge {
@@ -22186,7 +22218,8 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-flow,
   .ops-chip-grid,
   .ops-analysis-grid,
-  .ops-bridge-grid {
+  .ops-bridge-grid,
+  .ops-remote-analysis {
     grid-template-columns: 1fr;
   }
 
