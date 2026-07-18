@@ -2445,6 +2445,477 @@ main,
   }
 }
 
+/* 20260718 v18 Materials MS Academy */
+.materials-ms-root {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ms-hero,
+.ms-panel,
+.ms-roadmap-panel,
+.ms-source-panel,
+.ms-readiness-grid article {
+  min-width: 0;
+  border: 1px solid rgba(0, 255, 149, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(0, 255, 149, 0.1), transparent 32%),
+    radial-gradient(circle at 92% 4%, rgba(94, 231, 255, 0.1), transparent 30%),
+    linear-gradient(145deg, rgba(0, 12, 12, 0.97), rgba(7, 6, 17, 0.97));
+  color: #ecfff8;
+  overflow: hidden;
+}
+
+.ms-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.28fr);
+  gap: 14px;
+  padding: 16px;
+  align-items: stretch;
+}
+
+.ms-hero h2,
+.ms-panel h3,
+.ms-roadmap-panel h3,
+.ms-source-panel h3,
+.ms-question-card h4 {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.16;
+  overflow-wrap: anywhere;
+}
+
+.ms-hero p,
+.ms-hero small,
+.ms-panel p,
+.ms-panel small,
+.ms-roadmap-panel p,
+.ms-source-panel p,
+.ms-source-grid small,
+.ms-stage-card small,
+.ms-stage-card i,
+.ms-lesson-list small,
+.ms-lesson-list b,
+.ms-feedback {
+  margin: 0;
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.ms-hero > article,
+.ms-panel-head > span {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ms-hero > article span,
+.ms-panel-head span,
+.ms-readiness-grid span,
+.ms-question-card > span,
+.ms-lab-head span,
+.ms-stage-card span {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ms-hero > article strong,
+.ms-readiness-grid strong,
+.ms-panel-head > span {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.ms-hero > article strong {
+  font-size: clamp(2rem, 5vw, 3.4rem);
+  line-height: 0.95;
+}
+
+.ms-action-row,
+.ms-teacher-mode-row,
+.ms-lesson-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.materials-ms-root .primary,
+.materials-ms-root .secondary {
+  min-height: 38px;
+  border: 1px solid rgba(94, 231, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.materials-ms-root .primary {
+  background: rgba(0, 255, 149, 0.18);
+  color: #ecfff8;
+}
+
+.materials-ms-root .secondary {
+  background: rgba(94, 231, 255, 0.08);
+  color: #ecfff8;
+}
+
+.materials-ms-root .secondary.active {
+  border-color: rgba(0, 255, 149, 0.5);
+  background: rgba(0, 255, 149, 0.12);
+}
+
+.ms-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.ms-readiness-grid article {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.ms-readiness-grid strong {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.ms-main-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.45fr) minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.ms-panel,
+.ms-roadmap-panel,
+.ms-source-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.ms-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.ms-question-card,
+.ms-teacher-card,
+.ms-visual-lab,
+.ms-weak-grid span,
+.ms-source-grid a,
+.ms-lesson-list button {
+  min-width: 0;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.23);
+}
+
+.ms-question-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.ms-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ms-option-grid button {
+  min-height: 46px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.07);
+  color: #ecfff8;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.ms-option-grid button.correct {
+  border-color: rgba(0, 255, 149, 0.58);
+  background: rgba(0, 255, 149, 0.13);
+}
+
+.ms-option-grid button.wrong {
+  border-color: rgba(255, 111, 111, 0.55);
+  background: rgba(255, 111, 111, 0.13);
+}
+
+.ms-feedback.good {
+  color: #baffdf;
+}
+
+.ms-feedback.bad {
+  color: #ffb7b7;
+}
+
+.ms-weak-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ms-weak-grid span {
+  display: grid;
+  gap: 4px;
+  padding: 9px;
+}
+
+.ms-weak-grid b,
+.ms-teacher-card strong,
+.ms-lesson-list strong,
+.ms-source-grid strong {
+  color: #ffffff;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.ms-teacher-card,
+.ms-visual-lab {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.ms-lab-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.ms-visual-lab svg {
+  width: 100%;
+  min-height: 190px;
+  color: #76f7ff;
+}
+
+.ms-visual-lab svg line {
+  stroke: rgba(236, 255, 248, 0.25);
+  stroke-width: 1;
+}
+
+.ms-visual-lab svg polyline {
+  fill: none;
+  stroke: #00ff95;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ms-visual-lab svg text {
+  fill: rgba(236, 255, 248, 0.7);
+  font-size: 12px;
+}
+
+.ms-visual-lab label {
+  display: grid;
+  gap: 6px;
+  color: rgba(236, 255, 248, 0.78);
+}
+
+.ms-visual-lab input[type="range"] {
+  width: 100%;
+  accent-color: #00ff95;
+}
+
+.ms-crystal-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 320px;
+}
+
+.ms-crystal-grid span {
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: rgba(94, 231, 255, 0.22);
+  border: 1px solid rgba(94, 231, 255, 0.4);
+}
+
+.ms-crystal-grid span.defect {
+  background: rgba(255, 211, 138, 0.82);
+  border-color: rgba(255, 211, 138, 0.95);
+}
+
+.ms-epi-strip,
+.ms-paper-map {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.ms-epi-strip span,
+.ms-paper-map span,
+.ms-layer-stack b {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.08);
+  color: #ecfff8;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.ms-epi-strip i {
+  display: none;
+}
+
+.ms-layer-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.ms-layer-stack b:nth-child(1) {
+  min-height: 34px;
+  background: rgba(94, 231, 255, 0.08);
+}
+
+.ms-layer-stack b:nth-child(2) {
+  min-height: var(--layer-height, 58px);
+  background: rgba(0, 255, 149, 0.12);
+}
+
+.ms-layer-stack b:nth-child(3) {
+  min-height: 28px;
+  background: rgba(255, 211, 138, 0.09);
+}
+
+.ms-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.ms-stage-card,
+.ms-lesson-list button {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.ms-stage-card.locked {
+  opacity: 0.48;
+}
+
+.ms-stage-card.current,
+.ms-stage-card.active,
+.ms-lesson-list button.active {
+  border-color: rgba(0, 255, 149, 0.55);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.12), transparent 68%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.ms-lesson-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ms-lesson-list button {
+  min-height: 108px;
+}
+
+.ms-lesson-list button.done {
+  border-color: rgba(0, 255, 149, 0.32);
+}
+
+.ms-packet-output {
+  min-height: 390px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #d8ffea;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.ms-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.ms-source-grid a {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  color: #fff0c8;
+  text-decoration: none;
+  border-color: rgba(255, 211, 138, 0.18);
+  background: rgba(255, 211, 138, 0.06);
+}
+
+.ms-source-grid small {
+  color: rgba(255, 240, 200, 0.72);
+}
+
+@media (max-width: 1180px) {
+  .ms-hero,
+  .ms-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .ms-hero,
+  .ms-panel,
+  .ms-roadmap-panel,
+  .ms-source-panel {
+    padding: 12px;
+  }
+
+  .ms-panel-head,
+  .ms-option-grid,
+  .ms-weak-grid,
+  .ms-epi-strip,
+  .ms-paper-map {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-stage-card,
+  .ms-lesson-list button {
+    min-height: auto;
+  }
+}
+
 /* 20260717 v8 CE incident kernel */
 .ce-incident-kernel {
   display: grid;

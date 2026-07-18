@@ -18,6 +18,7 @@ const webFiles = [
   "term-helper.js",
   "cognitive.js",
   "bookshelf.js",
+  "materials-ms.js",
   "think-tank.js"
 ];
 
