@@ -1954,6 +1954,7 @@ main,
 
 .fellow-hero-panel,
 .fellow-level-ladder,
+.fellow-knowledge-route,
 .fellow-domain-rail,
 .fellow-domain-detail,
 .fellow-review-board,
@@ -1982,6 +1983,9 @@ main,
 .fellow-hero-panel p:not(.eyebrow),
 .fellow-hero-panel small,
 .fellow-level-ladder p,
+.fellow-route-head p,
+.fellow-route-detail p,
+.fellow-route-detail small,
 .fellow-domain-rail small,
 .fellow-domain-head p,
 .fellow-daily-move p,
@@ -2008,6 +2012,9 @@ main,
 
 .fellow-hero-panel span,
 .fellow-level-ladder span,
+.fellow-route-head span,
+.fellow-route-detail-head span,
+.fellow-route-rail span,
 .fellow-domain-rail span,
 .fellow-domain-head span,
 .fellow-evidence-form span,
@@ -2056,7 +2063,205 @@ main,
     rgba(0, 0, 0, 0.22);
 }
 
+.fellow-knowledge-route {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  overflow: hidden;
+}
+
+.fellow-route-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.24fr);
+  gap: 12px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.fellow-route-head h3,
+.fellow-route-head p,
+.fellow-route-detail h3,
+.fellow-route-detail p {
+  margin: 0;
+}
+
+.fellow-route-head > article {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.fellow-route-head > article strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.fellow-route-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.32fr) minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+}
+
+.fellow-route-rail {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fellow-route-rail button {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 4px 8px;
+  align-items: start;
+  min-width: 0;
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.fellow-route-rail button span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.08);
+}
+
+.fellow-route-rail button small {
+  color: rgba(236, 255, 248, 0.7);
+  overflow-wrap: anywhere;
+}
+
+.fellow-route-rail button.active,
+.fellow-route-rail button.done.active {
+  border-color: rgba(0, 255, 149, 0.58);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.12), transparent 70%),
+    rgba(0, 0, 0, 0.26);
+}
+
+.fellow-route-rail button.done {
+  border-color: rgba(0, 255, 149, 0.3);
+}
+
+.fellow-route-detail {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.fellow-route-detail-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+.fellow-route-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.fellow-route-chip-grid section,
+.fellow-route-lab,
+.fellow-route-boundary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.fellow-route-chip-grid strong,
+.fellow-route-lab strong,
+.fellow-route-boundary strong {
+  flex: 1 0 100%;
+  color: #ffffff;
+}
+
+.fellow-route-chip-grid span {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 255, 149, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.08);
+  color: #b9ffe5;
+  font-size: 0.78rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.fellow-route-lab,
+.fellow-route-boundary {
+  display: grid;
+}
+
+.fellow-route-lab b {
+  color: #ffd38a;
+}
+
+.fellow-route-source-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.fellow-route-source-grid a {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(255, 211, 138, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 211, 138, 0.06);
+  color: #fff0c8;
+  text-decoration: none;
+}
+
+.fellow-route-source-grid a span,
+.fellow-route-source-grid a small {
+  overflow-wrap: anywhere;
+}
+
+.fellow-route-source-grid a small {
+  color: rgba(255, 240, 200, 0.72);
+  line-height: 1.45;
+}
+
 .fellow-level-ladder strong,
+.fellow-route-head h3,
+.fellow-route-detail h3,
+.fellow-route-rail b,
+.fellow-route-lab strong,
+.fellow-route-lab b,
 .fellow-domain-rail b,
 .fellow-daily-move strong,
 .fellow-evidence-list b,
@@ -2204,6 +2409,8 @@ main,
 @media (max-width: 1180px) {
   .fellow-hero-panel,
   .fellow-dashboard-grid,
+  .fellow-route-head,
+  .fellow-route-layout,
   .fellow-evidence-form {
     grid-template-columns: 1fr;
   }
@@ -2212,10 +2419,25 @@ main,
 @media (max-width: 720px) {
   .fellow-hero-panel,
   .fellow-level-ladder,
+  .fellow-knowledge-route,
   .fellow-domain-rail,
   .fellow-domain-detail,
   .fellow-review-board {
     padding: 12px;
+  }
+
+  .fellow-route-chip-grid,
+  .fellow-route-detail-head {
+    grid-template-columns: 1fr;
+  }
+
+  .fellow-route-detail-head .primary,
+  .fellow-route-detail-head .secondary {
+    width: 100%;
+  }
+
+  .fellow-route-rail button {
+    min-height: auto;
   }
 
   .fellow-domain-rail button {

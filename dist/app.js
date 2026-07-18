@@ -8906,10 +8906,147 @@ const fellowReviewPrompts = [
   "이번 달에 후배 한 명의 판단 속도를 높인 teaching artifact는 무엇인가?"
 ];
 
+const fellowKnowledgeSources = [
+  { id: "applied-fellow", label: "Applied Materials Fellows", url: "https://www.appliedmaterials.com/us/en/collaboration/fellows.html", note: "Fellow: sustained distinguished achievement, leadership, difficult technical problems." },
+  { id: "applied-epi", label: "Applied Materials Epitaxy", url: "https://www.appliedmaterials.com/us/en/semiconductor/products/processes/epitaxy.html", note: "Epitaxy: crystalline foundation, engineered electrical properties, underlayer attribute control." },
+  { id: "xtera", label: "Centura Xtera Epi", url: "https://www.appliedmaterials.com/us/en/product-library/centura-xtera-epi.html", note: "Selective epitaxy platform direction for advanced logic and memory." },
+  { id: "applied-rtp", label: "Applied Materials RTP", url: "https://www.appliedmaterials.com/us/en/semiconductor/products/processes/rapid-thermal-processing-treatments.html", note: "Thermal processing changes electrical or physical material properties." },
+  { id: "stanford-centura", label: "Stanford SNF Applied Centura Epi", url: "https://snfguide.stanford.edu/guide/equipment/amat-centurion-epitaxial-system-epi2", note: "Public academic page lists example epi materials and gases; options vary by site/tool." },
+  { id: "semi-safety", label: "SEMI safety standards", url: "https://www.semi.org/en/products-services/standards/safety", note: "Public SEMI safety family overview including S2, S6, S18." },
+  { id: "intertek-s2", label: "SEMI S2 overview", url: "https://www.intertek.com/semiconductor-equipment/semi-s2/", note: "S2 as performance-based EHS considerations for semiconductor equipment." },
+  { id: "semitracks-epi", label: "CVD Epitaxy tutorial", url: "https://www.semitracks.com/newsletters/february/2017-february-newsletter.pdf", note: "Public tutorial on common epi precursors and process variables." },
+  { id: "princeton-epi", label: "Silicon-based epitaxy by CVD", url: "https://www.princeton.edu/~sturmlab/theses/Keith%20Chung%20Thesis%20Part%201.pdf", note: "Academic CVD epi dissertation: growth rate, crystal quality, impurity, characterization." },
+  { id: "seg-dft", label: "Selective Si epitaxy DFT", url: "https://theory.cm.utexas.edu/henkelman/pubs/chai20_145888.pdf", note: "DCS/HCl selective Si epitaxy on crystalline Si vs SiO2." },
+  { id: "ieee-fellow", label: "Fellow evidence guide", url: "https://ias.ieee.org/wp-content/uploads/2023/05/Rec-Guide-to-Writing-Effective-Nominations.pdf", note: "Tangible, verifiable technical accomplishment evidence." }
+];
+
+const fellowKnowledgeRoute = [
+  {
+    id: "crystal-surface",
+    title: "01. Crystal / Surface Foundation",
+    level: "Physics bedrock",
+    thesis: "Film은 recipe 결과가 아니라 lattice, surface, defect, strain, orientation, interface quality의 결과로 본다.",
+    theory: ["crystal lattice", "epitaxial registry", "surface reconstruction", "defects / dislocations", "strain / critical thickness"],
+    models: ["nucleation barrier", "surface diffusion length", "strain relaxation", "interface energy"],
+    lab: "wafer 위 layer를 원자가 어디에 붙는가 관점으로 설명하고 defect path를 그림으로 남긴다.",
+    proof: "crystal-to-defect map",
+    sources: ["applied-epi", "princeton-epi"]
+  },
+  {
+    id: "cvd-chemistry",
+    title: "02. CVD / EPI Chemistry",
+    level: "Reaction intelligence",
+    thesis: "SiH4, DCS, TCS, SiCl4, GeH4, dopant gases, H2 carrier, HCl selectivity를 adsorption / decomposition / etch-growth balance로 이해한다.",
+    theory: ["silicon source gases", "chlorosilane chemistry", "H2 carrier", "HCl selectivity", "dopant incorporation"],
+    models: ["partial pressure", "Arrhenius dependence", "surface reaction vs transport limit", "competitive adsorption"],
+    lab: "gas introduction, purge, pumpdown, exhaust, abatement가 wafer reaction window와 어떻게 연결되는지 단계별로 정리한다.",
+    proof: "gas-to-film mechanism atlas",
+    sources: ["semitracks-epi", "princeton-epi", "stanford-centura", "seg-dft"]
+  },
+  {
+    id: "transport-reactor",
+    title: "03. Reactor Transport / Vacuum / Facility",
+    level: "Chamber intelligence",
+    thesis: "gas delivery, boundary layer, residence time, pumping, exhaust, abatement, pressure control이 함께 film을 만든다.",
+    theory: ["laminar flow", "boundary layer", "residence time", "conductance", "pumpdown / purge", "exhaust / abatement"],
+    models: ["mass transport", "pressure transient", "flow-limited delivery", "source-to-abatement chain"],
+    lab: "PM을 source-to-abatement chain으로 그리고, first gas hold evidence를 표시한다.",
+    proof: "source-to-abatement evidence chain",
+    sources: ["semi-safety", "intertek-s2", "applied-epi"]
+  },
+  {
+    id: "selective-epi-integration",
+    title: "04. Selective EPI / Integration",
+    level: "Device integration view",
+    thesis: "SEG는 Si와 dielectric 표면에서 반응성이 달라지는 현상을 이용한다. Fellow는 pattern, loading, facet, trench geometry, GAA strain target까지 연결한다.",
+    theory: ["selective epitaxial growth", "Si vs SiO2 nucleation", "HCl-assisted selectivity", "SiGe strain", "pattern loading"],
+    models: ["selectivity window", "facet evolution", "nanoscale trench transport", "Ge incorporation kinetics"],
+    lab: "bare wafer와 patterned wafer에서 같은 gas claim이 왜 달라지는지 설명한다.",
+    proof: "SEG selectivity / integration tradeoff map",
+    sources: ["xtera", "seg-dft", "applied-epi"]
+  },
+  {
+    id: "rtp-thermal",
+    title: "05. RTP / Thermal Budget",
+    level: "Thermal system view",
+    thesis: "RTP는 온도 숫자가 아니라 ramp, soak, cool, emissivity, pyrometry, lamp zone, stress, dopant activation의 시간-온도 적분 문제다.",
+    theory: ["thermal budget", "lamp heating", "pyrometry", "emissivity", "dopant activation", "thermal shock"],
+    models: ["time at temperature", "ramp-rate tradeoff", "zone uniformity", "temperature measurement error"],
+    lab: "RTP trace를 보고 어떤 evidence 없이는 process claim을 못 하는지 정리한다.",
+    proof: "thermal trace interpretation packet",
+    sources: ["applied-rtp"]
+  },
+  {
+    id: "cluster-automation",
+    title: "06. Cluster Tool / Automation / Communication",
+    level: "System architecture",
+    thesis: "EFEM, FOUP, load port, LL, TM, PM, CM, host, E84/SECS-GEM류 통신은 wafer integrity와 traceability를 지키는 nervous system이다.",
+    theory: ["EFEM / FI", "load lock pressure boundary", "TM robot handoff", "host / tool state", "carrier ownership", "interlock philosophy"],
+    models: ["state machine", "fault tree", "ownership transition", "trace continuity"],
+    lab: "wafer path를 physical path와 data path로 동시에 그린다.",
+    proof: "hardware-data twin map",
+    sources: ["stanford-centura"]
+  },
+  {
+    id: "metrology-spc",
+    title: "07. Metrology / SPC / Model Thinking",
+    level: "Evidence science",
+    thesis: "좋은 숫자와 defendable evidence를 구분한다. thickness, composition, Rs, defect, trace ID, PM ID, metrology ID를 claim chain으로 묶는다.",
+    theory: ["baseline wafer", "traceability", "SPC", "measurement uncertainty", "DOE", "drift / matching"],
+    models: ["control chart", "measurement system analysis", "hypothesis test", "correlation vs cause"],
+    lab: "pass-looking number가 왜 아직 qualification evidence가 아닐 수 있는지 사례로 쓴다.",
+    proof: "defensible qualification claim template",
+    sources: ["princeton-epi", "ieee-fellow"]
+  },
+  {
+    id: "failure-rca",
+    title: "08. Failure Physics / RCA",
+    level: "Diagnostic leadership",
+    thesis: "빠른 추측이 아니라 symptom -> risk -> subsystem -> evidence -> stop -> report -> prevention을 조직 습관으로 만든다.",
+    theory: ["failure taxonomy", "evidence quality", "wrong-action avoidance", "recovery closeout", "prevention loop"],
+    models: ["fault tree", "Bayesian evidence intuition", "risk debt", "RCA packet"],
+    lab: "failure 하나를 재사용 가능한 case game으로 바꾼다.",
+    proof: "RCA-to-training conversion packet",
+    sources: ["ieee-fellow"]
+  },
+  {
+    id: "ehs-authority",
+    title: "09. EHS / Safety Authority",
+    level: "Stop-work maturity",
+    thesis: "gas, electrical, vacuum, exhaust, abatement, LOTO는 schedule보다 높은 boundary다. 멈춤을 지연이 아니라 system integrity로 설명한다.",
+    theory: ["SEMI S2 / S6 / S18 families", "hazardous energy", "toxic / flammable / corrosive / asphyxiant gases", "owner witness", "change control"],
+    models: ["barrier model", "source-to-abatement chain", "authorization matrix", "stop condition"],
+    lab: "고객에게 왜 멈추는지 safety/owner/evidence/next update 문장으로 쓴다.",
+    proof: "stop-work communication framework",
+    sources: ["semi-safety", "intertek-s2"]
+  },
+  {
+    id: "fellow-leverage",
+    title: "10. Fellow Leverage / Industry Impact",
+    level: "Influence portfolio",
+    thesis: "문제 하나를 patent candidate, paper note, standard practice, mentoring artifact, cross-site framework로 확장한다.",
+    theory: ["technical accomplishment evidence", "innovation portfolio", "mentoring system", "cross-functional influence", "public-safe abstraction"],
+    models: ["impact thesis", "prior art map", "reuse index", "teaching leverage"],
+    lab: "한 달에 하나의 공개 가능한 framework를 만들고, 누가 재사용했는지 기록한다.",
+    proof: "Fellow nomination style evidence packet",
+    sources: ["applied-fellow", "ieee-fellow"]
+  }
+];
+
+function getFellowSource(id) {
+  return fellowKnowledgeSources.find(item => item.id === id) || fellowKnowledgeSources[0];
+}
+
+function safePercent(done, total) {
+  return total ? Math.round((done / total) * 100) : 0;
+}
+
 function getFellowState() {
   state.ceFellowPath = state.ceFellowPath || {
     activeDomain: fellowDomains[0].id,
+    activeKnowledge: fellowKnowledgeRoute[0].id,
     portfolio: {},
+    routeProgress: {},
     reviewAnswers: {},
     savedPackets: [],
     startedAt: new Date().toISOString()
@@ -8917,7 +9054,11 @@ function getFellowState() {
   if (!fellowDomains.some(item => item.id === state.ceFellowPath.activeDomain)) {
     state.ceFellowPath.activeDomain = fellowDomains[0].id;
   }
+  if (!fellowKnowledgeRoute.some(item => item.id === state.ceFellowPath.activeKnowledge)) {
+    state.ceFellowPath.activeKnowledge = fellowKnowledgeRoute[0].id;
+  }
   state.ceFellowPath.portfolio = state.ceFellowPath.portfolio || {};
+  state.ceFellowPath.routeProgress = state.ceFellowPath.routeProgress || {};
   state.ceFellowPath.reviewAnswers = state.ceFellowPath.reviewAnswers || {};
   state.ceFellowPath.savedPackets = state.ceFellowPath.savedPackets || [];
   return state.ceFellowPath;
@@ -8948,18 +9089,29 @@ function getFellowSignals() {
   };
 }
 
+function getFellowRouteCompletion() {
+  const fellow = getFellowState();
+  const done = fellowKnowledgeRoute.filter(item => fellow.routeProgress?.[item.id]?.doneAt).length;
+  return {
+    done,
+    total: fellowKnowledgeRoute.length,
+    percent: safePercent(done, fellowKnowledgeRoute.length)
+  };
+}
+
 function getFellowDomainScore(domain, signals) {
   const fellow = getFellowState();
   const count = (fellow.portfolio?.[domain.id] || []).length;
   const portfolioScore = Math.min(45, count * 12);
+  const route = getFellowRouteCompletion();
   const signalMap = {
-    "process-physics": Math.round((signals.curriculum.percent + signals.campaign.evidence) / 2),
-    "tool-architecture": Math.round((signals.campaign.readiness + signals.incidents.score) / 2),
-    "safety-authority": Math.round((signals.campaign.safety + (100 - signals.campaign.risk)) / 2),
-    "diagnostic-science": Math.round((signals.incidents.score + signals.campaign.evidence) / 2),
-    "data-metrology": Math.round((signals.campaign.evidence + signals.curriculum.quizPercent) / 2),
+    "process-physics": Math.round((signals.curriculum.percent + signals.campaign.evidence + route.percent) / 3),
+    "tool-architecture": Math.round((signals.campaign.readiness + signals.incidents.score + route.percent) / 3),
+    "safety-authority": Math.round((signals.campaign.safety + (100 - signals.campaign.risk) + route.percent) / 3),
+    "diagnostic-science": Math.round((signals.incidents.score + signals.campaign.evidence + route.percent) / 3),
+    "data-metrology": Math.round((signals.campaign.evidence + signals.curriculum.quizPercent + route.percent) / 3),
     "customer-influence": Math.round((signals.stakeholder.leadership + signals.stakeholder.trust) / 2),
-    "knowledge-leverage": Math.min(100, signals.bookPages * 4 + signals.curriculum.percent),
+    "knowledge-leverage": Math.min(100, signals.bookPages * 4 + signals.curriculum.percent + Math.round(route.percent * 0.25)),
     "innovation-portfolio": Math.min(100, portfolioScore + signals.bookPages * 3 + (signals.stakeholderSnapshot ? 12 : 0))
   };
   const connected = signalMap[domain.id] || 0;
@@ -8982,6 +9134,7 @@ function getFellowMetrics() {
 function buildFellowPacket() {
   const fellow = getFellowState();
   const metrics = getFellowMetrics();
+  const route = getFellowRouteCompletion();
   return {
     schemaVersion: "ce-fellow-ascent-v1",
     generatedAt: new Date().toISOString(),
@@ -8996,6 +9149,28 @@ function buildFellowPacket() {
       proofTypes: item.proof
     })),
     weakestDomains: metrics.weakest.map(item => ({ id: item.id, title: item.title, score: item.score, daily: item.daily })),
+    knowledgeRoute: {
+      completion: route,
+      activeKnowledge: fellow.activeKnowledge,
+      modules: fellowKnowledgeRoute.map(item => ({
+        id: item.id,
+        title: item.title,
+        level: item.level,
+        thesis: item.thesis,
+        proof: item.proof,
+        done: Boolean(fellow.routeProgress?.[item.id]?.doneAt),
+        doneAt: fellow.routeProgress?.[item.id]?.doneAt || null,
+        sources: item.sources.map(sourceId => {
+          const source = getFellowSource(sourceId);
+          return {
+            id: source.id,
+            label: source.label,
+            url: source.url,
+            note: source.note
+          };
+        })
+      }))
+    },
     portfolio: fellow.portfolio,
     reviewAnswers: fellow.reviewAnswers,
     connectedSignals: {
@@ -9005,6 +9180,7 @@ function buildFellowPacket() {
       incidentScore: metrics.signals.incidents.score,
       bookPages: metrics.signals.bookPages
     },
+    sourceMap: fellowKnowledgeSources,
     excludedDangerousInfo: [
       "recipe",
       "valve sequence",
@@ -9023,6 +9199,9 @@ function renderFellowPath() {
   const fellow = getFellowState();
   const metrics = getFellowMetrics();
   const activeDomain = fellowDomains.find(item => item.id === fellow.activeDomain) || fellowDomains[0];
+  const activeKnowledge = fellowKnowledgeRoute.find(item => item.id === fellow.activeKnowledge) || fellowKnowledgeRoute[0];
+  const routeCompletion = getFellowRouteCompletion();
+  const activeRouteDone = Boolean(fellow.routeProgress?.[activeKnowledge.id]?.doneAt);
   const activeScore = metrics.domainScores.find(item => item.id === activeDomain.id)?.score || 0;
   const evidenceItems = fellow.portfolio?.[activeDomain.id] || [];
   const packet = buildFellowPacket();
@@ -9047,6 +9226,76 @@ function renderFellowPath() {
           <p>${level.aim}</p>
         </article>
       `).join("")}
+    </section>
+    <section class="fellow-knowledge-route" aria-label="EPI Fellow knowledge route">
+      <div class="fellow-route-head">
+        <div>
+          <p class="eyebrow">EPI Fellow Knowledge Route</p>
+          <h3>초보 CE에서 Process Engineer 사고력, Fellow 영향력까지 가는 10단계 루트</h3>
+          <p>각 모듈은 개념 암기가 아니라 산출물 중심입니다. 읽고 끝내지 말고, 공개자료 기반으로 설명할 수 있는 그림, 판단표, evidence packet, teaching artifact를 하나씩 만들어야 합니다.</p>
+        </div>
+        <article>
+          <span>Route progress</span>
+          <strong>${routeCompletion.percent}%</strong>
+          <small>${routeCompletion.done}/${routeCompletion.total} modules with proof</small>
+        </article>
+      </div>
+      <div class="fellow-route-layout">
+        <aside class="fellow-route-rail" aria-label="Fellow route modules">
+          ${fellowKnowledgeRoute.map((item, index) => {
+            const done = Boolean(fellow.routeProgress?.[item.id]?.doneAt);
+            return `
+              <button type="button" class="${item.id === activeKnowledge.id ? "active" : ""} ${done ? "done" : ""}" data-fellow-knowledge="${item.id}">
+                <span>${String(index + 1).padStart(2, "0")}</span>
+                <b>${item.title.replace(/^\d+\.\s*/, "")}</b>
+                <small>${done ? "proof saved" : item.level}</small>
+              </button>
+            `;
+          }).join("")}
+        </aside>
+        <article class="fellow-route-detail">
+          <div class="fellow-route-detail-head">
+            <div>
+              <span>${activeKnowledge.level}</span>
+              <h3>${activeKnowledge.title}</h3>
+              <p>${activeKnowledge.thesis}</p>
+            </div>
+            <button class="${activeRouteDone ? "secondary" : "primary"}" type="button" data-fellow-route-done>
+              ${activeRouteDone ? "완료 취소" : "증거 완료로 표시"}
+            </button>
+          </div>
+          <div class="fellow-route-chip-grid">
+            <section>
+              <strong>반드시 잡아야 할 이론</strong>
+              ${activeKnowledge.theory.map(item => `<span>${item}</span>`).join("")}
+            </section>
+            <section>
+              <strong>머릿속 모델</strong>
+              ${activeKnowledge.models.map(item => `<span>${item}</span>`).join("")}
+            </section>
+          </div>
+          <div class="fellow-route-lab">
+            <strong>실습 과제</strong>
+            <p>${activeKnowledge.lab}</p>
+            <b>완료 증거: ${activeKnowledge.proof}</b>
+          </div>
+          <div class="fellow-route-source-grid">
+            ${activeKnowledge.sources.map(sourceId => {
+              const source = getFellowSource(sourceId);
+              return `
+                <a href="${source.url}" target="_blank" rel="noreferrer">
+                  <span>${source.label}</span>
+                  <small>${source.note}</small>
+                </a>
+              `;
+            }).join("")}
+          </div>
+          <div class="fellow-route-boundary">
+            <strong>공개자료 경계</strong>
+            <p>이 모듈은 공개자료, 공식 소개, 논문, 공공 안전자료로 확인 가능한 원리와 합리적 추론만 다룹니다. 실제 recipe, valve sequence, detector setpoint, interlock bypass, 고객 site-specific acceptance limit은 공식 교육/현장 승인 문서 우선입니다.</p>
+          </div>
+        </article>
+      </div>
     </section>
     <section class="fellow-dashboard-grid">
       <aside class="fellow-domain-rail">
@@ -9112,6 +9361,29 @@ function renderFellowPath() {
     </section>
   `;
 
+  root.querySelectorAll("[data-fellow-knowledge]").forEach(button => {
+    button.addEventListener("click", () => {
+      fellow.activeKnowledge = button.dataset.fellowKnowledge;
+      persistState();
+      renderFellowPath();
+    });
+  });
+  root.querySelector("[data-fellow-route-done]")?.addEventListener("click", () => {
+    fellow.routeProgress = fellow.routeProgress || {};
+    if (fellow.routeProgress[activeKnowledge.id]?.doneAt) {
+      delete fellow.routeProgress[activeKnowledge.id];
+    } else {
+      fellow.routeProgress[activeKnowledge.id] = {
+        doneAt: new Date().toISOString(),
+        proof: activeKnowledge.proof,
+        sourceIds: activeKnowledge.sources,
+        privacyLevel: "public-safe-learning",
+        exportPolicy: "ai-ok-summary"
+      };
+    }
+    persistState();
+    renderFellowPath();
+  });
   root.querySelectorAll("[data-fellow-domain]").forEach(button => {
     button.addEventListener("click", () => {
       fellow.activeDomain = button.dataset.fellowDomain;
