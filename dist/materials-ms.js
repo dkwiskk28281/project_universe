@@ -1,7 +1,46 @@
 (() => {
   const STATE_KEY = "materialsMsAcademyStateV1";
   const STATE_SCHEMA_VERSION = "materials-ms-state-v2";
-  const SOURCE_VERSION = "materials-ms-academy-v2-adaptive";
+  const SOURCE_VERSION = "materials-ms-academy-v3-engine";
+  const PACKET_VERSION = "materials-ms-academy-packet-v2-engine";
+
+  const competencyTracks = [
+    {
+      id: "math-foundation",
+      label: "수학 생존력",
+      domains: ["math", "engineering"],
+      target: "비율, 함수, 로그, 미적분, 통계가 공정 데이터로 이어지는지",
+      fellowEvidence: "Arrhenius plot, growth rate trend, Cpk를 내 말로 설명"
+    },
+    {
+      id: "physics-chemistry",
+      label: "물리/화학 기반",
+      domains: ["physics", "chemistry"],
+      target: "열, 전기, 결합, 기체, 반응 방향을 장비 상태와 연결하는지",
+      fellowEvidence: "thermal budget, gas partial pressure, reaction window 설명"
+    },
+    {
+      id: "materials-core",
+      label: "재료공학 코어",
+      domains: ["materials"],
+      target: "결정구조, 결함, 확산, 상평형, kinetics를 EPI 품질로 번역하는지",
+      fellowEvidence: "defect mechanism과 process window를 evidence chain으로 정리"
+    },
+    {
+      id: "semiconductor-process",
+      label: "반도체 공정 통합",
+      domains: ["semiconductor", "epi"],
+      target: "EPI가 앞뒤 공정, 소자, yield와 주고받는 영향을 설명하는지",
+      fellowEvidence: "wafer map, chamber split, metrology, customer symptom을 분리"
+    },
+    {
+      id: "data-research",
+      label: "데이터/연구 읽기",
+      domains: ["programming", "english", "materials"],
+      target: "논문 figure, SPC, DOE, Python 분석, 기술영어를 하나로 쓰는지",
+      fellowEvidence: "논문 1편을 claim/evidence/limitation과 실험계획으로 변환"
+    }
+  ];
 
   const domainLabels = {
     math: "수학",
@@ -465,9 +504,125 @@
       .slice(0, limit);
   }
 
+  function reviewLoadForConcept(node) {
+    return (state.reviews || []).filter(item => {
+      const id = conceptId(item.domain || "", item.topic || item.skill || "");
+      return id === node.id || item.topic === node.topic;
+    }).length;
+  }
+
+  function diagnosticQueue(limit = 10) {
+    const answeredIds = new Set(Object.keys(state.answers || {}));
+    const nodes = masteryMap();
+    const dueIds = new Set(dueReviews().map(item => conceptId(item.domain || "", item.topic || item.skill || "")));
+    const queue = nodes.map(node => {
+      const related = answersForConcept(node);
+      const unanswered = related.find(q => !answerFor(q.id));
+      const wrong = related.find(q => answerFor(q.id) && !isCorrect(q));
+      const question = unanswered || wrong || related[0];
+      const prereqGap = node.prerequisites
+        .map(id => nodes.find(item => item.id === id))
+        .filter(item => item && item.score < 70);
+      const priority =
+        (100 - node.score)
+        + node.dueNow * 22
+        + node.misses * 16
+        + (dueIds.has(node.id) ? 24 : 0)
+        + prereqGap.length * 10
+        + (!answeredIds.has(question?.id || "") ? 12 : 0)
+        + Math.max(0, 13 - node.stage);
+      const reason = [
+        node.score < 45 ? "foundation gap" : node.score < 70 ? "practice gap" : "retention check",
+        node.dueNow ? `${node.dueNow} due review` : "",
+        node.misses ? `${node.misses} misses` : "",
+        prereqGap.length ? `${prereqGap.length} prerequisite gaps` : "",
+        unanswered ? "unanswered diagnostic" : wrong ? "wrong answer retry" : "mastery confirmation"
+      ].filter(Boolean).join(" · ");
+      return {
+        ...node,
+        priority: Math.round(priority),
+        reason,
+        questionId: question?.id || "",
+        questionPrompt: question?.prompt || "",
+        prereqGap: prereqGap.map(item => ({ id: item.id, topic: item.topic, score: item.score })),
+        reviewLoad: reviewLoadForConcept(node)
+      };
+    });
+    return queue.sort((a, b) => b.priority - a.priority || a.stage - b.stage).slice(0, limit);
+  }
+
+  function prerequisiteChain(node = weakestConcepts(1)[0]) {
+    if (!node) return [];
+    const nodes = masteryMap();
+    const visited = new Set();
+    const rows = [];
+    function walk(currentId, depth) {
+      if (!currentId || visited.has(currentId) || depth > 4) return;
+      visited.add(currentId);
+      const item = nodes.find(entry => entry.id === currentId);
+      if (!item) return;
+      rows.push({
+        id: item.id,
+        depth,
+        title: item.title,
+        topic: item.topic,
+        domain: item.domain,
+        score: item.score,
+        status: item.status,
+        blocker: item.score < 70
+      });
+      item.prerequisites.forEach(id => walk(id, depth + 1));
+    }
+    walk(node.id, 0);
+    return rows.sort((a, b) => b.depth - a.depth || a.score - b.score).slice(0, 10);
+  }
+
+  function adaptiveEngineSummary() {
+    const queue = diagnosticQueue(8);
+    const target = queue[0] || weakestConcepts(1)[0];
+    const stage = currentStage();
+    const lessonItem = activeLesson();
+    const unlock = unlockReport();
+    const blocked = unlock.find(item => !item.unlocked);
+    const due = dueReviews();
+    const session = adaptiveSession();
+    return {
+      schemaVersion: "materials-ms-adaptive-engine-v1",
+      generatedAt: new Date().toISOString(),
+      targetConcept: target ? {
+        id: target.id,
+        title: target.title,
+        score: target.score,
+        priority: target.priority || 0,
+        reason: target.reason || "lowest mastery",
+        questionId: target.questionId || "",
+        questionPrompt: target.questionPrompt || ""
+      } : null,
+      currentStage: {
+        id: stage.id,
+        no: stage.no,
+        title: stage.title,
+        score: stageScore(stage),
+        gate: stage.gate
+      },
+      activeLesson: lessonItem,
+      dueReviews: due.slice(0, 8),
+      queue,
+      prerequisiteChain: prerequisiteChain(target),
+      blockedStage: blocked || null,
+      session,
+      nextDecision: target?.score < 50
+        ? "선수개념으로 후퇴해서 기초를 닫기"
+        : due.length
+          ? "복습 큐를 먼저 비우고 새 수업으로 이동"
+          : "현재 stage lesson을 완료하고 설명 evidence 저장"
+    };
+  }
+
   function adaptiveSession() {
     const due = dueReviews();
-    const gap = weakestConcepts(1)[0];
+    const queue = diagnosticQueue(1);
+    const gap = queue[0] || weakestConcepts(1)[0];
     const stage = currentStage();
     const lessonItem = activeLesson();
     return [
@@ -483,7 +638,7 @@
         minutes: 6,
         title: `약점 진단: ${gap?.title || "units"}`,
         action: "같은 개념 문제를 풀고 왜 틀렸는지 한 문장으로 기록",
-        evidence: `${gap?.score ?? 0}% mastery · ${gap?.misses ?? 0} misses`
+        evidence: `${gap?.score ?? 0}% mastery · priority ${gap?.priority ?? 0} · ${gap?.reason || `${gap?.misses ?? 0} misses`}`
       },
       {
         id: "lesson",
@@ -594,7 +749,10 @@
       const active = questions.find(q => q.id === state.activeQuestion);
       if (active) return active;
     }
-    return questions.find(q => !answerFor(q.id))
+    const target = diagnosticQueue(1)[0];
+    const queued = questions.find(q => q.id === target?.questionId);
+    return queued
+      || questions.find(q => !answerFor(q.id))
       || questions.find(q => answerFor(q.id) && !isCorrect(q))
       || questions[0];
   }
@@ -628,6 +786,59 @@
     };
   }
 
+  function competencyMatrix() {
+    const r = readiness();
+    return competencyTracks.map(track => {
+      const domainScoreAverage = track.domains.length
+        ? track.domains.reduce((sum, domain) => sum + (r[domain] ?? domainScore(domain)), 0) / track.domains.length
+        : 0;
+      const relatedStages = stages.filter(stage => stage.domains.some(domain => track.domains.includes(domain)));
+      const stageAverage = relatedStages.length
+        ? relatedStages.reduce((sum, stage) => sum + stageScore(stage), 0) / relatedStages.length
+        : 0;
+      const weak = weakestConcepts(20).find(item => track.domains.includes(item.domain));
+      const completedLessons = Object.values(state.lessonMastery || {}).filter(item => track.domains.includes(item.domain)).length;
+      const score = clamp(domainScoreAverage * 0.48 + stageAverage * 0.32 + Math.min(100, completedLessons * 18) * 0.2);
+      return {
+        ...track,
+        score,
+        status: score >= 85 ? "evidence-ready" : score >= 70 ? "field-usable" : score >= 50 ? "learning" : "foundation-gap",
+        weakestConcept: weak ? { id: weak.id, title: weak.title, score: weak.score, status: weak.status } : null,
+        evidence: `${track.domains.map(domain => `${domainLabels[domain] || domain} ${r[domain] ?? domainScore(domain)}%`).join(" · ")} · ${completedLessons} lessons`,
+        nextAction: weak ? `${weak.topic} 개념을 EPI/wafer evidence로 설명` : `${track.label} evidence note 1개 저장`
+      };
+    }).sort((a, b) => a.score - b.score);
+  }
+
+  function graduateGateReport() {
+    const r = readiness();
+    const matrix = competencyMatrix();
+    const blockers = [
+      r.math < 65 ? { area: "수학", reason: "로그, 함수, 미적분, 통계가 재료공학 논문 그래프의 언어입니다.", action: "Stage 1~3 약점 큐를 먼저 닫기" } : null,
+      r.physics < 60 ? { area: "물리", reason: "열, 전기, 에너지 모델 없이는 장비 현상과 wafer 변화를 연결하기 어렵습니다.", action: "열/전기 수업과 DVM/thermal budget 예시 복습" } : null,
+      r.chemistry < 60 ? { area: "화학", reason: "EPI는 기체와 표면 반응이 결정성 막으로 바뀌는 공정입니다.", action: "원자/결합/기체/반응 열역학 큐 복습" } : null,
+      r.materials < 65 ? { area: "재료공학", reason: "결정, 결함, 확산, 상평형이 석사 core의 중심입니다.", action: "Stage 6~9 concept chain 학습" } : null,
+      r.english < 55 ? { area: "기술 영어", reason: "논문 abstract/figure와 글로벌 회의 표현을 읽어야 합니다.", action: "Research Reading + technical vocabulary daily review" } : null,
+      matrix[0]?.score < 55 ? { area: matrix[0].label, reason: "가장 낮은 Fellow competency track입니다.", action: matrix[0].nextAction } : null
+    ].filter(Boolean);
+    return {
+      readiness: r.masters,
+      status: r.masters >= 80 ? "MS lecture ready with review" : r.masters >= 62 ? "bridge curriculum needed" : "foundation repair first",
+      blockers: blockers.slice(0, 5),
+      mustNotClaim: [
+        "입학 보장",
+        "학교별 최신 요건 단정",
+        "비공개 장비 자료나 recipe 기반 학습"
+      ],
+      evidenceNeeded: [
+        "수학/물리/화학 진단 80% 이상",
+        "재료공학 core stage gate 설명",
+        "논문 figure 1개 claim/evidence/limitation 요약",
+        "EPI 공정 문제를 data/evidence로 정리한 report"
+      ]
+    };
+  }
+
   function weakTopics(limit = 8) {
     const seen = [...new Set(questions.map(q => q.topic))];
     return seen
@@ -640,8 +851,10 @@
     const r = readiness();
     const stage = currentStage();
     const lessonItem = activeLesson();
+    const adaptive = adaptiveEngineSummary();
+    const matrix = competencyMatrix();
     return {
-      schemaVersion: "materials-ms-academy-packet-v1",
+      schemaVersion: PACKET_VERSION,
       stateSchemaVersion: state.schemaVersion || STATE_SCHEMA_VERSION,
       sourceVersion: SOURCE_VERSION,
       generatedAt: new Date().toISOString(),
@@ -653,12 +866,26 @@
       },
       readiness: r,
       diagnosticProgress: diagnosticProgress(),
+      graduateGate: graduateGateReport(),
+      competencyMatrix: matrix,
       adaptiveEngine: {
-        todaySession: adaptiveSession(),
-        dueReviews: dueReviews().slice(0, 12),
+        ...adaptive,
+        todaySession: adaptive.session,
         masteryMap: masteryMap().slice(0, 80),
         weakestConcepts: weakestConcepts(12),
-        unlockReport: unlockReport()
+        unlockReport: unlockReport(),
+        knowledgeGraph: {
+          nodes: masteryMap().slice(0, 80).map(item => ({
+            id: item.id,
+            title: item.title,
+            domain: item.domain,
+            topic: item.topic,
+            stage: item.stage,
+            score: item.score,
+            status: item.status
+          })),
+          edges: conceptNodes().flatMap(node => node.prerequisites.map(source => ({ source, target: node.id, relation: "prerequisite" }))).slice(0, 160)
+        }
       },
       currentStage: { id: stage.id, no: stage.no, title: stage.title, score: stageScore(stage), gate: stage.gate },
       currentLesson: lessonItem,
@@ -724,6 +951,9 @@
     const answered = answerFor(q.id);
     const session = adaptiveSession();
     const mastery = weakestConcepts(10);
+    const adaptive = adaptiveEngineSummary();
+    const matrix = competencyMatrix();
+    const gate = graduateGateReport();
     const packet = buildPacket();
     root.innerHTML = `
       <section class="ms-hero">
@@ -756,6 +986,7 @@
         `).join("")}
       </section>
 
+      ${renderAdaptiveCommandCenter(adaptive, matrix, gate)}
       ${renderAdaptiveSession(session)}
       ${renderMasteryEngine(mastery)}
 
@@ -772,6 +1003,7 @@
           <div class="ms-question-card">
             <span>${html(domainLabels[q.domain])} / ${html(q.topic)}</span>
             <h4>${html(q.prompt)}</h4>
+            <p class="ms-question-reason">${html(adaptive.targetConcept?.reason || "adaptive diagnostic queue")} · target ${html(adaptive.targetConcept?.title || "baseline")}</p>
             <div class="ms-option-grid">
               ${q.options.map((option, index) => {
                 const picked = answered?.choice === index;
@@ -910,6 +1142,109 @@
     const key = new Date().toISOString().slice(0, 10);
     const row = (state.sessionLog || []).find(item => item.date === key);
     return row?.segments || {};
+  }
+
+  function renderAdaptiveCommandCenter(adaptive, matrix, gate) {
+    const target = adaptive.targetConcept;
+    return `
+      <section class="ms-engine-command" aria-label="adaptive curriculum command deck">
+        <div class="ms-panel-head">
+          <div>
+            <p class="eyebrow">Adaptive Curriculum Engine</p>
+            <h3>오늘 왜 이 개념을 배정했는가</h3>
+            <p>진단 오답, 복습 대기, 선수개념 gap, stage gate, Fellow 역량을 합쳐 다음 수업과 문제를 자동 선택합니다.</p>
+          </div>
+          <span>${html(adaptive.nextDecision)}</span>
+        </div>
+        <div class="ms-engine-grid">
+          <article class="ms-engine-target">
+            <span>Target concept</span>
+            <strong>${html(target?.title || "진단 데이터 대기")}</strong>
+            <p>${html(target?.reason || "먼저 진단 문제를 풀어 기준 데이터를 만듭니다.")}</p>
+            <small>${target ? `${target.score}% mastery · priority ${target.priority}` : "baseline"}</small>
+            ${target?.questionId ? `<button class="primary" type="button" data-ms-jump-question="${html(target.questionId)}">이 개념 문제 풀기</button>` : ""}
+          </article>
+          <article>
+            <span>Graduate gate</span>
+            <strong>${gate.readiness}% · ${html(gate.status)}</strong>
+            <p>${gate.blockers[0] ? `${html(gate.blockers[0].area)}: ${html(gate.blockers[0].action)}` : "큰 gate blocker는 낮습니다. evidence note를 쌓으세요."}</p>
+            <small>MS 강의 진입은 입학 보장이 아니라 선수지식 readiness입니다.</small>
+          </article>
+          <article>
+            <span>Blocked stage</span>
+            <strong>${adaptive.blockedStage ? html(adaptive.blockedStage.title) : "모든 열린 stage 진행 가능"}</strong>
+            <p>${adaptive.blockedStage ? html(adaptive.blockedStage.blocker) : "현재 열린 stage 안에서 mastery evidence를 쌓으면 됩니다."}</p>
+            <small>${html(adaptive.currentStage.gate)}</small>
+          </article>
+        </div>
+        <div class="ms-prereq-command">
+          <article>
+            <strong>선수개념 chain</strong>
+            <div class="ms-prereq-chain">
+              ${adaptive.prerequisiteChain.length ? adaptive.prerequisiteChain.map(item => `
+                <button type="button" class="${item.blocker ? "blocker" : "ready"}" data-ms-concept-question="${html(item.id)}">
+                  <span>${"↳ ".repeat(item.depth)}${html(item.topic)}</span>
+                  <b>${item.score}%</b>
+                  <small>${html(item.status)}</small>
+                </button>
+              `).join("") : `<span class="ms-empty-note">선수개념 chain 데이터 대기</span>`}
+            </div>
+          </article>
+          <article>
+            <strong>진단 queue</strong>
+            <div class="ms-diagnostic-queue">
+              ${adaptive.queue.slice(0, 6).map(item => `
+                <button type="button" data-ms-jump-question="${html(item.questionId)}">
+                  <span>${html(domainLabels[item.domain] || item.domain)} · P${item.priority}</span>
+                  <b>${html(item.topic)}</b>
+                  <small>${html(item.reason)}</small>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+        </div>
+        <div class="ms-competency-matrix">
+          ${matrix.map(track => `
+            <article>
+              <div>
+                <span>${html(track.status)}</span>
+                <strong>${html(track.label)}</strong>
+                <b>${track.score}%</b>
+              </div>
+              <i><em style="width:${track.score}%"></em></i>
+              <p>${html(track.target)}</p>
+              <small>${html(track.nextAction)} · ${html(track.evidence)}</small>
+            </article>
+          `).join("")}
+        </div>
+        ${renderReviewQueue(adaptive.dueReviews)}
+      </section>
+    `;
+  }
+
+  function renderReviewQueue(reviews) {
+    const rows = reviews.slice(0, 5);
+    return `
+      <div class="ms-review-queue">
+        <div>
+          <strong>Spaced review queue</strong>
+          <p>복습은 “다시 봤다”가 아니라 기억 강도를 판정하고 다음 dueAt을 조절해야 합니다.</p>
+        </div>
+        <div class="ms-review-list">
+          ${rows.length ? rows.map(item => `
+            <article>
+              <span>${html(item.domain || "review")} · ${html(item.topic || item.skill || "concept")}</span>
+              <p>${html(item.prompt || item.explain || "이 개념을 내 말로 설명하세요.")}</p>
+              <div>
+                <button class="secondary" type="button" data-ms-review-grade="${html(item.id)}" data-grade="again">다시</button>
+                <button class="secondary" type="button" data-ms-review-grade="${html(item.id)}" data-grade="hard">어려움</button>
+                <button class="primary" type="button" data-ms-review-grade="${html(item.id)}" data-grade="good">기억남</button>
+              </div>
+            </article>
+          `).join("") : `<article><span>review clear</span><p>지금 due review는 없습니다. 오늘 수업을 완료하면 새 복습 카드가 생깁니다.</p></article>`}
+        </div>
+      </div>
+    `;
   }
 
   function renderAdaptiveSession(session) {
@@ -1105,6 +1440,49 @@
       persist();
       render();
     });
+    root.querySelectorAll("[data-ms-jump-question]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (!button.dataset.msJumpQuestion) return;
+        state.activeQuestion = button.dataset.msJumpQuestion;
+        persist();
+        render();
+        document.querySelector(".ms-diagnostic-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    root.querySelectorAll("[data-ms-concept-question]").forEach(button => {
+      button.addEventListener("click", () => {
+        const node = masteryMap().find(item => item.id === button.dataset.msConceptQuestion);
+        const question = node ? answersForConcept(node).find(item => !answerFor(item.id) || !isCorrect(item)) || answersForConcept(node)[0] : null;
+        if (!question) return;
+        state.activeQuestion = question.id;
+        persist();
+        render();
+        document.querySelector(".ms-diagnostic-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+    root.querySelectorAll("[data-ms-review-grade]").forEach(button => {
+      button.addEventListener("click", () => {
+        const reviewId = button.dataset.msReviewGrade;
+        const grade = button.dataset.grade;
+        const review = (state.reviews || []).find(item => item.id === reviewId);
+        if (!review) return;
+        const minutes = grade === "good" ? 4 * 24 * 60 : grade === "hard" ? 24 * 60 : 25;
+        const updated = {
+          ...review,
+          lastReviewedAt: new Date().toISOString(),
+          lastGrade: grade,
+          dueAt: new Date(Date.now() + minutes * 60 * 1000).toISOString(),
+          reviewCount: Number(review.reviewCount || 0) + 1
+        };
+        state.reviews = [updated, ...(state.reviews || []).filter(item => item.id !== reviewId)].slice(0, 80);
+        state.journal = [
+          { at: new Date().toISOString(), type: "review-grade", topic: review.topic || review.skill, grade, nextDueAt: updated.dueAt },
+          ...(state.journal || [])
+        ].slice(0, 80);
+        persist();
+        render();
+      });
+    });
     root.querySelector("[data-ms-auto]")?.addEventListener("click", () => {
       const stage = currentStage();
       state.activeStage = stage.id;
@@ -1222,6 +1600,10 @@
     render,
     getState: () => ({ ...state }),
     buildPacket,
+    adaptiveEngineSummary,
+    competencyMatrix,
+    graduateGateReport,
+    diagnosticQueue,
     questions,
     stages,
     sources
