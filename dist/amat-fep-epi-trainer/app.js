@@ -7885,6 +7885,10 @@ function getCampaignState() {
   }
   state.ceCampaign.decisions = state.ceCampaign.decisions || {};
   state.ceCampaign.recoveries = state.ceCampaign.recoveries || {};
+  state.ceCampaign.evidenceBoard = state.ceCampaign.evidenceBoard || {};
+  state.ceCampaign.reports = state.ceCampaign.reports || {};
+  state.ceCampaign.missionResults = state.ceCampaign.missionResults || {};
+  state.ceCampaign.weakness = state.ceCampaign.weakness || {};
   return state.ceCampaign;
 }
 
@@ -7913,8 +7917,109 @@ function getActiveCampaignMission() {
   return ceCampaignMissions.find(item => item.id === campaign.activeMission) || ceCampaignMissions[0];
 }
 
+function getIncidentCaseById(id) {
+  return ceIncidentCases.find(item => item.id === id) || ceIncidentCases[0];
+}
+
 function getCampaignMissionIndex(id) {
   return ceCampaignMissions.findIndex(item => item.id === id);
+}
+
+function campaignEvidenceCards(mission) {
+  const item = getIncidentCaseById(mission.caseId);
+  const evidenceCards = (item.evidence || []).map(([label, text], index) => [
+    "evidence",
+    `ev-${mission.id}-${index}`,
+    label,
+    text,
+    true
+  ]);
+  const decoyEvidence = item.decoyEvidence ? [[
+    "evidence",
+    `decoy-${mission.id}`,
+    item.decoyEvidence[0],
+    item.decoyEvidence[1],
+    false
+  ]] : [];
+  return [
+    ["symptom", `symptom-${mission.id}`, item.title || mission.title, item.symptom || mission.scene, true],
+    ["risk", `risk-${mission.id}`, item.riskLabel || "Immediate risk", item.riskText || mission.stakes, true],
+    ["risk", `risk-decoy-${mission.id}`, "Schedule-only pressure", "Schedule pressure is context, not a substitute for owner evidence or stop condition.", false],
+    ["subsystem", `sub-${mission.id}`, item.primarySubsystem || mission.owner, item.primaryText || mission.objective, true],
+    ["subsystem", `sub-decoy-${mission.id}`, item.decoySubsystem || "Unrelated subsystem", item.decoyText || "This does not close the current safety/evidence gate.", false],
+    ...evidenceCards,
+    ...decoyEvidence,
+    ["owner", `owner-${mission.id}`, mission.owner, "The accountable owner must witness or confirm the gate before the next irreversible step.", true],
+    ["owner", `owner-decoy-${mission.id}`, "Verbal consensus", "A verbal agreement without owner, time, and evidence link does not close the gate.", false],
+    ["stop", `stop-${mission.id}`, item.stopLabel || "Stop condition", item.stopText || mission.stop, true],
+    ["action", `wrong-a-${mission.id}`, "Wrong action A", item.wrongA || "Proceed without the evidence gate.", false],
+    ["action", `wrong-b-${mission.id}`, "Wrong action B", item.wrongB || "Treat a single ready signal as the whole boundary.", false],
+    ["report", `report-${mission.id}`, "Customer report", mission.customerLine, true]
+  ];
+}
+
+function campaignEvidenceScore(mission) {
+  const campaign = getCampaignState();
+  const selected = new Set(campaign.evidenceBoard?.[mission.id] || []);
+  const cards = campaignEvidenceCards(mission);
+  const required = cards.filter(card => card[4]).map(card => card[1]);
+  const wrong = cards.filter(card => !card[4] && selected.has(card[1])).map(card => card[1]);
+  const hits = required.filter(id => selected.has(id)).length;
+  const pct = required.length ? Math.max(0, Math.round(((hits - wrong.length) / required.length) * 100)) : 0;
+  const missing = required.filter(id => !selected.has(id));
+  return { cards, selected, required, wrong, missing, hits, pct };
+}
+
+function campaignReportScore(mission) {
+  const campaign = getCampaignState();
+  const text = String(campaign.reports?.[mission.id]?.text || "");
+  const lower = text.toLowerCase();
+  const ownerTokens = mission.owner.toLowerCase().split(/[^a-z0-9가-힣]+/).filter(token => token.length > 2);
+  const cues = [
+    { id: "hold", label: "hold/stop boundary", patterns: ["hold", "stop", "중지", "보류", "대기", "holding"] },
+    { id: "owner", label: "owner", patterns: ["owner", "담당", "시설", "ehs", "gas", "customer", "고객", ...ownerTokens] },
+    { id: "evidence", label: "evidence packet", patterns: ["evidence", "증거", "확인", "witness", "packet", "link", "trace", "근거"] },
+    { id: "risk", label: "risk reason", patterns: ["risk", "위험", "boundary", "clearance", "readiness", "traceability", "리스크"] },
+    { id: "next", label: "next update/action", patterns: ["next", "update", "다음", "시점", "확인 후", "due", "time"] }
+  ];
+  const hits = cues.filter(cue => cue.patterns.some(pattern => lower.includes(pattern.toLowerCase())));
+  const missing = cues.filter(cue => !hits.includes(cue));
+  const score = text.trim().length ? Math.round(hits.length / cues.length * 100) : 0;
+  return { text, cues, hits, missing, score };
+}
+
+function campaignGameScore(mission) {
+  const campaign = getCampaignState();
+  const decision = campaign.decisions?.[mission.id];
+  const evidence = campaignEvidenceScore(mission);
+  const report = campaignReportScore(mission);
+  const choiceScore = decision ? (decision.good ? 100 : 25) : 0;
+  const score = Math.round(choiceScore * 0.36 + evidence.pct * 0.38 + report.score * 0.26);
+  const passed = Boolean(decision?.good && evidence.pct >= 80 && !evidence.wrong.length && report.score >= 60);
+  const touched = Boolean(decision || evidence.selected.size || report.text.trim());
+  return { decision, evidence, report, choiceScore, score, passed, touched };
+}
+
+function recordCampaignWeakness(mission, game) {
+  const campaign = getCampaignState();
+  const weakness = campaign.weakness || {};
+  const bump = key => { weakness[key] = (weakness[key] || 0) + 1; };
+  if (!game.decision) bump("missing-stop-go-decision");
+  else if (!game.decision.good) bump("unsafe-or-weak-campaign-choice");
+  if (game.evidence.missing.length) bump("missing-evidence-chain");
+  if (game.evidence.wrong.length) bump("decoy-evidence-selected");
+  game.report.missing.forEach(cue => bump(`report-missing-${cue.id}`));
+  campaign.weakness = weakness;
+  state.ceCampaignWeakness = {
+    ...(state.ceCampaignWeakness || {}),
+    ...Object.fromEntries(Object.entries(weakness).map(([key, value]) => [key, value]))
+  };
+  state.ceCampaignAnswers = state.ceCampaignAnswers || {};
+  state.ceCampaignAnswers[mission.id] = {
+    score: game.score,
+    passed: game.passed,
+    evaluatedAt: new Date().toISOString()
+  };
 }
 
 function getCampaignDebtItems() {
@@ -7987,6 +8092,9 @@ function getCampaignMetrics() {
   const seasonPressure = getSeasonPressureForMission(campaign.activeMission).riskTotal;
   const seasonPenalty = Math.min(18, Math.round(seasonPressure * 0.55));
   const riskTotal = totals.risk + activeDebtPenalty + seasonPenalty;
+  const gameRows = ceCampaignMissions.map(campaignGameScore).filter(item => item.touched);
+  const gameAverage = gameRows.length ? Math.round(gameRows.reduce((sum, item) => sum + item.score, 0) / gameRows.length) : 0;
+  const baseReadiness = clampScore((totals.safety + totals.evidence + totals.trust + (100 - clampScore(riskTotal))) / 4);
   return {
     safety: clampScore(totals.safety),
     evidence: clampScore(totals.evidence),
@@ -8000,9 +8108,12 @@ function getCampaignMetrics() {
     seasonTitle: season.title,
     seasonPressure,
     seasonPenalty,
+    gameAverage,
+    gameTouched: gameRows.length,
+    gamePassed: gameRows.filter(item => item.passed).length,
     completed: decisions.length,
     total: ceCampaignMissions.length,
-    readiness: clampScore((totals.safety + totals.evidence + totals.trust + (100 - clampScore(riskTotal))) / 4)
+    readiness: gameRows.length ? clampScore(baseReadiness * 0.72 + gameAverage * 0.28) : baseReadiness
   };
 }
 
@@ -8038,10 +8149,24 @@ function buildCampaignPacket() {
         result: decision?.result || null,
         recovered: Boolean(campaign.recoveries?.[mission.id]?.recoveredAt),
         recoveryNote: campaign.recoveries?.[mission.id]?.note || null,
+        game: (() => {
+          const game = campaignGameScore(mission);
+          return {
+            score: game.score,
+            passed: game.passed,
+            evidencePct: game.evidence.pct,
+            evidenceMissing: game.evidence.missing.length,
+            wrongEvidence: game.evidence.wrong.length,
+            reportScore: game.report.score,
+            reportMissing: game.report.missing.map(item => item.label),
+            evaluatedAt: campaign.missionResults?.[mission.id]?.evaluatedAt || null
+          };
+        })(),
         customerLine: mission.customerLine,
         stopCondition: mission.stop
       };
     }),
+    weakness: campaign.weakness || {},
     openDebts: debtItems.filter(item => !item.recovered),
     recoveredDebts: debtItems.filter(item => item.recovered),
     nextPressure: getIncomingCampaignDebts(campaign.activeMission).map(item => ({
@@ -8082,6 +8207,19 @@ function renderCeCampaignEngine() {
   const incomingDebts = getIncomingCampaignDebts(mission.id);
   const seasonPressure = getSeasonPressureForMission(mission.id);
   const hasPressure = incomingDebts.length || seasonPressure.hiddenRisks.length;
+  const game = campaignGameScore(mission);
+  const evidenceGroups = groupIncidentCards(game.evidence.cards);
+  const result = campaign.missionResults?.[mission.id];
+  const campaignLaneLabels = {
+    symptom: "Symptom",
+    risk: "Risk",
+    subsystem: "Subsystem",
+    evidence: "Evidence",
+    owner: "Owner",
+    stop: "Stop",
+    action: "Wrong action",
+    report: "Report"
+  };
   root.innerHTML = `
     <div class="campaign-head">
       <div>
@@ -8093,7 +8231,7 @@ function renderCeCampaignEngine() {
       <div class="campaign-readiness">
         <span>Campaign readiness</span>
         <strong>${metrics.readiness}%</strong>
-        <small>${metrics.completed}/${metrics.total} missions · active debt ${debtItems.filter(item => !item.recovered).length} · recovered ${metrics.recovered}</small>
+        <small>${metrics.completed}/${metrics.total} missions · game ${metrics.gamePassed}/${metrics.gameTouched || 0} passed · active debt ${debtItems.filter(item => !item.recovered).length}</small>
       </div>
     </div>
     <section class="campaign-season-director" aria-label="campaign season director">
@@ -8186,6 +8324,56 @@ function renderCeCampaignEngine() {
           <strong>${selected ? (selected.good ? "Contained" : "Debt created") : "선택 대기"}</strong>
           <p>${selected?.result || "현장 CE처럼 stop/go를 선택하세요. 정답은 빠른 진행이 아니라 evidence chain을 닫는 선택입니다."}</p>
         </div>
+        <section class="campaign-game-board" aria-label="CE case game evidence board">
+          <div class="campaign-game-head">
+            <div>
+              <p class="eyebrow">Case Game Engine</p>
+              <h3>Evidence Board + Customer Report</h3>
+              <p>좋은 CE 판단은 선택지만 맞히는 것이 아닙니다. symptom, risk, subsystem, evidence, owner, stop condition, report 문장을 하나의 방어 가능한 packet으로 조립해야 합니다.</p>
+            </div>
+            <div class="campaign-game-score ${game.passed ? "passed" : result ? "review" : ""}">
+              <span>Mission game score</span>
+              <strong>${game.score}%</strong>
+              <small>${game.passed ? "passed" : result ? "review required" : "not evaluated"}</small>
+            </div>
+          </div>
+          <div class="campaign-game-meters">
+            <article><span>Decision</span><strong>${game.choiceScore}%</strong><i style="--w:${game.choiceScore}%"></i></article>
+            <article><span>Evidence</span><strong>${game.evidence.pct}%</strong><i style="--w:${game.evidence.pct}%"></i></article>
+            <article><span>Report</span><strong>${game.report.score}%</strong><i style="--w:${game.report.score}%"></i></article>
+          </div>
+          <div class="campaign-evidence-lanes">
+            ${Object.entries(evidenceGroups).map(([lane, cards]) => `
+              <article>
+                <strong>${campaignLaneLabels[lane] || lane}</strong>
+                ${cards.map(([, id, label, text, good]) => `
+                  <button type="button" class="${game.evidence.selected.has(id) ? "selected" : ""} ${!good && game.evidence.selected.has(id) ? "wrong" : ""}" data-campaign-evidence="${id}">
+                    <b>${label}</b>
+                    <span>${text}</span>
+                  </button>
+                `).join("")}
+              </article>
+            `).join("")}
+          </div>
+          <div class="campaign-report-coach">
+            <label>
+              <span>Customer report draft</span>
+              <textarea data-campaign-report placeholder="We are holding ___ until owner/evidence ___ is confirmed. Risk is ___. Next update will be ___." spellcheck="false">${escapeHtml(game.report.text)}</textarea>
+            </label>
+            <div>
+              <strong>Report cue check</strong>
+              ${game.report.cues.map(cue => {
+                const hit = game.report.hits.some(item => item.id === cue.id);
+                return `<span class="${hit ? "hit" : "miss"}">${hit ? "ok" : "gap"} ${cue.label}</span>`;
+              }).join("")}
+            </div>
+            <button class="primary" type="button" data-campaign-evaluate>Evaluate mission</button>
+          </div>
+          <div class="campaign-game-feedback ${result?.passed ? "passed" : result ? "review" : ""}">
+            <strong>${result ? (result.passed ? "Mission passed" : "Weakness saved") : "Evaluation pending"}</strong>
+            <p>${result?.feedback || "선택지, evidence 카드, 고객 보고문을 채운 뒤 평가하면 약점이 운영코어와 AI packet에 저장됩니다."}</p>
+          </div>
+        </section>
       </section>
       <aside class="campaign-ops">
         <div class="campaign-case-link">
@@ -8225,7 +8413,7 @@ function renderCeCampaignEngine() {
   const staleCampaignCopy = root.querySelector(".campaign-head > div:first-child p:nth-of-type(3)");
   if (staleCampaignCopy) staleCampaignCopy.remove();
   const readinessCopy = root.querySelector(".campaign-readiness small");
-  if (readinessCopy) readinessCopy.textContent = `${metrics.completed}/${metrics.total} missions · ${season.label} · active debt ${debtItems.filter(item => !item.recovered).length} · recovered ${metrics.recovered}`;
+  if (readinessCopy) readinessCopy.textContent = `${metrics.completed}/${metrics.total} missions · ${season.label} · game ${metrics.gamePassed}/${metrics.gameTouched || 0} passed · active debt ${debtItems.filter(item => !item.recovered).length}`;
   const emptyDebtCopy = root.querySelector(".campaign-pressure-panel > p");
   if (emptyDebtCopy) emptyDebtCopy.textContent = "No unresolved campaign debt is entering this mission.";
   const campaignLabels = [
@@ -8284,6 +8472,45 @@ function renderCeCampaignEngine() {
       renderCeStakeholderRoom();
       renderCeMemoryLedger();
     });
+  });
+  root.querySelectorAll("[data-campaign-evidence]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.campaignEvidence;
+      const selected = new Set(campaign.evidenceBoard?.[mission.id] || []);
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      campaign.evidenceBoard[mission.id] = [...selected];
+      persistState();
+      renderCeCampaignEngine();
+    });
+  });
+  root.querySelector("[data-campaign-report]")?.addEventListener("input", event => {
+    campaign.reports[mission.id] = {
+      text: event.target.value,
+      updatedAt: new Date().toISOString()
+    };
+    persistState();
+  });
+  root.querySelector("[data-campaign-evaluate]")?.addEventListener("click", () => {
+    const currentGame = campaignGameScore(mission);
+    recordCampaignWeakness(mission, currentGame);
+    const missingEvidence = currentGame.evidence.missing.length;
+    const wrongEvidence = currentGame.evidence.wrong.length;
+    const missingReport = currentGame.report.missing.map(item => item.label).join(", ");
+    campaign.missionResults[mission.id] = {
+      score: currentGame.score,
+      passed: currentGame.passed,
+      evaluatedAt: new Date().toISOString(),
+      evidencePct: currentGame.evidence.pct,
+      reportScore: currentGame.report.score,
+      feedback: currentGame.passed
+        ? "Decision, evidence chain, and customer report are defendable. This mission can be treated as contained."
+        : `Review required: missing evidence ${missingEvidence}, wrong evidence ${wrongEvidence}, report gaps ${missingReport || "none"}.`
+    };
+    persistState();
+    renderCeCampaignEngine();
+    renderCeStakeholderRoom();
+    renderCeMemoryLedger();
   });
   root.querySelectorAll("[data-campaign-debt-case]").forEach(button => {
     button.addEventListener("click", () => {
@@ -8354,6 +8581,10 @@ function renderCeCampaignEngine() {
       activeMission: ceCampaignMissions[0].id,
       decisions: {},
       recoveries: {},
+      evidenceBoard: {},
+      reports: {},
+      missionResults: {},
+      weakness: {},
       startedAt: new Date().toISOString()
     };
     persistState();

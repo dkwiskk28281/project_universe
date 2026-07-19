@@ -1512,6 +1512,217 @@ main,
   background: rgba(255, 107, 107, 0.10);
 }
 
+.campaign-game-board {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(0, 255, 149, 0.2);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(0, 255, 149, 0.09), transparent 38%),
+    rgba(0, 0, 0, 0.24);
+}
+
+.campaign-game-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 0.22fr);
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.campaign-game-head h3,
+.campaign-report-coach strong,
+.campaign-game-feedback strong {
+  margin: 0;
+  color: #ffffff;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.campaign-game-head p,
+.campaign-evidence-lanes button span,
+.campaign-game-feedback p {
+  margin: 0;
+  color: rgba(236, 255, 248, 0.72);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.campaign-game-score {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(94, 231, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.campaign-game-score.passed,
+.campaign-game-feedback.passed {
+  border-color: rgba(0, 255, 149, 0.42);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.campaign-game-score.review,
+.campaign-game-feedback.review {
+  border-color: rgba(255, 211, 138, 0.42);
+  background: rgba(255, 211, 138, 0.08);
+}
+
+.campaign-game-score span,
+.campaign-game-meters span,
+.campaign-report-coach label span {
+  color: #76f7ff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.campaign-game-score strong {
+  color: #00ff95;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.campaign-game-score small {
+  color: rgba(236, 255, 248, 0.68);
+}
+
+.campaign-game-meters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.campaign-game-meters article {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.campaign-game-meters strong {
+  color: #ffffff;
+  font-family: Consolas, "SFMono-Regular", monospace;
+}
+
+.campaign-game-meters i {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(0, 255, 149, 0.9) var(--w), rgba(94, 231, 255, 0.12) var(--w));
+}
+
+.campaign-evidence-lanes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.campaign-evidence-lanes article {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(94, 231, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.campaign-evidence-lanes article > strong {
+  color: #ffd38a;
+  font-family: Consolas, "SFMono-Regular", monospace;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+}
+
+.campaign-evidence-lanes button {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  min-height: 74px;
+  padding: 8px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(94, 231, 255, 0.06);
+  color: #ecfff8;
+  text-align: left;
+}
+
+.campaign-evidence-lanes button.selected {
+  border-color: rgba(0, 255, 149, 0.5);
+  background: rgba(0, 255, 149, 0.11);
+}
+
+.campaign-evidence-lanes button.wrong {
+  border-color: rgba(255, 107, 107, 0.58);
+  background: rgba(255, 107, 107, 0.11);
+}
+
+.campaign-evidence-lanes button b {
+  color: #ffffff;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.campaign-report-coach {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.34fr) auto;
+  gap: 10px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.campaign-report-coach label,
+.campaign-report-coach > div,
+.campaign-game-feedback {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.campaign-report-coach textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.campaign-report-coach > div span {
+  display: inline-grid;
+  margin: 0 5px 5px 0;
+  padding: 5px 7px;
+  border: 1px solid rgba(94, 231, 255, 0.14);
+  border-radius: 999px;
+  color: rgba(236, 255, 248, 0.72);
+  font-size: 0.76rem;
+}
+
+.campaign-report-coach > div span.hit {
+  border-color: rgba(0, 255, 149, 0.42);
+  color: #baffdf;
+}
+
+.campaign-report-coach > div span.miss {
+  border-color: rgba(255, 211, 138, 0.38);
+  color: #ffe2aa;
+}
+
 .campaign-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1556,11 +1767,14 @@ main,
   .campaign-layout,
   .campaign-season-director,
   .campaign-objective-grid,
-  .campaign-choice-grid {
+  .campaign-choice-grid,
+  .campaign-game-head,
+  .campaign-report-coach {
     grid-template-columns: 1fr;
   }
 
-  .campaign-meter-grid {
+  .campaign-meter-grid,
+  .campaign-game-meters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1572,14 +1786,20 @@ main,
 
   .campaign-meter-grid,
   .campaign-map,
-  .campaign-actions {
+  .campaign-actions,
+  .campaign-game-meters {
     grid-template-columns: 1fr;
   }
 
   .campaign-choice-grid button,
   .campaign-map button,
-  .campaign-season-grid button {
+  .campaign-season-grid button,
+  .campaign-evidence-lanes button {
     min-height: auto;
+  }
+
+  .campaign-game-board {
+    padding: 10px;
   }
 }
 
