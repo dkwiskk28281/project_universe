@@ -3,8 +3,10 @@
   const DONE_KEY = "projectUniverseOperatingCoreDoneV1";
   const ROUTINE_KEY = "projectUniverseDailyRoutineLogV1";
   const INTEGRITY_LEDGER_KEY = "projectUniverseIntegrityLedgerV1";
+  const LIFE_INTELLIGENCE_KEY = "projectUniverseLifeIntelligenceCheckpointsV1";
   const EXPORT_VERSION = "project-universe-operating-core-v7-data-os";
   const DATA_RELIABILITY_VERSION = "project-universe-data-reliability-v1";
+  const LIFE_INTELLIGENCE_VERSION = "project-universe-life-intelligence-v1";
   const REQUIRED_RECORD_FIELDS = ["schemaVersion", "privacyLevel", "syncStatus", "sourceDevice", "createdAt", "updatedAt", "exportPolicy"];
   const SENSITIVE_BLOCKLIST = [
     "password",
@@ -688,6 +690,304 @@
     };
   }
 
+  function severityRank(severity) {
+    return { critical: 4, high: 3, medium: 2, low: 1, stable: 0 }[severity] ?? 1;
+  }
+
+  function clampScore(value) {
+    return Math.max(0, Math.min(100, Math.round(value)));
+  }
+
+  function buildDomainReadiness(signals, integrity, reliability) {
+    const ceWeaknessLoad = signals.ce.weaknesses.reduce((sum, item) => sum + Number(item.count || 0), 0);
+    const englishAccuracy = signals.english.accuracy ?? (signals.english.microAttempts ? 50 : 35);
+    const materialsProgress = Math.min(40, (signals.materialsMs?.completedLessons || 0) * 4) + Math.min(20, (signals.materialsMs?.attempts || 0) * 1.4);
+    const cognitiveSessions = signals.cognitive.sessions || 0;
+    const visionPenalty = signals.vision.frequentDouble ? 18 : 0;
+    const schemaPenalty = Math.min(28, integrity.schemaDebt * 2 + reliability.schemaAudit.fileIndexGapCount * 3 + reliability.schemaAudit.sensitiveHitCount * 4);
+    return [
+      {
+        id: "fep-epi-ce",
+        label: "FEP/EPI CE 사고력",
+        score: clampScore(48 + signals.ce.caseAnswers * 3 + signals.ce.curriculumDone * 1.2 - Math.min(22, ceWeaknessLoad)),
+        evidence: `${signals.ce.caseAnswers} case answers · ${signals.ce.curriculumDone} curriculum checks · ${ceWeaknessLoad} weak signals`,
+        nextAction: signals.ce.weaknesses[0] ? `${signals.ce.weaknesses[0].skill} 케이스를 evidence-first로 재훈련` : "새 CE campaign case를 풀어 기준 데이터를 만들기",
+        view: "diagnostics"
+      },
+      {
+        id: "technical-english",
+        label: "기술 영어/고객 보고",
+        score: clampScore(englishAccuracy - Math.min(18, signals.english.due * 2) + Math.min(12, signals.english.microAttempts * 0.4)),
+        evidence: `${signals.english.microAttempts} attempts · ${signals.english.due} due · ${englishAccuracy}% accuracy`,
+        nextAction: signals.english.weaknesses[0] ? `${signals.english.weaknesses[0].skill} 오답 변형 3문항` : "CBT 10문항으로 새 약점 태그 생성",
+        view: "english-test"
+      },
+      {
+        id: "materials-ms",
+        label: "Materials MS/Fellow 기초",
+        score: clampScore(34 + materialsProgress - Math.min(14, (signals.materialsMs?.due || 0) * 2)),
+        evidence: `${signals.materialsMs?.completedLessons || 0} lessons · ${signals.materialsMs?.attempts || 0} attempts · ${signals.materialsMs?.due || 0} reviews due`,
+        nextAction: signals.materialsMs?.weakness?.[0] ? `${signals.materialsMs.weakness[0].skill} 선수개념 복습` : "비율/로그/통계 diagnostic부터 한 세션",
+        view: "materials-ms"
+      },
+      {
+        id: "cognitive-vision",
+        label: "인지/시기능 루틴 안정성",
+        score: clampScore(55 + Math.min(25, cognitiveSessions * 3) + Math.min(12, signals.vision.sessions * 2) - visionPenalty),
+        evidence: `${cognitiveSessions} cognitive sessions · ${signals.vision.sessions} vision sessions · ${signals.vision.frequentDouble} high diplopia signals`,
+        nextAction: signals.vision.frequentDouble ? "시기능 훈련 강도보다 중지 조건/진료 질문 정리" : "짧은 인지+시기능 기록으로 baseline 유지",
+        view: signals.vision.frequentDouble ? "vision-training" : "cognitive"
+      },
+      {
+        id: "data-memory",
+        label: "장기 기억/AI 분석 신뢰성",
+        score: clampScore(integrity.score - schemaPenalty + Math.min(8, reliability.backupPlan.lastCheckpoint ? 8 : 0)),
+        evidence: `${integrity.score} integrity · ${integrity.schemaDebt} schema debt · ${reliability.schemaAudit.fileIndexGapCount} vault gaps · ${reliability.schemaAudit.sensitiveHitCount} sensitive hits`,
+        nextAction: reliability.backupPlan.recommendedActions[0]?.title || "redacted AI packet 갱신",
+        view: "operating-core"
+      }
+    ];
+  }
+
+  function buildPatternMatrix(signals, tasks, integrity, reliability, domains) {
+    const patterns = [];
+    const add = (id, domain, severity, title, evidence, nextAction, view) => {
+      patterns.push({ id, domain, severity, title, evidence, nextAction, view });
+    };
+    const englishWeak = signals.english.weaknesses[0];
+    const ceWeak = signals.ce.weaknesses[0];
+    const msWeak = signals.materialsMs?.weakness?.[0];
+    if (ceWeak) add(
+      "ce-loop",
+      "CE",
+      ceWeak.count >= 4 ? "high" : "medium",
+      "CE 판단 약점이 반복됨",
+      `${ceWeak.skill} · ${ceWeak.count} signals`,
+      "증상 → risk → subsystem → evidence → stop condition 순서로 케이스 2개",
+      "diagnostics"
+    );
+    if (englishWeak) add(
+      "english-loop",
+      "English",
+      signals.english.due >= 5 || englishWeak.wrong >= 4 ? "high" : "medium",
+      "영어 오답 패턴이 쌓임",
+      `${englishWeak.skill} · ${englishWeak.wrong} wrong · ${signals.english.due} due`,
+      "오답 즉시 해설 후 같은 개념 변형문제 3개",
+      "english-test"
+    );
+    if (msWeak || signals.materialsMs?.due) add(
+      "materials-loop",
+      "Fellow",
+      signals.materialsMs?.due >= 4 ? "high" : "medium",
+      "Materials MS 선수개념 복습 필요",
+      `${msWeak?.skill || "review queue"} · ${signals.materialsMs?.due || 0} due`,
+      "수학/물리/재료공학 선수개념 25분 세션",
+      "materials-ms"
+    );
+    if (integrity.nextStepMissing) add(
+      "open-loop",
+      "Think Tank",
+      integrity.nextStepMissing >= 5 ? "high" : "medium",
+      "기록이 다음 행동으로 닫히지 않음",
+      `${integrity.nextStepMissing} records missing nextStep`,
+      "가장 최근 기록 1개에 action/result/nextStep 추가",
+      "bookshelf"
+    );
+    if (integrity.evidenceMissing) add(
+      "evidence-gap",
+      "Knowledge",
+      integrity.evidenceMissing >= 5 ? "high" : "medium",
+      "근거 없는 기록이 AI 분석 품질을 낮춤",
+      `${integrity.evidenceMissing} records missing evidence/source`,
+      "중요 기록 1개에 공개자료/측정 evidence를 연결",
+      "bookshelf"
+    );
+    if (signals.vision.frequentDouble) add(
+      "vision-risk",
+      "Health boundary",
+      "high",
+      "복시/피로 신호가 루틴에 영향",
+      `${signals.vision.frequentDouble} high diplopia signals`,
+      "훈련 강도보다 증상 기록, 휴식 조건, 진료 질문 정리",
+      "vision-training"
+    );
+    if (integrity.pendingSync || reliability.conflictAudit.conflictCandidates || reliability.schemaAudit.fileIndexGapCount) add(
+      "data-risk",
+      "Data OS",
+      integrity.pendingSync ? "high" : "medium",
+      "장기 기억 저장 신뢰성 점검 필요",
+      `${integrity.pendingSync} pending · ${reliability.conflictAudit.conflictCandidates} conflicts · ${reliability.schemaAudit.fileIndexGapCount} vault gaps`,
+      "무결성 checkpoint + redacted AI packet export",
+      "operating-core"
+    );
+    domains
+      .filter(domain => domain.score < 55)
+      .forEach(domain => add(
+        `domain-${domain.id}`,
+        "Readiness",
+        domain.score < 40 ? "high" : "medium",
+        `${domain.label} readiness 낮음`,
+        domain.evidence,
+        domain.nextAction,
+        domain.view
+      ));
+    if (!patterns.length) {
+      add(
+        "stable-loop",
+        "Operating rhythm",
+        "stable",
+        "큰 병목 신호는 낮음",
+        `${tasks.length} actions · ${integrity.score} integrity`,
+        "오늘 30분 루틴을 완료하고 checkpoint만 남기기",
+        "operating-core"
+      );
+    }
+    return patterns.sort((a, b) => severityRank(b.severity) - severityRank(a.severity)).slice(0, 10);
+  }
+
+  function buildSevenDayPlan(tasks, patterns, domains) {
+    const primaryPatterns = patterns.filter(pattern => pattern.severity !== "stable");
+    const lowDomains = domains.slice().sort((a, b) => a.score - b.score);
+    const plan = [
+      {
+        day: 1,
+        theme: "운영 정렬",
+        action: tasks[0]?.title || "오늘 30분 루틴",
+        evidence: tasks[0]?.evidence || "operating queue",
+        minutes: 30,
+        view: tasks[0]?.view || "operating-core"
+      },
+      {
+        day: 2,
+        theme: "가장 큰 약점",
+        action: primaryPatterns[0]?.nextAction || lowDomains[0]?.nextAction || "약점 진단 1세트",
+        evidence: primaryPatterns[0]?.evidence || lowDomains[0]?.evidence || "weakness-first",
+        minutes: 25,
+        view: primaryPatterns[0]?.view || lowDomains[0]?.view || "diagnostics"
+      },
+      {
+        day: 3,
+        theme: "Fellow 기초",
+        action: lowDomains.find(domain => domain.id === "materials-ms")?.nextAction || "Materials MS 선수개념 1개",
+        evidence: lowDomains.find(domain => domain.id === "materials-ms")?.evidence || "MS readiness",
+        minutes: 30,
+        view: "materials-ms"
+      },
+      {
+        day: 4,
+        theme: "현장 사고",
+        action: primaryPatterns.find(pattern => pattern.domain === "CE")?.nextAction || "CE campaign case 1개",
+        evidence: primaryPatterns.find(pattern => pattern.domain === "CE")?.evidence || "case engine",
+        minutes: 20,
+        view: "diagnostics"
+      },
+      {
+        day: 5,
+        theme: "기술 영어",
+        action: primaryPatterns.find(pattern => pattern.domain === "English")?.nextAction || "고객 보고 영어 10분",
+        evidence: primaryPatterns.find(pattern => pattern.domain === "English")?.evidence || "English queue",
+        minutes: 20,
+        view: "english-test"
+      },
+      {
+        day: 6,
+        theme: "장기 기억 정리",
+        action: primaryPatterns.find(pattern => /Think Tank|Knowledge|Data OS/.test(pattern.domain))?.nextAction || "기록 1개를 evidence/nextStep으로 닫기",
+        evidence: primaryPatterns.find(pattern => /Think Tank|Knowledge|Data OS/.test(pattern.domain))?.evidence || "data hygiene",
+        minutes: 25,
+        view: "bookshelf"
+      },
+      {
+        day: 7,
+        theme: "AI 회고",
+        action: "Life Intelligence checkpoint 저장 후 redacted packet으로 회고",
+        evidence: "weekly synthesis",
+        minutes: 30,
+        view: "operating-core"
+      }
+    ];
+    return plan;
+  }
+
+  function buildCoachQuestions(patterns, domains, reliability) {
+    const lowDomain = domains.slice().sort((a, b) => a.score - b.score)[0];
+    const topPattern = patterns[0];
+    return [
+      {
+        mode: "AI mentor",
+        question: `내 현재 가장 큰 병목은 ${topPattern?.title || "루틴 안정화"}입니다. 이번 주에 실패 가능성이 가장 낮은 30분 루틴으로 다시 설계해줘.`,
+        useWith: "redacted AI packet"
+      },
+      {
+        mode: "CE coach",
+        question: "내 CE 케이스 오답/약점만 보고 symptom → risk → subsystem → evidence → stop condition 사고 루틴을 훈련시켜줘.",
+        useWith: "FEP/EPI CE packet"
+      },
+      {
+        mode: "Fellow advisor",
+        question: `${lowDomain?.label || "Materials MS"} 점수가 낮습니다. EPI Fellow 목표 기준으로 수학/물리/화학/재료공학 선수개념 중 가장 먼저 닫을 것을 골라줘.`,
+        useWith: "career growth packet"
+      },
+      {
+        mode: "privacy reviewer",
+        question: `AI에게 보여주기 전 ${reliability.schemaAudit.sensitiveHitCount} sensitive hits와 ${reliability.schemaAudit.fileIndexGapCount} file vault gaps를 어떻게 redaction해야 하는지 점검해줘.`,
+        useWith: "reliability packet"
+      }
+    ];
+  }
+
+  function buildLifeIntelligence(signals, tasks, integrity, reliability) {
+    const domains = buildDomainReadiness(signals, integrity, reliability);
+    const patterns = buildPatternMatrix(signals, tasks, integrity, reliability, domains);
+    const sevenDayPlan = buildSevenDayPlan(tasks, patterns, domains);
+    const coachQuestions = buildCoachQuestions(patterns, domains, reliability);
+    const riskLoad = patterns.reduce((sum, pattern) => sum + severityRank(pattern.severity), 0);
+    const averageReadiness = domains.reduce((sum, domain) => sum + domain.score, 0) / Math.max(1, domains.length);
+    const operatingFocus = patterns[0]?.nextAction || tasks[0]?.title || "오늘 30분 루틴";
+    const packet = {
+      schemaVersion: LIFE_INTELLIGENCE_VERSION,
+      generatedAt: new Date().toISOString(),
+      privacyMode: "redacted-summary-only",
+      operatingFocus,
+      weeklyCompass: {
+        headline: riskLoad >= 9 ? "이번 주는 병목 제거 주간" : averageReadiness < 60 ? "기초 readiness를 끌어올릴 주간" : "루틴을 안정적으로 반복할 주간",
+        riskLoad,
+        averageReadiness: Math.round(averageReadiness),
+        strongestDomain: domains.slice().sort((a, b) => b.score - a.score)[0]?.label || "데이터 대기",
+        weakestDomain: domains.slice().sort((a, b) => a.score - b.score)[0]?.label || "데이터 대기"
+      },
+      domainReadiness: domains,
+      recurringPatterns: patterns,
+      nextSevenDays: sevenDayPlan,
+      coachQuestions,
+      packetBoundary: {
+        safeToShareWithAI: [
+          "domain readiness scores",
+          "weakness tags",
+          "recommended actions",
+          "redacted evidence summaries",
+          "storage health summaries"
+        ],
+        reviewBeforeSharing: [
+          "health and vision notes",
+          "asset and investment notes",
+          "customer communication drafts",
+          "raw troubleshooting journals"
+        ],
+        neverShare: SENSITIVE_BLOCKLIST
+      }
+    };
+    packet.integrityHash = hashString(JSON.stringify({
+      schemaVersion: packet.schemaVersion,
+      generatedAt: packet.generatedAt,
+      weeklyCompass: packet.weeklyCompass,
+      domains: domains.map(domain => [domain.id, domain.score, domain.evidence]),
+      patterns: patterns.map(pattern => [pattern.id, pattern.severity, pattern.evidence]),
+      plan: sevenDayPlan.map(day => [day.day, day.action])
+    }));
+    return packet;
+  }
+
   function priorityTasks(signals) {
     const tasks = [];
     const englishWeak = signals.english.weaknesses[0];
@@ -818,8 +1118,9 @@
     };
   }
 
-  function buildPacket(signals, tasks, score, routine = [], integrity = null, analysis = null) {
-    const reliability = buildReliabilityPacket(signals, integrity);
+  function buildPacket(signals, tasks, score, routine = [], integrity = null, analysis = null, reliabilityOverride = null, lifeOverride = null) {
+    const reliability = reliabilityOverride || buildReliabilityPacket(signals, integrity);
+    const lifeIntelligence = lifeOverride || buildLifeIntelligence(signals, tasks, integrity || dataIntegrity(signals), reliability);
     const packet = {
       schemaVersion: EXPORT_VERSION,
       generatedAt: new Date().toISOString(),
@@ -873,6 +1174,7 @@
         remoteStatus: state.remote.error ? "remote-unavailable" : state.remote.ops ? "remote-connected" : "local-only"
       },
       aiAnalysis: analysis,
+      lifeIntelligence,
       neverInclude: SENSITIVE_BLOCKLIST,
       storageBoundaries: reliability.backupPlan.lanes,
       nextSevenDays: tasks.slice(0, 5).map((task, index) => ({
@@ -888,7 +1190,13 @@
       dailyRoutine30m: packet.dailyRoutine30m,
       dataHealth: packet.dataHealth,
       weaknesses: packet.weaknesses,
-      aiAnalysis: packet.aiAnalysis
+      aiAnalysis: packet.aiAnalysis,
+      lifeIntelligence: {
+        weeklyCompass: packet.lifeIntelligence.weeklyCompass,
+        domainReadiness: packet.lifeIntelligence.domainReadiness.map(domain => [domain.id, domain.score]),
+        recurringPatterns: packet.lifeIntelligence.recurringPatterns.map(pattern => [pattern.id, pattern.severity]),
+        integrityHash: packet.lifeIntelligence.integrityHash
+      }
     }));
     return packet;
   }
@@ -1071,6 +1379,36 @@
       excluded: redacted.intentionallyExcluded
     }));
     return redacted;
+  }
+
+  function lifeIntelligenceLedger() {
+    const ledger = safeJson(LIFE_INTELLIGENCE_KEY, []);
+    return Array.isArray(ledger) ? ledger : [];
+  }
+
+  function createLifeIntelligenceCheckpoint(lifeIntelligence) {
+    const ledger = lifeIntelligenceLedger();
+    const checkpoint = {
+      schemaVersion: "project-universe-life-intelligence-checkpoint-v1",
+      createdAt: new Date().toISOString(),
+      weeklyCompass: lifeIntelligence.weeklyCompass,
+      operatingFocus: lifeIntelligence.operatingFocus,
+      weakestDomain: lifeIntelligence.weeklyCompass.weakestDomain,
+      strongestDomain: lifeIntelligence.weeklyCompass.strongestDomain,
+      topPatterns: lifeIntelligence.recurringPatterns.slice(0, 5).map(pattern => ({
+        id: pattern.id,
+        domain: pattern.domain,
+        severity: pattern.severity,
+        title: pattern.title,
+        evidence: pattern.evidence,
+        nextAction: pattern.nextAction
+      })),
+      nextSevenDays: lifeIntelligence.nextSevenDays,
+      sourceHash: lifeIntelligence.integrityHash
+    };
+    checkpoint.integrityHash = hashString(JSON.stringify(checkpoint));
+    saveJson(LIFE_INTELLIGENCE_KEY, [...ledger.slice(-51), checkpoint]);
+    return checkpoint;
   }
 
   function renderTask(task, done) {
@@ -1288,6 +1626,109 @@
     `;
   }
 
+  function renderLifeIntelligencePanel(lifeIntelligence) {
+    const compass = lifeIntelligence.weeklyCompass;
+    return `
+      <section class="ops-card ops-life-intel-card">
+        <div class="ops-card-head">
+          <div>
+            <p class="eyebrow">life intelligence analysis center</p>
+            <h2>${escapeHtml(compass.headline)}</h2>
+            <p>오답, CE 케이스, Materials MS, 시기능/인지 루틴, 저장 신뢰성을 하나의 분석 패킷으로 합성합니다.</p>
+          </div>
+          <div class="ops-intel-score">
+            <span>Avg readiness</span>
+            <strong>${compass.averageReadiness}</strong>
+            <small>risk load ${compass.riskLoad}</small>
+          </div>
+        </div>
+        <div class="ops-intel-summary">
+          <article>
+            <span>오늘의 운영 초점</span>
+            <strong>${escapeHtml(lifeIntelligence.operatingFocus)}</strong>
+          </article>
+          <article>
+            <span>가장 강한 축</span>
+            <strong>${escapeHtml(compass.strongestDomain)}</strong>
+          </article>
+          <article>
+            <span>먼저 닫을 병목</span>
+            <strong>${escapeHtml(compass.weakestDomain)}</strong>
+          </article>
+        </div>
+        <div class="ops-domain-readiness">
+          ${lifeIntelligence.domainReadiness.map(domain => `
+            <article>
+              <div>
+                <span>${escapeHtml(domain.label)}</span>
+                <strong>${domain.score}</strong>
+              </div>
+              <i><em style="width:${domain.score}%"></em></i>
+              <p>${escapeHtml(domain.evidence)}</p>
+              <button class="secondary" type="button" data-core-view="${escapeHtml(domain.view)}">${escapeHtml(domain.nextAction)}</button>
+            </article>
+          `).join("")}
+        </div>
+        <div class="ops-intel-grid">
+          <article>
+            <strong>반복 패턴 top ${lifeIntelligence.recurringPatterns.length}</strong>
+            <div class="ops-pattern-list">
+              ${lifeIntelligence.recurringPatterns.map(pattern => `
+                <button type="button" data-core-view="${escapeHtml(pattern.view)}" class="${escapeHtml(pattern.severity)}">
+                  <span>${escapeHtml(pattern.domain)} · ${escapeHtml(pattern.severity)}</span>
+                  <b>${escapeHtml(pattern.title)}</b>
+                  <small>${escapeHtml(pattern.evidence)}</small>
+                  <em>${escapeHtml(pattern.nextAction)}</em>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+          <article>
+            <strong>다음 7일 action map</strong>
+            <div class="ops-seven-day">
+              ${lifeIntelligence.nextSevenDays.map(day => `
+                <button type="button" data-core-view="${escapeHtml(day.view)}">
+                  <span>D${day.day} · ${escapeHtml(day.theme)} · ${day.minutes}m</span>
+                  <b>${escapeHtml(day.action)}</b>
+                  <small>${escapeHtml(day.evidence)}</small>
+                </button>
+              `).join("")}
+            </div>
+          </article>
+        </div>
+        <div class="ops-coach-grid">
+          ${lifeIntelligence.coachQuestions.map(item => `
+            <article>
+              <span>${escapeHtml(item.mode)}</span>
+              <p>${escapeHtml(item.question)}</p>
+              <small>${escapeHtml(item.useWith)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="ops-intel-boundary">
+          <article>
+            <strong>AI에게 바로 공유 가능</strong>
+            ${lifeIntelligence.packetBoundary.safeToShareWithAI.map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+          </article>
+          <article>
+            <strong>공유 전 검토</strong>
+            ${lifeIntelligence.packetBoundary.reviewBeforeSharing.map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+          </article>
+          <article>
+            <strong>절대 제외</strong>
+            ${lifeIntelligence.packetBoundary.neverShare.slice(0, 8).map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+          </article>
+        </div>
+        <div class="ops-intel-actions">
+          <button class="primary" type="button" data-core-save-analysis>analysis checkpoint</button>
+          <button class="secondary" type="button" data-core-copy-analysis>Life Intelligence 복사</button>
+          <button class="secondary" type="button" data-core-download-analysis>Life Intelligence JSON</button>
+          <small class="ops-intel-status">분석 checkpoint는 개인 장기 패턴을 추적하기 위한 요약만 저장합니다.</small>
+        </div>
+      </section>
+    `;
+  }
+
   function renderFellowBridge(signals, integrity) {
     const mathGap = signals.materialsMs?.attempts ? `${signals.materialsMs.attempts} attempts` : signals.pages.some(page => /math|수학|log|calculus|통계|DOE/i.test(`${page.topic || ""} ${page.title || ""}`)) ? "진행 중" : "진단 필요";
     const epiEvidence = signals.ce.weaknesses.length ? `${signals.ce.weaknesses[0].skill} 약점부터` : "새 CE case 필요";
@@ -1401,6 +1842,13 @@
       dailyRoutine30m: packet.dailyRoutine30m,
       dataHealth: packet.dataHealth,
       aiAnalysis: packet.aiAnalysis,
+      lifeIntelligence: {
+        weeklyCompass: packet.lifeIntelligence?.weeklyCompass,
+        operatingFocus: packet.lifeIntelligence?.operatingFocus,
+        recurringPatterns: packet.lifeIntelligence?.recurringPatterns?.slice(0, 4),
+        nextSevenDays: packet.lifeIntelligence?.nextSevenDays,
+        integrityHash: packet.lifeIntelligence?.integrityHash
+      },
       weaknesses: packet.weaknesses,
       neverInclude: packet.neverInclude
     };
@@ -1429,8 +1877,9 @@
     const analysis = aiAnalysis(signals, tasks, integrity);
     const score = readinessScore(signals, tasks, integrity);
     const done = doneState();
-    const packet = buildPacket(signals, tasks, score, routine, integrity, analysis);
     const reliability = buildReliabilityPacket(signals, integrity);
+    const lifeIntelligence = buildLifeIntelligence(signals, tasks, integrity, reliability);
+    const packet = buildPacket(signals, tasks, score, routine, integrity, analysis, reliability, lifeIntelligence);
     state.lastRenderAt = new Date().toISOString();
 
     root.innerHTML = `
@@ -1483,6 +1932,8 @@
           ${renderAiAnalysisPanel(analysis)}
         </section>
 
+        ${renderLifeIntelligencePanel(lifeIntelligence)}
+
         ${renderReliabilityPanel(reliability)}
 
         ${renderFellowBridge(signals, integrity)}
@@ -1494,10 +1945,10 @@
       </section>
     `;
 
-    bind(packet, reliability);
+    bind(packet, reliability, lifeIntelligence);
   }
 
-  function bind(packet, reliability) {
+  function bind(packet, reliability, lifeIntelligence) {
     document.querySelectorAll("[data-core-view]").forEach(button => {
       button.addEventListener("click", () => {
         if (window.showView) window.showView(button.dataset.coreView);
@@ -1551,6 +2002,17 @@
       downloadJson(`project-universe-redacted-ai-packet-${todayKey()}.json`, buildRedactedAiPacket(packet, reliability));
       setStatus(".ops-reliability-status", "민감 제외 AI packet 생성 완료 · AI에게는 이 버전을 우선 사용하세요.");
     });
+    document.querySelector("[data-core-save-analysis]")?.addEventListener("click", () => {
+      const checkpoint = createLifeIntelligenceCheckpoint(lifeIntelligence);
+      setStatus(".ops-intel-status", `analysis checkpoint 저장 완료 · ${checkpoint.integrityHash}`);
+    });
+    document.querySelector("[data-core-copy-analysis]")?.addEventListener("click", () => {
+      copyText(JSON.stringify(lifeIntelligence, null, 2), ".ops-intel-status");
+    });
+    document.querySelector("[data-core-download-analysis]")?.addEventListener("click", () => {
+      downloadJson(`project-universe-life-intelligence-${todayKey()}.json`, lifeIntelligence);
+      setStatus(".ops-intel-status", "Life Intelligence JSON 생성 완료 · AI에게 보여줄 때 민감정보 경계를 다시 확인하세요.");
+    });
   }
 
   async function init() {
@@ -1569,14 +2031,23 @@
       const signals = collectLocalSignals();
       const tasks = priorityTasks(signals);
       const integrity = dataIntegrity(signals);
+      const reliability = buildReliabilityPacket(signals, integrity);
       const routine = makeDailyRoutine(signals, tasks, integrity);
       const analysis = aiAnalysis(signals, tasks, integrity);
-      return buildPacket(signals, tasks, readinessScore(signals, tasks, integrity), routine, integrity, analysis);
+      const lifeIntelligence = buildLifeIntelligence(signals, tasks, integrity, reliability);
+      return buildPacket(signals, tasks, readinessScore(signals, tasks, integrity), routine, integrity, analysis, reliability, lifeIntelligence);
     },
     buildReliabilityPacket: () => {
       const signals = collectLocalSignals();
       const integrity = dataIntegrity(signals);
       return buildReliabilityPacket(signals, integrity);
+    },
+    buildLifeIntelligence: () => {
+      const signals = collectLocalSignals();
+      const tasks = priorityTasks(signals);
+      const integrity = dataIntegrity(signals);
+      const reliability = buildReliabilityPacket(signals, integrity);
+      return buildLifeIntelligence(signals, tasks, integrity, reliability);
     },
     refreshRemote: loadRemote
   };

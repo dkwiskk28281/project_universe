@@ -22401,6 +22401,227 @@ body[data-current-view="cognitive"] .learning-hud {
   padding: 12px;
 }
 
+.ops-life-intel-card {
+  border-color: rgba(118, 247, 255, 0.24);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(118, 247, 255, 0.1), transparent 34%),
+    linear-gradient(135deg, rgba(0, 255, 149, 0.045), rgba(118, 247, 255, 0.035)),
+    rgba(2, 12, 13, 0.95);
+}
+
+.ops-intel-score {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 14px;
+  background: rgba(0, 255, 149, 0.08);
+  padding: 12px;
+}
+
+.ops-intel-score span,
+.ops-intel-score small,
+.ops-intel-summary span,
+.ops-domain-readiness span,
+.ops-domain-readiness p,
+.ops-pattern-list span,
+.ops-pattern-list small,
+.ops-pattern-list em,
+.ops-seven-day span,
+.ops-seven-day small,
+.ops-coach-grid span,
+.ops-coach-grid small,
+.ops-intel-status {
+  color: rgba(236, 255, 248, 0.64);
+}
+
+.ops-intel-score strong {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.ops-intel-summary,
+.ops-domain-readiness,
+.ops-intel-grid,
+.ops-coach-grid,
+.ops-intel-boundary {
+  display: grid;
+  gap: 10px;
+}
+
+.ops-intel-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-intel-summary article,
+.ops-domain-readiness article,
+.ops-intel-grid > article,
+.ops-coach-grid article,
+.ops-intel-boundary article {
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  padding: 12px;
+}
+
+.ops-intel-summary article {
+  display: grid;
+  gap: 5px;
+}
+
+.ops-intel-summary strong,
+.ops-domain-readiness strong,
+.ops-intel-grid strong,
+.ops-coach-grid p,
+.ops-intel-boundary strong {
+  color: #ecfff8;
+  line-height: 1.28;
+}
+
+.ops-domain-readiness {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ops-domain-readiness article {
+  display: grid;
+  gap: 9px;
+  align-content: start;
+}
+
+.ops-domain-readiness article > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: start;
+}
+
+.ops-domain-readiness i {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(118, 247, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ops-domain-readiness em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #00ff95, #76f7ff);
+}
+
+.ops-domain-readiness button {
+  min-height: 38px;
+  white-space: normal;
+}
+
+.ops-intel-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.ops-pattern-list,
+.ops-seven-day {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ops-pattern-list button,
+.ops-seven-day button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  color: inherit;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ops-pattern-list button.high,
+.ops-pattern-list button.critical {
+  border-color: rgba(255, 133, 133, 0.35);
+  background: rgba(255, 133, 133, 0.08);
+}
+
+.ops-pattern-list button.medium {
+  border-color: rgba(255, 206, 112, 0.28);
+  background: rgba(255, 206, 112, 0.08);
+}
+
+.ops-pattern-list button.stable {
+  border-color: rgba(0, 255, 149, 0.24);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.ops-pattern-list b,
+.ops-seven-day b {
+  color: #ecfff8;
+}
+
+.ops-pattern-list em {
+  font-style: normal;
+}
+
+.ops-coach-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ops-coach-grid article {
+  display: grid;
+  gap: 8px;
+}
+
+.ops-coach-grid span {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.ops-intel-boundary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-intel-boundary article {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-content: start;
+}
+
+.ops-intel-boundary strong {
+  flex: 1 0 100%;
+}
+
+.ops-intel-boundary span {
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(236, 255, 248, 0.68);
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
+.ops-intel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ops-intel-status {
+  flex: 1 1 300px;
+  min-width: min(100%, 300px);
+}
+
 .ops-reliability-card {
   border-color: rgba(0, 255, 149, 0.24);
   background:
@@ -22697,6 +22918,11 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-chip-grid,
   .ops-analysis-grid,
   .ops-bridge-grid,
+  .ops-intel-summary,
+  .ops-domain-readiness,
+  .ops-intel-grid,
+  .ops-coach-grid,
+  .ops-intel-boundary,
   .ops-reliability-strip,
   .ops-reliability-grid,
   .ops-remote-analysis {
@@ -22710,6 +22936,7 @@ body[data-current-view="cognitive"] .learning-hud {
 
   .ops-task-actions,
   .ops-actions,
+  .ops-intel-actions,
   .ops-reliability-actions,
   .ops-routine-actions {
     justify-content: stretch;
@@ -22717,6 +22944,7 @@ body[data-current-view="cognitive"] .learning-hud {
 
   .ops-task-actions button,
   .ops-actions button,
+  .ops-intel-actions button,
   .ops-reliability-actions button,
   .ops-routine-actions button {
     flex: 1 1 140px;
