@@ -3,7 +3,8 @@
   const DONE_KEY = "projectUniverseOperatingCoreDoneV1";
   const ROUTINE_KEY = "projectUniverseDailyRoutineLogV1";
   const INTEGRITY_LEDGER_KEY = "projectUniverseIntegrityLedgerV1";
-  const EXPORT_VERSION = "project-universe-operating-core-v6";
+  const EXPORT_VERSION = "project-universe-operating-core-v7-data-os";
+  const DATA_RELIABILITY_VERSION = "project-universe-data-reliability-v1";
   const REQUIRED_RECORD_FIELDS = ["schemaVersion", "privacyLevel", "syncStatus", "sourceDevice", "createdAt", "updatedAt", "exportPolicy"];
   const SENSITIVE_BLOCKLIST = [
     "password",
@@ -229,40 +230,347 @@
     return REQUIRED_RECORD_FIELDS.filter(field => !record[field]);
   }
 
-  function dataIntegrity(signals) {
+  function integrityLedger() {
+    const ledger = safeJson(INTEGRITY_LEDGER_KEY, []);
+    return Array.isArray(ledger) ? ledger : [];
+  }
+
+  function recordSetsFromSignals(signals) {
     const pages = Array.isArray(signals.pages) ? signals.pages : [];
     const thinkTank = Array.isArray(signals.thinkTank) ? signals.thinkTank : [];
-    const recordSets = [
+    return [
       ...pages.map(record => ({ type: "bookshelf", record })),
       ...thinkTank.map(record => ({ type: "thinkTank", record }))
     ];
+  }
+
+  function countBy(rows, mapper) {
+    return rows.reduce((map, row) => {
+      const key = mapper(row) || "missing";
+      map[key] = (map[key] || 0) + 1;
+      return map;
+    }, {});
+  }
+
+  function recordLabel(item) {
+    const record = item.record || {};
+    return record.title || record.topic || record.symptom || record.id || `${item.type} record`;
+  }
+
+  function compactRecordText(record = {}) {
+    return [
+      record.title,
+      record.topic,
+      record.summary,
+      record.content,
+      record.evidence,
+      record.action,
+      record.result,
+      record.nextStep,
+      record.symptom,
+      record.suspectedCause,
+      record.customerReport,
+      record.prevention
+    ].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function scanSensitive(record = {}) {
+    const text = compactRecordText(record);
+    if (!text) return [];
+    return SENSITIVE_BLOCKLIST.filter(term => text.includes(term.toLowerCase()));
+  }
+
+  function fileVaultAudit(recordSets) {
+    const indexes = [];
+    recordSets.forEach(item => {
+      const files = Array.isArray(item.record?.fileIndex) ? item.record.fileIndex : [];
+      files.forEach(file => {
+        const storageTarget = String(file.storageTarget || file.storage || file.target || "").toLowerCase();
+        const hash = file.hash || file.fileHash || file.integrityHash;
+        const locationHint = file.locationHint || file.pathHint || file.urlHint;
+        const label = file.fileLabel || file.label || file.name || "unnamed file";
+        const unsafeDatabaseTarget = /d1|database/.test(storageTarget) && !/index|metadata|summary/.test(storageTarget);
+        const gaps = [
+          !hash ? "missing hash" : "",
+          !locationHint ? "missing location hint" : "",
+          !storageTarget ? "missing storage target" : "",
+          unsafeDatabaseTarget ? "raw file marked for D1/database" : ""
+        ].filter(Boolean);
+        indexes.push({
+          ownerType: item.type,
+          ownerId: item.record?.id || null,
+          ownerLabel: recordLabel(item),
+          label,
+          storageTarget: storageTarget || "unknown",
+          hasHash: Boolean(hash),
+          hasLocationHint: Boolean(locationHint),
+          gaps
+        });
+      });
+    });
+    return {
+      total: indexes.length,
+      gaps: indexes.filter(file => file.gaps.length),
+      byTarget: countBy(indexes, file => file.storageTarget || "unknown"),
+      samples: indexes.slice(0, 8)
+    };
+  }
+
+  function schemaAudit(signals) {
+    const recordSets = recordSetsFromSignals(signals);
+    const missingRows = recordSets
+      .map(item => ({ ...item, label: recordLabel(item), missing: fieldDebtForRecord(item.record) }))
+      .filter(item => item.missing.length);
+    const missingByField = REQUIRED_RECORD_FIELDS.reduce((summary, field) => {
+      summary[field] = missingRows.filter(item => item.missing.includes(field)).length;
+      return summary;
+    }, {});
+    const sensitiveHits = recordSets
+      .map(item => ({ type: item.type, id: item.record?.id || null, label: recordLabel(item), hits: scanSensitive(item.record) }))
+      .filter(item => item.hits.length);
+    const integrityHashMissing = recordSets.filter(item => !(item.record?.integrityHash || item.record?.serverIntegrityHash || item.record?.hash)).length;
+    const fileAudit = fileVaultAudit(recordSets);
+    return {
+      totalRecords: recordSets.length,
+      missingRows: missingRows.slice(0, 12),
+      missingByField,
+      schemaVersions: countBy(recordSets, item => item.record?.schemaVersion),
+      privacyLevels: countBy(recordSets, item => item.record?.privacyLevel),
+      exportPolicies: countBy(recordSets, item => item.record?.exportPolicy),
+      integrityHashMissing,
+      sensitiveHits: sensitiveHits.slice(0, 12),
+      sensitiveHitCount: sensitiveHits.length,
+      fileAudit
+    };
+  }
+
+  function recordSignature(item) {
+    const record = item.record || {};
+    return hashString(JSON.stringify({
+      type: item.type,
+      id: record.id || null,
+      title: record.title || record.topic || record.symptom || null,
+      updatedAt: record.updatedAt || null,
+      schemaVersion: record.schemaVersion || null,
+      privacyLevel: record.privacyLevel || null,
+      exportPolicy: record.exportPolicy || null,
+      evidence: record.evidence || record.sourceUrl || record.sourceTitle || null,
+      action: record.action || null,
+      result: record.result || null,
+      nextStep: record.nextStep || record.nextAction || null,
+      files: Array.isArray(record.fileIndex) ? record.fileIndex.map(file => ({
+        label: file.fileLabel || file.label || file.name || null,
+        hash: file.hash || file.fileHash || file.integrityHash || null,
+        target: file.storageTarget || file.storage || file.target || null
+      })) : []
+    }));
+  }
+
+  function conflictAudit(signals) {
+    const recordSets = recordSetsFromSignals(signals);
+    const byId = new Map();
+    const byTitle = new Map();
+    recordSets.forEach(item => {
+      const record = item.record || {};
+      const id = record.id || "";
+      const title = String(record.title || record.topic || record.symptom || "").trim().toLowerCase();
+      if (id) byId.set(id, [...(byId.get(id) || []), item]);
+      if (title) byTitle.set(title, [...(byTitle.get(title) || []), item]);
+    });
+    const duplicateIds = [...byId.entries()]
+      .filter(([, rows]) => rows.length > 1)
+      .map(([id, rows]) => ({
+        id,
+        count: rows.length,
+        labels: rows.map(recordLabel).slice(0, 4),
+        conflictingVersions: new Set(rows.map(recordSignature)).size > 1
+      }));
+    const duplicateTitles = [...byTitle.entries()]
+      .filter(([, rows]) => rows.length > 1)
+      .map(([title, rows]) => ({
+        title,
+        count: rows.length,
+        ids: rows.map(item => item.record?.id || "no-id").slice(0, 4),
+        conflictingVersions: new Set(rows.map(recordSignature)).size > 1
+      }));
+    const restoreEvents = safeJson("projectUniverseBookshelfRestoreEvents", []);
+    return {
+      duplicateIds,
+      duplicateTitles: duplicateTitles.slice(0, 12),
+      conflictCandidates: [...duplicateIds, ...duplicateTitles].filter(item => item.conflictingVersions).length,
+      restoreEvents: Array.isArray(restoreEvents) ? restoreEvents.length : 0
+    };
+  }
+
+  function backupPlan(signals, integrity, schema, conflicts) {
+    const ledger = integrityLedger();
+    const lastCheckpoint = ledger.slice(-1)[0] || null;
+    const checkpointAgeHours = lastCheckpoint
+      ? Math.round((Date.now() - new Date(lastCheckpoint.createdAt).getTime()) / 1000 / 60 / 60)
+      : null;
+    const actions = [];
+    if (!lastCheckpoint || checkpointAgeHours > 24) actions.push({
+      level: "high",
+      title: "무결성 checkpoint 만들기",
+      why: "오늘 상태의 hash를 남겨두면 나중에 데이터 변경/복원 기준점이 생깁니다."
+    });
+    if (integrity.pendingSync) actions.push({
+      level: "high",
+      title: "sync pending 처리",
+      why: "D1 저장 실패나 대기열은 장기 기억 손실의 가장 직접적인 신호입니다."
+    });
+    if (schema.schemaDebt) actions.push({
+      level: "medium",
+      title: "schema metadata 보강",
+      why: "schemaVersion/privacy/exportPolicy가 있어야 AI export와 migration이 안전합니다."
+    });
+    if (schema.fileAudit.gaps.length) actions.push({
+      level: "medium",
+      title: "File Vault index 정리",
+      why: "PDF/이미지/검진표 원문은 R2 또는 D-drive vault에 두고 D1에는 index와 hash만 남겨야 합니다."
+    });
+    if (schema.sensitiveHitCount) actions.push({
+      level: "high",
+      title: "민감 키워드 기록 점검",
+      why: "AI packet이나 공유 백업에 recipe, password, seed phrase 같은 금지어가 섞이면 안 됩니다."
+    });
+    if (conflicts.conflictCandidates) actions.push({
+      level: "medium",
+      title: "충돌 후보 병합",
+      why: "동일 id/title인데 내용 hash가 다르면 모바일/PC 저장본이 갈라졌을 수 있습니다."
+    });
+    if (!actions.length) actions.push({
+      level: "stable",
+      title: "redacted AI packet 갱신",
+      why: "현재 구조가 안정적이므로 AI에게 보여줄 민감정보 제외 요약을 최신화하면 됩니다."
+    });
+    return {
+      status: actions.some(action => action.level === "high") ? "repair-first" : actions.some(action => action.level === "medium") ? "needs-review" : "stable",
+      lastCheckpoint,
+      checkpointAgeHours,
+      localBackupEstimateMb: signals.storage.totalMb,
+      recommendedActions: actions.slice(0, 6),
+      lanes: [
+        {
+          name: "D1",
+          role: "records, summaries, indexes, hashes",
+          boundary: "large raw files are not stored here"
+        },
+        {
+          name: "localStorage",
+          role: "offline/browser fallback and temporary queue",
+          boundary: "browser cache can be cleared; export regularly"
+        },
+        {
+          name: "R2 or D-drive vault",
+          role: "PDF, images, medical reports, install photos, original papers",
+          boundary: "D1 stores only file index, summary, tags, location hint, hash"
+        },
+        {
+          name: "AI packet",
+          role: "redacted summary for analysis",
+          boundary: "no password, seed phrase, account number, customer confidential, recipe, setpoint, bypass"
+        }
+      ]
+    };
+  }
+
+  function buildReliabilityPacket(signals, integrity = null) {
+    const currentIntegrity = integrity || dataIntegrity(signals);
+    const schema = schemaAudit(signals);
+    const conflicts = conflictAudit(signals);
+    const plan = backupPlan(signals, currentIntegrity, schema, conflicts);
+    const packet = {
+      schemaVersion: DATA_RELIABILITY_VERSION,
+      generatedAt: new Date().toISOString(),
+      sourceDevice: "browser-local",
+      privacyLevel: "private-operational-summary",
+      exportPolicy: "share-redacted-only",
+      integrity: {
+        score: currentIntegrity.score,
+        status: currentIntegrity.status,
+        schemaDebt: currentIntegrity.schemaDebt,
+        pendingSync: currentIntegrity.pendingSync,
+        evidenceMissing: currentIntegrity.evidenceMissing,
+        nextStepMissing: currentIntegrity.nextStepMissing
+      },
+      schemaAudit: {
+        totalRecords: schema.totalRecords,
+        missingByField: schema.missingByField,
+        schemaVersions: schema.schemaVersions,
+        privacyLevels: schema.privacyLevels,
+        exportPolicies: schema.exportPolicies,
+        integrityHashMissing: schema.integrityHashMissing,
+        sensitiveHitCount: schema.sensitiveHitCount,
+        fileIndexTotal: schema.fileAudit.total,
+        fileIndexGapCount: schema.fileAudit.gaps.length
+      },
+      conflictAudit: {
+        duplicateIdCount: schema.totalRecords ? conflicts.duplicateIds.length : 0,
+        duplicateTitleCount: conflicts.duplicateTitles.length,
+        conflictCandidates: conflicts.conflictCandidates,
+        restoreEvents: conflicts.restoreEvents
+      },
+      backupPlan: plan,
+      samples: {
+        schemaDebt: schema.missingRows.map(row => ({
+          type: row.type,
+          id: row.record?.id || null,
+          label: row.label,
+          missing: row.missing
+        })),
+        sensitiveHits: schema.sensitiveHits,
+        fileGaps: schema.fileAudit.gaps.slice(0, 8),
+        duplicateIds: conflicts.duplicateIds.slice(0, 8),
+        duplicateTitles: conflicts.duplicateTitles.slice(0, 8)
+      },
+      neverStoreOrExportToAI: SENSITIVE_BLOCKLIST
+    };
+    packet.integrityHash = hashString(JSON.stringify({
+      schemaVersion: packet.schemaVersion,
+      generatedAt: packet.generatedAt,
+      integrity: packet.integrity,
+      schemaAudit: packet.schemaAudit,
+      conflictAudit: packet.conflictAudit,
+      backupPlan: packet.backupPlan,
+      samples: packet.samples
+    }));
+    return packet;
+  }
+
+  function dataIntegrity(signals) {
+    const pages = Array.isArray(signals.pages) ? signals.pages : [];
+    const recordSets = recordSetsFromSignals(signals);
+    const schema = schemaAudit(signals);
+    const conflicts = conflictAudit(signals);
     const missingFieldRows = recordSets
       .map(item => ({ ...item, missing: fieldDebtForRecord(item.record) }))
       .filter(item => item.missing.length);
-    const duplicateIds = [...recordSets.reduce((map, item) => {
-      const id = item.record?.id || item.record?.title || "unknown";
-      map.set(id, (map.get(id) || 0) + 1);
-      return map;
-    }, new Map()).entries()].filter(([, count]) => count > 1);
     const pending = signals.pendingSync.reduce((sum, item) => sum + item.count, 0);
     const evidenceMissing = pages.filter(page => !(page.evidence || page.sourceUrl || page.sourceTitle)).length;
     const fileIndexes = pages.reduce((sum, page) => sum + (Array.isArray(page.fileIndex) ? page.fileIndex.length : 0), 0);
     const nextStepMissing = signals.thinkTankSummary.missingNextStep;
-    const lastCheckpoint = safeJson(INTEGRITY_LEDGER_KEY, []).slice(-1)[0] || null;
+    const lastCheckpoint = integrityLedger().slice(-1)[0] || null;
     const score = Math.max(10, Math.round(
       96
       - Math.min(28, missingFieldRows.length * 2)
       - Math.min(22, pending * 4)
       - Math.min(18, evidenceMissing * 2)
-      - Math.min(14, duplicateIds.length * 5)
+      - Math.min(14, conflicts.duplicateIds.length * 5)
+      - Math.min(10, schema.sensitiveHitCount * 3)
+      - Math.min(8, schema.fileAudit.gaps.length * 2)
     ));
-    return {
+    const integrity = {
       score,
       schemaDebt: missingFieldRows.length,
-      duplicateIds: duplicateIds.length,
+      duplicateIds: conflicts.duplicateIds.length,
+      conflictCandidates: conflicts.conflictCandidates,
       pendingSync: pending,
       evidenceMissing,
       fileIndexes,
+      fileVaultGaps: schema.fileAudit.gaps.length,
+      sensitiveHitCount: schema.sensitiveHitCount,
+      integrityHashMissing: schema.integrityHashMissing,
       nextStepMissing,
       lastCheckpoint,
       status: score >= 85 ? "stable" : score >= 65 ? "needs-review" : "repair-first",
@@ -270,11 +578,17 @@
         missingFieldRows.length ? `${missingFieldRows.length}개 기록에 schema metadata 보강 필요` : "schema metadata debt 없음",
         pending ? `${pending}개 sync pending 기록 확인 필요` : "sync pending 없음",
         evidenceMissing ? `${evidenceMissing}개 기록에 evidence/source 보강 권장` : "근거 없는 책장 기록 없음",
-        duplicateIds.length ? `${duplicateIds.length}개 중복 id 후보` : "중복 id 후보 없음",
+        conflicts.duplicateIds.length ? `${conflicts.duplicateIds.length}개 중복 id 후보` : "중복 id 후보 없음",
+        schema.sensitiveHitCount ? `${schema.sensitiveHitCount}개 민감 키워드 후보 점검 필요` : "금지 민감 키워드 후보 없음",
+        schema.fileAudit.gaps.length ? `${schema.fileAudit.gaps.length}개 file vault index 보강 필요` : "file vault index gap 없음",
         fileIndexes ? `${fileIndexes}개 file index: 원문은 R2/D-drive, D1은 summary/hash만` : "File Vault index 없음: 원문 파일은 D1에 넣지 않기",
         lastCheckpoint ? `마지막 checkpoint ${new Date(lastCheckpoint.createdAt).toLocaleString()}` : "아직 integrity checkpoint 없음"
       ]
     };
+    integrity.schemaAudit = schema;
+    integrity.conflictAudit = conflicts;
+    integrity.backupPlan = backupPlan(signals, integrity, schema, conflicts);
+    return integrity;
   }
 
   function makeDailyRoutine(signals, tasks, integrity) {
@@ -505,6 +819,7 @@
   }
 
   function buildPacket(signals, tasks, score, routine = [], integrity = null, analysis = null) {
+    const reliability = buildReliabilityPacket(signals, integrity);
     const packet = {
       schemaVersion: EXPORT_VERSION,
       generatedAt: new Date().toISOString(),
@@ -547,11 +862,19 @@
         pendingSync: signals.pendingSync,
         localStorageMb: signals.storage.totalMb,
         integrity,
+        reliability: {
+          integrityHash: reliability.integrityHash,
+          schemaAudit: reliability.schemaAudit,
+          conflictAudit: reliability.conflictAudit,
+          backupStatus: reliability.backupPlan.status,
+          recommendedActions: reliability.backupPlan.recommendedActions
+        },
         materialsMs: signals.materialsMs,
         remoteStatus: state.remote.error ? "remote-unavailable" : state.remote.ops ? "remote-connected" : "local-only"
       },
       aiAnalysis: analysis,
       neverInclude: SENSITIVE_BLOCKLIST,
+      storageBoundaries: reliability.backupPlan.lanes,
       nextSevenDays: tasks.slice(0, 5).map((task, index) => ({
         day: index + 1,
         focus: task.title,
@@ -627,6 +950,127 @@
     anchor.download = filename;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  function setStatus(selector, text) {
+    const status = document.querySelector(selector);
+    if (status) status.textContent = text;
+  }
+
+  function localStorageSnapshot() {
+    const rows = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      const raw = localStorage.getItem(key) || "";
+      let parsed = raw;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = raw;
+      }
+      rows.push({
+        key,
+        bytes: byteSize(raw),
+        value: parsed
+      });
+    }
+    rows.sort((a, b) => a.key.localeCompare(b.key));
+    return rows;
+  }
+
+  function createIntegrityCheckpoint() {
+    const signals = collectLocalSignals();
+    const integrity = dataIntegrity(signals);
+    const reliability = buildReliabilityPacket(signals, integrity);
+    const ledger = integrityLedger();
+    const checkpoint = {
+      schemaVersion: "project-universe-integrity-checkpoint-v2",
+      createdAt: new Date().toISOString(),
+      score: integrity.score,
+      status: integrity.status,
+      schemaDebt: integrity.schemaDebt,
+      pendingSync: integrity.pendingSync,
+      evidenceMissing: integrity.evidenceMissing,
+      nextStepMissing: integrity.nextStepMissing,
+      conflictCandidates: integrity.conflictCandidates,
+      fileVaultGaps: integrity.fileVaultGaps,
+      sensitiveHitCount: integrity.sensitiveHitCount,
+      reliabilityHash: reliability.integrityHash,
+      hash: hashString(JSON.stringify({
+        pages: signals.pages.map(page => [page.id, page.updatedAt, page.title, page.nextStep, page.evidence, page.privacyLevel, page.exportPolicy]),
+        thinkTank: signals.thinkTank.map(entry => [entry.id, entry.updatedAt, entry.symptom, entry.nextStep, entry.evidence, entry.privacyLevel, entry.exportPolicy]),
+        storageMb: signals.storage.totalMb,
+        reliabilityHash: reliability.integrityHash
+      }))
+    };
+    saveJson(INTEGRITY_LEDGER_KEY, [...ledger.slice(-59), checkpoint]);
+    return checkpoint;
+  }
+
+  function buildFullLocalBackup(packet, reliability) {
+    const snapshot = localStorageSnapshot();
+    const backup = {
+      schemaVersion: "project-universe-full-local-backup-v2",
+      generatedAt: new Date().toISOString(),
+      privacyLevel: "private-full-backup-do-not-share",
+      exportPolicy: "owner-only-restore",
+      warning: "This file may include private health, asset, study, and journal data from this browser. Do not upload it to public AI tools.",
+      storageBoundary: {
+        d1: "structured records, summaries, indexes, hashes",
+        localStorage: "browser fallback and pending queue",
+        r2OrDDrive: "large raw files only; D1 stores indexes and summaries"
+      },
+      reliabilityPacket: reliability,
+      operatingPacket: packet,
+      localStorage: snapshot
+    };
+    backup.integrityHash = hashString(JSON.stringify({
+      schemaVersion: backup.schemaVersion,
+      generatedAt: backup.generatedAt,
+      keys: snapshot.map(row => [row.key, row.bytes]),
+      reliabilityHash: reliability.integrityHash,
+      packetHash: packet.integrityHash
+    }));
+    return backup;
+  }
+
+  function buildRedactedAiPacket(packet, reliability) {
+    const redacted = {
+      schemaVersion: "project-universe-redacted-ai-packet-v2",
+      generatedAt: new Date().toISOString(),
+      privacyMode: "redacted-summary-only",
+      purpose: "AI-readable growth, learning, work, and reliability summary without raw private records",
+      operatingPacket: packet,
+      reliabilityPacket: {
+        schemaVersion: reliability.schemaVersion,
+        generatedAt: reliability.generatedAt,
+        privacyLevel: reliability.privacyLevel,
+        exportPolicy: reliability.exportPolicy,
+        integrity: reliability.integrity,
+        schemaAudit: reliability.schemaAudit,
+        conflictAudit: reliability.conflictAudit,
+        backupPlan: reliability.backupPlan,
+        integrityHash: reliability.integrityHash
+      },
+      intentionallyExcluded: [
+        "raw journal text",
+        "raw health records",
+        "raw asset details",
+        "uploaded files",
+        "customer confidential data",
+        "equipment recipe or manual details",
+        "passwords, seed phrases, account numbers, resident IDs"
+      ],
+      neverInclude: SENSITIVE_BLOCKLIST
+    };
+    redacted.integrityHash = hashString(JSON.stringify({
+      schemaVersion: redacted.schemaVersion,
+      generatedAt: redacted.generatedAt,
+      operatingHash: packet.integrityHash,
+      reliabilityHash: reliability.integrityHash,
+      excluded: redacted.intentionallyExcluded
+    }));
+    return redacted;
   }
 
   function renderTask(task, done) {
@@ -706,6 +1150,91 @@
           <button class="primary" type="button" data-integrity-checkpoint>checkpoint 저장</button>
           <button class="secondary" type="button" data-core-view="bookshelf">기록 정리</button>
           <small class="ops-integrity-status">${integrity.lastCheckpoint ? "마지막 checkpoint가 있습니다." : "첫 checkpoint를 만들면 AI packet 신뢰도를 추적할 수 있습니다."}</small>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderReliabilityPanel(reliability) {
+    const schema = reliability.schemaAudit;
+    const conflicts = reliability.conflictAudit;
+    const plan = reliability.backupPlan;
+    const cards = [
+      { label: "Schema debt", value: Object.values(schema.missingByField).reduce((sum, count) => sum + count, 0), detail: "required metadata gaps" },
+      { label: "Conflicts", value: conflicts.conflictCandidates, detail: "same id/title with different hash" },
+      { label: "Sensitive hits", value: schema.sensitiveHitCount, detail: "review before AI export" },
+      { label: "Vault gaps", value: schema.fileIndexGapCount, detail: "file hash/location missing" },
+      { label: "Backup size", value: `${plan.localBackupEstimateMb}MB`, detail: "browser local estimate" }
+    ];
+    const fieldRows = Object.entries(schema.missingByField)
+      .map(([field, count]) => `<span class="${count ? "risk" : "ok"}"><b>${escapeHtml(field)}</b>${count}</span>`)
+      .join("");
+    const sampleRows = [
+      ...reliability.samples.schemaDebt.slice(0, 3).map(row => `${row.label}: ${row.missing.join(", ")}`),
+      ...reliability.samples.fileGaps.slice(0, 3).map(row => `${row.ownerLabel}: ${row.gaps.join(", ")}`),
+      ...reliability.samples.duplicateIds.slice(0, 2).map(row => `${row.id}: ${row.count} records`)
+    ].slice(0, 6);
+    return `
+      <section class="ops-card ops-reliability-card">
+        <div class="ops-card-head">
+          <div>
+            <p class="eyebrow">data reliability command center</p>
+            <h2>장기 기억 운영판</h2>
+            <p>D1, localStorage, R2/D-drive vault, AI packet의 역할을 분리하고 백업/충돌/민감정보를 매일 점검합니다.</p>
+          </div>
+          <span class="ops-integrity-state ${escapeHtml(plan.status)}">${escapeHtml(plan.status)}</span>
+        </div>
+        <div class="ops-reliability-strip">
+          ${cards.map(card => `
+            <article>
+              <span>${escapeHtml(card.label)}</span>
+              <strong>${escapeHtml(card.value)}</strong>
+              <small>${escapeHtml(card.detail)}</small>
+            </article>
+          `).join("")}
+        </div>
+        <div class="ops-reliability-grid">
+          <article>
+            <strong>Schema migration audit</strong>
+            <div class="ops-field-audit">${fieldRows}</div>
+            <p>모든 기록은 schemaVersion, privacyLevel, syncStatus, sourceDevice, createdAt, updatedAt, exportPolicy를 가져야 장기 migration과 AI export가 안전합니다.</p>
+          </article>
+          <article>
+            <strong>Storage boundary</strong>
+            <div class="ops-storage-lanes">
+              ${plan.lanes.map(lane => `
+                <span>
+                  <b>${escapeHtml(lane.name)}</b>
+                  ${escapeHtml(lane.role)}
+                  <small>${escapeHtml(lane.boundary)}</small>
+                </span>
+              `).join("")}
+            </div>
+          </article>
+          <article>
+            <strong>Recommended repair queue</strong>
+            <div class="ops-repair-list">
+              ${plan.recommendedActions.map(action => `
+                <span class="${escapeHtml(action.level)}">
+                  <b>${escapeHtml(action.title)}</b>
+                  ${escapeHtml(action.why)}
+                </span>
+              `).join("")}
+            </div>
+          </article>
+          <article>
+            <strong>Conflict / vault samples</strong>
+            <div class="ops-sample-list">
+              ${sampleRows.length ? sampleRows.map(row => `<span>${escapeHtml(row)}</span>`).join("") : `<span>현재 표시할 충돌/파일 gap 샘플이 없습니다.</span>`}
+            </div>
+          </article>
+        </div>
+        <div class="ops-reliability-actions">
+          <button class="primary" type="button" data-reliability-checkpoint>무결성 checkpoint</button>
+          <button class="secondary" type="button" data-core-download-backup>전체 백업 JSON</button>
+          <button class="secondary" type="button" data-core-download-redacted>민감 제외 AI packet</button>
+          <button class="secondary" type="button" data-core-copy-reliability>Reliability packet 복사</button>
+          <small class="ops-reliability-status">전체 백업은 나만 보관하세요. AI에는 민감 제외 packet만 넘기는 흐름이 안전합니다.</small>
         </div>
       </section>
     `;
@@ -901,6 +1430,7 @@
     const score = readinessScore(signals, tasks, integrity);
     const done = doneState();
     const packet = buildPacket(signals, tasks, score, routine, integrity, analysis);
+    const reliability = buildReliabilityPacket(signals, integrity);
     state.lastRenderAt = new Date().toISOString();
 
     root.innerHTML = `
@@ -953,6 +1483,8 @@
           ${renderAiAnalysisPanel(analysis)}
         </section>
 
+        ${renderReliabilityPanel(reliability)}
+
         ${renderFellowBridge(signals, integrity)}
 
         <section class="ops-main-grid compact">
@@ -962,10 +1494,10 @@
       </section>
     `;
 
-    bind(packet);
+    bind(packet, reliability);
   }
 
-  function bind(packet) {
+  function bind(packet, reliability) {
     document.querySelectorAll("[data-core-view]").forEach(button => {
       button.addEventListener("click", () => {
         if (window.showView) window.showView(button.dataset.coreView);
@@ -989,27 +1521,13 @@
       });
     });
     document.querySelector("[data-integrity-checkpoint]")?.addEventListener("click", () => {
-      const signals = collectLocalSignals();
-      const integrity = dataIntegrity(signals);
-      const ledger = safeJson(INTEGRITY_LEDGER_KEY, []);
-      const checkpoint = {
-        schemaVersion: "project-universe-integrity-checkpoint-v1",
-        createdAt: new Date().toISOString(),
-        score: integrity.score,
-        status: integrity.status,
-        schemaDebt: integrity.schemaDebt,
-        pendingSync: integrity.pendingSync,
-        evidenceMissing: integrity.evidenceMissing,
-        nextStepMissing: integrity.nextStepMissing,
-        hash: hashString(JSON.stringify({
-          pages: signals.pages.map(page => [page.id, page.updatedAt, page.title, page.nextStep, page.evidence]),
-          thinkTank: signals.thinkTank.map(entry => [entry.id, entry.updatedAt, entry.symptom, entry.nextStep, entry.evidence]),
-          storageMb: signals.storage.totalMb
-        }))
-      };
-      saveJson(INTEGRITY_LEDGER_KEY, [...ledger.slice(-29), checkpoint]);
-      const status = document.querySelector(".ops-integrity-status");
-      if (status) status.textContent = `checkpoint 저장 완료 · ${checkpoint.hash}`;
+      const checkpoint = createIntegrityCheckpoint();
+      setStatus(".ops-integrity-status", `checkpoint 저장 완료 · ${checkpoint.hash}`);
+      render();
+    });
+    document.querySelector("[data-reliability-checkpoint]")?.addEventListener("click", () => {
+      const checkpoint = createIntegrityCheckpoint();
+      setStatus(".ops-reliability-status", `checkpoint 저장 완료 · ${checkpoint.reliabilityHash}`);
       render();
     });
     document.querySelector("[data-core-refresh]")?.addEventListener("click", async () => {
@@ -1021,6 +1539,17 @@
     });
     document.querySelector("[data-core-download-packet]")?.addEventListener("click", () => {
       downloadJson(`project-universe-operating-packet-${todayKey()}.json`, packet);
+    });
+    document.querySelector("[data-core-copy-reliability]")?.addEventListener("click", () => {
+      copyText(JSON.stringify(reliability, null, 2), ".ops-reliability-status");
+    });
+    document.querySelector("[data-core-download-backup]")?.addEventListener("click", () => {
+      downloadJson(`project-universe-full-backup-${todayKey()}.json`, buildFullLocalBackup(packet, reliability));
+      setStatus(".ops-reliability-status", "전체 백업 JSON 생성 완료 · 이 파일은 개인 보관용입니다.");
+    });
+    document.querySelector("[data-core-download-redacted]")?.addEventListener("click", () => {
+      downloadJson(`project-universe-redacted-ai-packet-${todayKey()}.json`, buildRedactedAiPacket(packet, reliability));
+      setStatus(".ops-reliability-status", "민감 제외 AI packet 생성 완료 · AI에게는 이 버전을 우선 사용하세요.");
     });
   }
 
@@ -1043,6 +1572,11 @@
       const routine = makeDailyRoutine(signals, tasks, integrity);
       const analysis = aiAnalysis(signals, tasks, integrity);
       return buildPacket(signals, tasks, readinessScore(signals, tasks, integrity), routine, integrity, analysis);
+    },
+    buildReliabilityPacket: () => {
+      const signals = collectLocalSignals();
+      const integrity = dataIntegrity(signals);
+      return buildReliabilityPacket(signals, integrity);
     },
     refreshRemote: loadRemote
   };

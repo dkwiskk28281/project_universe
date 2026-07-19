@@ -22401,6 +22401,131 @@ body[data-current-view="cognitive"] .learning-hud {
   padding: 12px;
 }
 
+.ops-reliability-card {
+  border-color: rgba(0, 255, 149, 0.24);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(118, 247, 255, 0.08), transparent 32%),
+    linear-gradient(135deg, rgba(0, 255, 149, 0.06), rgba(0, 0, 0, 0.12)),
+    rgba(2, 12, 13, 0.95);
+}
+
+.ops-reliability-strip,
+.ops-reliability-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.ops-reliability-strip {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ops-reliability-strip article,
+.ops-reliability-grid article {
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  padding: 12px;
+}
+
+.ops-reliability-strip article {
+  display: grid;
+  gap: 4px;
+}
+
+.ops-reliability-strip span,
+.ops-reliability-strip small,
+.ops-storage-lanes small,
+.ops-reliability-grid p,
+.ops-reliability-status {
+  color: rgba(236, 255, 248, 0.64);
+}
+
+.ops-reliability-strip strong {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.ops-reliability-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ops-reliability-grid strong {
+  display: block;
+  color: #ecfff8;
+  line-height: 1.25;
+}
+
+.ops-field-audit,
+.ops-storage-lanes,
+.ops-repair-list,
+.ops-sample-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ops-field-audit {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.ops-field-audit span,
+.ops-storage-lanes span,
+.ops-repair-list span,
+.ops-sample-list span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(118, 247, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(236, 255, 248, 0.72);
+  padding: 10px;
+  line-height: 1.45;
+}
+
+.ops-field-audit span.ok,
+.ops-repair-list span.stable {
+  border-color: rgba(0, 255, 149, 0.24);
+  background: rgba(0, 255, 149, 0.08);
+}
+
+.ops-field-audit span.risk,
+.ops-repair-list span.high {
+  border-color: rgba(255, 133, 133, 0.34);
+  background: rgba(255, 133, 133, 0.08);
+}
+
+.ops-repair-list span.medium {
+  border-color: rgba(255, 206, 112, 0.28);
+  background: rgba(255, 206, 112, 0.08);
+}
+
+.ops-field-audit b,
+.ops-storage-lanes b,
+.ops-repair-list b {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.ops-reliability-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ops-reliability-actions button {
+  min-height: 40px;
+}
+
+.ops-reliability-status {
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
+}
+
 .ops-ai-status {
   display: grid;
   gap: 4px;
@@ -22572,6 +22697,8 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-chip-grid,
   .ops-analysis-grid,
   .ops-bridge-grid,
+  .ops-reliability-strip,
+  .ops-reliability-grid,
   .ops-remote-analysis {
     grid-template-columns: 1fr;
   }
@@ -22583,12 +22710,14 @@ body[data-current-view="cognitive"] .learning-hud {
 
   .ops-task-actions,
   .ops-actions,
+  .ops-reliability-actions,
   .ops-routine-actions {
     justify-content: stretch;
   }
 
   .ops-task-actions button,
   .ops-actions button,
+  .ops-reliability-actions button,
   .ops-routine-actions button {
     flex: 1 1 140px;
   }
