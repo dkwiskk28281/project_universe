@@ -947,6 +947,10 @@ async function initPasswordGate() {
   const input = document.querySelector("#password-input");
   const error = document.querySelector("#password-error");
   document.querySelector("#entry-open-cognitive")?.addEventListener("click", enterCognitivePublic);
+  document.querySelector("#entry-open-ops")?.addEventListener("click", () => {
+    if (document.body.classList.contains("auth-unlocked")) unlockApp("operating-core");
+    else showPasswordGate("operating-core");
+  });
   document.querySelector("#entry-open-bookshelf")?.addEventListener("click", () => {
     if (document.body.classList.contains("auth-unlocked")) unlockApp("bookshelf");
     else showPasswordGate("bookshelf");

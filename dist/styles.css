@@ -24183,3 +24183,229 @@ body[data-current-view="cognitive"] .learning-hud {
     height: 46px;
   }
 }
+
+/* Project Universe OS Pulse calibration */
+.entry-choice-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.learning-hud {
+  z-index: 86;
+  width: min(380px, calc(100vw - 32px));
+  max-width: min(380px, calc(100vw - 32px));
+}
+
+body[data-current-view="cognitive"] .learning-hud {
+  display: block;
+}
+
+.learning-hud-card,
+:root[data-theme="dark"] .learning-hud-card,
+:root[data-theme="light"] .learning-hud-card {
+  color: #effff7;
+  border: 1px solid rgba(50, 255, 173, 0.42);
+  background:
+    linear-gradient(180deg, rgba(50, 255, 173, 0.1), rgba(5, 24, 17, 0.95)),
+    rgba(3, 13, 10, 0.98);
+  box-shadow: 0 0 0 1px rgba(167, 247, 255, 0.08), 0 22px 70px rgba(0, 0, 0, 0.46);
+}
+
+.learning-hud-card:not([open]) {
+  max-width: 148px;
+  background:
+    linear-gradient(135deg, rgba(50, 255, 173, 0.2), rgba(7, 30, 22, 0.92)),
+    rgba(3, 13, 10, 0.98);
+}
+
+.learning-hud-card[open] {
+  width: min(380px, calc(100vw - 32px));
+}
+
+.learning-hud-card summary strong {
+  color: #effff7;
+  letter-spacing: 0;
+}
+
+.learning-hud-card summary span {
+  color: #bdf9d9;
+}
+
+.learning-hud-card[open] summary {
+  border-bottom-color: rgba(50, 255, 173, 0.28);
+}
+
+.hud-pulse {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px;
+  border: 1px solid rgba(50, 255, 173, 0.24);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(167, 247, 255, 0.16), transparent 42%),
+    rgba(2, 11, 8, 0.72);
+}
+
+.hud-pulse-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hud-pulse-main span {
+  color: #8dfac6;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hud-pulse-main strong {
+  color: #f6fff9;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.hud-pulse-main small {
+  color: #c3dfd0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.hud-action-button {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid rgba(167, 247, 255, 0.32);
+  border-radius: 8px;
+  color: #04110c;
+  background: linear-gradient(135deg, #32ffad, #a7f7ff);
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.hud-pulse-risk {
+  border-color: rgba(255, 208, 138, 0.42);
+}
+
+.hud-pulse-risk .hud-pulse-main span,
+.hud-pulse-risk .hud-pulse-main strong {
+  color: #ffd08a;
+}
+
+.hud-pulse-health {
+  border-color: rgba(167, 247, 255, 0.34);
+}
+
+.hud-pulse-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.hud-pulse-metrics span {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  padding: 6px 4px;
+  border: 1px solid rgba(50, 255, 173, 0.2);
+  border-radius: 8px;
+  color: #bdf9d9;
+  background: rgba(1, 8, 6, 0.52);
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.hud-pulse-metrics b {
+  display: block;
+  color: #effff7;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.hud-search,
+.hud-top,
+.hud-jumps button,
+.hud-recents button,
+.hud-os-actions button {
+  color: #eafff3;
+  border: 1px solid rgba(50, 255, 173, 0.2);
+  background: rgba(4, 22, 15, 0.92);
+}
+
+.hud-search {
+  color: #04110c;
+  background: linear-gradient(135deg, #32ffad, #a7f7ff);
+}
+
+.hud-jumps button.active,
+.hud-jumps button:hover,
+.hud-recents button:hover,
+.hud-top:hover,
+.hud-os-actions button:hover {
+  color: #04110c;
+  background: #32ffad;
+}
+
+.hud-progress span,
+.hud-quiz {
+  color: #c3dfd0;
+}
+
+.hud-progress i {
+  background: rgba(50, 255, 173, 0.13);
+}
+
+.hud-progress em {
+  background: linear-gradient(90deg, #32ffad, #a7f7ff);
+}
+
+.hud-os-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .entry-choice-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .learning-hud {
+    display: block !important;
+    right: 8px;
+    bottom: 8px;
+    width: min(76vw, 310px);
+    max-width: min(76vw, 310px);
+  }
+
+  .learning-hud-card:not([open]) {
+    max-width: 118px;
+    padding: 7px 9px;
+  }
+
+  .learning-hud-card[open] {
+    width: min(76vw, 310px);
+  }
+
+  .hud-pulse {
+    grid-template-columns: 1fr;
+  }
+
+  .hud-action-button {
+    width: 100%;
+  }
+
+  .hud-pulse-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hud-jumps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

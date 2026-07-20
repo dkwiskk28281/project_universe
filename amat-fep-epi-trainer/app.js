@@ -4793,6 +4793,190 @@ function scoreUxSearchItem(item, query) {
   return score;
 }
 
+function readHudStorageJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function countHudItems(value) {
+  if (Array.isArray(value)) return value.length;
+  if (value && typeof value === "object") return Object.keys(value).length;
+  return 0;
+}
+
+function countHudDueItems(items, now = Date.now()) {
+  if (!Array.isArray(items)) return 0;
+  return items.filter(item => {
+    const due = item?.nextReviewAt || item?.dueAt || item?.reviewAt || item?.date;
+    if (!due) return true;
+    const dueTime = new Date(due).getTime();
+    return Number.isNaN(dueTime) || dueTime <= now;
+  }).length;
+}
+
+function getHudObjectValue(value, keys) {
+  if (!value || typeof value !== "object") return undefined;
+  for (const key of keys) {
+    if (value[key] !== undefined) return value[key];
+  }
+  return undefined;
+}
+
+function getHudPendingCount() {
+  const pendingKeys = [
+    "epiThinkTankPendingEntries",
+    "amkEnglishPendingRecords",
+    "projectUniverseBookshelfPendingPages",
+    "projectUniversePendingWritesV1"
+  ];
+  return pendingKeys.reduce((total, key) => total + countHudItems(readHudStorageJson(key, [])), 0);
+}
+
+function getHudStorageSizeKb() {
+  try {
+    let bytes = 0;
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key) continue;
+      bytes += key.length + (localStorage.getItem(key)?.length || 0);
+    }
+    return Math.round(bytes / 1024);
+  } catch {
+    return 0;
+  }
+}
+
+function getHudPulseSignals() {
+  const englishAttempts = readHudStorageJson("amkEnglishMicroAttempts", []);
+  const englishReviews = readHudStorageJson("amkEnglishSpacedReviewQueue", []);
+  const englishWrong = Array.isArray(englishAttempts)
+    ? englishAttempts.filter(item => item?.correct === false || item?.isCorrect === false || item?.result === "wrong").length
+    : 0;
+
+  const trainerState = readHudStorageJson("ceTrainerState", {});
+  const ceWeaknessSources = [
+    trainerState.fepBigBangWeaknesses,
+    trainerState.epiMentalWeakness,
+    trainerState.ceCampaignWeakness,
+    trainerState.ceCaseWeaknesses
+  ];
+  const ceWeakness = ceWeaknessSources.reduce((total, source) => {
+    if (!source || typeof source !== "object") return total;
+    return total + Object.values(source).filter(value => Number(value) > 0 || value === true).length;
+  }, 0);
+
+  const materialsState = readHudStorageJson("materialsMsAcademyStateV1", {});
+  const materialReviews = getHudObjectValue(materialsState, ["reviewQueue", "reviews", "dueReviews"]) || [];
+  const materialDue = countHudDueItems(materialReviews);
+  const materialCompleted = countHudItems(getHudObjectValue(materialsState, ["completedLessons", "completedNodes", "lessonCompletions"]) || {});
+
+  const cognitiveState = readHudStorageJson("projectUniverseCognitiveResilienceV1", {});
+  const cognitiveSessions = countHudItems(getHudObjectValue(cognitiveState, ["sessions", "logs", "dailyScores"]) || []);
+
+  const visionState = readHudStorageJson("projectUniverseVisionTrainingState", {});
+  const visionSessions = countHudItems(getHudObjectValue(visionState, ["sessions", "sessionLog", "logs"]) || []);
+  const diplopiaLevel = Number(getHudObjectValue(visionState, ["lastDiplopiaLevel", "diplopiaLevel", "maxDiplopiaLevel"]) || 0);
+
+  const pages = readHudStorageJson("projectUniverseBookshelfPages", []);
+  const openNextSteps = Array.isArray(pages)
+    ? pages.filter(page => {
+      const nextStep = `${page?.nextStep || page?.nextAction || ""}`.trim();
+      const done = page?.status === "done" || page?.completed === true;
+      return !done && !nextStep;
+    }).length
+    : 0;
+
+  return {
+    englishDue: countHudDueItems(englishReviews),
+    englishWrong,
+    ceWeakness,
+    materialDue,
+    materialCompleted,
+    cognitiveSessions,
+    visionSessions,
+    diplopiaLevel,
+    openNextSteps,
+    pendingSync: getHudPendingCount(),
+    storageKb: getHudStorageSizeKb()
+  };
+}
+
+function buildHudPulseAction(signals) {
+  if (!isPrivateUnlocked()) {
+    return {
+      title: "책장 잠금 해제 후 운영 브리핑",
+      reason: "개인 기록, 영어 오답, CE 약점, 저장 상태를 합쳐 오늘 루틴을 계산합니다.",
+      view: "operating-core",
+      label: "브리핑 열기",
+      tone: "lock"
+    };
+  }
+  if (signals.pendingSync > 0) {
+    return {
+      title: "저장 대기 항목 정리",
+      reason: `${signals.pendingSync}개 기록이 원격/로컬 동기화 확인을 기다립니다.`,
+      view: "operating-core",
+      label: "저장 상태 보기",
+      tone: "risk"
+    };
+  }
+  if (signals.englishDue > 0 || signals.englishWrong > 2) {
+    return {
+      title: "영어 오답 복습",
+      reason: `복습 due ${signals.englishDue}개, 누적 오답 ${signals.englishWrong}개입니다.`,
+      view: "english-test",
+      label: "영어 복습",
+      tone: "learn"
+    };
+  }
+  if (signals.ceWeakness > 0) {
+    return {
+      title: "CE 판단 약점 회수",
+      reason: `CE case/설치/공정 약점 ${signals.ceWeakness}개가 남아 있습니다.`,
+      view: "diagnostics",
+      label: "케이스 풀기",
+      tone: "field"
+    };
+  }
+  if (signals.materialDue > 0 || signals.materialCompleted < 3) {
+    return {
+      title: "Materials MS 기초 누적",
+      reason: `석사/Fellow 루트는 수학·물리·재료공학 복습을 매일 조금씩 쌓아야 합니다.`,
+      view: "materials-ms",
+      label: "MS 학습",
+      tone: "science"
+    };
+  }
+  if (signals.diplopiaLevel >= 3 || signals.visionSessions === 0) {
+    return {
+      title: "시기능 저강도 루틴",
+      reason: "눈 피로가 있거나 기록이 적으면 큰 자극보다 휴식/기록/부드러운 추적부터 시작합니다.",
+      view: "vision-training",
+      label: "시기능",
+      tone: "health"
+    };
+  }
+  return {
+    title: "오늘의 30분 운영 루틴",
+    reason: "CE, 영어, 인지, 기록 품질을 한 번에 닫는 기본 루프입니다.",
+    view: "operating-core",
+    label: "루틴 시작",
+    tone: "steady"
+  };
+}
+
+function getHudReliabilityScore(signals) {
+  const penalty = Math.min(45, signals.pendingSync * 12)
+    + Math.min(20, signals.openNextSteps * 4)
+    + (signals.storageKb > 4500 ? 10 : 0);
+  return Math.max(45, 100 - penalty);
+}
+
 function renderLearningHud() {
   const root = document.querySelector("#learning-hud");
   if (!root) return;
@@ -4801,13 +4985,30 @@ function renderLearningHud() {
   const quizProgress = getQuizProgress();
   const currentView = document.querySelector(".view.active")?.id || state.lastView || "bookshelf";
   const recentViews = (state.recentViews || [currentView]).filter(Boolean).slice(0, 3);
+  const signals = getHudPulseSignals();
+  const pulseAction = buildHudPulseAction(signals);
+  const reliability = getHudReliabilityScore(signals);
   root.innerHTML = `
     <details class="learning-hud-card">
       <summary>
-        <strong>빠른 이동</strong>
-        <span>Roadmap ${roadmapProgress.percent}% · Runbook ${gateProgress.percent}%</span>
+        <strong>OS Pulse</strong>
+        <span>${pulseAction.title} · 안정도 ${reliability}%</span>
       </summary>
       <div class="hud-body">
+        <section class="hud-pulse hud-pulse-${pulseAction.tone}" aria-label="오늘의 운영 우선순위">
+          <div class="hud-pulse-main">
+            <span>오늘 우선순위</span>
+            <strong>${pulseAction.title}</strong>
+            <small>${pulseAction.reason}</small>
+          </div>
+          <button class="hud-action-button" type="button" data-hud-open="${pulseAction.view}">${pulseAction.label}</button>
+        </section>
+        <div class="hud-pulse-metrics" aria-label="운영 신호">
+          <span><b>${signals.englishDue}</b>영어 due</span>
+          <span><b>${signals.ceWeakness}</b>CE 약점</span>
+          <span><b>${signals.materialDue}</b>MS 복습</span>
+          <span><b>${signals.pendingSync}</b>저장 대기</span>
+        </div>
         <button class="hud-search" type="button" data-ux-search>검색</button>
         <div class="hud-progress">
           <span>Roadmap <b>${roadmapProgress.percent}%</b></span>
@@ -4823,11 +5024,16 @@ function renderLearningHud() {
         <div class="hud-recents">
           ${recentViews.map(view => `<button type="button" data-ux-view="${view}">${getNavLabel(view)}</button>`).join("")}
         </div>
+        <div class="hud-os-actions">
+          <button class="secondary" type="button" data-ux-view="operating-core">AI Packet</button>
+          <button class="secondary" type="button" data-ux-view="bookshelf">책장</button>
+        </div>
         <button class="hud-top" type="button" data-ux-top>맨 위</button>
         <span class="hud-quiz">Quiz ${quizProgress.total ? `${quizProgress.percent}%` : "0%"}</span>
       </div>
     </details>
   `;
+  root.querySelector("[data-hud-open]")?.addEventListener("click", event => showView(event.currentTarget.dataset.hudOpen));
   root.querySelector("[data-ux-search]")?.addEventListener("click", () => openCommandPalette());
   root.querySelectorAll("[data-ux-view]").forEach(button => {
     button.addEventListener("click", () => showView(button.dataset.uxView));
