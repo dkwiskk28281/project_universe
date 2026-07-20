@@ -23213,3 +23213,645 @@ body[data-current-view="cognitive"] .learning-hud {
     transform: translateX(-24px);
   }
 }
+
+/* Vision Function Recovery v2: large, practical, evidence-bounded training lab. */
+.vision-upgraded {
+  --vision-panel: rgba(2, 12, 13, 0.96);
+  --vision-panel-2: rgba(0, 0, 0, 0.32);
+  --vision-line: rgba(118, 247, 255, 0.16);
+  --vision-green: #00ff95;
+  --vision-cyan: #76f7ff;
+  --vision-warn: #ffce70;
+  --vision-risk: #ff8585;
+}
+
+.vision-therapy-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.vision-therapy-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto 18px 14px auto;
+  width: 160px;
+  height: 44px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 22% 50%, rgba(0, 255, 149, 0.36) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 50%, rgba(118, 247, 255, 0.26) 0 6px, transparent 7px),
+    radial-gradient(circle at 78% 50%, rgba(255, 206, 112, 0.24) 0 5px, transparent 6px);
+  opacity: 0.58;
+  pointer-events: none;
+}
+
+.vision-training-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(330px, 0.52fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.vision-therapy-stage-card {
+  min-width: 0;
+}
+
+.vision-therapy-stage {
+  min-height: clamp(430px, 58vh, 680px);
+  border-radius: 18px;
+  background:
+    linear-gradient(rgba(118, 247, 255, 0.065) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(118, 247, 255, 0.065) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 149, 0.16), transparent 30%),
+    radial-gradient(circle at 20% 15%, rgba(118, 247, 255, 0.09), transparent 28%),
+    #000706;
+  background-size: 38px 38px, 38px 38px, auto, auto, auto;
+  isolation: isolate;
+}
+
+.vision-therapy-stage::before {
+  inset: 18px;
+  border-color: rgba(118, 247, 255, 0.18);
+}
+
+.vision-therapy-stage::after {
+  content: "";
+  position: absolute;
+  inset: 50% 6% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 149, 0.5), transparent);
+  pointer-events: none;
+}
+
+.vision-run-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  min-width: 148px;
+}
+
+.vision-run-stack strong {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+  font-size: clamp(1.8rem, 3.6vw, 3.4rem);
+  line-height: 0.95;
+}
+
+.vision-stage-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(236, 255, 248, 0.72);
+  padding: 12px;
+  line-height: 1.48;
+}
+
+.vision-stage-footer span {
+  flex: 1 1 280px;
+}
+
+.vision-stage-reticle {
+  position: absolute;
+  inset: 18%;
+  border: 1px solid rgba(0, 255, 149, 0.11);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 1px rgba(118, 247, 255, 0.08),
+    0 0 42px rgba(0, 255, 149, 0.08);
+  pointer-events: none;
+}
+
+.vision-gridline.horizontal {
+  inset: 50% 10% auto;
+}
+
+.vision-gridline.vertical {
+  inset: 12% auto 12% 50%;
+  width: 1px;
+  height: auto;
+  background: linear-gradient(180deg, transparent, rgba(118, 247, 255, 0.44), transparent);
+}
+
+.vision-moving-dot.xl {
+  width: clamp(34px, 5.2vw, 54px);
+  height: clamp(34px, 5.2vw, 54px);
+  transform: translate(-38vw, -18vh);
+}
+
+.vision-moving-dot.xl i {
+  position: absolute;
+  inset: 34%;
+  border-radius: inherit;
+  background: #ecfff8;
+  box-shadow: 0 0 16px rgba(236, 255, 248, 0.75);
+}
+
+.vision-stage.running .vision-moving-dot.xl {
+  animation: visionWideSweep var(--vision-duration, 11s) ease-in-out infinite;
+}
+
+@keyframes visionWideSweep {
+  0% { transform: translate(-34vw, -18vh); }
+  18% { transform: translate(0, -24vh); }
+  36% { transform: translate(34vw, -14vh); }
+  54% { transform: translate(27vw, 20vh); }
+  72% { transform: translate(-28vw, 18vh); }
+  88% { transform: translate(-12vw, -2vh); }
+  100% { transform: translate(-34vw, -18vh); }
+}
+
+.vision-saccade-field,
+.vision-near-far-lab,
+.vision-ladder-field,
+.vision-recovery-field {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(94%, 920px);
+  min-height: clamp(330px, 48vh, 540px);
+}
+
+.vision-saccade-field .vision-target {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 13vw, 150px);
+  height: clamp(96px, 13vw, 150px);
+  border: 2px solid rgba(118, 247, 255, 0.36);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(0, 255, 149, 0.24), transparent 58%),
+    rgba(0, 0, 0, 0.48);
+  color: #ecfff8;
+  font-family: Consolas, monospace;
+  font-size: clamp(2rem, 4vw, 4rem);
+  font-weight: 900;
+}
+
+.vision-saccade-field .left {
+  left: 8%;
+}
+
+.vision-saccade-field .right {
+  right: 8%;
+}
+
+.vision-jump-cue {
+  position: absolute;
+  top: 50%;
+  left: 13%;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--vision-green);
+  box-shadow: 0 0 22px rgba(0, 255, 149, 0.74);
+  transform: translateY(-50%);
+}
+
+.vision-stage.running .vision-jump-cue {
+  animation: visionJump var(--vision-duration, 6s) steps(1, end) infinite;
+}
+
+@keyframes visionJump {
+  0%, 49% { left: 13%; }
+  50%, 100% { left: calc(87% - 34px); }
+}
+
+.vision-saccade-field > span,
+.vision-near-far-lab > small,
+.vision-fusion-field.upgraded > small {
+  position: absolute;
+  bottom: 18px;
+  color: rgba(236, 255, 248, 0.68);
+  text-align: center;
+  line-height: 1.45;
+}
+
+.vision-near-far-lab {
+  grid-template-columns: minmax(130px, 0.5fr) minmax(180px, 1fr);
+  gap: clamp(22px, 7vw, 90px);
+}
+
+.vision-depth-line {
+  position: absolute;
+  inset: 50% 12%;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 255, 149, 0.65), rgba(118, 247, 255, 0.16));
+}
+
+.vision-cue-card {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  aspect-ratio: 1;
+  border: 2px solid rgba(118, 247, 255, 0.28);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(0, 255, 149, 0.24), transparent 34%),
+    rgba(0, 0, 0, 0.52);
+  color: #ecfff8;
+  text-align: center;
+}
+
+.vision-cue-card.near {
+  width: clamp(130px, 18vw, 190px);
+}
+
+.vision-cue-card.far {
+  width: clamp(180px, 28vw, 300px);
+}
+
+.vision-cue-card b {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+  font-size: clamp(1.35rem, 4vw, 3.4rem);
+}
+
+.vision-cue-card span {
+  color: rgba(236, 255, 248, 0.68);
+  font-size: clamp(0.82rem, 1.4vw, 1rem);
+}
+
+.vision-stage.running .vision-cue-card.near {
+  animation: visionNearPulse var(--vision-duration, 7s) ease-in-out infinite;
+}
+
+.vision-stage.running .vision-cue-card.far {
+  animation: visionFarPulse var(--vision-duration, 7s) ease-in-out infinite;
+}
+
+@keyframes visionNearPulse {
+  0%, 42%, 100% { box-shadow: none; border-color: rgba(118, 247, 255, 0.2); }
+  8%, 32% { box-shadow: 0 0 38px rgba(0, 255, 149, 0.22); border-color: rgba(0, 255, 149, 0.72); }
+}
+
+@keyframes visionFarPulse {
+  0%, 46%, 100% { box-shadow: none; border-color: rgba(118, 247, 255, 0.2); }
+  58%, 88% { box-shadow: 0 0 38px rgba(118, 247, 255, 0.2); border-color: rgba(118, 247, 255, 0.76); }
+}
+
+.vision-fusion-field.upgraded {
+  position: relative;
+  width: min(94%, 740px);
+  min-height: clamp(330px, 47vh, 520px);
+}
+
+.vision-fusion-field.upgraded .vision-ring {
+  width: clamp(130px, 20vw, 230px);
+  height: clamp(130px, 20vw, 230px);
+  font-size: clamp(1.2rem, 2vw, 2rem);
+}
+
+.vision-stage.running .vision-fusion-field.upgraded .vision-ring.left {
+  animation: visionFusionLeft var(--vision-duration, 8s) ease-in-out infinite;
+}
+
+.vision-stage.running .vision-fusion-field.upgraded .vision-ring.right {
+  animation: visionFusionRight var(--vision-duration, 8s) ease-in-out infinite;
+}
+
+@keyframes visionFusionLeft {
+  0%, 100% { transform: translateX(78px); }
+  45%, 70% { transform: translateX(24px); }
+}
+
+@keyframes visionFusionRight {
+  0%, 100% { transform: translateX(-78px); }
+  45%, 70% { transform: translateX(-24px); }
+}
+
+.vision-ladder-field {
+  width: min(92%, 760px);
+}
+
+.vision-ladder-step {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: clamp(58px, 8vw, 94px);
+  height: clamp(58px, 8vw, 94px);
+  border: 1px solid rgba(118, 247, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  color: rgba(236, 255, 248, 0.78);
+  font-family: Consolas, monospace;
+  font-weight: 900;
+}
+
+.vision-ladder-step.step-1 { left: 6%; transform: scale(1.15); }
+.vision-ladder-step.step-2 { left: 25%; transform: scale(1); }
+.vision-ladder-step.step-3 { left: 45%; transform: scale(0.86); }
+.vision-ladder-step.step-4 { left: 64%; transform: scale(0.72); }
+.vision-ladder-step.step-5 { left: 81%; transform: scale(0.58); }
+
+.vision-ladder-focus {
+  position: absolute;
+  top: 58%;
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  width: clamp(116px, 18vw, 180px);
+  height: clamp(116px, 18vw, 180px);
+  border: 2px solid rgba(0, 255, 149, 0.56);
+  border-radius: 50%;
+  background: rgba(0, 255, 149, 0.08);
+  color: #ecfff8;
+  text-align: center;
+}
+
+.vision-ladder-focus b {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+  font-size: clamp(1.2rem, 2.6vw, 2.4rem);
+}
+
+.vision-ladder-focus small {
+  color: rgba(236, 255, 248, 0.66);
+}
+
+.vision-stage.running .vision-ladder-focus {
+  animation: visionLadderFocus var(--vision-duration, 8s) ease-in-out infinite;
+}
+
+@keyframes visionLadderFocus {
+  0%, 100% { transform: translateX(-280px) scale(1.08); }
+  50% { transform: translateX(220px) scale(0.68); }
+}
+
+.vision-recovery-field {
+  text-align: center;
+}
+
+.vision-break-orbit {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  width: clamp(210px, 30vw, 340px);
+  height: clamp(210px, 30vw, 340px);
+  border: 2px solid rgba(255, 206, 112, 0.32);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 206, 112, 0.13), transparent 62%),
+    rgba(0, 0, 0, 0.36);
+}
+
+.vision-break-orbit span,
+.vision-break-orbit em,
+.vision-recovery-field p {
+  color: rgba(236, 255, 248, 0.7);
+}
+
+.vision-break-orbit strong {
+  color: var(--vision-warn);
+  font-family: Consolas, monospace;
+  font-size: clamp(2.4rem, 5vw, 5rem);
+}
+
+.vision-rest-field.upgraded i {
+  display: block;
+  width: min(78%, 420px);
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 255, 149, 0.9), rgba(118, 247, 255, 0.28), transparent);
+}
+
+.vision-protocol {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(0, 255, 149, 0.14);
+  border-radius: 14px;
+  background: rgba(0, 255, 149, 0.055);
+  padding: 12px;
+}
+
+.vision-protocol strong {
+  color: var(--vision-green);
+}
+
+.vision-protocol ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: rgba(236, 255, 248, 0.74);
+  line-height: 1.5;
+}
+
+.vision-therapy-control {
+  position: sticky;
+  top: 12px;
+}
+
+.vision-mode-grid.upgraded {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vision-mode-grid.upgraded .vision-mode-button {
+  min-height: 118px;
+}
+
+.vision-mode-button span {
+  width: fit-content;
+  border: 1px solid rgba(0, 255, 149, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 255, 149, 0.08);
+  color: var(--vision-green);
+  padding: 4px 7px;
+  font-family: Consolas, monospace;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.vision-range-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vision-range b {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+}
+
+.vision-info-grid.upgraded {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 0.9fr);
+}
+
+.vision-term-list span {
+  grid-template-columns: minmax(86px, 0.24fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.vision-source-list.upgraded a {
+  gap: 7px;
+}
+
+.vision-source-list.upgraded a > span {
+  width: fit-content;
+  border: 1px solid rgba(118, 247, 255, 0.17);
+  border-radius: 999px;
+  background: rgba(118, 247, 255, 0.08);
+  color: var(--vision-cyan);
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.vision-source-list.upgraded small,
+.vision-source-list.upgraded em {
+  color: rgba(236, 255, 248, 0.66);
+  font-style: normal;
+  line-height: 1.48;
+}
+
+.vision-source-list.upgraded em {
+  color: #ffdda0;
+}
+
+.vision-log-list.upgraded article.high {
+  border-color: rgba(255, 133, 133, 0.34);
+  background:
+    linear-gradient(135deg, rgba(255, 133, 133, 0.08), transparent),
+    rgba(0, 0, 0, 0.24);
+}
+
+.vision-trend {
+  grid-template-columns: repeat(10, minmax(16px, 1fr));
+}
+
+.vision-trend i.headache {
+  background: linear-gradient(180deg, #ff8585, rgba(255, 133, 133, 0.32));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vision-stage.running .vision-moving-dot.xl,
+  .vision-stage.running .vision-jump-cue,
+  .vision-stage.running .vision-cue-card.near,
+  .vision-stage.running .vision-cue-card.far,
+  .vision-stage.running .vision-fusion-field.upgraded .vision-ring.left,
+  .vision-stage.running .vision-fusion-field.upgraded .vision-ring.right,
+  .vision-stage.running .vision-ladder-focus {
+    animation: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .vision-training-layout,
+  .vision-info-grid.upgraded,
+  .vision-evidence-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .vision-therapy-control {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .vision-therapy-stage {
+    min-height: 430px;
+  }
+
+  .vision-stage-head,
+  .vision-stage-footer {
+    display: grid;
+  }
+
+  .vision-run-stack {
+    justify-items: stretch;
+  }
+
+  .vision-mode-grid.upgraded,
+  .vision-range-grid,
+  .vision-near-far-lab {
+    grid-template-columns: 1fr;
+  }
+
+  .vision-moving-dot.xl {
+    width: 42px;
+    height: 42px;
+  }
+
+  @keyframes visionWideSweep {
+    0% { transform: translate(-34vw, -120px); }
+    18% { transform: translate(0, -150px); }
+    36% { transform: translate(34vw, -90px); }
+    54% { transform: translate(28vw, 140px); }
+    72% { transform: translate(-28vw, 120px); }
+    88% { transform: translate(-12vw, -20px); }
+    100% { transform: translate(-34vw, -120px); }
+  }
+
+  .vision-saccade-field .vision-target {
+    width: 86px;
+    height: 86px;
+  }
+
+  .vision-saccade-field .left {
+    left: 4%;
+  }
+
+  .vision-saccade-field .right {
+    right: 4%;
+  }
+
+  .vision-cue-card.near,
+  .vision-cue-card.far {
+    width: min(78vw, 230px);
+  }
+
+  .vision-fusion-field.upgraded .vision-ring {
+    width: 116px;
+    height: 116px;
+  }
+
+  .vision-term-list span {
+    grid-template-columns: 1fr;
+  }
+
+  .vision-trend {
+    gap: 5px;
+  }
+}
+
+@media (max-width: 440px) {
+  .vision-therapy-stage {
+    min-height: 390px;
+  }
+
+  .vision-stage-label,
+  .vision-eye-cover {
+    max-width: calc(100% - 32px);
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .vision-fusion-field.upgraded .vision-ring {
+    width: 92px;
+    height: 92px;
+    font-size: 0.82rem;
+  }
+
+  .vision-ring.left {
+    transform: translateX(16px);
+  }
+
+  .vision-ring.right {
+    transform: translateX(-16px);
+  }
+
+  .vision-ladder-step {
+    width: 46px;
+    height: 46px;
+  }
+}
