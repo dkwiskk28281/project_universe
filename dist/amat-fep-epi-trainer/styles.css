@@ -23317,6 +23317,18 @@ body[data-current-view="cognitive"] .learning-hud {
   flex: 1 1 280px;
 }
 
+.vision-stage-actions {
+  display: flex;
+  flex: 0 1 360px;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.vision-stage-actions button {
+  flex: 1 1 150px;
+}
+
 .vision-stage-reticle {
   position: absolute;
   inset: 18%;
@@ -23369,6 +23381,8 @@ body[data-current-view="cognitive"] .learning-hud {
 
 .vision-saccade-field,
 .vision-near-far-lab,
+.vision-near-real-far-lab,
+.vision-real-distance-field,
 .vision-ladder-field,
 .vision-recovery-field {
   position: relative;
@@ -23439,6 +23453,11 @@ body[data-current-view="cognitive"] .learning-hud {
   gap: clamp(22px, 7vw, 90px);
 }
 
+.vision-near-real-far-lab {
+  grid-template-columns: minmax(160px, 0.58fr) minmax(220px, 1fr);
+  gap: clamp(26px, 8vw, 110px);
+}
+
 .vision-depth-line {
   position: absolute;
   inset: 50% 12%;
@@ -23488,6 +23507,50 @@ body[data-current-view="cognitive"] .learning-hud {
 
 .vision-stage.running .vision-cue-card.far {
   animation: visionFarPulse var(--vision-duration, 7s) ease-in-out infinite;
+}
+
+.vision-offscreen-arrow {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: clamp(190px, 30vw, 320px);
+  border: 2px dashed rgba(255, 206, 112, 0.38);
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 206, 112, 0.12), rgba(118, 247, 255, 0.04)),
+    rgba(0, 0, 0, 0.42);
+  color: #ecfff8;
+  text-align: center;
+}
+
+.vision-offscreen-arrow strong {
+  color: var(--vision-warn);
+  font-family: Consolas, monospace;
+  font-size: clamp(4rem, 12vw, 9rem);
+  line-height: 0.9;
+}
+
+.vision-offscreen-arrow span {
+  color: var(--vision-warn);
+  font-family: Consolas, monospace;
+  font-size: clamp(1.2rem, 3vw, 2.8rem);
+  font-weight: 900;
+}
+
+.vision-offscreen-arrow em {
+  color: rgba(236, 255, 248, 0.72);
+  font-style: normal;
+}
+
+.vision-stage.running .vision-offscreen-arrow {
+  animation: visionLookAwayPulse var(--vision-duration, 10s) ease-in-out infinite;
+}
+
+@keyframes visionLookAwayPulse {
+  0%, 45%, 100% { border-color: rgba(255, 206, 112, 0.22); box-shadow: none; }
+  52%, 92% { border-color: rgba(255, 206, 112, 0.78); box-shadow: 0 0 56px rgba(255, 206, 112, 0.16); }
 }
 
 @keyframes visionNearPulse {
@@ -23625,6 +23688,66 @@ body[data-current-view="cognitive"] .learning-hud {
   background: linear-gradient(90deg, rgba(0, 255, 149, 0.9), rgba(118, 247, 255, 0.28), transparent);
 }
 
+.vision-real-distance-field {
+  width: min(calc(100% - 24px), 980px);
+  min-height: clamp(360px, 58vh, 620px);
+  text-align: center;
+}
+
+.vision-look-away {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  width: min(100%, 820px);
+  min-height: clamp(240px, 42vh, 450px);
+  border: 2px solid rgba(255, 206, 112, 0.28);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 206, 112, 0.15), transparent 56%),
+    rgba(0, 0, 0, 0.54);
+}
+
+.vision-look-away span {
+  color: var(--vision-warn);
+  font-family: Consolas, monospace;
+  font-size: clamp(1.4rem, 4vw, 3.4rem);
+  font-weight: 900;
+}
+
+.vision-look-away strong {
+  color: #ecfff8;
+  font-size: clamp(2rem, 7vw, 6rem);
+  line-height: 1.05;
+}
+
+.vision-look-away em,
+.vision-real-distance-field p,
+.vision-distance-count span {
+  color: rgba(236, 255, 248, 0.72);
+  font-style: normal;
+  line-height: 1.5;
+}
+
+.vision-distance-count {
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.vision-real-distance-field p {
+  max-width: min(100%, 760px);
+  margin-inline: auto;
+}
+
+.vision-distance-count b {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+  font-size: clamp(2.8rem, 8vw, 6.5rem);
+  line-height: 0.9;
+}
+
 .vision-protocol {
   display: grid;
   gap: 8px;
@@ -23660,6 +23783,13 @@ body[data-current-view="cognitive"] .learning-hud {
   min-height: 118px;
 }
 
+.vision-mode-button[data-tier="core"] {
+  border-color: rgba(0, 255, 149, 0.26);
+  background:
+    linear-gradient(135deg, rgba(0, 255, 149, 0.075), rgba(118, 247, 255, 0.025)),
+    rgba(0, 0, 0, 0.28);
+}
+
 .vision-mode-button span {
   width: fit-content;
   border: 1px solid rgba(0, 255, 149, 0.2);
@@ -23670,6 +23800,18 @@ body[data-current-view="cognitive"] .learning-hud {
   font-family: Consolas, monospace;
   font-size: 0.7rem;
   font-weight: 900;
+}
+
+.vision-mode-button em {
+  width: fit-content;
+  color: rgba(255, 206, 112, 0.78);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.vision-mode-button[data-tier="core"] em {
+  color: var(--vision-green);
 }
 
 .vision-range-grid {
@@ -23733,11 +23875,153 @@ body[data-current-view="cognitive"] .learning-hud {
   background: linear-gradient(180deg, #ff8585, rgba(255, 133, 133, 0.32));
 }
 
+.vision-immersive-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0, 255, 149, 0.075), transparent 45%),
+    #000403;
+  color: #ecfff8;
+  padding: 14px;
+}
+
+.vision-immersive-overlay:fullscreen {
+  width: 100vw;
+  height: 100vh;
+}
+
+.vision-immersive-head,
+.vision-immersive-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(118, 247, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.56);
+  padding: 10px 12px;
+}
+
+.vision-immersive-head span,
+.vision-immersive-foot span {
+  color: rgba(236, 255, 248, 0.66);
+}
+
+.vision-immersive-head strong {
+  display: block;
+  color: #ecfff8;
+  font-size: clamp(1rem, 2vw, 1.5rem);
+  line-height: 1.2;
+}
+
+.vision-immersive-counter {
+  display: grid;
+  place-items: center;
+  min-width: 104px;
+  border: 1px solid rgba(0, 255, 149, 0.24);
+  border-radius: 14px;
+  background: rgba(0, 255, 149, 0.08);
+  padding: 8px 12px;
+}
+
+.vision-immersive-counter strong {
+  color: var(--vision-green);
+  font-family: Consolas, monospace;
+  font-size: clamp(2.2rem, 6vw, 5.6rem);
+  line-height: 0.9;
+}
+
+.vision-immersive-counter span {
+  color: rgba(236, 255, 248, 0.62);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.vision-immersive-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.vision-immersive-stage {
+  min-height: 0;
+  height: 100%;
+  border-radius: 20px;
+}
+
+.vision-immersive-stage .vision-moving-dot.xl {
+  width: clamp(48px, 6.4vw, 92px);
+  height: clamp(48px, 6.4vw, 92px);
+}
+
+.vision-immersive-stage .vision-saccade-field {
+  width: 100%;
+  min-height: 100%;
+}
+
+.vision-immersive-stage .vision-saccade-field .vision-target {
+  width: clamp(132px, 14vw, 240px);
+  height: clamp(132px, 14vw, 240px);
+  font-size: clamp(3rem, 6vw, 7rem);
+}
+
+.vision-immersive-stage .vision-saccade-field .left {
+  left: 5%;
+}
+
+.vision-immersive-stage .vision-saccade-field .right {
+  right: 5%;
+}
+
+.vision-immersive-stage .vision-near-real-far-lab,
+.vision-immersive-stage .vision-real-distance-field {
+  width: 100%;
+  min-height: 100%;
+}
+
+.vision-immersive-stage .vision-cue-card.near {
+  width: clamp(180px, 22vw, 330px);
+}
+
+.vision-immersive-stage .vision-offscreen-arrow {
+  min-height: clamp(260px, 46vh, 560px);
+}
+
+.vision-immersive-stage .vision-look-away {
+  width: min(100%, 1180px);
+  min-height: clamp(330px, 58vh, 660px);
+}
+
+.vision-immersive-stage.look-away-mode {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 206, 112, 0.075), transparent 46%),
+    #000;
+}
+
+.vision-immersive-foot {
+  grid-template-columns: minmax(0, 1fr);
+  color: rgba(236, 255, 248, 0.7);
+  line-height: 1.45;
+}
+
+.vision-immersive-foot b {
+  color: var(--vision-warn);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vision-stage.running .vision-moving-dot.xl,
   .vision-stage.running .vision-jump-cue,
   .vision-stage.running .vision-cue-card.near,
   .vision-stage.running .vision-cue-card.far,
+  .vision-stage.running .vision-offscreen-arrow,
   .vision-stage.running .vision-fusion-field.upgraded .vision-ring.left,
   .vision-stage.running .vision-fusion-field.upgraded .vision-ring.right,
   .vision-stage.running .vision-ladder-focus {
@@ -23767,14 +24051,58 @@ body[data-current-view="cognitive"] .learning-hud {
     display: grid;
   }
 
+  .vision-stage-actions {
+    justify-content: stretch;
+  }
+
   .vision-run-stack {
     justify-items: stretch;
   }
 
   .vision-mode-grid.upgraded,
   .vision-range-grid,
-  .vision-near-far-lab {
+  .vision-near-far-lab,
+  .vision-near-real-far-lab {
     grid-template-columns: 1fr;
+  }
+
+  .vision-immersive-overlay {
+    padding: 8px;
+  }
+
+  .vision-immersive-head {
+    grid-template-columns: 1fr;
+  }
+
+  .vision-immersive-actions {
+    justify-content: stretch;
+  }
+
+  .vision-immersive-actions button {
+    flex: 1 1 120px;
+  }
+
+  .vision-immersive-stage .vision-saccade-field .vision-target {
+    width: 104px;
+    height: 104px;
+  }
+
+  .vision-immersive-stage .vision-look-away {
+    min-height: min(40vh, 320px);
+    border-radius: 24px;
+  }
+
+  .vision-immersive-stage .vision-look-away strong {
+    font-size: clamp(2rem, 8vw, 3.4rem);
+  }
+
+  .vision-immersive-stage .vision-distance-count {
+    display: none;
+  }
+
+  .vision-immersive-stage .vision-real-distance-field p {
+    margin: 8px auto 0;
+    font-size: 0.88rem;
   }
 
   .vision-moving-dot.xl {

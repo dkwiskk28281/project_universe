@@ -1,7 +1,7 @@
 (() => {
   const STORAGE_KEY = "projectUniverseVisionTrainingState";
-  const SCHEMA_VERSION = "vision-function-recovery-v2";
-  const SOURCE_VERSION = "vision-lab-evidence-20260720";
+  const SCHEMA_VERSION = "vision-function-recovery-v3";
+  const SOURCE_VERSION = "vision-lab-fullscreen-evidence-20260720";
 
   const exerciseModes = {
     pursuit: {
@@ -9,9 +9,10 @@
       shortTitle: "추적",
       label: "Smooth pursuit",
       evidenceLevel: "안전 보조/증상 기록",
+      tier: "core",
       minutes: 1,
       intensity: "low",
-      subtitle: "머리는 고정하고 큰 초록점을 눈으로만 천천히 따라가며, 흐림·복시·회복 시간을 관찰합니다.",
+      subtitle: "전체 화면에 가까운 큰 초록점을 눈으로만 천천히 따라가며, 흐림·복시·회복 시간을 관찰합니다.",
       goal: "눈 움직임을 억지로 강화하기보다 피로할 때 조절이 무너지는 패턴을 알아차립니다.",
       how: ["턱과 머리를 고정합니다.", "점이 너무 빠르면 속도를 낮춥니다.", "둘로 보이면 즉시 정지하고 이완 모드로 전환합니다."],
       caution: "한쪽 눈 가림 추적은 전문가가 지시한 경우에만 사용하세요. patching은 수렴을 직접 강화하는 주 훈련으로 단정하지 않습니다.",
@@ -22,35 +23,52 @@
       shortTitle: "전환",
       label: "Saccade",
       evidenceLevel: "보조 훈련",
+      tier: "core",
       minutes: 1,
       intensity: "low",
-      subtitle: "두 개의 큰 타깃을 천천히 번갈아 보며, 시선 전환 후 다시 하나로 잡히는 시간을 기록합니다.",
+      subtitle: "모니터 양끝의 큰 타깃을 번갈아 보며, 시선 전환 후 다시 하나로 잡히는 시간을 기록합니다.",
       goal: "현장/운전/모니터 작업처럼 시선을 옮긴 뒤 선명하게 다시 잡는 감각을 확인합니다.",
       how: ["왼쪽 타깃 2초, 오른쪽 타깃 2초.", "글자보다 중심점을 먼저 봅니다.", "복시가 2초 이상 지속되면 저장 후 중지합니다."],
       caution: "어지럽거나 두통이 생기면 반복 횟수를 늘리지 말고 멈추세요.",
       evidence: "시기능 훈련은 한 가지 운동보다 증상, 융합, 조절 반응을 함께 관찰하는 방식이 더 안전합니다."
     },
+    "distance-reset": {
+      title: "실제 원거리 60초 리셋",
+      shortTitle: "원거리",
+      label: "Real far reset",
+      evidenceLevel: "실효성 핵심",
+      tier: "core",
+      minutes: 1,
+      intensity: "reset",
+      subtitle: "모니터 안의 먼 곳이 아니라, 화면에서 눈을 떼고 창밖이나 6m 이상 실제 물체를 봅니다.",
+      goal: "모니터가 만들 수 없는 실제 원거리 이완을 세션에 강제로 넣어 과훈련과 수렴 긴장을 줄입니다.",
+      how: ["전체화면 모드로 시작합니다.", "타이머가 켜지면 화면을 보지 말고 창밖/방 끝 물체를 봅니다.", "복시·두통이 줄어드는 시간을 기록합니다."],
+      caution: "원거리 리셋은 화면을 보는 훈련이 아닙니다. 운전 전이나 계단 이동 중에는 하지 마세요.",
+      evidence: "NHS convergence exercise guidance는 운동 후 눈 감기 또는 창밖 같은 실제 먼 곳 보기를 운동만큼 중요하게 안내합니다."
+    },
     "near-far": {
-      title: "근거리-원거리 전환 리허설",
+      title: "근거리-실제 원거리 전환",
       shortTitle: "근원거리",
-      label: "Near/far focus",
-      evidenceLevel: "수렴부전 동반 시 전문가 처방 영역",
+      label: "Near to real far",
+      evidenceLevel: "실제 원거리 포함",
+      tier: "core",
       minutes: 1,
       intensity: "medium",
-      subtitle: "화면의 가까운 큐와 먼 큐를 번갈아 보며, 선명함과 하나로 보이는 시간이 유지되는지 확인합니다.",
-      goal: "가까운 작업에서 복시·두통이 올라오는 패턴을 분리해서 기록합니다.",
-      how: ["가까운 큐를 3초 봅니다.", "먼 큐를 5초 봅니다.", "다시 가까운 큐로 돌아와 하나로 잡히는 시간을 메모합니다."],
-      caution: "화면은 실제 깊이를 만들지 못하므로 pencil push-up, dot card, prism/VR 처방의 대체물이 아닙니다.",
+      subtitle: "화면 중앙의 큰 근거리 타깃을 본 뒤, 안내가 뜨면 실제 창밖/6m 이상 물체로 시선을 옮깁니다.",
+      goal: "가까운 작업 뒤 눈이 바깥으로 풀리거나 복시가 올라오는지, 실제 원거리 전환에서 회복되는지 기록합니다.",
+      how: ["화면 중앙 타깃을 5초 봅니다.", "LOOK AWAY 신호가 뜨면 실제 먼 물체를 20초 봅니다.", "다시 화면으로 돌아왔을 때 하나로 잡히는지 기록합니다."],
+      caution: "모니터 안의 FAR 표시는 실제 원거리 초점이 아닙니다. 이 모드는 반드시 화면 밖 실제 먼 물체를 함께 사용합니다.",
       evidence: "AAPOS는 수렴부전에서 가까운 작업 증상이 있으면 전문 평가 후 convergence exercise가 처방될 수 있다고 설명합니다."
     },
     fusion: {
       title: "두 눈 융합 홀드",
       shortTitle: "융합",
       label: "Fusion awareness",
-      evidenceLevel: "제한적/개인화 필요",
+      evidenceLevel: "개념/처방 보조",
+      tier: "concept",
       minutes: 1,
       intensity: "medium",
-      subtitle: "두 링이 중앙에서 하나의 목표로 겹쳐지는 모습을 보며, 하나로 보이는 시간을 짧게 기록합니다.",
+      subtitle: "일반 모니터는 VR/프리즘처럼 양안 분리 자극을 만들 수 없으므로, 융합 개념과 중지 시점만 학습합니다.",
       goal: "fusion reserve라는 개념을 몸으로 이해하고, 억지로 버티기보다 깨지는 시점을 알아차립니다.",
       how: ["중앙의 선명한 링을 봅니다.", "둘로 갈라지면 바로 정지합니다.", "회복까지 걸린 시간을 메모합니다."],
       caution: "red/green filter, prism, anti-suppression, occlusion protocol은 처방 없이 따라 하지 않습니다.",
@@ -60,7 +78,8 @@
       title: "수렴 사다리 단계 훈련",
       shortTitle: "수렴",
       label: "Convergence ladder",
-      evidenceLevel: "전문가 확인 권장",
+      evidenceLevel: "처방 확인 권장",
+      tier: "prescribed",
       minutes: 1,
       intensity: "medium",
       subtitle: "가운데 목표가 단계적으로 가까워지는 것처럼 커졌다 작아지며, 복시 없이 따라갈 수 있는 안전 범위를 찾습니다.",
@@ -74,6 +93,7 @@
       shortTitle: "회복",
       label: "Break/recovery",
       evidenceLevel: "기록/자각 훈련",
+      tier: "core",
       minutes: 1,
       intensity: "low",
       subtitle: "일부러 무리하지 않고, 둘로 보일 때 멈추고 먼 곳 보기로 회복되는 시간을 기록합니다.",
@@ -87,6 +107,7 @@
       shortTitle: "휴식",
       label: "Relaxation",
       evidenceLevel: "안전 루틴",
+      tier: "core",
       minutes: 1,
       intensity: "reset",
       subtitle: "먼 곳 보기와 눈 감기로 과훈련을 피하고, 복시가 줄어드는지 조용히 기록합니다.",
@@ -108,6 +129,13 @@
 
   const publicSources = [
     {
+      title: "JAMA Network Open 2026 VR-based Vision Therapy RCT",
+      url: "https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2846022",
+      tag: "2026 RCT",
+      summary: "177명의 소아 IXT RCT에서 VR 기반 훈련이 12주 거리 control score 변화에 관찰군보다 유리했고, 순응도 75% 초과군에서 효과가 더 컸습니다.",
+      appUse: "일반 모니터가 VR/dichoptic 자극을 대체한다고 말하지 않고, 몰입도·큰 타깃·순응도·기록 구조만 반영했습니다."
+    },
+    {
       title: "AAPOS Convergence Insufficiency",
       url: "https://aapos.org/glossary/convergence-insufficiency",
       tag: "공식 환자교육",
@@ -122,7 +150,7 @@
       appUse: "앱 문구를 '회복 보장'이 아니라 '선택된 운동·기록·중지판단 보조'로 제한했습니다."
     },
     {
-      title: "Scientific Reports 2024 VR convergence game RCT",
+      title: "Scientific Reports 2025 VR convergence game RCT",
       url: "https://www.nature.com/articles/s41598-024-78088-w",
       tag: "게임형 훈련",
       summary: "수렴부전형 간헐외사시에서 VR 게임 기반 15분/일 훈련을 연구했고, 흥미와 순응도 문제를 개선하려는 접근입니다.",
@@ -134,6 +162,13 @@
       tag: "근거 한계",
       summary: "간헐외사시 치료 근거는 아직 제한적이고 연구가 더 필요하다고 안내합니다.",
       appUse: "운동 강도 자동 상승 대신 stop condition과 진료 우선 경계를 강화했습니다."
+    },
+    {
+      title: "WWL NHS Home Exercises to Improve Convergence Insufficiency",
+      url: "https://www.wwl.nhs.uk/media/.leaflets/5fdb426abc4b08.13496553.pdf",
+      tag: "원거리 이완",
+      summary: "운동 후 눈을 감거나 창밖처럼 실제 먼 곳을 보는 것이 운동 자체만큼 중요하며, 피곤하거나 아플 때 과훈련하지 말라고 안내합니다.",
+      appUse: "모니터 속 가짜 먼 곳 대신 실제 원거리 리셋 모드와 LOOK AWAY 신호를 추가했습니다."
     },
     {
       title: "University Hospitals Sussex NHS Orthoptic Exercises",
@@ -171,7 +206,8 @@
     note: "",
     logs: [],
     remoteStatus: "로컬 저장 대기",
-    lastCompletedMode: null
+    lastCompletedMode: null,
+    immersive: false
   };
 
   function escapeHtml(value = "") {
@@ -289,18 +325,19 @@
 
   function recommendation() {
     const risk = symptomRisk();
-    if (risk === "high") return ["이완과 증상 기록만", "복시/두통이 반복되면 안과·사시 전문가 상담", "오늘은 수렴·융합 모드 금지"];
-    if (state.symptomTiming === "near") return ["근원거리 전환 30-60초", "복시가 올라오면 회복 리셋", "NPC/fusional vergence 검사 질문 준비"];
-    if (state.symptomTiming === "distance") return ["대형 추적 또는 좌우 전환", "먼 곳 볼 때 조절 깨지는 상황 기록", "운전 전 피로 상태 체크"];
-    return ["대형 추적 60초", "융합 홀드는 짧게", "마지막 20초는 이완"];
+    if (risk === "high") return ["이완과 증상 기록만", "복시/두통 반복 시 전문 상담", "오늘은 수렴·융합 금지"];
+    if (state.symptomTiming === "near") return ["근거리-실제 원거리 전환", "복시가 올라오면 회복 리셋", "NPC/fusional vergence 질문 준비"];
+    if (state.symptomTiming === "distance") return ["전체화면 좌우 전환", "실제 원거리 60초 리셋", "운전 전 피로 상태 체크"];
+    return ["전체화면 추적 60초", "좌우 전환 60초", "실제 원거리 리셋 60초"];
   }
 
   function modeCards() {
     return Object.entries(exerciseModes).map(([id, mode]) => `
-      <button class="vision-mode-button ${state.mode === id ? "active" : ""}" type="button" data-vision-mode="${escapeHtml(id)}">
+      <button class="vision-mode-button ${state.mode === id ? "active" : ""}" type="button" data-tier="${escapeHtml(mode.tier)}" data-vision-mode="${escapeHtml(id)}">
         <span>${escapeHtml(mode.shortTitle)}</span>
         <strong>${escapeHtml(mode.title)}</strong>
         <small>${escapeHtml(mode.label)} · ${escapeHtml(mode.evidenceLevel)}</small>
+        <em>${mode.tier === "core" ? "실사용 우선" : mode.tier === "prescribed" ? "처방 확인" : "개념 보조"}</em>
       </button>
     `).join("");
   }
@@ -339,13 +376,32 @@
         </div>
       `;
     }
+    if (mode === "distance-reset") {
+      return `
+        <div class="vision-real-distance-field">
+          <div class="vision-look-away">
+            <span>LOOK AWAY</span>
+            <strong>화면을 보지 마세요</strong>
+            <em>창밖 · 복도 끝 · 6m 이상 실제 물체</em>
+          </div>
+          <div class="vision-distance-count">
+            <b>${Math.max(0, state.remaining)}</b>
+            <span>초 동안 실제 먼 곳 보기</span>
+          </div>
+          <p>모니터는 실제 먼 초점을 만들 수 없습니다. 이 모드의 핵심은 화면에서 눈을 떼는 것입니다.</p>
+        </div>
+      `;
+    }
     if (mode === "near-far") {
       return `
-        <div class="vision-near-far-lab" style="--vision-duration:${(7 / speed).toFixed(2)}s">
-          <div class="vision-depth-line"></div>
-          <div class="vision-cue-card near"><b>NEAR</b><span>가까운 목표 3초</span></div>
-          <div class="vision-cue-card far"><b>FAR</b><span>먼 목표 5초</span></div>
-          <small>하나로 잡히는 시간이 길어지면 즉시 저장 후 휴식</small>
+        <div class="vision-near-real-far-lab" style="--vision-duration:${(10 / speed).toFixed(2)}s">
+          <div class="vision-cue-card near"><b>NEAR</b><span>화면 중앙 5초</span></div>
+          <div class="vision-offscreen-arrow">
+            <strong>→</strong>
+            <span>LOOK OUTSIDE</span>
+            <em>화면 밖 실제 먼 물체 20초</em>
+          </div>
+          <small>FAR는 모니터 안에 없습니다. 신호가 뜨면 창밖이나 방 끝으로 시선을 옮기세요.</small>
         </div>
       `;
     }
@@ -448,6 +504,37 @@
     `;
   }
 
+  function immersiveMarkup(selected, runLabel, currentGuidance) {
+    if (!state.immersive) return "";
+    const isLookAway = state.mode === "distance-reset" || state.mode === "near-far" || state.mode === "rest";
+    return `
+      <section class="vision-immersive-overlay" aria-label="전체화면 시기능 훈련실">
+        <header class="vision-immersive-head">
+          <div>
+            <span>${escapeHtml(selected.shortTitle)} · ${escapeHtml(selected.evidenceLevel)}</span>
+            <strong>${escapeHtml(selected.title)}</strong>
+          </div>
+          <div class="vision-immersive-counter">
+            <strong>${Math.max(0, state.remaining)}</strong>
+            <span>seconds</span>
+          </div>
+          <div class="vision-immersive-actions">
+            <button class="secondary" type="button" data-vision-stop>불편감 · 이완</button>
+            <button class="primary" type="button" data-vision-run>${escapeHtml(runLabel)}</button>
+            <button class="secondary" type="button" data-vision-exit-immersive>나가기</button>
+          </div>
+        </header>
+        <div class="vision-immersive-stage vision-therapy-stage vision-stage ${escapeHtml(state.mode)} ${state.running ? "running" : ""} ${isLookAway ? "look-away-mode" : ""}">
+          ${stageMarkup()}
+        </div>
+        <footer class="vision-immersive-foot">
+          <span>${escapeHtml(currentGuidance.label)} · ${escapeHtml(selected.caution)}</span>
+          <b>${isLookAway ? "원거리 모드는 화면을 보는 시간이 아니라 실제 먼 곳을 보는 시간입니다." : "머리는 고정하고, 복시가 생기면 바로 멈춥니다."}</b>
+        </footer>
+      </section>
+    `;
+  }
+
   function render() {
     const root = document.querySelector("#vision-training-root");
     if (!root) return;
@@ -466,6 +553,7 @@
           : currentGuidance.action;
     root.innerHTML = `
       <section class="vision-recovery-shell vision-upgraded">
+        ${immersiveMarkup(selected, runLabel, currentGuidance)}
         <article class="vision-recovery-hero vision-therapy-hero">
           <div>
             <p class="eyebrow">vision function recovery lab · ${escapeHtml(SOURCE_VERSION)}</p>
@@ -516,7 +604,10 @@
             </div>
             <div class="vision-stage-footer">
               <span>${escapeHtml(selected.goal)}</span>
-              <button class="secondary" type="button" data-vision-stop>복시/불편감 발생 · 즉시 이완</button>
+              <div class="vision-stage-actions">
+                <button class="primary" type="button" data-vision-immersive>전체화면 훈련실</button>
+                <button class="secondary" type="button" data-vision-stop>복시/불편감 발생 · 즉시 이완</button>
+              </div>
             </div>
             <div class="vision-caution"><strong>안전 경계:</strong> ${escapeHtml(selected.caution)}</div>
             ${modeHowTo(selected)}
@@ -627,12 +718,18 @@
 
   function bind() {
     document.querySelector("[data-vision-run]")?.addEventListener("click", toggleRun);
-    document.querySelector("[data-vision-stop]")?.addEventListener("click", () => {
+    document.querySelectorAll("[data-vision-stop]").forEach(button => button.addEventListener("click", () => {
       state.running = false;
       state.mode = "rest";
       state.remoteStatus = "복시/불편감 신호로 이완 모드 전환";
       persist();
       render();
+    }));
+    document.querySelectorAll("[data-vision-immersive]").forEach(button => {
+      button.addEventListener("click", enterImmersive);
+    });
+    document.querySelectorAll("[data-vision-exit-immersive]").forEach(button => {
+      button.addEventListener("click", exitImmersive);
     });
     document.querySelectorAll("[data-vision-mode]").forEach(button => {
       button.addEventListener("click", () => {
@@ -675,6 +772,34 @@
     document.querySelector("[data-vision-copy]")?.addEventListener("click", copyPacket);
   }
 
+  async function enterImmersive() {
+    state.immersive = true;
+    state.remaining = Number(state.remaining || state.seconds);
+    persist();
+    render();
+    const overlay = document.querySelector(".vision-immersive-overlay");
+    try {
+      if (overlay?.requestFullscreen && !document.fullscreenElement) {
+        await overlay.requestFullscreen();
+      }
+    } catch {
+      state.remoteStatus = "브라우저 전체화면 권한 없이 집중 모드로 실행 중";
+      persist();
+    }
+  }
+
+  async function exitImmersive() {
+    state.immersive = false;
+    state.running = false;
+    persist();
+    render();
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+    } catch {
+      // Browser may already be out of fullscreen.
+    }
+  }
+
   function toggleRun() {
     const currentGuidance = guidance();
     if (currentGuidance.lockTraining && state.mode !== "rest") {
@@ -689,7 +814,28 @@
     state.running = !state.running;
     if (state.running && (!state.remaining || state.remaining <= 0)) state.remaining = Number(state.seconds);
     persist();
-    render();
+    if (state.immersive) {
+      updateRunDom();
+      updateTimer();
+    } else {
+      render();
+    }
+  }
+
+  function runButtonLabel() {
+    if (state.running) return `일시정지 · ${Math.max(0, state.remaining)}초`;
+    if (state.mode === "rest") return "이완 타이머 시작";
+    if (state.mode === "distance-reset") return "원거리 리셋 시작";
+    return "훈련 시작";
+  }
+
+  function updateRunDom() {
+    document.querySelectorAll(".vision-stage").forEach(stage => {
+      stage.classList.toggle("running", Boolean(state.running));
+    });
+    document.querySelectorAll(".vision-run-stack strong").forEach(counter => { counter.textContent = `${state.remaining}초`; });
+    document.querySelectorAll(".vision-immersive-counter strong, .vision-distance-count b").forEach(counter => { counter.textContent = `${state.remaining}`; });
+    document.querySelectorAll("[data-vision-run]").forEach(button => { button.textContent = runButtonLabel(); });
   }
 
   function updateTimer() {
@@ -700,10 +846,9 @@
     if (!state.running) return;
     timerId = setInterval(() => {
       state.remaining = Math.max(0, Number(state.remaining || state.seconds) - 1);
-      const counter = document.querySelector(".vision-run-stack strong");
-      const button = document.querySelector("[data-vision-run]");
-      if (counter) counter.textContent = `${state.remaining}초`;
-      if (button) button.textContent = `일시정지 · ${state.remaining}초`;
+      document.querySelectorAll(".vision-run-stack strong").forEach(counter => { counter.textContent = `${state.remaining}초`; });
+      document.querySelectorAll(".vision-immersive-counter strong, .vision-distance-count b").forEach(counter => { counter.textContent = `${state.remaining}`; });
+      document.querySelectorAll("[data-vision-run]").forEach(button => { button.textContent = `일시정지 · ${state.remaining}초`; });
       if (state.remaining <= 0) {
         clearInterval(timerId);
         timerId = null;
@@ -711,7 +856,8 @@
         state.lastCompletedMode = state.mode;
         state.remoteStatus = "세션 완료 · 기록 저장 권장";
         persist();
-        render();
+        if (state.immersive) updateRunDom();
+        else render();
       }
     }, 1000);
   }
@@ -804,6 +950,15 @@
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state.running) {
+      state.running = false;
+      persist();
+      render();
+    }
+  });
+
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && state.immersive) {
+      state.immersive = false;
       state.running = false;
       persist();
       render();
