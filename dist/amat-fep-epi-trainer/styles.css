@@ -22467,6 +22467,182 @@ body[data-current-view="cognitive"] .learning-hud {
     rgba(2, 12, 13, 0.94);
 }
 
+.ops-brain-card {
+  border-color: rgba(0, 255, 149, 0.32);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(0, 255, 149, 0.16), transparent 32%),
+    radial-gradient(circle at 92% 6%, rgba(118, 247, 255, 0.1), transparent 36%),
+    linear-gradient(135deg, rgba(0, 255, 149, 0.08), rgba(0, 0, 0, 0.08)),
+    rgba(1, 9, 10, 0.96);
+}
+
+.ops-brain-head,
+.ops-brain-primary,
+.ops-brain-flight article,
+.ops-brain-bottom {
+  display: grid;
+  gap: 12px;
+}
+
+.ops-brain-head {
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.22fr);
+  align-items: stretch;
+}
+
+.ops-brain-score,
+.ops-brain-primary article,
+.ops-brain-primary aside,
+.ops-brain-flight,
+.ops-brain-flight article,
+.ops-brain-bottom article {
+  border: 1px solid rgba(118, 247, 255, 0.14);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.26);
+  padding: 13px;
+}
+
+.ops-brain-score {
+  align-content: center;
+}
+
+.ops-brain-score span,
+.ops-brain-score small,
+.ops-brain-primary span,
+.ops-brain-primary small,
+.ops-brain-primary aside span,
+.ops-brain-flight span,
+.ops-brain-flight p,
+.ops-brain-bottom span,
+.ops-brain-status {
+  color: rgba(236, 255, 248, 0.66);
+}
+
+.ops-brain-score strong {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: clamp(2.4rem, 5vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.ops-brain-primary {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.36fr);
+}
+
+.ops-brain-primary article {
+  display: grid;
+  gap: 8px;
+  border-color: rgba(0, 255, 149, 0.24);
+  background: rgba(0, 255, 149, 0.07);
+}
+
+.ops-brain-primary strong {
+  color: #ecfff8;
+  font-size: clamp(1.35rem, 2.4vw, 2.2rem);
+  line-height: 1.15;
+}
+
+.ops-brain-primary aside {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.ops-brain-primary aside strong,
+.ops-brain-flight h3,
+.ops-brain-bottom strong {
+  color: #ecfff8;
+}
+
+.ops-brain-primary aside span,
+.ops-brain-primary aside em,
+.ops-brain-bottom span {
+  border: 1px solid rgba(118, 247, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 7px 9px;
+  font-style: normal;
+}
+
+.ops-brain-primary aside em {
+  border-color: rgba(255, 206, 112, 0.25);
+  color: #ffdf9a;
+  background: rgba(255, 206, 112, 0.08);
+}
+
+.ops-brain-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.ops-brain-status {
+  flex: 1 1 280px;
+}
+
+.ops-brain-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ops-brain-progress span {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(118, 247, 255, 0.13);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.24);
+  color: rgba(236, 255, 248, 0.62);
+  padding: 12px;
+}
+
+.ops-brain-progress b {
+  color: #00ff95;
+  font-family: Consolas, monospace;
+  font-size: 1.35rem;
+}
+
+.ops-brain-flight {
+  padding: 13px;
+}
+
+.ops-brain-flight article {
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.ops-brain-flight time {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(0, 255, 149, 0.22);
+  border-radius: 50%;
+  color: #00ff95;
+  background: rgba(0, 255, 149, 0.08);
+  font-family: Consolas, monospace;
+  font-weight: 900;
+}
+
+.ops-brain-flight strong {
+  display: block;
+  color: #ecfff8;
+  line-height: 1.25;
+}
+
+.ops-brain-flight p {
+  margin: 5px 0 0;
+}
+
+.ops-brain-bottom {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ops-brain-bottom article {
+  align-content: start;
+}
+
 .ops-mini-ring {
   display: grid;
   place-items: center;
@@ -23138,12 +23314,17 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-intel-boundary,
   .ops-reliability-strip,
   .ops-reliability-grid,
-  .ops-remote-analysis {
+  .ops-remote-analysis,
+  .ops-brain-head,
+  .ops-brain-primary,
+  .ops-brain-progress,
+  .ops-brain-bottom {
     grid-template-columns: 1fr;
   }
 
   .ops-task,
-  .ops-routine-timeline article {
+  .ops-routine-timeline article,
+  .ops-brain-flight article {
     grid-template-columns: 1fr;
   }
 
@@ -23151,7 +23332,8 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-actions,
   .ops-intel-actions,
   .ops-reliability-actions,
-  .ops-routine-actions {
+  .ops-routine-actions,
+  .ops-brain-actions {
     justify-content: stretch;
   }
 
@@ -23159,7 +23341,9 @@ body[data-current-view="cognitive"] .learning-hud {
   .ops-actions button,
   .ops-intel-actions button,
   .ops-reliability-actions button,
-  .ops-routine-actions button {
+  .ops-routine-actions button,
+  .ops-brain-actions button,
+  .ops-brain-flight button {
     flex: 1 1 140px;
   }
 

@@ -4,6 +4,7 @@
   const ROUTINE_KEY = "projectUniverseDailyRoutineLogV1";
   const INTEGRITY_LEDGER_KEY = "projectUniverseIntegrityLedgerV1";
   const LIFE_INTELLIGENCE_KEY = "projectUniverseLifeIntelligenceCheckpointsV1";
+  const BRAIN_LEDGER_KEY = "projectUniverseBookshelfBrainSnapshotsV1";
   const EXPORT_VERSION = "project-universe-operating-core-v7-data-os";
   const DATA_RELIABILITY_VERSION = "project-universe-data-reliability-v1";
   const LIFE_INTELLIGENCE_VERSION = "project-universe-life-intelligence-v1";
@@ -1500,6 +1501,164 @@
     return checkpoint;
   }
 
+  function actionDonePercent(items, idMapper) {
+    const done = doneState();
+    const total = items.length;
+    const complete = items.filter(item => done[idMapper(item)]).length;
+    return total ? Math.round(complete / total * 100) : 0;
+  }
+
+  function brainCandidateFromTask(task, index) {
+    const urgency = Math.max(10, Math.min(100, Number(task.score || 50) - index * 4));
+    const strategic = /Field CE|CE|Fellow|Materials|Ops|Think Tank/i.test(`${task.lane} ${task.title}`) ? 90 : 72;
+    const friction = Math.max(10, Math.min(100, 100 - Number(task.minutes || 15) * 2));
+    return {
+      id: `task-${index}-${task.lane}`,
+      source: "priority-task",
+      lane: task.lane,
+      title: task.title,
+      minutes: task.minutes || 15,
+      view: task.view || "operating-core",
+      why: task.why,
+      evidence: task.evidence,
+      urgency,
+      strategic,
+      friction,
+      score: Math.round(urgency * 0.48 + strategic * 0.34 + friction * 0.18),
+      ifBlocked: task.view === "field-log"
+        ? "서술이 막히면 symptom, evidence, next owner만 3줄로 남기세요."
+        : task.view === "materials-ms"
+          ? "수식이 막히면 공식보다 단위/그래프 해석만 먼저 끝내세요."
+          : task.view === "english-test"
+            ? "긴 문제 대신 즉시채점 1문항만 풀고 해설을 저장하세요."
+            : "완료보다 다음 evidence 1개를 남기는 것을 목표로 줄이세요."
+    };
+  }
+
+  function brainCandidateFromPattern(pattern, index) {
+    const severity = severityRank(pattern.severity);
+    return {
+      id: `pattern-${pattern.id}`,
+      source: "recurring-pattern",
+      lane: pattern.domain,
+      title: pattern.nextAction || pattern.title,
+      minutes: pattern.severity === "high" || pattern.severity === "critical" ? 18 : 12,
+      view: pattern.view || "operating-core",
+      why: pattern.title,
+      evidence: pattern.evidence,
+      urgency: Math.min(100, 58 + severity * 12 - index * 2),
+      strategic: /CE|Fellow|Data|Knowledge|Field/i.test(pattern.domain) ? 94 : 78,
+      friction: pattern.severity === "high" ? 68 : 80,
+      score: Math.min(99, 65 + severity * 8 - index),
+      ifBlocked: "케이스 전체를 끝내지 말고 원인 후보와 missing evidence 1개만 적으세요."
+    };
+  }
+
+  function buildBookshelfBrain(signals, tasks, routine, integrity, reliability, lifeIntelligence) {
+    const routineProgressNow = routineProgress(routine);
+    const taskProgressNow = actionDonePercent(tasks, taskId);
+    const candidates = [
+      ...tasks.map(brainCandidateFromTask),
+      ...lifeIntelligence.recurringPatterns.slice(0, 5).map(brainCandidateFromPattern)
+    ].sort((a, b) => b.score - a.score);
+    const primary = candidates[0] || {
+      id: "empty",
+      lane: "Core",
+      title: "오늘 30분 루틴 시작",
+      minutes: 30,
+      view: "operating-core",
+      why: "아직 충분한 신호가 없어 기본 루틴을 실행합니다.",
+      evidence: "signal warm-up",
+      urgency: 50,
+      strategic: 60,
+      friction: 80,
+      score: 60,
+      ifBlocked: "3분 브리핑만 읽고 완료 표시하세요."
+    };
+    const plan = [];
+    const addPlan = candidate => {
+      if (!candidate || plan.some(item => item.view === candidate.view && item.title === candidate.title)) return;
+      plan.push(candidate);
+    };
+    addPlan(primary);
+    candidates.forEach(addPlan);
+    if (!plan.some(item => item.view === "operating-core")) addPlan(brainCandidateFromTask(tasks.find(task => task.view === "operating-core") || tasks[0] || {}, 9));
+    const flightPlan = plan.slice(0, 4).map((item, index) => ({
+      ...item,
+      order: index + 1,
+      minutes: index === 0 ? Math.min(14, item.minutes || 14) : index === 1 ? Math.min(8, item.minutes || 8) : index === 2 ? 5 : 3
+    }));
+    const remaining = Math.max(0, 30 - flightPlan.reduce((sum, item) => sum + item.minutes, 0));
+    if (remaining) {
+      flightPlan.push({
+        id: "brain-close-loop",
+        order: flightPlan.length + 1,
+        lane: "Close",
+        title: "기록 1줄: 오늘 한 일과 다음 행동",
+        minutes: remaining,
+        view: "field-log",
+        why: "루틴은 기록으로 닫혀야 내일 두뇌가 더 정확해집니다.",
+        evidence: `${signals.fieldDaily?.logs || 0} field logs`,
+        score: 70,
+        ifBlocked: "한 문장만 남기세요: 오늘 확인한 사실 / 다음 확인 1개."
+      });
+    }
+    const blockers = [
+      integrity.pendingSync ? `${integrity.pendingSync} sync pending` : "",
+      signals.fieldDaily?.openNext ? `${signals.fieldDaily.openNext} field open-loop` : "",
+      signals.english?.due ? `${signals.english.due} English due` : "",
+      signals.materialsMs?.due ? `${signals.materialsMs.due} Materials MS due` : "",
+      signals.vision?.frequentDouble ? `${signals.vision.frequentDouble} vision caution` : ""
+    ].filter(Boolean);
+    const verdict = blockers.length
+      ? `오늘은 확장보다 병목 제거: ${blockers[0]}`
+      : lifeIntelligence.weeklyCompass.averageReadiness < 60
+        ? "오늘은 Fellow 기초 readiness를 올리는 날"
+        : "오늘은 루틴을 끝까지 닫는 날";
+    const brain = {
+      schemaVersion: "project-universe-bookshelf-brain-v1",
+      generatedAt: new Date().toISOString(),
+      verdict,
+      primary,
+      flightPlan,
+      backlog: candidates.slice(4, 10),
+      progress: {
+        routine: routineProgressNow.percent,
+        tasks: taskProgressNow,
+        integrity: integrity.score,
+        readiness: lifeIntelligence.weeklyCompass.averageReadiness
+      },
+      blockers,
+      whyThisFirst: [
+        `urgency ${primary.urgency}`,
+        `strategic ${primary.strategic}`,
+        `friction ${primary.friction}`,
+        primary.evidence
+      ],
+      nextIfSkipped: candidates.find(item => item.id !== primary.id) || null,
+      reliability: {
+        dataStatus: integrity.status,
+        backupStatus: reliability.backupPlan.status,
+        remoteStatus: state.remote.error ? "remote-unavailable" : state.remote.ops ? "remote-connected" : "local-first"
+      }
+    };
+    brain.integrityHash = hashString(JSON.stringify({
+      generatedAt: brain.generatedAt,
+      primary: brain.primary.title,
+      flightPlan: brain.flightPlan.map(item => [item.title, item.minutes, item.view]),
+      blockers: brain.blockers,
+      progress: brain.progress
+    }));
+    return brain;
+  }
+
+  function saveBrainSnapshot(brain) {
+    const ledger = safeJson(BRAIN_LEDGER_KEY, []);
+    const snapshot = { ...brain, savedAt: new Date().toISOString() };
+    saveJson(BRAIN_LEDGER_KEY, [snapshot, ...ledger].slice(0, 60));
+    return snapshot;
+  }
+
   function renderTask(task, done) {
     return `
       <article class="ops-task ${done ? "done" : ""}">
@@ -1514,6 +1673,86 @@
           <button class="primary" type="button" data-core-done="${escapeHtml(taskId(task))}">${done ? "완료됨" : "완료"}</button>
         </div>
       </article>
+    `;
+  }
+
+  function renderBrainDirector(brain) {
+    return `
+      <section class="ops-card ops-brain-card">
+        <div class="ops-brain-head">
+          <div>
+            <p class="eyebrow">bookshelf brain director</p>
+            <h2>${escapeHtml(brain.verdict)}</h2>
+            <p>책장 전체의 기록, 오답, 현장 로그, 시기능/인지, Materials MS, 저장 상태를 합쳐 오늘 첫 행동을 강하게 고릅니다.</p>
+          </div>
+          <div class="ops-brain-score">
+            <span>Brain confidence</span>
+            <strong>${brain.primary.score}</strong>
+            <small>${escapeHtml(brain.primary.source)}</small>
+          </div>
+        </div>
+        <div class="ops-brain-primary">
+          <article>
+            <span>지금 첫 번째</span>
+            <strong>${escapeHtml(brain.primary.title)}</strong>
+            <p>${escapeHtml(brain.primary.why)}</p>
+            <small>${escapeHtml(brain.primary.evidence)}</small>
+            <div class="ops-brain-actions">
+              <button class="primary" type="button" data-brain-open="${escapeHtml(brain.primary.view)}">지금 시작</button>
+              <button class="secondary" type="button" data-brain-snapshot>두뇌 스냅샷 저장</button>
+              <button class="secondary" type="button" data-brain-copy>Brain packet 복사</button>
+              <small class="ops-brain-status">완료보다 시작이 먼저입니다. 3분만 해도 Brain은 다음 신호를 얻습니다.</small>
+            </div>
+          </article>
+          <aside>
+            <strong>왜 이것부터인가</strong>
+            ${brain.whyThisFirst.map(item => `<span>${escapeHtml(item)}</span>`).join("")}
+            ${brain.nextIfSkipped ? `<em>못 하면 다음: ${escapeHtml(brain.nextIfSkipped.title)}</em>` : ""}
+          </aside>
+        </div>
+        <div class="ops-brain-progress">
+          <span><b>${brain.progress.routine}%</b>routine</span>
+          <span><b>${brain.progress.tasks}%</b>task done</span>
+          <span><b>${brain.progress.integrity}</b>integrity</span>
+          <span><b>${brain.progress.readiness}</b>readiness</span>
+        </div>
+        <div class="ops-brain-flight">
+          <div class="ops-card-head">
+            <div>
+              <p class="eyebrow">30-minute flight plan</p>
+              <h3>오늘은 이 순서만 따른다</h3>
+            </div>
+            <span class="ops-integrity-state ${brain.blockers.length ? "repair-first" : "stable"}">${brain.blockers.length ? `${brain.blockers.length} blockers` : "clear"}</span>
+          </div>
+          ${brain.flightPlan.map(item => `
+            <article>
+              <time>${item.order}</time>
+              <div>
+                <span>${escapeHtml(item.lane)} · ${item.minutes}분</span>
+                <strong>${escapeHtml(item.title)}</strong>
+                <p>${escapeHtml(item.ifBlocked)}</p>
+              </div>
+              <button class="secondary" type="button" data-core-view="${escapeHtml(item.view)}">열기</button>
+            </article>
+          `).join("")}
+        </div>
+        <div class="ops-brain-bottom">
+          <article>
+            <strong>현재 blocker</strong>
+            ${brain.blockers.length ? brain.blockers.map(item => `<span>${escapeHtml(item)}</span>`).join("") : "<span>큰 blocker 없음</span>"}
+          </article>
+          <article>
+            <strong>Backlog로 내린 것</strong>
+            ${brain.backlog.slice(0, 4).map(item => `<span>${escapeHtml(item.title)}</span>`).join("") || "<span>backlog 없음</span>"}
+          </article>
+          <article>
+            <strong>저장/AI 상태</strong>
+            <span>${escapeHtml(brain.reliability.dataStatus)}</span>
+            <span>${escapeHtml(brain.reliability.backupStatus)}</span>
+            <span>${escapeHtml(brain.reliability.remoteStatus)}</span>
+          </article>
+        </div>
+      </section>
     `;
   }
 
@@ -1974,6 +2213,7 @@
     const reliability = buildReliabilityPacket(signals, integrity);
     const lifeIntelligence = buildLifeIntelligence(signals, tasks, integrity, reliability);
     const packet = buildPacket(signals, tasks, score, routine, integrity, analysis, reliability, lifeIntelligence);
+    const brain = buildBookshelfBrain(signals, tasks, routine, integrity, reliability, lifeIntelligence);
     state.lastRenderAt = new Date().toISOString();
 
     root.innerHTML = `
@@ -1999,6 +2239,8 @@
           <article><span>Routine</span><strong>${score.routine}</strong><small>오늘 완료 루틴</small></article>
           <article><span>Safety</span><strong>${score.safety}</strong><small>시기능/위험 경계</small></article>
         </section>
+
+        ${renderBrainDirector(brain)}
 
         ${renderDailyRoutine(routine)}
 
@@ -2039,10 +2281,10 @@
       </section>
     `;
 
-    bind(packet, reliability, lifeIntelligence);
+    bind(packet, reliability, lifeIntelligence, brain);
   }
 
-  function bind(packet, reliability, lifeIntelligence) {
+  function bind(packet, reliability, lifeIntelligence, brain) {
     document.querySelectorAll("[data-core-view]").forEach(button => {
       button.addEventListener("click", () => {
         if (window.showView) window.showView(button.dataset.coreView);
@@ -2107,6 +2349,17 @@
       downloadJson(`project-universe-life-intelligence-${todayKey()}.json`, lifeIntelligence);
       setStatus(".ops-intel-status", "Life Intelligence JSON 생성 완료 · AI에게 보여줄 때 민감정보 경계를 다시 확인하세요.");
     });
+    document.querySelector("[data-brain-open]")?.addEventListener("click", () => {
+      const view = brain.primary.view;
+      if (window.showView && view) window.showView(view);
+    });
+    document.querySelector("[data-brain-snapshot]")?.addEventListener("click", () => {
+      const snapshot = saveBrainSnapshot(brain);
+      setStatus(".ops-brain-status", `두뇌 스냅샷 저장 완료 · ${snapshot.integrityHash}`);
+    });
+    document.querySelector("[data-brain-copy]")?.addEventListener("click", () => {
+      copyText(JSON.stringify(brain, null, 2), ".ops-brain-status");
+    });
   }
 
   async function init() {
@@ -2142,6 +2395,15 @@
       const integrity = dataIntegrity(signals);
       const reliability = buildReliabilityPacket(signals, integrity);
       return buildLifeIntelligence(signals, tasks, integrity, reliability);
+    },
+    buildBookshelfBrain: () => {
+      const signals = collectLocalSignals();
+      const tasks = priorityTasks(signals);
+      const integrity = dataIntegrity(signals);
+      const reliability = buildReliabilityPacket(signals, integrity);
+      const routine = makeDailyRoutine(signals, tasks, integrity);
+      const lifeIntelligence = buildLifeIntelligence(signals, tasks, integrity, reliability);
+      return buildBookshelfBrain(signals, tasks, routine, integrity, reliability, lifeIntelligence);
     },
     refreshRemote: loadRemote
   };
