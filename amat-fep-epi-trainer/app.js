@@ -4889,11 +4889,29 @@ function getHudPulseSignals() {
 
   const pages = readHudStorageJson("projectUniverseBookshelfPages", []);
   const fieldLogs = readHudStorageJson("projectUniverseFieldDailyLogsV1", []);
+  const fieldAnalyses = Array.isArray(fieldLogs) ? fieldLogs.map(log => log.fieldLog || log) : [];
+  const weakFieldNext = value => {
+    const text = `${value || ""}`.trim();
+    return !text || /지정하세요|필요|미지정|대기/.test(text);
+  };
+  const countFieldValues = (mapper) => {
+    const counts = {};
+    fieldAnalyses.forEach(row => {
+      const raw = mapper(row);
+      (Array.isArray(raw) ? raw : [raw]).filter(Boolean).forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+      });
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  };
   const today = new Date().toISOString().slice(0, 10);
   const fieldToday = Array.isArray(fieldLogs) ? fieldLogs.filter(log => String(log.date || "").slice(0, 10) === today).length : 0;
   const fieldOpenNext = Array.isArray(fieldLogs)
-    ? fieldLogs.filter(log => !`${log.nextStep || log.nextAction || ""}`.trim()).length
+    ? fieldLogs.filter(log => weakFieldNext(log.fieldLog?.nextAction || log.fieldLog?.nextStep || log.nextStep || log.nextAction)).length
     : 0;
+  const fieldHighRisk = fieldAnalyses.filter(row => ["high", "security-boundary-review"].includes(row.risk || row.riskLevel)).length;
+  const fieldMissedEvidence = countFieldValues(row => row.evidenceMissing || []).slice(0, 1)[0] || null;
+  const fieldTopLearningGap = countFieldValues(row => row.learningGaps || []).slice(0, 1)[0] || null;
   const openNextSteps = Array.isArray(pages)
     ? pages.filter(page => {
       const nextStep = `${page?.nextStep || page?.nextAction || ""}`.trim();
@@ -4914,6 +4932,9 @@ function getHudPulseSignals() {
     fieldLogs: Array.isArray(fieldLogs) ? fieldLogs.length : 0,
     fieldToday,
     fieldOpenNext,
+    fieldHighRisk,
+    fieldMissedEvidence,
+    fieldTopLearningGap,
     openNextSteps,
     pendingSync: getHudPendingCount(),
     storageKb: getHudStorageSizeKb()
@@ -4937,6 +4958,24 @@ function buildHudPulseAction(signals) {
       view: "operating-core",
       label: "저장 상태 보기",
       tone: "risk"
+    };
+  }
+  if (signals.fieldHighRisk > 0) {
+    return {
+      title: "현장 high-risk 기록 재검토",
+      reason: `${signals.fieldHighRisk}개 기록에 high-risk 또는 민감정보 경계 신호가 있습니다. stop condition과 owner를 먼저 닫아야 합니다.`,
+      view: "field-log",
+      label: "현장 패턴",
+      tone: "risk"
+    };
+  }
+  if (signals.fieldOpenNext > 0) {
+    return {
+      title: "현장 open-loop 닫기",
+      reason: `${signals.fieldOpenNext}개 현장 기록에 next action/owner/review time이 약합니다.`,
+      view: "field-log",
+      label: "로그 정리",
+      tone: "field"
     };
   }
   if (signals.fieldToday === 0) {
@@ -5031,6 +5070,7 @@ function renderLearningHud() {
           <span><b>${signals.ceWeakness}</b>CE 약점</span>
           <span><b>${signals.materialDue}</b>MS 복습</span>
           <span><b>${signals.fieldToday}</b>오늘 현장</span>
+          <span><b>${signals.fieldOpenNext}</b>현장 open</span>
         </div>
         <button class="hud-search" type="button" data-ux-search>검색</button>
         <div class="hud-progress">

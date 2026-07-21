@@ -138,6 +138,38 @@
     const visionLogs = Array.isArray(vision.logs) ? vision.logs : [];
     const latestVision = visionLogs[0] || null;
     const frequentDouble = visionLogs.filter(log => log.control === "frequent-double" || Number(log.diplopia || 0) >= 4).length;
+    const fieldRows = Array.isArray(fieldLogs) ? fieldLogs : [];
+    const fieldAnalyses = fieldRows.map(log => log.fieldLog || log);
+    const fieldCount = (mapper) => {
+      const counts = {};
+      fieldAnalyses.forEach(row => {
+        const raw = mapper(row);
+        (Array.isArray(raw) ? raw : [raw]).filter(Boolean).forEach(value => {
+          counts[value] = (counts[value] || 0) + 1;
+        });
+      });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
+    };
+    const fieldWeakNext = value => {
+      const text = `${value || ""}`.trim();
+      return !text || /지정하세요|필요|미지정|대기/.test(text);
+    };
+    const fieldSubsystems = fieldCount(row => row.subsystem || row.subsystems || []).slice(0, 6);
+    const fieldIssues = fieldCount(row => row.issueTypes || []).slice(0, 6);
+    const fieldMissedEvidence = fieldCount(row => row.evidenceMissing || []).slice(0, 8);
+    const fieldLearningGaps = fieldCount(row => row.learningGaps || []).slice(0, 8);
+    const fieldHighRisk = fieldRows.filter(log => {
+      const row = log.fieldLog || log;
+      return ["high", "security-boundary-review"].includes(row.risk || row.riskLevel || log.severity);
+    });
+    const fieldOpenNext = fieldRows.filter(log => {
+      const row = log.fieldLog || log;
+      return fieldWeakNext(row.nextAction || row.nextStep || log.nextStep || log.nextAction);
+    });
+    const fieldWeakReports = fieldRows.filter(log => {
+      const row = log.fieldLog || log;
+      return row.customerReportQuality?.score < 80 || !(row.customerReportDraft || row.customerReport || "").trim();
+    });
 
     const missingNextStep = pages.filter(page => {
       const text = `${page.nextStep || ""} ${page.nextAction || ""}`.trim();
@@ -147,6 +179,7 @@
     const pendingSync = [
       { lane: "Think Tank", count: thinkTankPending.length },
       { lane: "English", count: safeJson("amkEnglishPendingRecords", []).length },
+      { lane: "Field Daily", count: Array.isArray(fieldPending) ? fieldPending.length : 0 },
       { lane: "Bookshelf restore", count: bookshelfRestore.length }
     ];
 
@@ -187,10 +220,19 @@
         frequentDouble
       },
       fieldDaily: {
-        logs: Array.isArray(fieldLogs) ? fieldLogs.length : 0,
+        logs: fieldRows.length,
         pending: Array.isArray(fieldPending) ? fieldPending.length : 0,
-        latest: Array.isArray(fieldLogs) ? fieldLogs[0] || null : null,
-        openNext: Array.isArray(fieldLogs) ? fieldLogs.filter(log => !`${log.nextStep || log.nextAction || ""}`.trim()).length : 0
+        latest: fieldRows[0] || null,
+        openNext: fieldOpenNext.length,
+        highRisk: fieldHighRisk.length,
+        weakReports: fieldWeakReports.length,
+        topSubsystems: fieldSubsystems,
+        issueTypes: fieldIssues,
+        missedEvidence: fieldMissedEvidence,
+        learningGaps: fieldLearningGaps,
+        weeklySummary: fieldRows.length
+          ? `${fieldRows.length} field logs · top subsystem ${fieldSubsystems[0]?.label || "n/a"} · missed evidence ${fieldMissedEvidence[0]?.label || "n/a"}`
+          : "field log 데이터 대기"
       },
       thinkTankSummary: {
         entries: thinkTank.length,
@@ -605,6 +647,7 @@
     const englishWeak = signals.english.weaknesses[0]?.skill || "technical English";
     const ceWeak = signals.ce.weaknesses[0]?.skill || "evidence-first 판단";
     const msWeak = signals.materialsMs?.weakness?.[0]?.skill || "비율/단위환산";
+    const fieldGap = signals.fieldDaily?.learningGaps?.[0]?.label || signals.fieldDaily?.missedEvidence?.[0]?.label || "현장 evidence-first 기록";
     const needsFieldLog = !signals.fieldDaily?.latest || String(signals.fieldDaily.latest?.date || "").slice(0, 10) !== todayKey();
     return [
       {
@@ -620,10 +663,10 @@
         id: "ce-case",
         minutes: 8,
         lane: "CE",
-        view: "diagnostics",
-        title: `${ceWeak} 케이스 판단 1개`,
-        reason: "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
-        evidence: `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
+        view: signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
+        title: signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
+        reason: signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
+        evidence: signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
       },
       {
         id: "epi-visual",
@@ -657,9 +700,9 @@
         minutes: 2,
         lane: "기록",
         view: needsFieldLog ? "field-log" : "bookshelf",
-        title: needsFieldLog ? "오늘 현장 데일리 로그 남기기" : integrity.nextStepMissing ? "nextStep 없는 기록 1개 닫기" : "AI packet checkpoint 생성",
+        title: needsFieldLog ? "오늘 현장 데일리 로그 남기기" : signals.fieldDaily?.missedEvidence?.length ? `${fieldGap} 보강` : integrity.nextStepMissing ? "nextStep 없는 기록 1개 닫기" : "AI packet checkpoint 생성",
         reason: needsFieldLog ? "현장 서술은 장기 CE 빅데이터의 원천입니다." : "공부가 기억으로 남으려면 action/result/nextStep 또는 checkpoint가 필요합니다.",
-        evidence: `${signals.fieldDaily?.logs || 0} field logs · ${integrity.nextStepMissing} missing nextStep · ${integrity.pendingSync} sync pending`
+        evidence: `${signals.fieldDaily?.logs || 0} field logs · ${signals.fieldDaily?.openNext || 0} field open · ${integrity.nextStepMissing} missing nextStep · ${integrity.pendingSync} sync pending`
       }
     ];
   }
@@ -683,6 +726,8 @@
     const patterns = [
       integrity.nextStepMissing ? "open-loop 기록이 남아 있어 다음 행동이 흐려질 수 있음" : "기록의 다음 행동 연결이 안정적",
       integrity.evidenceMissing ? "근거 없는 기록이 있어 AI 분석 신뢰도가 낮아질 수 있음" : "evidence 기반 기록 비율 양호",
+      signals.fieldDaily?.openNext ? `현장 로그 open-loop ${signals.fieldDaily.openNext}개: next action/owner/review time 보강 필요` : "현장 로그 next action 연결 양호",
+      signals.fieldDaily?.missedEvidence?.[0] ? `반복 누락 evidence: ${signals.fieldDaily.missedEvidence[0].label}` : "현장 evidence 누락 패턴은 아직 낮음",
       signals.english.due ? "영어 복습 대기열이 오늘 루틴 우선순위에 들어감" : "영어 복습 대기열은 낮음",
       signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요",
       signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음"
@@ -1017,6 +1062,23 @@
       evidence: `${signals.pages.length} pages · ${signals.thinkTankSummary.entries} records · ${signals.storage.totalMb}MB local cache`
     });
 
+    if (signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext || signals.fieldDaily?.missedEvidence?.length) {
+      const fieldFocus = signals.fieldDaily.highRisk
+        ? `high-risk 현장 기록 ${signals.fieldDaily.highRisk}개 재검토`
+        : signals.fieldDaily.openNext
+          ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기`
+          : `${signals.fieldDaily.missedEvidence[0].label} evidence 보강`;
+      tasks.push({
+        lane: "Field CE",
+        title: fieldFocus,
+        minutes: 14,
+        score: 94,
+        view: "field-log",
+        why: "실제 현장 로그의 risk, evidence, owner, stop condition을 닫는 것이 가장 직접적인 CE 성장 루프입니다.",
+        evidence: signals.fieldDaily.weeklySummary
+      });
+    }
+
     if (ceWeak) {
       tasks.push({
         lane: "CE",
@@ -1161,6 +1223,15 @@
         ce: signals.ce.weaknesses,
         english: signals.english.weaknesses,
         materialsMs: signals.materialsMs?.weakness || [],
+        fieldDaily: {
+          highRisk: signals.fieldDaily?.highRisk || 0,
+          openNext: signals.fieldDaily?.openNext || 0,
+          weakReports: signals.fieldDaily?.weakReports || 0,
+          topSubsystems: signals.fieldDaily?.topSubsystems || [],
+          issueTypes: signals.fieldDaily?.issueTypes || [],
+          missedEvidence: signals.fieldDaily?.missedEvidence || [],
+          learningGaps: signals.fieldDaily?.learningGaps || []
+        },
         vision: {
           sessions: signals.vision.sessions,
           highDiplopiaSignals: signals.vision.frequentDouble
@@ -1172,6 +1243,15 @@
         pendingSync: signals.pendingSync,
         localStorageMb: signals.storage.totalMb,
         integrity,
+        fieldDaily: {
+          logs: signals.fieldDaily?.logs || 0,
+          pending: signals.fieldDaily?.pending || 0,
+          openNext: signals.fieldDaily?.openNext || 0,
+          highRisk: signals.fieldDaily?.highRisk || 0,
+          weeklySummary: signals.fieldDaily?.weeklySummary || "field log 데이터 대기",
+          missedEvidence: signals.fieldDaily?.missedEvidence || [],
+          learningGaps: signals.fieldDaily?.learningGaps || []
+        },
         reliability: {
           integrityHash: reliability.integrityHash,
           schemaAudit: reliability.schemaAudit,
@@ -1772,6 +1852,7 @@
   function renderWeakness(signals) {
     const ce = signals.ce.weaknesses.slice(0, 4);
     const english = signals.english.weaknesses.slice(0, 4);
+    const field = signals.fieldDaily?.learningGaps?.slice(0, 4) || [];
     const empty = `<span class="ops-chip calm">데이터 대기</span>`;
     return `
       <section class="ops-card">
@@ -1785,6 +1866,10 @@
           <article>
             <strong>영어</strong>
             <div>${english.length ? english.map(item => `<span class="ops-chip">${escapeHtml(item.skill)} ${item.wrong}</span>`).join("") : empty}</div>
+          </article>
+          <article>
+            <strong>현장 로그</strong>
+            <div>${field.length ? field.map(item => `<span class="ops-chip">${escapeHtml(item.label)} ${item.count}</span>`).join("") : empty}</div>
           </article>
           <article>
             <strong>시기능</strong>

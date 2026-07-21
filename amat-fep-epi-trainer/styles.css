@@ -24449,12 +24449,15 @@ body[data-current-view="cognitive"] .learning-hud {
 
 .field-log-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
   gap: 8px;
 }
 
 .field-log-metrics span,
-.field-pattern-grid span {
+.field-pattern-grid span,
+.field-sync-board span,
+.field-list span,
+.field-recommendation-stack span {
   display: grid;
   gap: 4px;
   min-height: 62px;
@@ -24470,7 +24473,8 @@ body[data-current-view="cognitive"] .learning-hud {
 }
 
 .field-log-metrics b,
-.field-pattern-grid b {
+.field-pattern-grid b,
+.field-sync-board b {
   color: #effff7;
   font-size: 20px;
   line-height: 1;
@@ -24611,6 +24615,16 @@ body[data-current-view="cognitive"] .learning-hud {
   color: #ffb5b9;
 }
 
+.field-duplicate-alert {
+  display: grid;
+  gap: 6px;
+  padding: 11px;
+  border: 1px solid rgba(255, 208, 138, 0.42);
+  border-radius: 8px;
+  color: #ffe4b2;
+  background: rgba(80, 42, 8, 0.22);
+}
+
 .field-structured-output {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -24619,7 +24633,11 @@ body[data-current-view="cognitive"] .learning-hud {
 
 .field-structured-output section,
 .field-customer-report,
-.field-codex-packet {
+.field-codex-packet,
+.field-learning-loop,
+.field-packet-card,
+.field-pattern-summary,
+.field-pattern-columns section {
   display: grid;
   gap: 8px;
   padding: 11px;
@@ -24665,6 +24683,82 @@ body[data-current-view="cognitive"] .learning-hud {
   min-height: 240px;
   padding: 10px;
   resize: vertical;
+}
+
+.field-output-panel #field-log-analysis {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.field-learning-loop h3,
+.field-pattern-columns h3,
+.field-packet-card strong {
+  color: #effff7;
+  font-size: 14px;
+}
+
+.field-list,
+.field-recommendation-stack,
+.field-chapter-links,
+.field-packet-grid,
+.field-sync-board {
+  display: grid;
+  gap: 8px;
+}
+
+.field-list {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.field-list span,
+.field-recommendation-stack span {
+  min-height: auto;
+  place-items: start;
+  text-align: left;
+  color: #dffff2;
+}
+
+.field-chapter-links {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.field-packet-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.field-packet-card {
+  min-height: 132px;
+  align-content: start;
+}
+
+.field-packet-card p {
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 12px;
+}
+
+.field-pattern-summary {
+  color: #dffff2;
+}
+
+.field-pattern-summary p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.field-pattern-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-sync-board {
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+
+.field-sync-board span {
+  min-height: 58px;
 }
 
 .field-log-bottom-grid {
@@ -24758,7 +24852,12 @@ body[data-current-view="cognitive"] .learning-hud {
   .field-log-grid,
   .field-log-boundary,
   .field-analysis-grid,
-  .field-structured-output {
+  .field-structured-output,
+  .field-pattern-columns,
+  .field-packet-grid,
+  .field-sync-board,
+  .field-list,
+  .field-chapter-links {
     grid-template-columns: 1fr;
   }
 
