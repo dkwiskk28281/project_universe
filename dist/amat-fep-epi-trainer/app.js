@@ -4297,6 +4297,7 @@ const uxPaletteState = { query: "", results: [] };
 const VIEW_LABELS = {
   bookshelf: "책장",
   "operating-core": "운영코어",
+  "field-log": "현장 데일리",
   cognitive: "인지능력",
   dashboard: "EPI 홈",
   curriculum: "커리큘럼",
@@ -4326,7 +4327,7 @@ const VIEW_LABELS = {
 };
 
 VIEW_LABELS.fellow = "Fellow 로드맵";
-const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "operating-core", "cognitive", "vision-training"].includes(id));
+const BOOK_VIEW_IDS = Object.keys(VIEW_LABELS).filter(id => !["bookshelf", "operating-core", "field-log", "cognitive", "vision-training"].includes(id));
 
 const BOOK_VIEW_SEQUENCE = [
   "dashboard",
@@ -4360,6 +4361,7 @@ if (!BOOK_VIEW_SEQUENCE.includes("fellow")) {
 
 const VIEW_CHAPTERS = {
   "operating-core": "인생 정보실",
+  "field-log": "현장 기록",
   cognitive: "인지 건강",
   dashboard: "방향 잡기",
   curriculum: "성장 커리큘럼",
@@ -4392,12 +4394,12 @@ VIEW_CHAPTERS.fellow = "Fellow 성장";
 
 const uxHotViews = [
   ["operating-core", "운영"],
+  ["field-log", "현장"],
   ["cognitive", "인지"],
   ["vision-training", "시기능"],
   ["runbook", "런북"],
   ["process-visual", "공정"],
   ["cluster", "구성"],
-  ["electrical", "DVM"],
   ["english-test", "영어"]
 ];
 const operatingRouteSteps = [
@@ -4634,6 +4636,8 @@ function getUxSearchItems() {
       ? "책장으로 이동"
       : view === "operating-core"
         ? "오늘의 운영 브리핑, 데이터 건강도, AI packet 센터로 이동"
+      : view === "field-log"
+        ? "현장 데일리 로그, 자동 구조화, Codex handoff packet으로 이동"
       : view === "cognitive"
         ? "인지능력향상 프로젝트의 오늘 훈련으로 이동"
         : view === "vision-training"
@@ -4832,6 +4836,7 @@ function getHudPendingCount() {
     "epiThinkTankPendingEntries",
     "amkEnglishPendingRecords",
     "projectUniverseBookshelfPendingPages",
+    "projectUniverseFieldDailyPendingV1",
     "projectUniversePendingWritesV1"
   ];
   return pendingKeys.reduce((total, key) => total + countHudItems(readHudStorageJson(key, [])), 0);
@@ -4883,6 +4888,12 @@ function getHudPulseSignals() {
   const diplopiaLevel = Number(getHudObjectValue(visionState, ["lastDiplopiaLevel", "diplopiaLevel", "maxDiplopiaLevel"]) || 0);
 
   const pages = readHudStorageJson("projectUniverseBookshelfPages", []);
+  const fieldLogs = readHudStorageJson("projectUniverseFieldDailyLogsV1", []);
+  const today = new Date().toISOString().slice(0, 10);
+  const fieldToday = Array.isArray(fieldLogs) ? fieldLogs.filter(log => String(log.date || "").slice(0, 10) === today).length : 0;
+  const fieldOpenNext = Array.isArray(fieldLogs)
+    ? fieldLogs.filter(log => !`${log.nextStep || log.nextAction || ""}`.trim()).length
+    : 0;
   const openNextSteps = Array.isArray(pages)
     ? pages.filter(page => {
       const nextStep = `${page?.nextStep || page?.nextAction || ""}`.trim();
@@ -4900,6 +4911,9 @@ function getHudPulseSignals() {
     cognitiveSessions,
     visionSessions,
     diplopiaLevel,
+    fieldLogs: Array.isArray(fieldLogs) ? fieldLogs.length : 0,
+    fieldToday,
+    fieldOpenNext,
     openNextSteps,
     pendingSync: getHudPendingCount(),
     storageKb: getHudStorageSizeKb()
@@ -4923,6 +4937,15 @@ function buildHudPulseAction(signals) {
       view: "operating-core",
       label: "저장 상태 보기",
       tone: "risk"
+    };
+  }
+  if (signals.fieldToday === 0) {
+    return {
+      title: "오늘 현장 로그 남기기",
+      reason: "데일리 현장 서술은 나중에 CE 판단 빅데이터의 원천이 됩니다.",
+      view: "field-log",
+      label: "오늘 기록",
+      tone: "field"
     };
   }
   if (signals.englishDue > 0 || signals.englishWrong > 2) {
@@ -4972,7 +4995,7 @@ function buildHudPulseAction(signals) {
 
 function getHudReliabilityScore(signals) {
   const penalty = Math.min(45, signals.pendingSync * 12)
-    + Math.min(20, signals.openNextSteps * 4)
+    + Math.min(20, (signals.openNextSteps + signals.fieldOpenNext) * 4)
     + (signals.storageKb > 4500 ? 10 : 0);
   return Math.max(45, 100 - penalty);
 }
@@ -5007,7 +5030,7 @@ function renderLearningHud() {
           <span><b>${signals.englishDue}</b>영어 due</span>
           <span><b>${signals.ceWeakness}</b>CE 약점</span>
           <span><b>${signals.materialDue}</b>MS 복습</span>
-          <span><b>${signals.pendingSync}</b>저장 대기</span>
+          <span><b>${signals.fieldToday}</b>오늘 현장</span>
         </div>
         <button class="hud-search" type="button" data-ux-search>검색</button>
         <div class="hud-progress">

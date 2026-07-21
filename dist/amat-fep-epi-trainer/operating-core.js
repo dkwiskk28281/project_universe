@@ -95,6 +95,8 @@
     const englishQueue = safeJson("amkEnglishSpacedReviewQueue", []);
     const cognitive = safeJson("projectUniverseCognitiveResilienceV1", {});
     const vision = safeJson("projectUniverseVisionTrainingState", {});
+    const fieldLogs = safeJson("projectUniverseFieldDailyLogsV1", []);
+    const fieldPending = safeJson("projectUniverseFieldDailyPendingV1", []);
     const materialsMs = safeJson("materialsMsAcademyStateV1", {});
     const lifeTasks = safeJson("projectUniverseLifeOsTaskLogV2", {});
     const bookshelfRestore = safeJson("projectUniverseBookshelfRestoreEvents", []);
@@ -183,6 +185,12 @@
         sessions: visionLogs.length,
         latest: latestVision,
         frequentDouble
+      },
+      fieldDaily: {
+        logs: Array.isArray(fieldLogs) ? fieldLogs.length : 0,
+        pending: Array.isArray(fieldPending) ? fieldPending.length : 0,
+        latest: Array.isArray(fieldLogs) ? fieldLogs[0] || null : null,
+        openNext: Array.isArray(fieldLogs) ? fieldLogs.filter(log => !`${log.nextStep || log.nextAction || ""}`.trim()).length : 0
       },
       thinkTankSummary: {
         entries: thinkTank.length,
@@ -597,6 +605,7 @@
     const englishWeak = signals.english.weaknesses[0]?.skill || "technical English";
     const ceWeak = signals.ce.weaknesses[0]?.skill || "evidence-first 판단";
     const msWeak = signals.materialsMs?.weakness?.[0]?.skill || "비율/단위환산";
+    const needsFieldLog = !signals.fieldDaily?.latest || String(signals.fieldDaily.latest?.date || "").slice(0, 10) !== todayKey();
     return [
       {
         id: "warmup",
@@ -647,10 +656,10 @@
         id: "record",
         minutes: 2,
         lane: "기록",
-        view: "bookshelf",
-        title: integrity.nextStepMissing ? "nextStep 없는 기록 1개 닫기" : "AI packet checkpoint 생성",
-        reason: "공부가 기억으로 남으려면 action/result/nextStep 또는 checkpoint가 필요합니다.",
-        evidence: `${integrity.nextStepMissing} missing nextStep · ${integrity.pendingSync} sync pending`
+        view: needsFieldLog ? "field-log" : "bookshelf",
+        title: needsFieldLog ? "오늘 현장 데일리 로그 남기기" : integrity.nextStepMissing ? "nextStep 없는 기록 1개 닫기" : "AI packet checkpoint 생성",
+        reason: needsFieldLog ? "현장 서술은 장기 CE 빅데이터의 원천입니다." : "공부가 기억으로 남으려면 action/result/nextStep 또는 checkpoint가 필요합니다.",
+        evidence: `${signals.fieldDaily?.logs || 0} field logs · ${integrity.nextStepMissing} missing nextStep · ${integrity.pendingSync} sync pending`
       }
     ];
   }

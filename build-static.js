@@ -20,6 +20,7 @@ const webFiles = [
   "cognitive.js",
   "bookshelf.js",
   "materials-ms.js",
+  "field-log.js",
   "vision-training.js",
   "operating-core.js",
   "think-tank.js"

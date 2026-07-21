@@ -23,6 +23,7 @@
   const BOOK_VIEW_LABELS = {
     cognitive: "인지능력향상 프로젝트",
     "vision-training": "시기능 회복훈련",
+    "field-log": "현장 데일리 로그",
     dashboard: "EPI 홈",
     curriculum: "성장 커리큘럼",
     roadmap: "학습 로드맵",
@@ -124,6 +125,14 @@
       ["진료 질문", "IXT subtype, NPC, fusional vergence amplitude, stereoacuity 관련 질문"],
       ["주간 패턴", "복시 빈도, 회복 시간, 과훈련 신호, 쉬었을 때 회복 여부"],
       ["AI 공개 요약", "검사 원문 없이 비식별 패턴과 다음 질문만 AI에게 보여줄 수 있게 정리"]
+    ],
+    "field-daily-log": [
+      ["오늘 현장 서술", "오늘 본 장비, 설치 단계, 이슈, 확인 근거를 자유롭게 적고 자동 구조화"],
+      ["이슈와 증거", "증상, 위험도, 원인 후보, 확인 evidence, stop condition을 한 묶음으로 기록"],
+      ["설치 진행 기록", "move-in, hook-up, pumpdown, dry run, baseline, qualification, handover 상태"],
+      ["고객 보고 초안", "확인된 사실, 영향 범위, 다음 행동, owner, ETA를 과장 없이 정리"],
+      ["학습 전환", "오늘 막힌 용어와 이론 결손을 Materials MS/FEP 책 복습 항목으로 변환"],
+      ["Codex Handoff", "민감정보를 제외한 요약을 Codex에게 넘겨 다음 개선/분석 작업으로 연결"]
     ],
     "family-health": [
       ["증상 타임라인", "증상, 날짜, 지속시간, 악화/완화 요인을 기록하는 내부 페이지"],
@@ -296,6 +305,7 @@
   const LIFE_ACTION_RECIPES = {
     "cognitive-resilience": "오늘 10분 인지 루틴을 1세션 수행하고, 약한 영역 1개를 기록하세요.",
     "vision-function-recovery": "오늘 피로·복시·조절 상태를 60초 이하로 짧게 기록하고, 반복 악화 신호가 있는지 확인하세요.",
+    "field-daily-log": "오늘 현장에서 본 장비, 설치 단계, 이슈, evidence, next action을 5분 안에 서술형으로 남기세요.",
     "career-fep-epi": "FEP/EPI 책에서 한 챕터를 열고 evidence-stop-report 문장 1개를 저장하세요.",
     "life-os": "오늘 에너지와 다음 24시간의 가장 작은 행동 1개를 기록하세요.",
     "family-health": "증상, 질문, 다음 예약/상담 행동을 원문 없이 요약하세요.",
@@ -394,6 +404,22 @@
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
       linkedViews: ["curriculum", "dashboard", "roadmap", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
+    },
+    {
+      id: "field-daily-log",
+      code: "현장",
+      shelf: "커리어",
+      title: "현장 데일리 로그",
+      subtitle: "서술형 현장 기록을 CE 지식탱크와 Codex handoff packet으로 변환",
+      privacyLevel: "work-learning",
+      purpose: "매일 현장에서 본 장비, 설치 단계, 이슈, evidence, 조치, 결과, 다음 행동을 구조화해 장기 CE 빅데이터로 만든다.",
+      allowed: ["비식별 현장 요약", "장비 family와 module 수준의 설명", "증상과 확인 evidence", "owner/next action", "학습해야 할 용어와 이론", "고객 보고 문장 초안"],
+      neverStore: ["고객 비공개 도면", "recipe", "valve sequence", "detector setpoint", "interlock bypass", "site-specific acceptance limit", "장비 serial 전체", "출입/계정/보안 정보", "내부 manual 원문"],
+      pageTypes: ["오늘 현장 서술", "설치 진행 기록", "이슈와 증거", "고객 보고 초안", "학습 전환", "Codex Handoff"],
+      aiUse: ["서술형 기록을 symptom/evidence/action/result/prevention으로 정리", "반복되는 현장 약점 분석", "다음 7일 학습 루틴 생성", "Codex에게 전달할 개발/분석 프롬프트 생성"],
+      starterQuestions: ["오늘 어떤 장비와 module을 봤는가?", "문제가 있었다면 확인된 사실과 추정은 어떻게 다른가?", "내일 다시 확인할 evidence는 무엇인가?"],
+      reviewCadence: "매일 근무 후 5-10분, 주 1회 패턴 점검",
+      linkedViews: ["field-log", "operating-core", "thinktank", "diagnostics", "runbook"]
     },
     {
       id: "life-os",

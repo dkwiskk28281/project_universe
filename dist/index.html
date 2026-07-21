@@ -64,6 +64,7 @@
     <nav class="top-nav global-nav" aria-label="전체 책장 내비게이션">
       <button class="nav-btn active" data-view="bookshelf">책장</button>
       <button class="nav-btn global-only" data-view="operating-core">운영코어</button>
+      <button class="nav-btn global-only" data-view="field-log">현장 데일리</button>
       <button class="nav-btn global-only" data-view="cognitive">인지능력향상 프로젝트</button>
       <button class="nav-btn global-only" data-view="vision-training">시기능 회복훈련</button>
       <button class="nav-btn global-only" id="open-active-book" type="button">현재 책</button>
@@ -128,6 +129,18 @@
         <p>이 화면은 책장, 영어, CE 케이스, 인지훈련, 시기능, Think Tank, 배포 상태를 읽어 오늘의 우선순위와 AI용 요약 packet을 생성합니다. 민감 원문, 고객자료, recipe, setpoint, bypass 정보는 포함하지 않습니다.</p>
       </article>
       <div id="operating-core-root"></div>
+    </section>
+
+    <section id="field-log" class="view no-term">
+      <div class="page-title">
+        <p>Daily Field Intelligence</p>
+        <h1>현장 데일리 로그</h1>
+      </div>
+      <article class="source-note">
+        <h2>서술형 기록을 지식탱크 데이터로 바꾸는 책</h2>
+        <p>오늘 장비, 설치 단계, 이슈, 확인 근거, 조치, 결과, 다음 행동을 평문으로 적으면 자동으로 구조화합니다. 고객 비공개자료, recipe, setpoint, valve sequence, bypass, 계정/보안 정보는 저장하지 않습니다.</p>
+      </article>
+      <div id="field-log-root"></div>
     </section>
 
     <section id="dashboard" class="view">
@@ -798,6 +811,7 @@
   <script src="cognitive.js?v=20260713-fepbigbang"></script>
   <script src="bookshelf.js?v=20260718-v19vision"></script>
   <script src="materials-ms.js?v=20260719-v23msengine"></script>
+  <script src="field-log.js?v=20260721-v27fieldlog"></script>
   <script src="vision-training.js?v=20260720-v25visionfullscreen"></script>
   <script src="operating-core.js?v=20260719-v22intel"></script>
   <script src="think-tank.js?v=20260720-v26ospulse"></script>
