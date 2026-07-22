@@ -25327,3 +25327,505 @@ body[data-current-view="cognitive"] .learning-hud {
     padding: 12px;
   }
 }
+
+/* Fab acclimation: technician to CE install field behavior OS */
+.fab-acclimation-console {
+  display: grid;
+  gap: 18px;
+  color: #e9fff7;
+}
+
+.fab-acclimation-hero,
+.fab-panel,
+.fab-step-card {
+  border: 1px solid rgba(50, 255, 173, 0.18);
+  border-radius: 10px;
+  background:
+    linear-gradient(140deg, rgba(4, 24, 19, 0.94), rgba(2, 8, 12, 0.96)),
+    rgba(1, 8, 8, 0.94);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.32);
+}
+
+.fab-acclimation-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.28fr);
+  gap: 18px;
+  align-items: stretch;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.fab-acclimation-hero h2,
+.fab-panel h2,
+.fab-step-card h2 {
+  margin: 4px 0 8px;
+  color: #f4fffb;
+  letter-spacing: 0;
+}
+
+.fab-acclimation-hero p,
+.fab-panel p,
+.fab-step-card p,
+.fab-panel li,
+.fab-step-card li {
+  color: #c5e8dd;
+  line-height: 1.62;
+}
+
+.fab-hero-actions,
+.fab-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fab-hero-actions {
+  justify-content: flex-start;
+  margin-top: 14px;
+}
+
+.fab-acclimation-score {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  padding: 16px;
+  border: 1px solid rgba(167, 247, 255, 0.18);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.fab-acclimation-score span {
+  color: #84cdbb;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.fab-acclimation-score strong {
+  color: #32ffad;
+  font-size: clamp(28px, 5vw, 46px);
+  line-height: 0.95;
+}
+
+.fab-acclimation-score small,
+.fab-chip {
+  color: #a7f7ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fab-chip {
+  padding: 6px 9px;
+  border: 1px solid rgba(167, 247, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(167, 247, 255, 0.08);
+}
+
+.fab-map-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.28fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.fab-step-rail {
+  display: grid;
+  gap: 8px;
+  max-height: 720px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.fab-step-rail button {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  padding: 11px;
+  border: 1px solid rgba(50, 255, 173, 0.14);
+  border-radius: 8px;
+  color: #dffff2;
+  background: rgba(3, 18, 17, 0.78);
+  cursor: pointer;
+}
+
+.fab-step-rail button.active,
+.fab-step-rail button:hover {
+  border-color: rgba(50, 255, 173, 0.52);
+  background: rgba(50, 255, 173, 0.12);
+}
+
+.fab-step-rail span {
+  grid-row: span 2;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  color: #06130f;
+  background: #32ffad;
+  font-weight: 950;
+  font-size: 12px;
+}
+
+.fab-step-rail strong {
+  color: #f5fffb;
+  min-width: 0;
+}
+
+.fab-step-rail small {
+  color: #9fcfc3;
+}
+
+.fab-step-card,
+.fab-panel {
+  padding: 16px;
+}
+
+.fab-mental {
+  margin: 10px 0 14px;
+  padding: 12px;
+  border-left: 3px solid #32ffad;
+  border-radius: 8px;
+  background: rgba(50, 255, 173, 0.08);
+}
+
+.fab-step-grid,
+.fab-script-grid,
+.fab-owner-map,
+.fab-scenario-grid,
+.fab-phrase-grid,
+.fab-boundary-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.fab-step-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fab-step-grid section,
+.fab-script-grid div,
+.fab-owner-map article,
+.fab-scenario-card,
+.fab-phrase-grid article,
+.fab-boundary-grid article,
+.fab-source-list a {
+  min-width: 0;
+  border: 1px solid rgba(167, 247, 255, 0.13);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.fab-step-grid section {
+  padding: 12px;
+}
+
+.fab-step-grid h3 {
+  margin: 0 0 8px;
+  color: #a7f7ff;
+  font-size: 13px;
+}
+
+.fab-step-grid ul,
+.fab-danger-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.fab-danger-list li {
+  color: #ffc0c4;
+}
+
+.fab-script-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.fab-script-grid div {
+  padding: 12px;
+}
+
+.fab-script-grid span {
+  display: block;
+  margin-bottom: 6px;
+  color: #84cdbb;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.fab-script-grid p {
+  margin: 0;
+  color: #f2fffa;
+}
+
+.fab-owner-map {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-top: 12px;
+}
+
+.fab-owner-map article,
+.fab-phrase-grid article,
+.fab-boundary-grid article {
+  padding: 12px;
+}
+
+.fab-owner-map strong,
+.fab-phrase-grid b,
+.fab-boundary-grid strong {
+  display: block;
+  color: #f6fffb;
+}
+
+.fab-owner-map span {
+  display: block;
+  margin: 5px 0;
+  color: #32ffad;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fab-owner-map p,
+.fab-phrase-grid p,
+.fab-phrase-grid small,
+.fab-boundary-grid p {
+  margin: 0;
+}
+
+.fab-scenario-grid {
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  margin-top: 12px;
+}
+
+.fab-scenario-card {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+}
+
+.fab-scenario-card.correct {
+  border-color: rgba(50, 255, 173, 0.5);
+  background: rgba(50, 255, 173, 0.08);
+}
+
+.fab-scenario-card.wrong {
+  border-color: rgba(255, 126, 136, 0.48);
+  background: rgba(255, 126, 136, 0.07);
+}
+
+.fab-scenario-card > span {
+  color: #a7f7ff;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.fab-scenario-card h3 {
+  margin: 0;
+  color: #f2fffa;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.fab-answer-list {
+  display: grid;
+  gap: 7px;
+}
+
+.fab-answer-list button {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(167, 247, 255, 0.15);
+  border-radius: 8px;
+  color: #dffff2;
+  background: rgba(2, 14, 13, 0.86);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fab-answer-list button.chosen {
+  border-color: #32ffad;
+  color: #06130f;
+  background: #32ffad;
+  font-weight: 900;
+}
+
+.fab-feedback {
+  min-height: 42px;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.fab-feedback.muted {
+  color: #9fcfc3;
+}
+
+.fab-comparison {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fab-comparison div {
+  display: grid;
+  grid-template-columns: minmax(0, 0.48fr) minmax(0, 0.52fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(167, 247, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.fab-comparison .head {
+  color: #06130f;
+  background: #32ffad;
+  font-weight: 950;
+}
+
+.fab-comparison span {
+  color: #ffc0c4;
+}
+
+.fab-comparison strong {
+  color: #dffff2;
+}
+
+.fab-comparison .head span,
+.fab-comparison .head strong {
+  color: #06130f;
+}
+
+.fab-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fab-checklist label {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 11px;
+  border: 1px solid rgba(167, 247, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.fab-checklist label.done {
+  border-color: rgba(50, 255, 173, 0.48);
+  background: rgba(50, 255, 173, 0.08);
+}
+
+.fab-checklist input {
+  margin-top: 3px;
+}
+
+.fab-checklist span {
+  color: #dffff2;
+  line-height: 1.45;
+}
+
+.fab-phrase-grid {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  margin-top: 12px;
+}
+
+.fab-phrase-grid small {
+  display: block;
+  margin-top: 8px;
+  color: #a7f7ff;
+  line-height: 1.5;
+}
+
+.fab-boundary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 10px;
+}
+
+.fab-source-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.fab-source-list a {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.fab-source-list a strong {
+  color: #f4fffb;
+}
+
+.fab-source-list a span {
+  color: #a9d8ce;
+  line-height: 1.45;
+  font-size: 12px;
+}
+
+:root[data-theme="dark"] .fab-acclimation-console *,
+body.console-theme .fab-acclimation-console * {
+  color-scheme: dark;
+}
+
+@media (max-width: 980px) {
+  .fab-acclimation-hero,
+  .fab-map-panel,
+  .fab-step-grid,
+  .fab-script-grid,
+  .fab-boundary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fab-step-rail {
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    overflow: visible;
+    max-height: none;
+    padding-right: 0;
+  }
+
+  .fab-step-rail button {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .fab-acclimation-hero,
+  .fab-panel,
+  .fab-step-card {
+    padding: 12px;
+  }
+
+  .fab-card-head {
+    align-items: flex-start;
+  }
+
+  .fab-hero-actions button,
+  .fab-card-head button,
+  .fab-answer-list button {
+    width: 100%;
+  }
+
+  .fab-scenario-grid,
+  .fab-owner-map,
+  .fab-phrase-grid,
+  .fab-checklist,
+  .fab-source-list,
+  .fab-step-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .fab-comparison div {
+    grid-template-columns: 1fr;
+  }
+}

@@ -98,6 +98,7 @@
     const vision = safeJson("projectUniverseVisionTrainingState", {});
     const fieldLogs = safeJson("projectUniverseFieldDailyLogsV1", []);
     const fieldPending = safeJson("projectUniverseFieldDailyPendingV1", []);
+    const fabAcclimation = safeJson("projectUniverseFabAcclimationV1", {});
     const materialsMs = safeJson("materialsMsAcademyStateV1", {});
     const lifeTasks = safeJson("projectUniverseLifeOsTaskLogV2", {});
     const bookshelfRestore = safeJson("projectUniverseBookshelfRestoreEvents", []);
@@ -172,6 +173,14 @@
       return row.customerReportQuality?.score < 80 || !(row.customerReportDraft || row.customerReport || "").trim();
     });
 
+    const fabAnswers = fabAcclimation.answers || {};
+    const fabChecklist = fabAcclimation.checklist || {};
+    const fabScenarioRows = Object.values(fabAnswers);
+    const fabWrongRows = fabScenarioRows.filter(answer => answer && answer.correct === false);
+    const fabChecklistDone = Object.values(fabChecklist).filter(Boolean).length;
+    const fabScenarioTotal = 8;
+    const fabChecklistTotal = 10;
+
     const missingNextStep = pages.filter(page => {
       const text = `${page.nextStep || ""} ${page.nextAction || ""}`.trim();
       return !text && !["cognitive-resilience", "vision-function-recovery"].includes(page.bookId);
@@ -234,6 +243,18 @@
         weeklySummary: fieldRows.length
           ? `${fieldRows.length} field logs · top subsystem ${fieldSubsystems[0]?.label || "n/a"} · missed evidence ${fieldMissedEvidence[0]?.label || "n/a"}`
           : "field log 데이터 대기"
+      },
+      fabAcclimation: {
+        scenarioTried: fabScenarioRows.length,
+        scenarioCorrect: fabScenarioRows.filter(answer => answer && answer.correct).length,
+        scenarioWrong: fabWrongRows.length,
+        scenarioTotal: fabScenarioTotal,
+        checklistDone: fabChecklistDone,
+        checklistTotal: fabChecklistTotal,
+        checklistPercent: Math.round((fabChecklistDone / fabChecklistTotal) * 100),
+        weaknessTags: fabWrongRows.map(answer => answer.weaknessTag).filter(Boolean).slice(0, 6),
+        activeStep: fabAcclimation.activeStep || "pre-arrival",
+        lastUpdatedAt: fabAcclimation.lastUpdatedAt || null
       },
       thinkTankSummary: {
         entries: thinkTank.length,
@@ -650,6 +671,9 @@
     const msWeak = signals.materialsMs?.weakness?.[0]?.skill || "비율/단위환산";
     const fieldGap = signals.fieldDaily?.learningGaps?.[0]?.label || signals.fieldDaily?.missedEvidence?.[0]?.label || "현장 evidence-first 기록";
     const needsFieldLog = !signals.fieldDaily?.latest || String(signals.fieldDaily.latest?.date || "").slice(0, 10) !== todayKey();
+    const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
+      || (signals.fabAcclimation?.scenarioWrong || 0) > 0
+      || (signals.fabAcclimation?.checklistPercent || 0) < 100;
     return [
       {
         id: "warmup",
@@ -664,10 +688,10 @@
         id: "ce-case",
         minutes: 8,
         lane: "CE",
-        view: signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
-        title: signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
-        reason: signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
-        evidence: signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
+        view: fabNeedsPractice ? "fab-acclimation" : signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
+        title: fabNeedsPractice ? "Fab 첫날 동선/owner/hold 훈련" : signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
+        reason: fabNeedsPractice ? "장비 지식보다 먼저 site boundary, escort, gowning, owner, stop condition, 고객 업데이트가 몸에 붙어야 첫날 흔들리지 않습니다." : signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
+        evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
       },
       {
         id: "epi-visual",
@@ -1062,6 +1086,21 @@
       why: "오늘의 학습, 저장, 약점, 배포 상태를 먼저 정렬합니다.",
       evidence: `${signals.pages.length} pages · ${signals.thinkTankSummary.entries} records · ${signals.storage.totalMb}MB local cache`
     });
+
+    const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
+      || (signals.fabAcclimation?.scenarioWrong || 0) > 0
+      || (signals.fabAcclimation?.checklistPercent || 0) < 100;
+    if (fabNeedsPractice) {
+      tasks.push({
+        lane: "Fab Adaptation",
+        title: "Fab 첫날 행동 OS 훈련",
+        minutes: 12,
+        score: 96,
+        view: "fab-acclimation",
+        why: "테크니션에서 CE Install Level 2로 넘어갈 때 가장 큰 병목은 장비 지식이 아니라 site boundary, owner, evidence, hold/report 습관입니다.",
+        evidence: `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10}`
+      });
+    }
 
     if (signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext || signals.fieldDaily?.missedEvidence?.length) {
       const fieldFocus = signals.fieldDaily.highRisk

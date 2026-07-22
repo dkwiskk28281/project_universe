@@ -21,6 +21,7 @@ const webFiles = [
   "bookshelf.js",
   "materials-ms.js",
   "field-log.js",
+  "fab-acclimation.js",
   "line-security.js",
   "vision-training.js",
   "operating-core.js",
