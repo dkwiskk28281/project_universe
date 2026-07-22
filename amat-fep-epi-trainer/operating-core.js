@@ -175,11 +175,14 @@
 
     const fabAnswers = fabAcclimation.answers || {};
     const fabChecklist = fabAcclimation.checklist || {};
+    const fabCampaign = fabAcclimation.campaign || {};
     const fabScenarioRows = Object.values(fabAnswers);
     const fabWrongRows = fabScenarioRows.filter(answer => answer && answer.correct === false);
     const fabChecklistDone = Object.values(fabChecklist).filter(Boolean).length;
+    const fabCampaignDone = Object.values(fabCampaign).filter(Boolean).length;
     const fabScenarioTotal = 8;
     const fabChecklistTotal = 10;
+    const fabCampaignTotal = 14;
 
     const missingNextStep = pages.filter(page => {
       const text = `${page.nextStep || ""} ${page.nextAction || ""}`.trim();
@@ -252,6 +255,9 @@
         checklistDone: fabChecklistDone,
         checklistTotal: fabChecklistTotal,
         checklistPercent: Math.round((fabChecklistDone / fabChecklistTotal) * 100),
+        campaignDone: fabCampaignDone,
+        campaignTotal: fabCampaignTotal,
+        campaignPercent: Math.round((fabCampaignDone / fabCampaignTotal) * 100),
         weaknessTags: fabWrongRows.map(answer => answer.weaknessTag).filter(Boolean).slice(0, 6),
         activeStep: fabAcclimation.activeStep || "pre-arrival",
         lastUpdatedAt: fabAcclimation.lastUpdatedAt || null
@@ -673,7 +679,8 @@
     const needsFieldLog = !signals.fieldDaily?.latest || String(signals.fieldDaily.latest?.date || "").slice(0, 10) !== todayKey();
     const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
       || (signals.fabAcclimation?.scenarioWrong || 0) > 0
-      || (signals.fabAcclimation?.checklistPercent || 0) < 100;
+      || (signals.fabAcclimation?.checklistPercent || 0) < 100
+      || (signals.fabAcclimation?.campaignPercent || 0) < 100;
     return [
       {
         id: "warmup",
@@ -691,7 +698,7 @@
         view: fabNeedsPractice ? "fab-acclimation" : signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
         title: fabNeedsPractice ? "Fab 첫날 동선/owner/hold 훈련" : signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
         reason: fabNeedsPractice ? "장비 지식보다 먼저 site boundary, escort, gowning, owner, stop condition, 고객 업데이트가 몸에 붙어야 첫날 흔들리지 않습니다." : signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
-        evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
+        evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10} · campaign ${signals.fabAcclimation?.campaignDone || 0}/${signals.fabAcclimation?.campaignTotal || 14}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
       },
       {
         id: "epi-visual",
@@ -1089,7 +1096,8 @@
 
     const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
       || (signals.fabAcclimation?.scenarioWrong || 0) > 0
-      || (signals.fabAcclimation?.checklistPercent || 0) < 100;
+      || (signals.fabAcclimation?.checklistPercent || 0) < 100
+      || (signals.fabAcclimation?.campaignPercent || 0) < 100;
     if (fabNeedsPractice) {
       tasks.push({
         lane: "Fab Adaptation",
@@ -1098,7 +1106,7 @@
         score: 96,
         view: "fab-acclimation",
         why: "테크니션에서 CE Install Level 2로 넘어갈 때 가장 큰 병목은 장비 지식이 아니라 site boundary, owner, evidence, hold/report 습관입니다.",
-        evidence: `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10}`
+        evidence: `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10} · campaign ${signals.fabAcclimation?.campaignDone || 0}/${signals.fabAcclimation?.campaignTotal || 14}`
       });
     }
 

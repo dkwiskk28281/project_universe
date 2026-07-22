@@ -24,6 +24,21 @@
       title: "Samsung Electronics Supplier Code of Conduct",
       url: "https://download.semiconductor.samsung.com/resources/others/Samsung_Electronics_Supplier_Code_of_Conduct_6.0_EN.pdf",
       point: "협력사와 현장 참여자가 privacy, information security, EHS, document control을 준수해야 한다는 공개 기준"
+    },
+    {
+      title: "OSHA Safety in Semiconductor Manufacturing",
+      url: "https://www.osha.gov/sites/default/files/publications/SEMICONDUCTORFS.pdf",
+      point: "process enclosure, LOTO/EMO, gas detection, exhaust/waste treatment, gas cabinet 같은 일반 semiconductor safety layer"
+    },
+    {
+      title: "OSHA Toxic Exhaust Gases",
+      url: "https://www.osha.gov/semiconductors/solutions/toxic-gases",
+      point: "startup, operation, maintenance, cleaning, emergency 등 여러 노출 시나리오를 식별하고 ventilation/PPE를 고려해야 한다는 공개 안전 기준"
+    },
+    {
+      title: "SEMI Safety Standards overview",
+      url: "https://www.semi.org/en/products-services/standards/safety",
+      point: "S2, S6, S19, S22, S24 등 장비 safety, exhaust, service personnel training, electrical, multi-employer work area 관련 공개 표준 목록"
     }
   ];
 
@@ -395,6 +410,111 @@
     ["scope 밖 요청", "도와드리고 싶지만 현재 승인 scope 밖이라, owner와 영향 범위를 맞춘 뒤 진행하겠습니다.", "I would like to help, but this is outside the approved scope. I will align with the owner before proceeding."]
   ];
 
+  const bottlenecks = [
+    {
+      id: "movement-boundary",
+      title: "동선과 escort boundary",
+      symptom: "어디까지 혼자 가도 되는지 몰라서 senior 뒤만 따라다님",
+      risk: "허가되지 않은 bay, subfab, gas/chase 영역 접근은 security/EHS 이슈가 될 수 있음",
+      drill: "오늘 들어가기 전 meeting point, escort 필요 구역, 대기 위치를 한 문장으로 말한다.",
+      script: "제가 단독 이동 가능한 boundary와 대기 위치를 먼저 확인하겠습니다.",
+      signal: data => !data.checklist?.["entry-boundary"] || data.answers?.["lost-route"]?.correct === false
+    },
+    {
+      id: "gowning-contamination",
+      title: "gowning과 contamination 감각",
+      symptom: "입는 순서는 따라 했지만 무엇이 오염 행동인지 확신이 없음",
+      risk: "작은 접촉 습관이 particle, wafer defect, 고객 신뢰 문제로 커질 수 있음",
+      drill: "장갑, 소매, hood, bootie, clean/dirty hand boundary를 mirror check로 확인한다.",
+      script: "site gowning sequence를 한 번 확인하고 동일하게 따르겠습니다.",
+      signal: data => !data.checklist?.["gowning-check"] || data.answers?.["unknown-gowning"]?.correct === false
+    },
+    {
+      id: "owner-map",
+      title: "owner 구분",
+      symptom: "누구에게 물어야 할지 몰라서 질문이 늦어짐",
+      risk: "facility/gas/EHS/customer/process owner가 다른데 한 사람 말만 듣고 진행할 수 있음",
+      drill: "이 이슈의 owner가 senior CE인지, customer equipment인지, facility/gas/EHS인지 먼저 분류한다.",
+      script: "이 boundary의 owner가 누구인지 확인한 뒤 다음 action을 잡겠습니다.",
+      signal: data => !data.checklist?.["owner-map"]
+    },
+    {
+      id: "scope-control",
+      title: "scope creep",
+      symptom: "고객이나 선임이 추가로 물어보면 도와주려다 작업 범위가 흐려짐",
+      risk: "permit, safety, schedule, 책임 범위가 다른 작업으로 넘어갈 수 있음",
+      drill: "scope, out-of-scope, hold point를 pre-job brief에서 말로 맞춘다.",
+      script: "현재 승인 scope 밖이라 owner와 영향 범위를 맞춘 뒤 진행하겠습니다.",
+      signal: data => !data.checklist?.["scope-hold"] || data.answers?.["scope-creep"]?.correct === false
+    },
+    {
+      id: "baseline-evidence",
+      title: "손대기 전 baseline",
+      symptom: "문제 해결에 집중하다가 작업 전 상태를 놓침",
+      risk: "작업 후 변화가 내 조치 때문인지 원래 있었던 문제인지 설명하기 어려움",
+      drill: "alarm, pressure, facility ready, robot/door, visible abnormal을 작업 전 먼저 본다.",
+      script: "작업 전 baseline evidence를 먼저 잡고 진행하겠습니다.",
+      signal: data => !data.checklist?.["baseline"] || data.answers?.["alarm-reset"]?.correct === false
+    },
+    {
+      id: "gas-facility-hold",
+      title: "gas/facility readiness hold",
+      symptom: "tool 화면 ready만 보고 진행해도 되는지 헷갈림",
+      risk: "toxic/flammable/corrosive/asphyxiant gas, exhaust, abatement, detector, ventilation은 safety-critical boundary",
+      drill: "tool signal, facility actual state, gas owner, exhaust/abatement readiness를 분리해서 확인한다.",
+      script: "gas/facility owner evidence가 확인될 때까지 gas readiness는 hold하겠습니다.",
+      signal: data => data.answers?.["gas-ready"]?.correct === false || !data.checklist?.["stop-condition"]
+    },
+    {
+      id: "customer-update",
+      title: "고객 앞에서 말 정렬",
+      symptom: "고객이 ETA나 원인을 물으면 급하게 답하려고 함",
+      risk: "근거 없는 원인/일정 약속은 신뢰를 잃고 escalation을 키움",
+      drill: "fact, impact, pending evidence, owner, next update time 다섯 칸으로 말한다.",
+      script: "확인된 사실은 X이고, Y는 확인 중입니다. B시에 다시 업데이트하겠습니다.",
+      signal: data => !data.checklist?.["customer-brief"] || data.answers?.["customer-eta"]?.correct === false
+    },
+    {
+      id: "redacted-memory",
+      title: "개인 기록 redaction",
+      symptom: "잘 기억하려고 민감한 원문까지 개인 기록에 남기고 싶어짐",
+      risk: "recipe, serial, wafer ID, screenshot, site route, manual text는 개인 저장소에 넣으면 안 됨",
+      drill: "subsystem, symptom, evidence, missing evidence, action, result, learning gap만 남긴다.",
+      script: "개인 학습 기록에는 비식별 summary와 학습 gap만 남기겠습니다.",
+      signal: data => !data.checklist?.["no-confidential"] || data.answers?.["field-note"]?.correct === false
+    }
+  ];
+
+  const campaignDays = [
+    ["day-01", "Day 1", "Gate와 escort", "host, badge, escort, allowed area, device rule을 말로 확인", "출입 boundary를 모르면 멈춘다."],
+    ["day-02", "Day 2", "Gowning muscle memory", "site gowning sequence와 contamination 행동 5개를 관찰", "청정도는 wafer defect와 연결된다."],
+    ["day-03", "Day 3", "Owner map", "senior CE/customer/facility/gas/EHS/process owner를 구분", "누구에게 물어야 할지 알면 어리버리하지 않다."],
+    ["day-04", "Day 4", "Tool-side pre-job", "scope, out-of-scope, energy, stop condition, next update time 정렬", "작업 전 3분 brief가 실수를 줄인다."],
+    ["day-05", "Day 5", "Baseline walkdown", "EFEM/LL/TM/PM/gas/pump/exhaust 상태를 손대기 전 관찰", "작업 후 설명력은 baseline에서 나온다."],
+    ["day-06", "Day 6", "Facility language", "CDA, PCW, exhaust, abatement, vacuum, power owner를 분리", "tool ready와 facility actual은 별도로 확인한다."],
+    ["day-07", "Day 7", "Gas readiness caution", "gas owner, exhaust, abatement, detector, purge readiness를 안전 관점으로 보기", "gas boundary는 속도보다 hold 판단이 우선이다."],
+    ["day-08", "Day 8", "Alarm evidence", "alarm category, first observed time, tool state, trend를 reset 전 보존", "reset은 증거를 없앨 수 있다."],
+    ["day-09", "Day 9", "Customer update", "fact, impact, pending, owner, next update time으로 짧게 보고", "확답보다 update cadence가 신뢰를 만든다."],
+    ["day-10", "Day 10", "Shift handover", "completed/open/owner/due/safety status로 handover 작성", "다음 shift가 바로 이어받게 만든다."],
+    ["day-11", "Day 11", "Subfab mental model", "pump, exhaust, abatement, facility cabinet은 tool과 어떻게 연결되는지 그림으로 복기", "장비 옆만 보는 CE에서 system을 보는 CE로 간다."],
+    ["day-12", "Day 12", "Question compression", "선임에게 20초 질문: confirmed fact, missing evidence, candidate action", "좋은 질문은 선임 시간을 아껴준다."],
+    ["day-13", "Day 13", "Redacted daily log", "오늘 경험을 민감정보 없이 field log에 구조화", "개인 big data는 비식별 summary로 충분하다."],
+    ["day-14", "Day 14", "First two weeks review", "가장 자주 헷갈린 owner, evidence, stop condition 3개 정리", "반복 병목을 다음 루틴으로 보낸다."]
+  ];
+
+  const fabDecoder = [
+    ["Bay", "장비가 놓인 생산 구역", "CE는 bay에서 고객 flow와 tool 접근 boundary를 본다.", "정확한 위치/라인명은 개인 기록 금지"],
+    ["Subfab", "장비 아래 또는 별도 하부 시설 공간", "pump, exhaust, abatement, facility 계통을 만날 수 있다.", "허가/escort 없이 이동 금지"],
+    ["Chase", "시설 배관/케이블/가스 등이 지나가는 서비스 공간", "facility owner와 함께 boundary를 확인한다.", "혼자 들어가서 확인하려 하지 않기"],
+    ["Owner", "승인하거나 판단할 책임자", "gas, facility, process, EHS, customer equipment owner가 다를 수 있다.", "senior 한 명이 모든 owner를 대체한다고 단정 금지"],
+    ["Hold point", "여기서 멈추고 확인해야 하는 지점", "gas, electrical, wafer risk, security ambiguity에서 특히 중요", "일정 압박으로 건너뛰지 않기"],
+    ["Baseline", "작업 전 기준 상태", "alarm, pressure, door, robot, facility ready를 전후 비교 기준으로 삼는다.", "손댄 뒤에야 원래 상태를 떠올리지 않기"],
+    ["Punch item", "handover에 남는 미완료/추적 항목", "owner, due time, next evidence가 있어야 닫힌다.", "그냥 '확인 필요'만 쓰면 open-loop"],
+    ["Redaction", "민감정보를 제거한 기록화", "개인 Think Tank에는 subsystem과 학습 gap만 남긴다.", "serial, lot, wafer map, recipe, screenshot 저장 금지"],
+    ["Witness", "확인에 함께 서명/동의하는 사람", "facility/gas/safety boundary는 owner witness가 중요할 수 있다.", "혼자 봤다고 공식 확인으로 표현 금지"],
+    ["Escalation", "권한 있는 사람에게 올리는 것", "stop condition, safety, schedule impact가 있으면 빠른 escalation이 실력", "숨기거나 혼자 해결하려 하지 않기"]
+  ];
+
   function escapeHtml(value = "") {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -423,6 +543,8 @@
       activeStep: "pre-arrival",
       answers: {},
       checklist: {},
+      campaign: {},
+      prejobBrief: {},
       lastUpdatedAt: null,
       ...safeJson(STATE_KEY, {})
     };
@@ -442,6 +564,35 @@
   function checklistScore(data) {
     const done = checklist.filter(([id]) => data.checklist?.[id]).length;
     return { done, total: checklist.length, percent: Math.round((done / checklist.length) * 100) };
+  }
+
+  function campaignScore(data) {
+    const done = campaignDays.filter(([id]) => data.campaign?.[id]).length;
+    return { done, total: campaignDays.length, percent: Math.round((done / campaignDays.length) * 100) };
+  }
+
+  function bottleneckLevel(data, item) {
+    const active = item.signal(data);
+    if (!active) return "stable";
+    const wrongCount = Object.values(data.answers || {}).filter(answer => answer && answer.correct === false).length;
+    if (wrongCount >= 3) return "critical";
+    if (wrongCount >= 1) return "watch";
+    return "train";
+  }
+
+  function briefValue(data, key, fallback = "") {
+    return escapeHtml(data.prejobBrief?.[key] || fallback);
+  }
+
+  function buildBriefText(data) {
+    const brief = data.prejobBrief || {};
+    const scope = brief.scope || "오늘 승인된 scope";
+    const owner = brief.owner || "확인할 owner";
+    const energy = brief.energy || "전기/가스/진공/robot 등 energy state";
+    const stop = brief.stop || "safety, gas, electrical, wafer, security ambiguity";
+    const evidence = brief.evidence || "baseline alarm/pressure/facility/tool state";
+    const update = brief.update || "다음 update time";
+    return `Scope는 ${scope}입니다. Owner는 ${owner}로 확인하겠습니다. 현재 energy boundary는 ${energy}입니다. Stop condition은 ${stop}이고, 작업 전 evidence는 ${evidence}입니다. ${update}에 fact-impact-risk-next action으로 업데이트하겠습니다.`;
   }
 
   function renderList(items, className = "") {
@@ -623,6 +774,139 @@
     `;
   }
 
+  function renderBottleneckRadar(data) {
+    return `
+      <section class="fab-panel fab-radar-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Bottleneck radar</p>
+            <h2>네가 실제로 병목이라고 느낄 가능성이 큰 지점</h2>
+          </div>
+          <span class="fab-chip">자동 약점 표시</span>
+        </div>
+        <div class="fab-radar-grid">
+          ${bottlenecks.map(item => {
+            const level = bottleneckLevel(data, item);
+            return `
+              <article class="fab-radar-card ${level}">
+                <header>
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <span>${level === "stable" ? "안정" : level === "critical" ? "최우선" : level === "watch" ? "주의" : "훈련"}</span>
+                </header>
+                <dl>
+                  <dt>현장 증상</dt><dd>${escapeHtml(item.symptom)}</dd>
+                  <dt>왜 위험한가</dt><dd>${escapeHtml(item.risk)}</dd>
+                  <dt>오늘 훈련</dt><dd>${escapeHtml(item.drill)}</dd>
+                </dl>
+                <p>${escapeHtml(item.script)}</p>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderCampaign(data) {
+    const score = campaignScore(data);
+    return `
+      <section class="fab-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">First 14 days campaign</p>
+            <h2>첫 2주를 이미 살아본 사람처럼 만드는 캠페인</h2>
+          </div>
+          <span class="fab-chip">${score.done}/${score.total} · ${score.percent}%</span>
+        </div>
+        <div class="fab-campaign-grid">
+          ${campaignDays.map(([id, day, title, mission, principle]) => `
+            <label class="${data.campaign?.[id] ? "done" : ""}">
+              <input type="checkbox" data-fab-day="${escapeHtml(id)}" ${data.campaign?.[id] ? "checked" : ""} />
+              <span>${escapeHtml(day)}</span>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(mission)}</p>
+              <small>${escapeHtml(principle)}</small>
+            </label>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderPrejobBriefBuilder(data) {
+    const briefText = buildBriefText(data);
+    return `
+      <section class="fab-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">3-minute pre-job brief builder</p>
+            <h2>작업 시작 전 머리가 하얘지지 않게 만드는 문장 생성기</h2>
+          </div>
+          <span class="fab-chip">scope · owner · stop</span>
+        </div>
+        <form class="fab-brief-form" id="fab-brief-form">
+          <label>오늘 scope<input id="fab-brief-scope" value="${briefValue(data, "scope")}" placeholder="예: LL pumpdown readiness 확인" /></label>
+          <label>owner / witness<input id="fab-brief-owner" value="${briefValue(data, "owner")}" placeholder="예: senior CE + facility owner" /></label>
+          <label>energy boundary<input id="fab-brief-energy" value="${briefValue(data, "energy")}" placeholder="예: vacuum/pneumatic/electrical/gas 상태 확인" /></label>
+          <label>stop condition<input id="fab-brief-stop" value="${briefValue(data, "stop")}" placeholder="예: gas/exhaust/abatement 미확인, alarm 반복, wafer risk" /></label>
+          <label>baseline evidence<input id="fab-brief-evidence" value="${briefValue(data, "evidence")}" placeholder="예: alarm, pressure trend, facility ready, robot/door status" /></label>
+          <label>next update<input id="fab-brief-update" value="${briefValue(data, "update")}" placeholder="예: 30분 후 fact-impact-risk-next action 보고" /></label>
+          <div class="fab-brief-output">
+            <span>보고 초안</span>
+            <p id="fab-brief-text">${escapeHtml(briefText)}</p>
+          </div>
+          <div class="fab-hero-actions">
+            <button class="primary" type="submit">brief 저장</button>
+            <button class="secondary" type="button" id="fab-brief-copy">보고 문장 복사</button>
+          </div>
+        </form>
+      </section>
+    `;
+  }
+
+  function renderQuestionCompressor() {
+    const rows = [
+      ["선임에게", "현재 확인된 사실은 X입니다. Y evidence가 부족합니다. 다음 action을 A/B 중 어디로 잡을까요?"],
+      ["고객 owner에게", "현재 impact는 X로 보고 있고, Y는 아직 확인 중입니다. owner 확인 후 Z시에 업데이트하겠습니다."],
+      ["facility owner에게", "tool side signal은 X인데 facility actual state Y 확인이 필요합니다. approved ready 상태를 같이 확인할 수 있을까요?"],
+      ["gas/EHS owner에게", "gas/exhaust/abatement boundary가 아직 clear하지 않아 hold하겠습니다. 확인해야 할 approved evidence가 무엇인지 알려주실 수 있을까요?"],
+      ["handover 때", "완료 X, open Y, owner Z, due A, safety/security status B입니다."]
+    ];
+    return `
+      <section class="fab-panel">
+        <p class="eyebrow">20-second question compressor</p>
+        <h2>선임 시간을 아끼는 질문 구조</h2>
+        <div class="fab-question-grid">
+          ${rows.map(([target, phrase]) => `
+            <article>
+              <strong>${escapeHtml(target)}</strong>
+              <p>${escapeHtml(phrase)}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderFabDecoder() {
+    return `
+      <section class="fab-panel">
+        <p class="eyebrow">Fab language decoder</p>
+        <h2>처음 들으면 얼어붙는 Fab 말들</h2>
+        <div class="fab-decoder-grid">
+          ${fabDecoder.map(([term, easy, field, trap]) => `
+            <article>
+              <strong>${escapeHtml(term)}</strong>
+              <span>${escapeHtml(easy)}</span>
+              <p>${escapeHtml(field)}</p>
+              <small>${escapeHtml(trap)}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderSourceBoundary() {
     return `
       <section class="fab-panel fab-source-panel">
@@ -657,6 +941,7 @@
     const step = currentStep(data);
     const game = scenarioScore(data);
     const ready = checklistScore(data);
+    const campaign = campaignScore(data);
     root.innerHTML = `
       <section class="fab-acclimation-console">
         <article class="fab-acclimation-hero">
@@ -677,8 +962,15 @@
             <span>first 2 weeks</span>
             <strong>${ready.done}/${ready.total}</strong>
             <small>${ready.percent}% checklist</small>
+            <span>campaign</span>
+            <strong>${campaign.done}/${campaign.total}</strong>
+            <small>${campaign.percent}% first 14 days</small>
           </div>
         </article>
+
+        ${renderBottleneckRadar(data)}
+        ${renderCampaign(data)}
+        ${renderPrejobBriefBuilder(data)}
 
         <section class="fab-map-panel">
           ${renderStepRail(data)}
@@ -689,6 +981,8 @@
         ${renderScenarios(data)}
         ${renderBehaviorPairs()}
         ${renderChecklist(data)}
+        ${renderQuestionCompressor()}
+        ${renderFabDecoder()}
         ${renderPhraseDrills()}
         ${renderSourceBoundary()}
       </section>
@@ -739,6 +1033,47 @@
       });
     });
 
+    root.querySelectorAll("[data-fab-day]").forEach(input => {
+      input.addEventListener("change", () => {
+        const next = state();
+        next.campaign = next.campaign || {};
+        next.campaign[input.dataset.fabDay] = input.checked;
+        next.lastUpdatedAt = new Date().toISOString();
+        saveState(next);
+        render();
+      });
+    });
+
+    root.querySelector("#fab-brief-form")?.addEventListener("submit", event => {
+      event.preventDefault();
+      const next = state();
+      next.prejobBrief = {
+        scope: root.querySelector("#fab-brief-scope")?.value.trim() || "",
+        owner: root.querySelector("#fab-brief-owner")?.value.trim() || "",
+        energy: root.querySelector("#fab-brief-energy")?.value.trim() || "",
+        stop: root.querySelector("#fab-brief-stop")?.value.trim() || "",
+        evidence: root.querySelector("#fab-brief-evidence")?.value.trim() || "",
+        update: root.querySelector("#fab-brief-update")?.value.trim() || ""
+      };
+      next.lastUpdatedAt = new Date().toISOString();
+      saveState(next);
+      render();
+    });
+
+    root.querySelector("#fab-brief-copy")?.addEventListener("click", async () => {
+      const text = root.querySelector("#fab-brief-text")?.textContent || buildBriefText(state());
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+      }
+    });
+
     root.querySelectorAll("[data-open-view]").forEach(button => {
       button.addEventListener("click", () => {
         if (typeof window.showView === "function") window.showView(button.dataset.openView);
@@ -751,7 +1086,7 @@
     getState: state,
     getScore: () => {
       const data = state();
-      return { scenario: scenarioScore(data), checklist: checklistScore(data) };
+      return { scenario: scenarioScore(data), checklist: checklistScore(data), campaign: campaignScore(data) };
     },
     steps: arrivalSteps,
     scenarios
