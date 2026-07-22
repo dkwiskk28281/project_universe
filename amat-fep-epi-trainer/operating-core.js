@@ -176,13 +176,20 @@
     const fabAnswers = fabAcclimation.answers || {};
     const fabChecklist = fabAcclimation.checklist || {};
     const fabCampaign = fabAcclimation.campaign || {};
+    const fabTier1Checklist = fabAcclimation.tier1Checklist || {};
+    const fabTierAnswers = fabAcclimation.tierAnswers || {};
     const fabScenarioRows = Object.values(fabAnswers);
     const fabWrongRows = fabScenarioRows.filter(answer => answer && answer.correct === false);
     const fabChecklistDone = Object.values(fabChecklist).filter(Boolean).length;
     const fabCampaignDone = Object.values(fabCampaign).filter(Boolean).length;
+    const fabTierAnswerRows = Object.values(fabTierAnswers);
+    const fabTierWrongRows = fabTierAnswerRows.filter(answer => answer && answer.correct === false);
+    const fabTier1Done = Object.values(fabTier1Checklist).filter(Boolean).length;
     const fabScenarioTotal = 8;
     const fabChecklistTotal = 10;
     const fabCampaignTotal = 14;
+    const fabTier1Total = 12;
+    const fabTierDecisionTotal = 8;
 
     const missingNextStep = pages.filter(page => {
       const text = `${page.nextStep || ""} ${page.nextAction || ""}`.trim();
@@ -258,7 +265,15 @@
         campaignDone: fabCampaignDone,
         campaignTotal: fabCampaignTotal,
         campaignPercent: Math.round((fabCampaignDone / fabCampaignTotal) * 100),
-        weaknessTags: fabWrongRows.map(answer => answer.weaknessTag).filter(Boolean).slice(0, 6),
+        tier1Done: fabTier1Done,
+        tier1Total: fabTier1Total,
+        tier1Percent: Math.round((fabTier1Done / fabTier1Total) * 100),
+        tierDecisionTried: fabTierAnswerRows.length,
+        tierDecisionCorrect: fabTierAnswerRows.filter(answer => answer && answer.correct).length,
+        tierDecisionWrong: fabTierWrongRows.length,
+        tierDecisionTotal: fabTierDecisionTotal,
+        tierDecisionPercent: Math.round((fabTierAnswerRows.filter(answer => answer && answer.correct).length / fabTierDecisionTotal) * 100),
+        weaknessTags: [...fabWrongRows, ...fabTierWrongRows].map(answer => answer.weaknessTag).filter(Boolean).slice(0, 8),
         activeStep: fabAcclimation.activeStep || "pre-arrival",
         lastUpdatedAt: fabAcclimation.lastUpdatedAt || null
       },
@@ -680,7 +695,10 @@
     const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
       || (signals.fabAcclimation?.scenarioWrong || 0) > 0
       || (signals.fabAcclimation?.checklistPercent || 0) < 100
-      || (signals.fabAcclimation?.campaignPercent || 0) < 100;
+      || (signals.fabAcclimation?.campaignPercent || 0) < 100
+      || (signals.fabAcclimation?.tier1Percent || 0) < 100
+      || (signals.fabAcclimation?.tierDecisionTried || 0) < (signals.fabAcclimation?.tierDecisionTotal || 8)
+      || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0;
     return [
       {
         id: "warmup",
@@ -696,9 +714,9 @@
         minutes: 8,
         lane: "CE",
         view: fabNeedsPractice ? "fab-acclimation" : signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
-        title: fabNeedsPractice ? "Fab 첫날 동선/owner/hold 훈련" : signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
-        reason: fabNeedsPractice ? "장비 지식보다 먼저 site boundary, escort, gowning, owner, stop condition, 고객 업데이트가 몸에 붙어야 첫날 흔들리지 않습니다." : signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
-        evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10} · campaign ${signals.fabAcclimation?.campaignDone || 0}/${signals.fabAcclimation?.campaignTotal || 14}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
+        title: fabNeedsPractice ? "Tier 1 install 경계/보고 훈련" : signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
+        reason: fabNeedsPractice ? "CE Install Level 2의 첫 병목은 모든 것을 아는 것이 아니라 Tier 1 독립 범위와 Tier 2 assistance 전환 조건을 정확히 말하는 것입니다." : signals.fieldDaily?.openNext ? "실제 현장 기록의 next action, owner, stop condition을 닫는 것이 가장 강한 CE 훈련입니다." : "증상에서 바로 행동하지 않고 risk, subsystem, evidence, stop condition을 고르는 훈련입니다.",
+        evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · Tier1 ${signals.fabAcclimation?.tier1Done || 0}/${signals.fabAcclimation?.tier1Total || 12} · Tier decisions ${signals.fabAcclimation?.tierDecisionCorrect || 0}/${signals.fabAcclimation?.tierDecisionTotal || 8}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
       },
       {
         id: "epi-visual",
@@ -762,7 +780,10 @@
       signals.fieldDaily?.missedEvidence?.[0] ? `반복 누락 evidence: ${signals.fieldDaily.missedEvidence[0].label}` : "현장 evidence 누락 패턴은 아직 낮음",
       signals.english.due ? "영어 복습 대기열이 오늘 루틴 우선순위에 들어감" : "영어 복습 대기열은 낮음",
       signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요",
-      signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음"
+      signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음",
+      (signals.fabAcclimation?.tier1Percent || 0) < 100 || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0
+        ? `Tier 1/Tier 2 boundary 훈련 필요: Tier1 ${signals.fabAcclimation?.tier1Percent || 0}%, Tier decision wrong ${signals.fabAcclimation?.tierDecisionWrong || 0}`
+        : "Tier 1/Tier 2 경계 신호 양호"
     ];
     return {
       weak,
@@ -1097,16 +1118,19 @@
     const fabNeedsPractice = (signals.fabAcclimation?.scenarioTried || 0) < (signals.fabAcclimation?.scenarioTotal || 8)
       || (signals.fabAcclimation?.scenarioWrong || 0) > 0
       || (signals.fabAcclimation?.checklistPercent || 0) < 100
-      || (signals.fabAcclimation?.campaignPercent || 0) < 100;
+      || (signals.fabAcclimation?.campaignPercent || 0) < 100
+      || (signals.fabAcclimation?.tier1Percent || 0) < 100
+      || (signals.fabAcclimation?.tierDecisionTried || 0) < (signals.fabAcclimation?.tierDecisionTotal || 8)
+      || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0;
     if (fabNeedsPractice) {
       tasks.push({
         lane: "Fab Adaptation",
-        title: "Fab 첫날 행동 OS 훈련",
+        title: "Tier 1 install 독립범위와 Tier 2 assistance 경계 훈련",
         minutes: 12,
         score: 96,
         view: "fab-acclimation",
-        why: "테크니션에서 CE Install Level 2로 넘어갈 때 가장 큰 병목은 장비 지식이 아니라 site boundary, owner, evidence, hold/report 습관입니다.",
-        evidence: `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · checklist ${signals.fabAcclimation?.checklistDone || 0}/${signals.fabAcclimation?.checklistTotal || 10} · campaign ${signals.fabAcclimation?.campaignDone || 0}/${signals.fabAcclimation?.campaignTotal || 14}`
+        why: "테크니션에서 CE Install Level 2로 넘어갈 때는 '무엇을 혼자 닫고, 무엇을 도움받아야 하는지'가 첫 신뢰를 결정합니다.",
+        evidence: `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · Tier1 ${signals.fabAcclimation?.tier1Done || 0}/${signals.fabAcclimation?.tier1Total || 12} · Tier decisions ${signals.fabAcclimation?.tierDecisionCorrect || 0}/${signals.fabAcclimation?.tierDecisionTotal || 8} · campaign ${signals.fabAcclimation?.campaignDone || 0}/${signals.fabAcclimation?.campaignTotal || 14}`
       });
     }
 

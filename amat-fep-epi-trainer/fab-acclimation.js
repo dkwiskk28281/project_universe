@@ -6,6 +6,21 @@
 
   const sourceLinks = [
     {
+      title: "Applied Early Career Installation Team FSE",
+      url: "https://jobs.appliedmaterials.com/job/boise/applied-early-career-installation-team-field-service-engineer/95/96992522768",
+      point: "공개 채용공고 기준: customer site에서 install/configure/support, PM/CM, troubleshooting 보조, 문서화, safety/quality/environment 절차 준수"
+    },
+    {
+      title: "Applied Field Service Engineer II / C2",
+      url: "https://jobs.appliedmaterials.com/job/remote/field-service-engineer-ii-lexington-cambridge-ma-c2/95/96287433072",
+      point: "C2 공개 직무 기준: training과 published task plan에 따라 장비 test, 진단, 문제 해결, site safety와 documentation 수행"
+    },
+    {
+      title: "Applied public Tier wording",
+      url: "https://tw.linkedin.com/jobs/view/customer-engineer-field-service-engineer-at-applied-materials-4055106908",
+      point: "공개 채용 문구 기준: standard service activities는 Tier I까지 unassisted, standard Tier II는 assistance로 수행"
+    },
+    {
       title: "Applied Materials Field Service / Customer Engineer role",
       url: "https://jobs.appliedmaterials.com/job/santa-clara/field-service-customer-engineer-iii-c3/95/94725640016",
       point: "CE는 고객 현장 liaison으로 설치, 유지보수, upgrade, troubleshooting, 예방/교정 정비를 수행한다는 공개 역할 설명"
@@ -39,6 +54,11 @@
       title: "SEMI Safety Standards overview",
       url: "https://www.semi.org/en/products-services/standards/safety",
       point: "S2, S6, S19, S22, S24 등 장비 safety, exhaust, service personnel training, electrical, multi-employer work area 관련 공개 표준 목록"
+    },
+    {
+      title: "SEMI S19 service personnel training",
+      url: "https://store-us.semi.org/products/s01900-semi-s19-safety-guideline-for-training-of-manufacturing-equipment-installation-maintenance-and-service-personnel",
+      point: "semiconductor 장비 installation, maintenance, service personnel의 EHS training objective와 record keeping을 다루는 공개 표준 설명"
     }
   ];
 
@@ -402,6 +422,253 @@
     ["handover", "완료/open/owner/due/safety status로 handover를 닫는다."]
   ];
 
+  const tierDefinitions = [
+    {
+      id: "tier-1",
+      label: "Tier 1",
+      headline: "훈련·승인된 표준 서비스 활동을 혼자 끝까지 닫는 범위",
+      publicBasis: "Applied 공개 채용 문구의 핵심은 standard service activities through Tier I unassisted입니다.",
+      fieldMeaning: "절차서와 task plan이 있고, 위험 경계가 명확하며, 본인이 교육·인증받은 일상 PM/CM/설치 체크를 독립 수행하는 단계입니다.",
+      notMeaning: "첫날부터 모든 install을 혼자 한다는 뜻이 아닙니다. 모르는 boundary, gas/electrical 위험, site-specific 조건은 즉시 hold와 escalation입니다.",
+      successSignal: "confirmed fact, evidence, owner, stop condition, customer update를 남기고 다음 사람이 이어받아도 같은 판단을 할 수 있습니다."
+    },
+    {
+      id: "tier-2",
+      label: "Tier 2",
+      headline: "표준 범위이지만 선임/owner assistance가 필요한 진단·복구·검증 범위",
+      publicBasis: "공개 Tier 문구는 standard Tier II with assistance라고 표현합니다.",
+      fieldMeaning: "문제 후보가 여러 subsystem으로 갈라지거나, component 교체/설정 확인/qualification 영향이 커서 senior CE, customer owner, facility/gas/EHS/process owner의 witness가 붙는 단계입니다.",
+      notMeaning: "root cause engineering, recipe optimization, hidden sequence 조작, interlock bypass, site acceptance limit 판단을 독자적으로 하는 단계가 아닙니다.",
+      successSignal: "혼자 결론을 내기보다 evidence packet을 만들고 senior가 빠르게 판단할 수 있게 subsystem별로 좁혀 둡니다."
+    },
+    {
+      id: "tier-3-boundary",
+      label: "Tier 3+ boundary",
+      headline: "C3 이상/전문가/공장·프로세스 조직이 주도하는 영역",
+      publicBasis: "Applied C3 공개 직무에는 Tier III startup, process qualification assistance, component-level troubleshooting, complex retrofit, process data 활용이 등장합니다.",
+      fieldMeaning: "복합 system down, process qualification 해석, 고급 retrofit, sustaining process issue, global best practice 문서화처럼 영향 범위가 넓은 일입니다.",
+      notMeaning: "Tier 1 CE가 첫날 혼자 해결해야 하는 일이 아닙니다.",
+      successSignal: "Tier 1/2 CE는 증거를 정리해 escalation 품질을 높이는 것이 기여입니다."
+    }
+  ];
+
+  const tier1InstallTasks = [
+    {
+      id: "t1-site-entry",
+      group: "Site / safety",
+      title: "출입, escort, PPE, site training 확인",
+      meaning: "badge, escort, gowning, cleanroom/PPE, 작업 가능 구역을 확인합니다.",
+      evidence: "training complete, allowed area, PPE complete, escort/host, emergency path",
+      firstDaySentence: "제가 단독 이동 가능한 boundary와 필수 PPE를 확인한 뒤 tool side로 이동하겠습니다.",
+      stop: "출입 권한, escort, PPE, emergency instruction이 불명확하면 이동하지 않습니다."
+    },
+    {
+      id: "t1-task-plan",
+      group: "Procedure / documentation",
+      title: "published task plan과 procedure revision 확인",
+      meaning: "내가 하는 일이 승인된 scope, 최신 rev, training 범위 안인지 맞춥니다.",
+      evidence: "task plan title, revision status, scope, out-of-scope, hold point",
+      firstDaySentence: "현재 scope와 procedure revision을 먼저 맞추고 시작하겠습니다.",
+      stop: "문서 rev, scope, sign-off owner가 맞지 않으면 실행하지 않습니다."
+    },
+    {
+      id: "t1-move-in-watch",
+      group: "Move-in / rigging",
+      title: "move-in·rigging 관찰과 damage/punch item 기록",
+      meaning: "무거운 장비 이동 자체를 지휘하는 것이 아니라, 승인된 역할 안에서 포장, 충격, level, access, punch item을 관찰합니다.",
+      evidence: "visible damage, crate/label condition, landing area, punch list, owner",
+      firstDaySentence: "Rigging 자체는 승인된 owner 절차를 따르고, 저는 damage와 punch item evidence를 분리해 기록하겠습니다.",
+      stop: "하중, 장비 이동 경로, floor loading, lifting point가 불명확하면 관여하지 않습니다."
+    },
+    {
+      id: "t1-walkdown",
+      group: "Tool baseline",
+      title: "EFEM/LL/TM/PM/gas/pump/exhaust walkdown",
+      meaning: "손대기 전 tool 상태를 baseline으로 잡습니다.",
+      evidence: "alarm, pressure, robot/door state, facility ready, visible leak/loose line, cover/panel status",
+      firstDaySentence: "작업 전 baseline evidence를 먼저 잡고, 작업 후 변화와 비교하겠습니다.",
+      stop: "가스 냄새, detector alarm, exhaust not ready, exposed energy, wafer break sign이 있으면 hold합니다."
+    },
+    {
+      id: "t1-basic-pm",
+      group: "Routine PM",
+      title: "교육받은 routine PM과 visual inspection",
+      meaning: "소모품 확인, 육안점검, 청소/교체 보조, O-ring/fastener 상태 확인처럼 표준화된 PM을 수행합니다.",
+      evidence: "before/after state, part label class, torque/procedure requirement, leak/particle sign",
+      firstDaySentence: "이 PM 항목은 제 training 범위인지 확인하고, 전후 상태를 남기겠습니다.",
+      stop: "unknown material, chemical residue, torque spec uncertainty, contamination risk가 있으면 senior 확인 전 중지합니다."
+    },
+    {
+      id: "t1-vacuum",
+      group: "Vacuum",
+      title: "pumpdown curve 관찰과 vacuum 기본 evidence 수집",
+      meaning: "rough/turbo/pump 상태, gauge trend, chamber/LL 압력 변화를 읽고 이상 신호를 분류합니다.",
+      evidence: "starting pressure, trend shape, time marker, pump status, valve/door permissive status",
+      firstDaySentence: "원인 단정 전에 pumpdown curve와 permissive 상태를 같이 보겠습니다.",
+      stop: "pressure equalization 불명확, repeated trip, leak sign, abnormal noise/vibration이면 반복 시도하지 않습니다."
+    },
+    {
+      id: "t1-gas-readiness",
+      group: "Gas / facility",
+      title: "gas readiness를 tool signal과 facility actual로 분리 확인",
+      meaning: "MFC actual, gas box status, gas cabinet, exhaust, abatement, detector, purge readiness를 owner 관점으로 봅니다.",
+      evidence: "tool ready bit, facility/gas owner confirmation, exhaust/abatement ready, purge state, detector normal",
+      firstDaySentence: "Tool ready와 facility actual state를 owner witness로 맞춘 뒤 다음 단계로 가겠습니다.",
+      stop: "toxic/flammable/pyrophoric/corrosive/asphyxiant gas boundary가 불명확하면 절대 진행하지 않습니다."
+    },
+    {
+      id: "t1-electrical-dvm",
+      group: "Electrical / DVM",
+      title: "expected value 기반 DVM 기본 확인",
+      meaning: "DMM을 대기 전에 기대값, meter mode, energy state, LOTO boundary를 먼저 말합니다.",
+      evidence: "expected value, meter mode, measured value, energy state, LOTO/permit, qualified person",
+      firstDaySentence: "측정 전 expected value와 energy boundary를 먼저 세우고 확인하겠습니다.",
+      stop: "energized panel, CAT rating, stored energy, 승인 없는 live work는 즉시 중지합니다."
+    },
+    {
+      id: "t1-wafer-handling",
+      group: "Automation / wafer",
+      title: "FOUP/load port/EFEM/LL/TM/PM wafer path 상태 읽기",
+      meaning: "slot map, wafer present, robot home, door/slit valve, handoff 위치를 보고 path 문제를 좁힙니다.",
+      evidence: "slot map, wafer present signal, robot state, door/slit status, handoff error time",
+      firstDaySentence: "wafer path를 FI, LL, TM, PM boundary로 나눠 evidence를 보겠습니다.",
+      stop: "double wafer, wafer not present mismatch, scrape/break sign, manual recovery 필요 상황은 혼자 하지 않습니다."
+    },
+    {
+      id: "t1-startup",
+      group: "Startup / initialization",
+      title: "system initialization과 basic tool status verification",
+      meaning: "승인된 절차 안에서 power-on 이후 상태, interlock, alarm category, dry-run readiness를 확인합니다.",
+      evidence: "system state, interlock category, alarm class, module ready, dry-run observation",
+      firstDaySentence: "반복 reset보다 first observed 상태와 changed condition을 먼저 보존하겠습니다.",
+      stop: "interlock 원인 불명, repeated alarm, gas/electrical/robot risk가 있으면 reset 반복 금지입니다."
+    },
+    {
+      id: "t1-basic-replacement",
+      group: "Basic hardware",
+      title: "승인된 기본 부품 교체와 전후 품질 확인",
+      meaning: "sensor, valve, O-ring 같은 기본 교체라도 training, procedure, hazardous energy 경계 안에서만 합니다.",
+      evidence: "part identity, isolation/energy state, before/after test, leak/functional check, witness if required",
+      firstDaySentence: "부품 교체 범위가 제 qualification 안인지 확인하고 전후 evidence를 닫겠습니다.",
+      stop: "gas exposure, energized work, torque/seal uncertainty, calibration requirement가 있으면 Tier 2 assistance로 올립니다."
+    },
+    {
+      id: "t1-report",
+      group: "Customer / handover",
+      title: "service documentation, customer update, shift handover",
+      meaning: "완료, open, owner, due, risk, next update를 짧고 추적 가능하게 남깁니다.",
+      evidence: "confirmed fact, impact, pending evidence, owner, next action, update time",
+      firstDaySentence: "확인된 사실, 영향, 보류 evidence, owner, 다음 업데이트 시간을 분리해 보고하겠습니다.",
+      stop: "root cause, ETA, release 가능 여부를 근거 없이 확정하지 않습니다."
+    }
+  ];
+
+  const tier2InstallTasks = [
+    ["Deeper diagnostics", "alarm/log/trend가 여러 subsystem으로 갈라질 때 senior와 함께 후보를 좁힙니다.", "독자 결론보다 evidence packet과 질문 품질이 핵심"],
+    ["Assisted component recovery", "MFC, valve, sensor, pump, robot, temperature control 등 영향이 큰 부품 교체/복구를 witness와 수행합니다.", "training, isolation, procedure, functional check가 모두 필요"],
+    ["Gas readiness assistance", "first gas, purge/vent readiness, exhaust/abatement 확인을 gas/facility/EHS owner와 맞춥니다.", "gas boundary는 tool ready bit만으로 판단하지 않음"],
+    ["Pumpdown/leak escalation", "pumpdown 실패, leak 의심, gauge mismatch, pump trip을 반복 시도 대신 senior와 evidence 기반으로 확인합니다.", "승인 절차 밖 valve sequence는 금지"],
+    ["Startup gate support", "power-on, interlock check, dry run, module ready 상태가 복합적으로 어긋날 때 지원받아 닫습니다.", "interlock bypass나 임의 reset 반복 금지"],
+    ["Qualification support", "baseline wafer, metrology, chamber comparison을 수집하고 process/customer owner에게 전달합니다.", "site-specific acceptance limit은 공식 문서와 owner 판단"],
+    ["PM recovery / seasoning support", "PM 이후 chamber condition, particle, pressure, temperature, wafer handling 회복을 지원합니다.", "recipe/process 최적화는 Tier 3/process owner 경계"],
+    ["Escalation call participation", "senior, customer, facility, process team 회의에서 fact-impact-risk-next action을 말합니다.", "모르는 것을 숨기지 않고 verified/pending을 분리"],
+    ["Retrofit/upgrade assistance", "복잡한 upgrade나 retrofit에서 procedure rev, parts, before/after test를 지원합니다.", "design modification이나 절차 변경은 독자 수행 금지"],
+    ["Training junior later", "C2 이상이 되면 더 junior에게 site safety와 기본 troubleshooting mindset을 설명할 수 있어야 합니다.", "내가 모르는 boundary는 training하지 않음"]
+  ];
+
+  const tierStopBoundaries = [
+    ["Recipe / process optimization", "공정 조건, gas ratio, thermal target, acceptance limit을 임의 변경하거나 조언하지 않습니다."],
+    ["Valve sequence / hidden sequence", "공개자료와 교육용 개념만 다루고 실제 valve order, purge sequence, bypass 절차는 다루지 않습니다."],
+    ["Detector setpoint / interlock bypass", "gas detector, interlock, EMO, permissive를 우회하거나 setpoint를 추정하지 않습니다."],
+    ["Energized work", "승인 없는 live electrical work, CAT rating 불명, stored energy 불명확 상황은 즉시 stop입니다."],
+    ["Hazardous gas exposure", "toxic, flammable, pyrophoric, corrosive, asphyxiant gas 관련 작업은 approved owner, EHS, facility evidence가 우선입니다."],
+    ["Manual wafer recovery", "wafer break, scrape, double wafer, manual recovery는 절차와 owner 없이는 하지 않습니다."],
+    ["Customer confidential", "site layout, line detail, serial/lot/wafer ID, screenshot, manual 원문은 개인 기록과 AI packet에서 제외합니다."]
+  ];
+
+  const tierDecisionCases = [
+    {
+      id: "tier-gas-ready",
+      tier: "Gas readiness",
+      prompt: "Tool 화면은 gas ready인데 exhaust/abatement owner 확인이 아직 없습니다. Tier 1로 할 일은?",
+      options: [
+        ["tool ready이므로 진행한다.", false, "gas boundary는 tool bit만으로 닫히지 않습니다. facility actual과 owner evidence가 필요합니다.", "gas-boundary"],
+        ["hold하고 gas/facility/EHS owner evidence를 확인한다.", true, "정답입니다. Tier 1의 실력은 위험 경계에서 멈추는 능력입니다.", "stop-condition"],
+        ["짧게 흘려 보고 alarm이 없으면 진행한다.", false, "승인되지 않은 trial은 위험합니다. 교육용 웹은 실제 gas sequence를 제공하지 않습니다.", "unsafe-trial"]
+      ]
+    },
+    {
+      id: "tier-pumpdown",
+      tier: "Pumpdown",
+      prompt: "Load Lock pumpdown curve가 평소보다 느립니다. 선임이 오기 전 어떤 행동이 Tier 1답습니까?",
+      options: [
+        ["leak이라고 단정하고 임의로 valve 조작한다.", false, "원인 단정과 valve sequence 추정은 금지입니다.", "premature-cause"],
+        ["시작 압력, 시간, trend shape, pump status, door/slit permissive를 보존한다.", true, "정답입니다. Tier 2/선임이 바로 판단할 수 있는 evidence packet입니다.", "evidence"],
+        ["reset을 여러 번 눌러 정상 curve가 나오는지 본다.", false, "반복 reset은 증거를 지우고 위험을 키울 수 있습니다.", "reset-loop"]
+      ]
+    },
+    {
+      id: "tier-dvm",
+      tier: "Electrical / DVM",
+      prompt: "센서 신호가 이상합니다. DVM을 들고 있습니다. 가장 먼저 할 말은?",
+      options: [
+        ["어디든 찍어보면 값이 나올 것이다.", false, "DVM은 찍어보는 도구가 아니라 기대값을 검증하는 도구입니다.", "dvm-random"],
+        ["expected value, meter mode, energy state, LOTO/permit boundary를 먼저 확인한다.", true, "정답입니다. 특히 energized work는 승인과 자격이 먼저입니다.", "expected-value"],
+        ["24V는 낮으니 live로 확인해도 무조건 안전하다.", false, "저전압이라도 panel, stored energy, arc/short risk가 있습니다.", "electrical-safety"]
+      ]
+    },
+    {
+      id: "tier-component",
+      tier: "Component replacement",
+      prompt: "표준 valve 교체 요청을 받았습니다. 처음 보는 gas line 근처입니다.",
+      options: [
+        ["기계적으로 쉬우니 바로 교체한다.", false, "단순 부품처럼 보여도 gas/energy/isolation/calibration 경계가 있습니다.", "component-risk"],
+        ["training 범위, procedure, isolation, gas exposure, witness 필요 여부를 확인한다.", true, "정답입니다. 승인되면 Tier 1, 불명확하면 Tier 2 assistance입니다.", "scope-check"],
+        ["교체 후 문제가 있으면 그때 선임을 부른다.", false, "위험 경계는 작업 전 닫아야 합니다.", "late-escalation"]
+      ]
+    },
+    {
+      id: "tier-qualification",
+      tier: "Qualification",
+      prompt: "Baseline wafer metrology가 spec 밖으로 보입니다. Tier 1 install CE의 안전한 역할은?",
+      options: [
+        ["recipe를 조금 바꿔 pass를 노린다.", false, "recipe/process optimization은 Tier 1 범위가 아니며 고객/프로세스 owner 승인 영역입니다.", "recipe"],
+        ["wafer ID를 개인 노트에 그대로 남겨 AI에게 물어본다.", false, "고객/wafer 원문은 개인 기록 금지입니다.", "confidential"],
+        ["metrology, chamber, path, time, recent change를 비식별 evidence로 정리해 owner에게 보고한다.", true, "정답입니다. qualification 판단은 공식 문서와 owner가 주도합니다.", "handover"]
+      ]
+    },
+    {
+      id: "tier-customer-eta",
+      tier: "Customer communication",
+      prompt: "고객이 '이거 Tier 1이면 혼자 해결 가능하죠?'라고 묻습니다.",
+      options: [
+        ["네, 제가 다 처리하겠습니다.", false, "과도한 약속은 위험합니다. scope와 assistance boundary를 분리해야 합니다.", "overpromise"],
+        ["승인된 Tier 1 범위는 제가 닫고, Tier 2 조건이면 senior/owner와 함께 진행하겠습니다.", true, "정답입니다. 독립성과 escalation 기준을 동시에 보여줍니다.", "boundary-report"],
+        ["저는 신입이라 아무것도 못 합니다.", false, "너무 위축될 필요도 없습니다. 표준 Tier 1 범위는 정확히 닫는 태도가 필요합니다.", "underclaim"]
+      ]
+    },
+    {
+      id: "tier-security",
+      tier: "Data / security",
+      prompt: "설치 경험을 개인 Think Tank에 남기고 싶습니다. 가장 좋은 기록 방식은?",
+      options: [
+        ["site line, tool serial, screenshot, wafer map을 그대로 저장한다.", false, "민감정보와 고객자료는 개인 저장소/AI packet에서 제외해야 합니다.", "sensitive-data"],
+        ["비식별 subsystem, symptom, evidence, missing evidence, action, result, learning gap만 남긴다.", true, "정답입니다. 성장 데이터는 redacted summary로 충분히 쌓입니다.", "redaction"],
+        ["동료와 개인 메신저에 원문을 공유한다.", false, "공식 channel과 site rule이 우선입니다.", "channel"]
+      ]
+    },
+    {
+      id: "tier-escalation",
+      tier: "Tier 2 escalation",
+      prompt: "alarm, pressure, MFC actual, facility ready가 서로 맞지 않습니다. 가장 Tier 2다운 전환은?",
+      options: [
+        ["가장 그럴듯한 원인 하나를 정해서 바로 처리한다.", false, "복합 증상은 subsystem별 evidence와 owner 분리가 우선입니다.", "narrow-too-soon"],
+        ["evidence board를 만들고 senior/facility/gas owner와 assistance로 전환한다.", true, "정답입니다. Tier 2는 도움받는 것이 약점이 아니라 표준 작업 방식입니다.", "assisted-tier2"],
+        ["고객에게 '원인 모름'만 말하고 기다린다.", false, "모른다는 말보다 verified/pending/next evidence/update time이 필요합니다.", "weak-report"]
+      ]
+    }
+  ];
+
   const phraseDrills = [
     ["모를 때", "제가 이 boundary는 아직 확인하지 못했습니다. 확인 후 진행하겠습니다.", "I have not verified this boundary yet. I will confirm it before proceeding."],
     ["멈출 때", "이 조건은 safety/quality 영향이 있어 승인된 owner 확인 전까지 hold하겠습니다.", "This condition may affect safety or quality, so I will hold until the approved owner confirms it."],
@@ -544,6 +811,8 @@
       answers: {},
       checklist: {},
       campaign: {},
+      tier1Checklist: {},
+      tierAnswers: {},
       prejobBrief: {},
       lastUpdatedAt: null,
       ...safeJson(STATE_KEY, {})
@@ -569,6 +838,23 @@
   function campaignScore(data) {
     const done = campaignDays.filter(([id]) => data.campaign?.[id]).length;
     return { done, total: campaignDays.length, percent: Math.round((done / campaignDays.length) * 100) };
+  }
+
+  function tier1Score(data) {
+    const done = tier1InstallTasks.filter(task => data.tier1Checklist?.[task.id]).length;
+    return { done, total: tier1InstallTasks.length, percent: Math.round((done / tier1InstallTasks.length) * 100) };
+  }
+
+  function tierDecisionScore(data) {
+    const rows = Object.values(data.tierAnswers || {});
+    const correct = rows.filter(answer => answer?.correct).length;
+    return {
+      total: tierDecisionCases.length,
+      tried: rows.length,
+      correct,
+      wrong: rows.filter(answer => answer && answer.correct === false).length,
+      percent: tierDecisionCases.length ? Math.round((correct / tierDecisionCases.length) * 100) : 0
+    };
   }
 
   function bottleneckLevel(data, item) {
@@ -807,6 +1093,150 @@
     `;
   }
 
+  function renderTierDefinitionBoard() {
+    return `
+      <section class="fab-panel fab-tier-panel" id="fab-tier-training">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Applied install tier map</p>
+            <h2>Tier 1 / Tier 2가 현장에서 실제로 뜻하는 것</h2>
+          </div>
+          <span class="fab-chip">public-source interpretation</span>
+        </div>
+        <p class="fab-mental">공개자료로 확인되는 핵심은 간단합니다. Tier 1은 승인된 표준 서비스 활동을 독립적으로 닫는 범위이고, Tier 2는 표준 활동이지만 선임/owner assistance가 붙는 범위입니다. 회사 내부 certification, site rule, tool option, 고객 승인 문서가 항상 최종 기준입니다.</p>
+        <div class="fab-tier-definition-grid">
+          ${tierDefinitions.map(tier => `
+            <article>
+              <span>${escapeHtml(tier.label)}</span>
+              <h3>${escapeHtml(tier.headline)}</h3>
+              <dl>
+                <dt>공개 근거</dt><dd>${escapeHtml(tier.publicBasis)}</dd>
+                <dt>현장 의미</dt><dd>${escapeHtml(tier.fieldMeaning)}</dd>
+                <dt>아닌 것</dt><dd>${escapeHtml(tier.notMeaning)}</dd>
+                <dt>성공 신호</dt><dd>${escapeHtml(tier.successSignal)}</dd>
+              </dl>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTier1TaskMatrix(data) {
+    const score = tier1Score(data);
+    const groups = [...new Set(tier1InstallTasks.map(task => task.group))];
+    return `
+      <section class="fab-panel fab-tier-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Tier 1 install readiness matrix</p>
+            <h2>첫날부터 독립적으로 닫아야 할 Tier 1 사고 범위</h2>
+          </div>
+          <span class="fab-chip">${score.done}/${score.total} · ${score.percent}%</span>
+        </div>
+        <p class="fab-mental">체크는 “내가 이 일을 무조건 혼자 한다”가 아니라 “이 범위에서 무엇을 확인하고, 언제 멈추고, 어떻게 보고할지 설명할 수 있다”는 뜻입니다.</p>
+        <div class="fab-tier-group-grid">
+          ${groups.map(group => `
+            <article class="fab-tier-group-card">
+              <h3>${escapeHtml(group)}</h3>
+              ${tier1InstallTasks.filter(task => task.group === group).map(task => `
+                <label class="${data.tier1Checklist?.[task.id] ? "done" : ""}">
+                  <input type="checkbox" data-tier1-task="${escapeHtml(task.id)}" ${data.tier1Checklist?.[task.id] ? "checked" : ""} />
+                  <span>
+                    <b>${escapeHtml(task.title)}</b>
+                    <small>${escapeHtml(task.meaning)}</small>
+                    <em>Evidence: ${escapeHtml(task.evidence)}</em>
+                    <i>Stop: ${escapeHtml(task.stop)}</i>
+                    <q>${escapeHtml(task.firstDaySentence)}</q>
+                  </span>
+                </label>
+              `).join("")}
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTier2AssistanceBoard() {
+    return `
+      <section class="fab-panel fab-tier-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Tier 2 with assistance</p>
+            <h2>Tier 2는 “못해서 부르는 것”이 아니라 표준 escalation 방식</h2>
+          </div>
+          <span class="fab-chip">assisted · witnessed · evidence-led</span>
+        </div>
+        <div class="fab-tier2-grid">
+          ${tier2InstallTasks.map(([title, meaning, boundary]) => `
+            <article>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(meaning)}</p>
+              <small>${escapeHtml(boundary)}</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTierStopBoundaries() {
+    return `
+      <section class="fab-panel fab-tier-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Hard stop boundary</p>
+            <h2>Tier와 무관하게 절대 넘기면 안 되는 선</h2>
+          </div>
+          <span class="fab-chip">official training first</span>
+        </div>
+        <div class="fab-tier-stop-grid">
+          ${tierStopBoundaries.map(([title, text]) => `
+            <article>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(text)}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderTierDecisionTrainer(data) {
+    const score = tierDecisionScore(data);
+    return `
+      <section class="fab-panel fab-tier-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Tier decision trainer</p>
+            <h2>Tier 1로 닫을지, Tier 2 assistance로 올릴지 판단 퀴즈</h2>
+          </div>
+          <span class="fab-chip">${score.correct}/${score.total} · ${score.tried} tried</span>
+        </div>
+        <div class="fab-tier-case-grid">
+          ${tierDecisionCases.map(item => {
+            const answer = data.tierAnswers?.[item.id];
+            return `
+              <article class="fab-scenario-card ${answer ? answer.correct ? "correct" : "wrong" : ""}">
+                <span>${escapeHtml(item.tier)}</span>
+                <h3>${escapeHtml(item.prompt)}</h3>
+                <div class="fab-answer-list">
+                  ${item.options.map((option, index) => `
+                    <button type="button" class="${answer?.optionIndex === index ? "chosen" : ""}" data-tier-answer="${escapeHtml(item.id)}" data-option-index="${index}">
+                      ${escapeHtml(option[0])}
+                    </button>
+                  `).join("")}
+                </div>
+                <p class="fab-feedback ${answer ? "" : "muted"}">${answer ? escapeHtml(answer.feedback) : "답을 고르면 즉시 Tier 판단과 위험 포인트를 설명합니다."}</p>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderCampaign(data) {
     const score = campaignScore(data);
     return `
@@ -942,6 +1372,8 @@
     const game = scenarioScore(data);
     const ready = checklistScore(data);
     const campaign = campaignScore(data);
+    const tier1 = tier1Score(data);
+    const tierDecision = tierDecisionScore(data);
     root.innerHTML = `
       <section class="fab-acclimation-console">
         <article class="fab-acclimation-hero">
@@ -965,10 +1397,18 @@
             <span>campaign</span>
             <strong>${campaign.done}/${campaign.total}</strong>
             <small>${campaign.percent}% first 14 days</small>
+            <span>Tier 1</span>
+            <strong>${tier1.done}/${tier1.total}</strong>
+            <small>${tierDecision.correct}/${tierDecision.total} decisions</small>
           </div>
         </article>
 
         ${renderBottleneckRadar(data)}
+        ${renderTierDefinitionBoard()}
+        ${renderTier1TaskMatrix(data)}
+        ${renderTier2AssistanceBoard()}
+        ${renderTierStopBoundaries()}
+        ${renderTierDecisionTrainer(data)}
         ${renderCampaign(data)}
         ${renderPrejobBriefBuilder(data)}
 
@@ -1044,6 +1484,38 @@
       });
     });
 
+    root.querySelectorAll("[data-tier1-task]").forEach(input => {
+      input.addEventListener("change", () => {
+        const next = state();
+        next.tier1Checklist = next.tier1Checklist || {};
+        next.tier1Checklist[input.dataset.tier1Task] = input.checked;
+        next.lastUpdatedAt = new Date().toISOString();
+        saveState(next);
+        render();
+      });
+    });
+
+    root.querySelectorAll("[data-tier-answer]").forEach(button => {
+      button.addEventListener("click", () => {
+        const item = tierDecisionCases.find(row => row.id === button.dataset.tierAnswer);
+        const optionIndex = Number(button.dataset.optionIndex);
+        const option = item?.options?.[optionIndex];
+        if (!item || !option) return;
+        const next = state();
+        next.tierAnswers = next.tierAnswers || {};
+        next.tierAnswers[item.id] = {
+          optionIndex,
+          correct: Boolean(option[1]),
+          feedback: option[2],
+          weaknessTag: option[3],
+          answeredAt: new Date().toISOString()
+        };
+        next.lastUpdatedAt = new Date().toISOString();
+        saveState(next);
+        render();
+      });
+    });
+
     root.querySelector("#fab-brief-form")?.addEventListener("submit", event => {
       event.preventDefault();
       const next = state();
@@ -1086,10 +1558,14 @@
     getState: state,
     getScore: () => {
       const data = state();
-      return { scenario: scenarioScore(data), checklist: checklistScore(data), campaign: campaignScore(data) };
+      return { scenario: scenarioScore(data), checklist: checklistScore(data), campaign: campaignScore(data), tier1: tier1Score(data), tierDecision: tierDecisionScore(data) };
     },
     steps: arrivalSteps,
-    scenarios
+    scenarios,
+    tierDefinitions,
+    tier1InstallTasks,
+    tier2InstallTasks,
+    tierDecisionCases
   };
 
   document.addEventListener("DOMContentLoaded", render);
