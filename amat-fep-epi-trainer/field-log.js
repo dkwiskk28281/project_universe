@@ -124,7 +124,41 @@
     ["account number", "account/security info"],
     ["\uACC4\uC88C", "account/security info"],
     ["resident registration", "personal id"],
-    ["\uC8FC\uBBFC\uB4F1\uB85D", "personal id"]
+    ["\uC8FC\uBBFC\uB4F1\uB85D", "personal id"],
+    ["photo", "unapproved photo / image capture"],
+    ["camera", "unapproved photo / image capture"],
+    ["screenshot", "unapproved screenshot"],
+    ["capture", "unapproved screenshot"],
+    ["\uC0AC\uC9C4", "unapproved photo / image capture"],
+    ["\uCD2C\uC601", "unapproved photo / image capture"],
+    ["\uCE74\uBA54\uB77C", "unapproved photo / image capture"],
+    ["\uCEA1\uCC98", "unapproved screenshot"],
+    ["\uC2A4\uD06C\uB9B0\uC0F7", "unapproved screenshot"],
+    ["wafer map", "customer process data"],
+    ["lot id", "customer lot/wafer identifier"],
+    ["wafer id", "customer lot/wafer identifier"],
+    ["\uC6E8\uC774\uD37C\uB9F5", "customer process data"],
+    ["\uB85C\uD2B8", "customer lot/wafer identifier"],
+    ["drawing", "customer/site drawing"],
+    ["p&id", "customer/site drawing"],
+    ["\uB3C4\uBA74", "customer/site drawing"],
+    ["manual", "equipment manual source"],
+    ["\uB9E4\uB274\uC5BC", "equipment manual source"],
+    ["usb", "removable media"],
+    ["personal cloud", "unapproved cloud storage"],
+    ["gmail", "unapproved external mail"],
+    ["kakao", "unapproved messenger"],
+    ["\uAC1C\uC778\uBA54\uC77C", "unapproved external mail"],
+    ["\uAC1C\uC778 \uD074\uB77C\uC6B0\uB4DC", "unapproved cloud storage"],
+    ["\uCE74\uCE74\uC624", "unapproved messenger"],
+    ["badge", "site access credential"],
+    ["\uBC30\uC9C0", "site access credential"],
+    ["\uCD9C\uC785\uC99D", "site access credential"],
+    ["qr", "site access credential"],
+    ["download", "data export boundary"],
+    ["export", "data export boundary"],
+    ["\uBC18\uCD9C", "data export boundary"],
+    ["\uB2E4\uC6B4\uB85C\uB4DC", "data export boundary"]
   ];
 
   const subsystemRules = [
@@ -175,6 +209,12 @@
       label: "Customer communication / handover",
       keywords: ["customer", "handover", "report", "owner", "hold", "escalation", "shift", "\uACE0\uAC1D", "\uBCF4\uACE0", "\uBCF4\uB958", "\uC911\uC9C0"],
       chapter: "Customer communication / handover"
+    },
+    {
+      id: "security-compliance",
+      label: "Samsung fab security / data boundary",
+      keywords: ["security", "confidential", "photo", "camera", "screenshot", "capture", "export", "download", "usb", "badge", "drawing", "manual", "wafer map", "lot id", "kakao", "gmail", "\uBCF4\uC548", "\uAE30\uBC00", "\uC0AC\uC9C4", "\uCD2C\uC601", "\uCEA1\uCC98", "\uCE74\uBA54\uB77C", "\uBC18\uCD9C", "\uB3C4\uBA74", "\uB9E4\uB274\uC5BC", "\uC6E8\uC774\uD37C\uB9F5", "\uCD9C\uC785\uC99D"],
+      chapter: "Samsung fab security compliance"
     }
   ];
 
@@ -186,7 +226,8 @@
     "electrical-controls": ["alarm code/category", "expected signal state", "sensor/PLC I/O state", "DVM measurement plan", "LOTO/energized-work approval"],
     facility: ["facility owner confirmation", "utility spec sheet status", "CDA/PCW/exhaust/power ready", "hook-up punch list", "site approval document"],
     "metrology-data": ["baseline wafer result", "wafer map", "chamber comparison", "pre/post PM data", "metrology recipe identity"],
-    communication: ["confirmed fact list", "assumption list", "owner/date", "next action", "customer report draft"]
+    communication: ["confirmed fact list", "assumption list", "owner/date", "next action", "customer report draft"],
+    "security-compliance": ["security briefing scope", "approved report channel", "photo/screenshot approval", "data export approval", "redaction check", "customer/security owner confirmation"]
   };
 
   function escapeHtml(value) {
@@ -321,6 +362,7 @@
     if (subsystems.includes("electrical-controls")) gaps.push("DVM expected value thinking and interlock signal chain");
     if (subsystems.includes("facility")) gaps.push("facility hook-up ownership and readiness evidence");
     if (subsystems.includes("metrology-data")) gaps.push("baseline wafer, uniformity, chamber matching evidence");
+    if (subsystems.includes("security-compliance")) gaps.push("Samsung/customer fab security boundary, redaction, approved channel");
     if (risk === "high") gaps.push("stop condition and escalation wording");
     if (missingEvidence.length >= 4) gaps.push("evidence-first troubleshooting discipline");
     return unique(gaps).slice(0, 8);
