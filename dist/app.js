@@ -3776,6 +3776,45 @@ flashcards.push(
   ["Current jack trap", "current jack에 꽂힌 lead로 voltage source를 재면 short/arc 위험이 있습니다."]
 );
 
+glossaryTerms.push(
+  ["Bay", "Fab 적응", "Fab 안에서 특정 장비들이 배치된 작업 구역입니다.", "CE는 bay 번호와 장비 위치를 정확히 말해야 선임, 고객, 시설팀과 같은 장소를 떠올릴 수 있습니다."],
+  ["Chase", "Fab 적응", "장비 뒤쪽이나 옆쪽의 utility, 배기, 케이블, 배관 접근 구역입니다.", "process side와 service side가 다를 수 있으므로 출입 가능 범위와 escort 필요 여부를 먼저 확인합니다."],
+  ["Service Aisle", "Fab 적응", "장비 정비와 이동을 위해 확보된 통로입니다.", "카트, 부품, 공구를 임의로 두면 동선과 비상 접근을 막을 수 있습니다."],
+  ["Access Boundary", "Fab 적응", "내가 들어가도 되는 구역과 승인/escort가 필요한 구역의 경계입니다.", "첫 출근 CE가 가장 먼저 익혀야 할 것은 장비가 아니라 사람, 동선, 권한의 경계입니다."],
+  ["Escort", "Fab 적응", "고객 또는 승인자가 동행해 출입과 작업 범위를 확인하는 상태입니다.", "escort가 필요한 구역에서 혼자 움직이는 것은 보안/EHS 리스크입니다."],
+  ["Host", "Fab 자동화", "Fab 생산관리/자동화 시스템과 장비가 통신하는 상위 시스템입니다.", "CE는 host 문제가 tool 문제인지, carrier/recipe/state 문제인지 구분할 수 있어야 합니다."],
+  ["Badge", "Fab 보안", "출입 권한을 확인하는 신분/권한 카드입니다.", "badge 권한, 반납, 분실 보고, 동행 규칙은 site rule을 우선합니다."],
+  ["Gowning Room", "Cleanroom", "방진복을 입고 청정구역으로 들어가기 전 준비하는 공간입니다.", "착용 순서와 오염 방지 동선은 현장 교육과 고객 규칙을 따릅니다."],
+  ["Air Shower", "Cleanroom", "청정구역 진입 전 몸과 방진복 표면의 particle을 줄이는 공기 샤워 구간입니다.", "물건을 놓거나 정지 시간을 임의로 줄이지 않습니다."],
+  ["Smock / Bunny Suit", "Cleanroom", "Fab에서 입는 방진복을 현장에서 부르는 표현입니다.", "입는 목적은 멋이 아니라 particle, hair, fiber, skin flake를 줄이는 것입니다."],
+  ["Booties", "Cleanroom", "방진화 또는 신발 커버입니다.", "바닥 오염과 미끄럼, gowning 순서 실수를 같이 주의합니다."],
+  ["Clean Side / Dirty Side", "Cleanroom", "청정도가 높은 쪽과 낮은 쪽을 나누는 경계입니다.", "공구, 부품, 장갑, 포장재가 어느 쪽에 있어야 하는지 헷갈리면 멈추고 확인합니다."],
+  ["AMHS / OHT", "Fab 자동화", "FOUP을 장비 load port까지 옮기는 자동 물류 시스템입니다.", "CE는 OHT 동선과 load port 상태를 침범하지 않고, carrier handoff 상태를 확인합니다."],
+  ["FOUP Seated", "Wafer Handling", "FOUP이 load port에 정확히 앉아 clamp/mapping 가능한 상태입니다.", "겉으로 놓인 것과 장비가 seated로 인식하는 것은 다를 수 있습니다."],
+  ["Mapper", "Wafer Handling", "FOUP 안 wafer slot 존재와 위치를 확인하는 장치/동작입니다.", "slot map 오류는 wafer path 시작 전 identity와 transfer risk로 연결됩니다."],
+  ["Slot Map", "Wafer Handling", "FOUP 안 각 slot에 wafer가 있는지 나타낸 지도입니다.", "잘못된 slot map은 wrong wafer transfer, empty pick, double wafer risk로 이어질 수 있습니다."],
+  ["Wafer Present", "Wafer Handling", "센서나 로직이 wafer 존재를 감지한 상태입니다.", "sensor true가 실제 안전을 100% 보장하지 않으므로 alarm과 physical evidence를 함께 봅니다."],
+  ["Handoff", "Wafer Handling", "FOUP, load lock, robot, chamber 사이에서 wafer 책임이 넘어가는 순간입니다.", "handoff boundary를 이해하면 robot alarm과 wafer 위치 미확인을 빠르게 좁힐 수 있습니다."],
+  ["Robot Blade", "Wafer Handling", "robot이 wafer를 실제로 받치고 이동시키는 얇은 받침부입니다.", "blade contact, wafer centering, WOB 신호는 scrape/drop 방지의 핵심입니다."],
+  ["WOB", "Wafer Handling", "Wafer On Blade의 약어로 robot blade 위 wafer 감지를 의미합니다.", "WOB mismatch는 wafer loss, sensor issue, transfer timing issue 후보를 만듭니다."],
+  ["Pump/Vent Cycle", "Vacuum", "load lock이나 chamber를 진공으로 만들고 다시 대기압으로 되돌리는 반복 동작입니다.", "door open 가능 조건, pressure match, purge 상태와 직접 연결됩니다."],
+  ["Permissive", "Controls", "다음 동작을 허용하기 위해 필요한 조건 신호입니다.", "permissive가 없을 때는 억지 진행보다 어떤 조건이 빠졌는지 evidence를 모읍니다."],
+  ["Ready Bit", "Controls", "상위/하위 시스템이 준비 상태를 알리는 디지털 신호입니다.", "ready bit 하나만 믿지 말고 actual state, trend, owner witness를 함께 확인합니다."],
+  ["Line Release", "Install", "해당 line/utility/area가 다음 작업을 진행해도 된다고 승인되는 상태입니다.", "구두 OK와 공식 release는 다를 수 있으므로 승인 주체와 문서 기준을 확인합니다."],
+  ["Hook-up Drawing", "Install", "전원, 가스, 배기, 냉각수, CDA, N2 등 facility 연결 기준 도면입니다.", "현장 연결은 기억이 아니라 최신 revision drawing과 customer 승인 기준으로 봅니다."],
+  ["Critical Utility", "Facilities", "장비 안전/공정/동작에 치명적인 전원, 배기, 냉각수, 가스, CDA, N2 같은 설비입니다.", "critical utility가 흔들리면 tool alarm보다 utility evidence가 먼저입니다."],
+  ["Gas Stick", "Gas Delivery", "가스 라인의 regulator, valve, MFC, purge path 등이 묶인 공급 경로 단위입니다.", "실제 valve sequence나 setpoint는 비공개/현장 승인 문서 영역이라 웹에 넣지 않습니다."],
+  ["VMB / VMP", "Gas Delivery", "Valve Manifold Box/Panel로 여러 가스 라인과 차단/분배를 관리하는 설비 구역입니다.", "toxic/flammable/corrosive gas는 VMB/VMP, detector, exhaust, abatement owner 확인이 중요합니다."],
+  ["Abatement Ready", "Exhaust/EHS", "공정 부산물이나 유해 가스를 처리하는 abatement가 준비된 상태입니다.", "first gas 전에는 tool ready와 downstream abatement actual을 함께 확인해야 합니다."],
+  ["Detector Health", "EHS", "가스 감지기/모니터가 정상 상태인지 나타내는 안전 evidence입니다.", "임의 setpoint 변경이나 bypass는 금지이며 site/EHS 승인 문서가 우선입니다."],
+  ["First Gas", "Install", "설치 후 처음으로 공정 관련 가스를 다루기 시작하는 중요한 경계 단계입니다.", "gas family, SDS, exhaust, abatement, detector, owner witness가 닫히기 전 진행하지 않습니다."],
+  ["First Power-on", "Install", "설치 후 장비 전원을 처음 투입하는 단계입니다.", "LOTO boundary, stored energy, panel scope, authorized owner가 먼저입니다."],
+  ["Touch Boundary", "Fab 적응", "내가 만져도 되는 것과 만지면 안 되는 것의 경계입니다.", "고객 장비, wafer, panel, gas line, cabinet은 승인 없이 임의 touch하지 않습니다."],
+  ["Passdown", "Communication", "교대나 작업 전환 때 현재 상태, 위험, 미완료 작업을 넘기는 기록/대화입니다.", "좋은 passdown은 fact, assumption, next action, owner, stop condition을 분리합니다."],
+  ["Customer Update", "Communication", "고객에게 현재 상태와 다음 행동을 짧고 신뢰 있게 알리는 보고입니다.", "확정 사실과 추정을 분리하고, 과도한 약속 없이 ETA와 next evidence를 제시합니다."],
+  ["Redacted Note", "Security", "민감정보를 제거하고 남긴 기록입니다.", "recipe, serial 전체, 고객 내부자료, detector setpoint, site-specific limit은 기록에서 제외합니다."]
+);
+
 const commandCenterActions = [
   {
     view: "runbook",

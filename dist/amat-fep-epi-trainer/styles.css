@@ -25799,11 +25799,81 @@ body[data-current-view="cognitive"] .learning-hud {
   font-weight: 900;
 }
 
-.fab-decoder-grid small {
+.fab-decoder-grid small,
+.fab-decoder-grid em {
   display: block;
   margin-top: 8px;
-  color: #ffc0c4;
   line-height: 1.45;
+  font-style: normal;
+}
+
+.fab-decoder-grid small {
+  color: #ffc0c4;
+}
+
+.fab-decoder-grid em {
+  padding: 8px 9px;
+  border-left: 2px solid rgba(50, 255, 173, 0.48);
+  border-radius: 7px;
+  background: rgba(50, 255, 173, 0.06);
+  color: #eafff8;
+}
+
+.fab-decoder-tools {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.48fr) minmax(0, 0.52fr);
+  gap: 12px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.fab-decoder-tools input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid rgba(167, 247, 255, 0.2);
+  border-radius: 9px;
+  background: rgba(0, 0, 0, 0.26);
+  color: #f4fffb;
+  outline: none;
+}
+
+.fab-decoder-tools input::placeholder {
+  color: rgba(197, 232, 221, 0.54);
+}
+
+.fab-decoder-tools input:focus {
+  border-color: rgba(50, 255, 173, 0.58);
+  box-shadow: 0 0 0 3px rgba(50, 255, 173, 0.12);
+}
+
+.fab-decoder-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.fab-decoder-filters button {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(167, 247, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 15, 19, 0.78);
+  color: #b9ded6;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.fab-decoder-filters button.active,
+.fab-decoder-filters button:hover {
+  border-color: rgba(50, 255, 173, 0.55);
+  background: rgba(50, 255, 173, 0.12);
+  color: #f4fffb;
+}
+
+.fab-decoder-grid .decoder-hidden {
+  display: none;
 }
 
 .fab-scenario-grid {
@@ -26172,6 +26242,7 @@ body.console-theme .fab-acclimation-console * {
   .fab-step-grid,
   .fab-script-grid,
   .fab-tier-definition-grid,
+  .fab-decoder-tools,
   .fab-boundary-grid,
   .fab-brief-form {
     grid-template-columns: 1fr;

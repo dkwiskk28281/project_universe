@@ -782,6 +782,60 @@
     ["Escalation", "권한 있는 사람에게 올리는 것", "stop condition, safety, schedule impact가 있으면 빠른 escalation이 실력", "숨기거나 혼자 해결하려 하지 않기"]
   ];
 
+  fabDecoder.push(
+    ["Access boundary", "내가 들어가거나 만질 수 있는 허용 경계", "Fab에서는 동선, tool 접근, panel open, data export가 모두 boundary입니다.", "애매하면 선임 뒤를 몰래 따라가지 말고 현재 위치에서 owner 확인", "동선/보안", "내가 혼자 움직여도 되는 구역인지 먼저 말로 확인"],
+    ["Escort", "동행 안내자", "visitor 또는 신규 인력이 허가 구역으로 이동할 때 필요한 동행자입니다.", "잠깐이면 괜찮겠지 하고 단독 이동 금지", "동선/보안", "escort 필요 구역과 대기 위치를 확인"],
+    ["Host", "방문/작업을 받는 현장 담당자", "site 출입, badge, meeting point, emergency contact의 기준점입니다.", "host와 실제 작업 owner를 같은 사람으로 단정 금지", "동선/보안", "방문 목적과 host/owner를 분리해서 적기"],
+    ["Badge", "출입증", "색상/권한/escort 필요 여부가 다를 수 있는 site access 표시입니다.", "badge를 찍을 수 있다고 모든 구역 출입 가능은 아님", "동선/보안", "badge 권한과 이동 가능 boundary 확인"],
+    ["Service aisle", "장비 정비 접근 통로", "CE가 panel, utility, module 주변을 접근하는 작업 통로입니다.", "작업 통로에 tool, cart, cable을 방치하지 않기", "동선/보안", "통로 확보와 emergency path 방해 여부 확인"],
+    ["Gowning room", "방진복 착용 공간", "cleanroom 진입 전 오염을 줄이기 위해 정해진 순서로 PPE를 입는 곳입니다.", "급하다고 이전 site 방식으로 입지 않기", "청정/오염", "site gowning sequence와 mirror check"],
+    ["Air shower", "먼지 제거 공기 샤워", "cleanroom 전후에 particle을 줄이기 위해 공기를 분사하는 구역입니다.", "손으로 옷을 털거나 벽에 기대지 않기", "청정/오염", "정해진 자세와 시간을 따르기"],
+    ["Smock / Bunny suit", "방진복", "사람에서 나오는 particle을 줄이는 cleanroom 기본 복장입니다.", "소매, hood, bootie gap이 오염 source가 될 수 있음", "청정/오염", "소매/장갑/후드/부티 겹침 확인"],
+    ["Booties", "방진 신발 덮개", "바닥 오염과 particle 이동을 줄이는 신발 보호구입니다.", "dirty side 바닥을 밟은 뒤 clean side로 넘어가지 않기", "청정/오염", "clean/dirty boundary 확인"],
+    ["Clean side / dirty side", "청정 구역과 오염 가능 구역", "gowning과 물품 반입에서 손·발·물건이 넘어가는 순서를 구분합니다.", "가방, 휴대폰, 공구를 임의로 clean side에 올리지 않기", "청정/오염", "어느 손/물품이 clean인지 먼저 구분"],
+    ["AMC", "공기 중 분자 오염", "Airborne Molecular Contamination. particle이 아니어도 wafer surface에 영향을 줄 수 있는 오염입니다.", "먼지만 없으면 깨끗하다고 단정 금지", "청정/오염", "냄새/화학/ventilation 이상은 EHS 기준으로 보고"],
+    ["AMHS / OHT", "자동 물류/천장 이송", "FOUP를 장비 load port까지 자동으로 운반하는 fab 물류 시스템입니다.", "OHT 동선 아래에서 불필요하게 머무르거나 손대지 않기", "자동화/웨이퍼", "FOUP owner와 AMHS active/passive 상태 확인"],
+    ["FOUP seated", "FOUP가 load port에 제대로 앉은 상태", "carrier가 load port kinematic 위치에 안정적으로 놓인 상태입니다.", "FOUP가 보인다고 door open/mapping 가능으로 단정 금지", "자동화/웨이퍼", "load port clamp, dock, carrier ID 상태 확인"],
+    ["Load Port", "FOUP 장착 위치", "FOUP door open, carrier ID, mapping, EFEM handoff가 시작되는 장비 앞단입니다.", "고객 FOUP/wafer를 임의로 만지지 않기", "자동화/웨이퍼", "load port state와 host/carrier state 일치 확인"],
+    ["Mapper", "wafer 위치 파악 장치", "FOUP 안 slot별 wafer 유무를 읽어 slot map을 만드는 장치입니다.", "마지막 map만 믿고 흔들리는 map을 무시하지 않기", "자동화/웨이퍼", "반복 mapping 차이와 wafer present signal 비교"],
+    ["Slot map", "FOUP 안 wafer 위치 지도", "어느 slot에 wafer가 있는지 표시하는 data입니다.", "slot mismatch가 있으면 transfer를 반복하지 않기", "자동화/웨이퍼", "host state, physical FOUP, mapper 결과를 같은 시간축으로 대조"],
+    ["Wafer present", "wafer 존재 감지", "sensor가 wafer가 있는지 없는지 알려주는 상태입니다.", "sensor 하나만으로 wafer identity가 닫혔다고 단정 금지", "자동화/웨이퍼", "physical state와 sensor/log를 함께 확인"],
+    ["Handoff", "wafer를 넘겨주는 순간", "EFEM, LL, TM, PM 사이에서 robot이 wafer를 주고받는 경계입니다.", "handoff error 후 반복 retry로 원래 evidence 지우지 않기", "자동화/웨이퍼", "어느 boundary에서 멈췄는지 시간과 상태 기록"],
+    ["Robot blade", "wafer를 받치는 robot 팔", "wafer를 들어 이동시키는 end-effector입니다.", "blade 위 wafer 상태를 모른 채 motion 반복 금지", "자동화/웨이퍼", "wafer-on-blade, centering, scrape sign 확인"],
+    ["WOB", "wafer-on-blade", "wafer가 robot blade 위에 있는지 확인하는 상태입니다.", "WOB mismatch는 wafer risk라 단순 reset 대상이 아님", "자동화/웨이퍼", "motion hold 후 physical/sensor/log evidence 정리"],
+    ["Load Lock vent", "로드락을 대기압으로 돌리는 동작", "vacuum 상태의 load lock을 N2 등으로 대기압 근처까지 올리는 과정입니다.", "vent/pump sequence 세부는 현장 절차 밖에서 추정 금지", "진공/가스", "pressure trend와 door permissive 확인"],
+    ["Pump/vent cycle", "빼고 채우는 반복 동작", "load lock이나 chamber가 vacuum과 vent 상태를 오가며 wafer transfer 준비를 합니다.", "cycle 시간이 흔들리면 그냥 통과시키지 않기", "진공/가스", "시간, 압력, pump status를 baseline과 비교"],
+    ["Permissive", "동작 허가 조건", "다음 motion/process가 가능하다고 제어가 허용하는 조건입니다.", "permissive가 안 뜬다고 jumper나 bypass 생각 금지", "제어/안전", "어떤 조건이 permissive를 막는지 evidence 수집"],
+    ["Ready bit", "준비 완료 신호", "tool 또는 facility가 ready 상태라고 보내는 digital signal입니다.", "ready bit 하나만으로 actual 상태까지 닫혔다고 단정 금지", "제어/안전", "actual gauge, local panel, owner witness와 대조"],
+    ["Interlock chain", "안전 조건 묶음", "door, pressure, gas, exhaust, EMO, panel 등 안전 조건이 연결된 보호 체인입니다.", "interlock bypass 정보는 만들지도 묻지도 않기", "제어/안전", "어느 조건이 open인지 category와 owner 확인"],
+    ["Line release", "utility/gas line 사용 승인", "연결·누설·purge·owner 확인 후 line을 사용할 수 있게 승인하는 단계입니다.", "label만 보고 gas line ready로 단정 금지", "설치/유틸", "drawing, POC, leak/purge evidence, owner sign-off 확인"],
+    ["POC", "Point of Connection", "tool utility와 fab facility가 만나는 연결 지점입니다.", "POC label과 drawing이 다르면 일정상 진행 금지", "설치/유틸", "label, drawing revision, actual connection을 같이 확인"],
+    ["Hook-up drawing", "utility 연결 도면", "power, gas, PCW, CDA, exhaust, drain, network 연결 위치와 조건을 보여줍니다.", "현장 기억이나 구두 설명만으로 연결 판단 금지", "설치/유틸", "최신 revision과 as-built 차이 확인"],
+    ["P&ID", "배관/계장 도면", "Piping and Instrumentation Diagram. valve, sensor, line, instrument 관계를 보여주는 도면입니다.", "도면을 실제 valve sequence처럼 해석해 임의 조작 금지", "설치/유틸", "계통 경계와 owner를 이해하는 용도로 사용"],
+    ["Redline", "도면 위 현장 변경 표시", "실제 설치 중 달라진 점을 도면에 표시하는 기록입니다.", "개인 노트에만 남기고 공식 문서 반영을 빼먹지 않기", "설치/유틸", "변경점, owner, 날짜를 공식 채널로 남기기"],
+    ["As-built", "실제 설치 완료 상태 기록", "최종 설치 상태가 반영된 도면/기록입니다.", "as-built 없이 다음 정비자가 같은 문제를 반복하게 만들지 않기", "설치/유틸", "POC와 실제 배관/케이블이 일치하는지 확인"],
+    ["Critical utility", "장비 안전/공정에 치명적인 utility", "전원, PCW, CDA, N2, exhaust, abatement, gas처럼 빠지면 안전·품질 문제가 생기는 공급입니다.", "tool screen normal만 보고 utility issue 배제 금지", "설치/유틸", "tool readback과 facility actual trend 비교"],
+    ["CDA", "Clean Dry Air", "공압 valve, actuator, purge support에 쓰이는 깨끗한 건조 공기입니다.", "CDA pressure dip은 wafer handling 문제처럼 보일 수 있음", "설치/유틸", "supply pressure, regulator, pneumatic response 확인"],
+    ["PCW", "Process Cooling Water", "장비 열을 제거하는 냉각수입니다.", "flow만 보고 leak/return/temperature를 놓치지 않기", "설치/유틸", "supply/return, flow, temperature, leak evidence 확인"],
+    ["VMB / VMP", "Valve Manifold Box/Panel", "gas line을 분배하고 purge/isolation을 관리하는 gas utility 구조입니다.", "구체 valve sequence는 공식 절차 밖에서 추정 금지", "진공/가스", "gas owner와 line identity/ready state 확인"],
+    ["Gas stick", "가스 제어 라인 묶음", "MFC, valve, filter, regulator 등이 한 gas line 제어 경로를 이룹니다.", "어느 gas인지 모른 채 sensor/valve를 건드리지 않기", "진공/가스", "gas name, hazard, isolation, owner 확인"],
+    ["Abatement ready", "유해가스 처리 설비 준비 상태", "process exhaust가 안전하게 처리될 수 있는 상태입니다.", "ready signal만 있고 local actual을 못 보면 first gas hold", "진공/가스", "abatement panel/alarm/owner witness 확인"],
+    ["Exhaust flow", "배기 유량/흐름", "chamber와 gas cabinet에서 나온 gas를 안전하게 끌어내는 흐름입니다.", "exhaust 이상 상태에서 gas readiness 주장 금지", "진공/가스", "flow, pressure, alarm, scrubber 상태 확인"],
+    ["Scrubber", "배기가스 세정/처리 장치", "부식성/유해 gas를 처리하는 downstream 설비입니다.", "tool 정상만 보고 scrubber alarm 무시 금지", "진공/가스", "exhaust/abatement owner와 상태 확인"],
+    ["Detector health", "가스 감지기 정상 상태", "gas detector가 살아 있고 fault/alarm/calibration 상태가 정상인지 보는 것입니다.", "냄새가 없다고 안전하다고 판단 금지", "진공/가스", "detector fault, alarm history, EHS 기준 확인"],
+    ["First gas", "설치 후 첫 공정가스 투입", "line work나 install 후 처음 process gas를 넣는 고위험 gate입니다.", "일정 압박으로 owner witness 없이 진행 금지", "진공/가스", "gas, exhaust, abatement, detector, purge, permit 확인"],
+    ["First power-on", "설치 후 첫 전원 투입", "장비와 subsystem에 처음 전원을 넣는 bring-up gate입니다.", "전원만 넣으면 된다고 생각하지 않기", "전기/안전", "LOTO boundary, EMO, interlock, panel status 확인"],
+    ["Hot work", "화기/열 발생 작업", "용접, 절단, grinding 등 화재 위험이 있는 작업입니다.", "작업 허가와 fire watch 없이 진행 금지", "전기/안전", "permit, EHS, 주변 gas/chemical 상태 확인"],
+    ["Stored energy", "잔류 에너지", "전원 차단 후에도 capacitor, 공압, 열, 진공, 중력에 남은 에너지입니다.", "LOTO 했으니 무조건 안전하다고 단정 금지", "전기/안전", "zero energy verification 확인"],
+    ["Touch boundary", "내가 실제로 만질 수 있는 범위", "panel, valve, line, wafer, screen, file export 등 손대는 범위를 말합니다.", "보는 것과 만지는 것은 권한이 다름", "전기/안전", "내 task plan과 training 범위 확인"],
+    ["Stop-work authority", "작업 중지 권한", "안전하지 않거나 품질 위험이 닫히지 않으면 작업을 멈출 수 있는 원칙입니다.", "신입이라 말 못 한다고 생각하지 않기", "보고/업무", "risk, owner, next evidence를 말하고 hold"],
+    ["Tool down", "장비 생산 불가 상태", "고객 장비가 wafer를 처리할 수 없어 downtime이 발생한 상태입니다.", "원인보다 먼저 impact와 next update를 말하기", "보고/업무", "fact, impact, pending, owner, ETA 정리"],
+    ["Passdown", "교대/팀 간 상태 전달", "다음 shift나 다른 engineer에게 완료/open/risk/owner를 넘기는 행위입니다.", "구두로만 넘겨 open item을 잃어버리지 않기", "보고/업무", "completed, open, owner, due, stop condition 작성"],
+    ["Customer update", "고객 상태 보고", "확인된 사실, 영향, 진행 중 확인, 다음 업데이트를 짧게 공유하는 말입니다.", "root cause/ETA를 증거 없이 확정하지 않기", "보고/업무", "fact-impact-risk-next action 형식으로 말하기"],
+    ["ETA", "예상 완료/업데이트 시간", "고객에게 다음 확인이나 완료 예상 시간을 주는 communication anchor입니다.", "근거 없는 완료 보장 금지", "보고/업무", "다음 update time과 확인할 evidence를 같이 말하기"],
+    ["Redacted note", "민감정보 제거 기록", "개인 학습용으로 site/serial/recipe/wafer 원문을 빼고 구조화한 기록입니다.", "AI에게 고객 정보 원문을 넣지 않기", "보고/업무", "subsystem, symptom, evidence, action, result만 남기기"]
+  );
+
   function escapeHtml(value = "") {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -1319,17 +1373,33 @@
   }
 
   function renderFabDecoder() {
+    const categories = ["전체", ...new Set(fabDecoder.map(item => item[4] || "핵심").filter(Boolean))];
     return `
-      <section class="fab-panel">
-        <p class="eyebrow">Fab language decoder</p>
-        <h2>처음 들으면 얼어붙는 Fab 말들</h2>
+      <section class="fab-panel fab-decoder-panel">
+        <div class="fab-card-head">
+          <div>
+            <p class="eyebrow">Fab language decoder</p>
+            <h2>처음 들으면 얼어붙는 Fab 전용 단어 사전</h2>
+          </div>
+          <span class="fab-chip"><b id="fab-decoder-count">${fabDecoder.length}</b> terms</span>
+        </div>
+        <p class="fab-mental">현장에서 들었을 때 바로 행동으로 이어지도록, 단어마다 쉬운 뜻, CE 관점, 초보자 함정, 첫 행동을 붙였습니다. 검색창에 <code>gas</code>, <code>owner</code>, <code>FOUP</code>, <code>permit</code>, <code>handoff</code>처럼 입력해도 됩니다.</p>
+        <div class="fab-decoder-tools">
+          <input id="fab-decoder-search" type="search" placeholder="Fab 용어 검색: escort, line release, mapper, first gas..." aria-label="Fab 용어 검색" />
+          <div class="fab-decoder-filters">
+            ${categories.map((category, index) => `
+              <button class="${index === 0 ? "active" : ""}" type="button" data-fab-decoder-filter="${escapeHtml(category)}">${escapeHtml(category)}</button>
+            `).join("")}
+          </div>
+        </div>
         <div class="fab-decoder-grid">
-          ${fabDecoder.map(([term, easy, field, trap]) => `
-            <article>
+          ${fabDecoder.map(([term, easy, field, trap, category = "핵심", firstMove = "모르면 owner에게 확인하고 진행을 보류"]) => `
+            <article data-fab-decoder-card data-category="${escapeHtml(category)}" data-search="${escapeHtml(`${term} ${easy} ${field} ${trap} ${category} ${firstMove}`.toLowerCase())}">
               <strong>${escapeHtml(term)}</strong>
-              <span>${escapeHtml(easy)}</span>
+              <span>${escapeHtml(category)} · ${escapeHtml(easy)}</span>
               <p>${escapeHtml(field)}</p>
-              <small>${escapeHtml(trap)}</small>
+              <small>함정: ${escapeHtml(trap)}</small>
+              <em>첫 행동: ${escapeHtml(firstMove)}</em>
             </article>
           `).join("")}
         </div>
@@ -1430,6 +1500,21 @@
     bind(root);
   }
 
+  function applyFabDecoderFilter(root) {
+    const query = (root.querySelector("#fab-decoder-search")?.value || "").trim().toLowerCase();
+    const active = root.querySelector("[data-fab-decoder-filter].active")?.dataset.fabDecoderFilter || "전체";
+    let visible = 0;
+    root.querySelectorAll("[data-fab-decoder-card]").forEach(card => {
+      const category = card.dataset.category || "핵심";
+      const haystack = card.dataset.search || "";
+      const show = (active === "전체" || category === active) && (!query || haystack.includes(query));
+      card.classList.toggle("decoder-hidden", !show);
+      if (show) visible += 1;
+    });
+    const count = root.querySelector("#fab-decoder-count");
+    if (count) count.textContent = String(visible);
+  }
+
   function bind(root) {
     root.querySelectorAll("[data-fab-step]").forEach(button => {
       button.addEventListener("click", () => {
@@ -1513,6 +1598,15 @@
         next.lastUpdatedAt = new Date().toISOString();
         saveState(next);
         render();
+      });
+    });
+
+    root.querySelector("#fab-decoder-search")?.addEventListener("input", () => applyFabDecoderFilter(root));
+
+    root.querySelectorAll("[data-fab-decoder-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        root.querySelectorAll("[data-fab-decoder-filter]").forEach(item => item.classList.toggle("active", item === button));
+        applyFabDecoderFilter(root);
       });
     });
 
