@@ -26481,12 +26481,23 @@ body.console-theme .fab-acclimation-console * {
 }
 
 .work-word-card,
+.work-compose-card,
 .work-sentence-card,
 .work-scenario,
 .work-report-output {
   padding: 16px;
   border: 1px solid rgba(111, 255, 198, 0.14);
   background: rgba(7, 19, 22, 0.88);
+}
+
+.work-compose-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border-color: rgba(167, 247, 255, 0.16);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(167, 247, 255, 0.08), transparent 38%),
+    rgba(4, 15, 18, 0.9);
 }
 
 .work-word-card strong {
@@ -26517,7 +26528,13 @@ body.console-theme .fab-acclimation-console * {
   margin-top: 12px;
 }
 
+.work-actions .primary.ghost {
+  color: #06150f;
+  background: linear-gradient(135deg, #a7f7ff, #7fffd0);
+}
+
 .work-sentence-card strong,
+.work-compose-card strong,
 .work-scenario strong,
 .work-report-output strong,
 .work-review-grid strong,
@@ -26528,6 +26545,7 @@ body.console-theme .fab-acclimation-console * {
 }
 
 .work-sentence-card textarea,
+.work-compose-card textarea,
 .work-report-grid input,
 .work-word-search {
   width: 100%;
@@ -26543,14 +26561,21 @@ body.console-theme .fab-acclimation-console * {
   resize: vertical;
 }
 
+.work-compose-card textarea {
+  min-height: 112px;
+  resize: vertical;
+}
+
 .work-sentence-card textarea:focus,
+.work-compose-card textarea:focus,
 .work-report-grid input:focus,
 .work-word-search:focus {
   outline: 2px solid rgba(127, 255, 208, 0.55);
   outline-offset: 2px;
 }
 
-.work-required {
+.work-required,
+.work-compose-hints {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -26581,6 +26606,86 @@ body.console-theme .fab-acclimation-console * {
 .work-feedback.bad {
   border-color: rgba(255, 126, 126, 0.35);
   background: rgba(255, 88, 88, 0.09);
+}
+
+.work-coach-feedback {
+  display: grid;
+  gap: 12px;
+}
+
+.work-coach-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.work-score-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(127, 255, 208, 0.36);
+  border-radius: 999px;
+  color: #00150d;
+  background: linear-gradient(135deg, #7fffd0, #a7f7ff);
+  font-weight: 950;
+}
+
+.work-better-expression,
+.work-suggestion-list,
+.work-issue-list {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(127, 255, 208, 0.14);
+  background: rgba(0, 8, 10, 0.68);
+}
+
+.work-better-expression span,
+.work-suggestion-list strong,
+.work-issue-list strong {
+  display: block;
+  color: #7fffd0;
+  font-size: 0.78rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.work-better-expression p {
+  margin: 8px 0 0;
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.work-suggestion-list p,
+.work-issue-list p,
+.work-issue-list small {
+  color: rgba(232, 255, 244, 0.82);
+  line-height: 1.55;
+}
+
+.work-issue-list {
+  display: grid;
+  gap: 10px;
+}
+
+.work-issue-list article {
+  padding: 10px;
+  border-left: 3px solid rgba(255, 156, 126, 0.72);
+  background: rgba(255, 126, 126, 0.07);
+}
+
+.work-issue-list b {
+  display: block;
+  color: #ffe0d7;
+}
+
+.work-suggestion-list.good {
+  border-color: rgba(127, 255, 208, 0.22);
+  background: rgba(127, 255, 208, 0.06);
 }
 
 .work-report-grid {

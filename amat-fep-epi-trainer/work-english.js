@@ -306,6 +306,179 @@
     };
   }
 
+  function sentenceCase(text = "") {
+    const clean = String(text || "").trim();
+    if (!clean) return clean;
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
+
+  function ensurePeriod(text = "") {
+    const clean = String(text || "").trim();
+    if (!clean) return clean;
+    return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+  }
+
+  function includesTerm(normalized, term = "") {
+    const cleanTerm = String(term || "").toLowerCase().trim();
+    if (!cleanTerm) return true;
+    if (normalized.includes(cleanTerm)) return true;
+    return cleanTerm.split(/\s+/).some(part => part.length > 3 && normalized.includes(part));
+  }
+
+  function improveCheckVerb(input = "") {
+    return String(input || "")
+      .replace(/\bcheck\b/gi, "verify")
+      .replace(/\bproblem\b/gi, "issue")
+      .replace(/\bmaybe\b/gi, "may indicate")
+      .replace(/\basap\b/gi, "by the agreed ETA");
+  }
+
+  function buildBetterExpression(input, options = {}, issues = []) {
+    const normalized = String(input || "").trim();
+    const term = options.term || options.keyword || "";
+    if (!normalized || normalized.split(/\s+/).filter(Boolean).length < 5) {
+      if (options.sample) return options.sample;
+      if (term) return `Current status: the ${term} condition is under review. The confirmed fact is not complete yet. The next action is to verify evidence and confirm the owner.`;
+    }
+    let text = ensurePeriod(sentenceCase(improveCheckVerb(normalized)));
+    text = text
+      .replace(/\bwe should to\b/gi, "We should")
+      .replace(/\bi should to\b/gi, "I should")
+      .replace(/\bmust to\b/gi, "must")
+      .replace(/\bcan to\b/gi, "can")
+      .replace(/\bneed to checked\b/gi, "need to be checked")
+      .replace(/\bbecause of\s+(tool|chamber|load lock|module|robot)\s+(is|are|was|were)\b/gi, "because the $1 $2")
+      .replace(/\bbecause of\s+(it|there|we|they)\s+(is|are|was|were)\b/gi, "because $1 $2")
+      .replace(/\binform to the customer\b/gi, "update the customer")
+      .replace(/\binform to customer\b/gi, "update the customer")
+      .replace(/\bdiscuss about\b/gi, "discuss")
+      .replace(/\bexplain about\b/gi, "explain")
+      .replace(/\brequest for confirmation\b/gi, "request confirmation")
+      .replace(/\bI think the root cause is\s+([^.!?]+)([.!?]|$)/gi, "The current evidence suggests $1, but root cause is not confirmed yet$2")
+      .replace(/\broot cause is\s+([^.!?]+)([.!?]|$)/gi, "current evidence suggests $1, but root cause is not confirmed yet$2");
+    if (issues.some(issue => issue.code === "no-eta") && /\b(update|report|share)\b/i.test(text)) {
+      text = text.replace(/[.!?]$/, ". I will share the next update by the agreed ETA.");
+    }
+    if (issues.some(issue => issue.code === "missing-risk") && /\bhold|stop|delay|alarm|issue|unstable|mismatch\b/i.test(text)) {
+      text = text.replace(/[.!?]$/, ". The immediate risk is schedule, safety, or wafer handling impact until evidence is verified.");
+    }
+    return text;
+  }
+
+  function analyzeOperationalEnglish(input, options = {}) {
+    const raw = String(input || "").trim();
+    const normalized = raw.toLowerCase();
+    const words = raw.split(/\s+/).filter(Boolean);
+    const required = options.required || [];
+    const hits = required.filter(word => includesTerm(normalized, word));
+    const missing = required.filter(word => !hits.includes(word));
+    const issues = [];
+    const strengths = [];
+    const addIssue = (code, title, detail, fix, severity = 8) => {
+      issues.push({ code, title, detail, fix, severity });
+    };
+
+    if (!raw) {
+      addIssue("empty", "문장이 비어 있음", "직접 영어 문장을 써야 생산형 기억이 만들어집니다.", "한 문장이라도 status + fact + action 구조로 작성하세요.", 40);
+    }
+    if (raw && words.length < 8) {
+      addIssue("too-short", "업무문장으로는 너무 짧음", "현장 영어는 짧아도 좋지만, 고객/선임이 판단할 근거가 들어가야 합니다.", "Current status, confirmed fact, next action 중 최소 2개를 넣으세요.", 14);
+    }
+    if (raw && /^[a-z]/.test(raw)) {
+      addIssue("capitalization", "문장 첫 글자 대문자", "보고문은 첫 글자를 대문자로 시작하면 훨씬 공식적으로 보입니다.", "첫 단어를 대문자로 시작하세요.", 4);
+    }
+    if (raw && !/[.!?]$/.test(raw)) {
+      addIssue("punctuation", "마침표 누락", "짧은 채팅이어도 완성 문장으로 끝내는 습관이 필요합니다.", "문장 끝에 period(.)를 붙이세요.", 4);
+    }
+    if (/\bwe should to\b|\bi should to\b|\bmust to\b|\bcan to\b/i.test(raw)) {
+      addIssue("modal-base-verb", "조동사 뒤 동사원형 오류", "should, must, can 뒤에는 to 없이 동사원형이 옵니다.", "We should verify / We must hold / We can proceed 처럼 쓰세요.", 16);
+    }
+    if (/\b(we|i|they)\s+is\b/i.test(raw) || /\b(it|this|that|tool|chamber)\s+are\b/i.test(raw)) {
+      addIssue("subject-verb", "주어-동사 수 일치 오류", "we/they는 are, it/this/tool/chamber는 is를 씁니다.", "We are checking... / The chamber is stable... 구조로 고치세요.", 14);
+    }
+    if (/\bbecause of\s+(we|it|there|tool|chamber|load lock|module|robot|the tool|the chamber)\s+(is|are|was|were)\b/i.test(raw)) {
+      addIssue("because-of-clause", "because of 뒤 절 사용 오류", "because of 뒤에는 명사구가 오고, 주어+동사 절은 because를 씁니다.", "because the pressure is unstable 또는 because of pressure instability로 바꾸세요.", 13);
+    }
+    if (/\binform to\b/i.test(raw)) {
+      addIssue("inform-to", "inform to 표현 부자연", "inform은 inform someone of/about something 구조이고, 현장에서는 update가 더 자연스럽습니다.", "I will update the customer / I will inform the owner of the status.", 10);
+    }
+    if (/\bdiscuss about\b|\bexplain about\b/i.test(raw)) {
+      addIssue("about-overuse", "discuss/explain 뒤 about 과다 사용", "discuss는 바로 목적어를 받고, explain은 explain the issue처럼 씁니다.", "discuss the issue / explain the risk로 고치세요.", 9);
+    }
+    if (/\basap\b/i.test(raw)) {
+      addIssue("asap", "ASAP 대신 ETA 필요", "고객 커뮤니케이션에서는 ASAP보다 다음 업데이트 시간이 더 신뢰를 줍니다.", "I will update you by 11:00 또는 by the agreed ETA를 쓰세요.", 10);
+    }
+    if (/\broot cause is\b/i.test(raw) && !/\bnot confirmed|not yet confirmed|current evidence|suggests|possible\b/i.test(raw)) {
+      addIssue("root-cause-overclaim", "Root cause 단정 위험", "증거가 충분하지 않으면 root cause를 단정하면 안 됩니다.", "Current evidence suggests a possible cause, but root cause is not confirmed yet.", 18);
+    }
+    if (/\bmaybe\b/i.test(raw)) {
+      addIssue("maybe-casual", "maybe는 현장 보고에 약함", "maybe는 구어체 느낌이 강하고 근거 수준이 모호합니다.", "may indicate, possible, current assumption is 같은 표현을 쓰세요.", 7);
+    }
+    if (missing.length) {
+      addIssue("missing-anchor", "핵심 업무 표현 누락", `이번 카드의 핵심 표현 ${missing.join(", ")} 이/가 문장에 충분히 반영되지 않았습니다.`, "카드 단어를 그대로 한 번 쓰고, status/fact/action 중 하나와 연결하세요.", 12);
+    }
+    if (!/\b(status|current status|confirmed fact|evidence|risk|next action|owner|eta|hold|verified|confirmed|update)\b/i.test(raw)) {
+      addIssue("no-field-structure", "현장 보고 구조 부족", "문법만 맞아도 CE 보고문으로는 약할 수 있습니다.", "status, fact/evidence, risk, next action, owner, ETA 중 최소 2개를 넣으세요.", 12);
+    }
+    if (/\bhold|stop|delay|alarm|unstable|mismatch|risk\b/i.test(raw) && !/\brisk|safety|wafer|schedule|impact\b/i.test(raw)) {
+      addIssue("missing-risk", "위험/영향 설명 부족", "hold나 alarm을 말할 때는 무엇에 영향이 있는지 같이 말해야 합니다.", "The immediate risk is safety, schedule, wafer handling, or qualification impact.", 10);
+    }
+    if (/\b(update|report|share|customer)\b/i.test(raw) && !/\bby\s+\d|eta|next update|agreed time|end of day\b/i.test(raw)) {
+      addIssue("no-eta", "업데이트 시간 부족", "고객에게는 진행 중이라는 말보다 다음 업데이트 시간이 중요합니다.", "I will share the next update by 11:00처럼 ETA를 붙이세요.", 9);
+    }
+
+    if (/\b(current status|confirmed fact|next action|owner|eta)\b/i.test(raw)) strengths.push("status/fact/action 구조를 쓰려는 방향이 좋습니다.");
+    if (/\bnot confirmed|possible|assumption|current evidence\b/i.test(raw)) strengths.push("추정과 사실을 분리해 말하려는 점이 좋습니다.");
+    if (/\bhold|until|verified|confirmed\b/i.test(raw)) strengths.push("진행 조건을 안전하게 묶는 표현이 들어갔습니다.");
+    if (/\bby\s+\d|eta|next update\b/i.test(raw)) strengths.push("다음 업데이트 시간을 주려는 습관이 좋습니다.");
+
+    const rawScore = 100 - issues.reduce((sum, issue) => sum + issue.severity, 0) + Math.min(10, hits.length * 4);
+    const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+    const betterExpression = buildBetterExpression(raw, options, issues);
+    return {
+      score,
+      correct: score >= 75,
+      hits,
+      missing,
+      issues,
+      strengths,
+      betterExpression,
+      summary: issues.length ? `${issues.length}개 개선 포인트` : "업무 보고문으로 바로 쓸 수 있는 수준"
+    };
+  }
+
+  function renderCoachFeedback(analysis) {
+    const level = analysis.score >= 85 ? "실전 사용 가능" : analysis.score >= 70 ? "조금 다듬으면 사용 가능" : "다시 고쳐 말하기 권장";
+    return `
+      <div class="work-coach-feedback">
+        <div class="work-coach-head">
+          <span class="work-score-pill">${analysis.score}/100</span>
+          <strong>${escapeHtml(level)}</strong>
+        </div>
+        <div class="work-better-expression">
+          <span>Better field expression</span>
+          <p>${escapeHtml(analysis.betterExpression)}</p>
+        </div>
+        ${analysis.strengths.length ? `
+          <div class="work-suggestion-list good">
+            <strong>좋은 점</strong>
+            ${analysis.strengths.map(item => `<p>${escapeHtml(item)}</p>`).join("")}
+          </div>
+        ` : ""}
+        <div class="work-issue-list">
+          <strong>문법/표현/현장성 피드백</strong>
+          ${analysis.issues.length ? analysis.issues.slice(0, 8).map(issue => `
+            <article>
+              <b>${escapeHtml(issue.title)}</b>
+              <p>${escapeHtml(issue.detail)}</p>
+              <small>수정 방향: ${escapeHtml(issue.fix)}</small>
+            </article>
+          `).join("") : "<p>큰 문법 오류나 현장 보고 구조 문제는 보이지 않습니다.</p>"}
+        </div>
+      </div>
+    `;
+  }
+
   function nextIndex(current, list) {
     return (Number(current || 0) + 1 + Math.floor(Math.random() * Math.max(1, list.length - 1))) % list.length;
   }
@@ -366,8 +539,22 @@
             <small>${escapeHtml(item.note)}</small>
           ` : ""}
         </div>
+        <article class="work-compose-card">
+          <span>Word to field sentence</span>
+          <strong>${escapeHtml(item.term)} 를 사용해서 실제 업무 보고 문장을 직접 작성하세요.</strong>
+          <textarea id="work-word-sentence-input" placeholder="예: The pumpdown trend is slower than baseline, so wafer transfer should remain on hold until the evidence is verified."></textarea>
+          <div class="work-compose-hints">
+            <code>${escapeHtml(item.term)}</code>
+            <code>current status</code>
+            <code>confirmed fact</code>
+            <code>next action</code>
+            <code>owner / ETA</code>
+          </div>
+          <div id="work-word-sentence-feedback" class="work-feedback"></div>
+        </article>
         <div class="work-actions">
           <button class="primary" type="button" data-work-reveal-word>${state.revealWord ? "다시 숨기기" : "정답/문장 보기"}</button>
+          <button class="primary ghost" type="button" data-work-check-word-sentence>내 문장 문법/표현 채점</button>
           <button class="secondary" type="button" data-work-word-result="false">다시 봐야 함</button>
           <button class="secondary" type="button" data-work-word-result="true">바로 말할 수 있음</button>
           <button class="secondary" type="button" data-work-speak="${escapeHtml(item.sentence)}">소리 듣기</button>
@@ -433,6 +620,7 @@
           <strong>Model answer</strong>
           <p>${escapeHtml(scenario.sample)}</p>
         </div>
+        <div id="work-report-feedback" class="work-feedback"></div>
         <div class="work-actions">
           <button class="primary" type="button" data-work-build-report>보고문 생성/저장</button>
           <button class="secondary" type="button" data-work-speak="${escapeHtml(scenario.sample)}">모범문 듣기</button>
@@ -641,6 +829,31 @@
         });
       });
     });
+    root.querySelector("[data-work-check-word-sentence]")?.addEventListener("click", () => {
+      const item = workWordBank[state.activeWord % workWordBank.length];
+      const input = root.querySelector("#work-word-sentence-input")?.value || "";
+      const analysis = analyzeOperationalEnglish(input, {
+        required: [item.term],
+        term: item.term,
+        keyword: item.term,
+        sample: item.sentence
+      });
+      const feedback = root.querySelector("#work-word-sentence-feedback");
+      if (feedback) {
+        feedback.className = `work-feedback ${analysis.correct ? "good" : "bad"}`;
+        feedback.innerHTML = renderCoachFeedback(analysis);
+      }
+      logAttempt({
+        kind: "word-to-field-sentence",
+        sourceId: item.id,
+        prompt: `Use "${item.term}" in a CE work sentence.`,
+        input,
+        sample: analysis.betterExpression,
+        correct: analysis.correct,
+        skillTag: `work-compose-${item.skill}`,
+        skillNote: analysis.summary
+      }, { skipRender: true });
+    });
     root.querySelector("[data-work-next-sentence]")?.addEventListener("click", () => {
       state.activeSentence = nextIndex(state.activeSentence, sentenceFrames);
       state.revealSentence = false;
@@ -655,25 +868,25 @@
     root.querySelector("[data-work-check-sentence]")?.addEventListener("click", () => {
       const item = sentenceFrames[state.activeSentence % sentenceFrames.length];
       const input = root.querySelector("#work-sentence-input")?.value || "";
-      const score = scoreText(input, item.required);
+      const analysis = analyzeOperationalEnglish(input, {
+        required: item.required,
+        sample: item.sample,
+        term: item.required[0] || ""
+      });
       const feedback = root.querySelector("#work-sentence-feedback");
       if (feedback) {
-        feedback.className = `work-feedback ${score.correct ? "good" : "bad"}`;
-        feedback.innerHTML = `
-          <strong>${score.correct ? "좋습니다. 업무 문장 핵심이 들어갔습니다." : "아직 핵심 업무 단어가 부족합니다."}</strong>
-          <p>들어간 핵심: ${score.hits.map(escapeHtml).join(", ") || "없음"} · 빠진 핵심: ${score.missing.map(escapeHtml).join(", ") || "없음"}</p>
-          <small>모범: ${escapeHtml(item.sample)}</small>
-        `;
+        feedback.className = `work-feedback ${analysis.correct ? "good" : "bad"}`;
+        feedback.innerHTML = renderCoachFeedback(analysis);
       }
       logAttempt({
         kind: "sentence",
         sourceId: item.id,
         prompt: item.koPrompt,
         input,
-        sample: item.sample,
-        correct: score.correct,
+        sample: analysis.betterExpression || item.sample,
+        correct: analysis.correct,
         skillTag: `work-sentence-${item.skill}`,
-        skillNote: `Required anchors: ${item.required.join(", ")}`
+        skillNote: analysis.summary
       }, { skipRender: true });
     });
     root.querySelector("[data-work-next-scenario]")?.addEventListener("click", () => {
@@ -688,16 +901,25 @@
       if (output) {
         output.innerHTML = `<strong>Your field update</strong><p>${escapeHtml(text)}</p><small>Model: ${escapeHtml(scenario.sample)}</small>`;
       }
-      const score = scoreText(text, ["Current status", "Confirmed fact", "risk", "Next action"]);
+      const analysis = analyzeOperationalEnglish(text, {
+        required: ["Current status", "Confirmed fact", "risk", "Next action"],
+        sample: scenario.sample,
+        term: scenario.area
+      });
+      const feedback = root.querySelector("#work-report-feedback");
+      if (feedback) {
+        feedback.className = `work-feedback ${analysis.correct ? "good" : "bad"}`;
+        feedback.innerHTML = renderCoachFeedback(analysis);
+      }
       logAttempt({
         kind: "customer-report",
         sourceId: scenario.id,
         prompt: scenario.symptom,
         input: text,
-        sample: scenario.sample,
-        correct: score.correct,
+        sample: analysis.betterExpression || scenario.sample,
+        correct: analysis.correct,
         skillTag: "work-report-status-risk-action",
-        skillNote: "status, confirmed fact, risk, next action, ETA 구조"
+        skillNote: analysis.summary
       }, { skipRender: true });
     });
     root.querySelector("[data-work-copy-report]")?.addEventListener("click", async () => {
