@@ -601,6 +601,7 @@
     };
     saveEnglishRecords([record, ...getEnglishRecords()]);
     const status = document.getElementById("work-sync-status");
+    if (status) status.textContent = `로컬 저장 완료: ${record.total}개 업무영어 시도 요약. D1 전송을 확인 중입니다.`;
     try {
       if (location.protocol.startsWith("http")) {
         await apiFetch("/api/entries", { method: "POST", body: JSON.stringify(record) });
