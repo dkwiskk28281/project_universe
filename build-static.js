@@ -14,6 +14,7 @@ const webFiles = [
   "cluster-sim.js",
   "english-test-expansion.js",
   "english-test.js",
+  "work-english.js",
   "mastery.js",
   "readiness.js",
   "term-helper.js",

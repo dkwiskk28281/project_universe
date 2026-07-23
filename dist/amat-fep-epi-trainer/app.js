@@ -4358,6 +4358,7 @@ const VIEW_LABELS = {
   fab101: "팹 기초",
   papers: "논문노트",
   "english-test": "영어시험",
+  "work-english": "업무영어",
   english: "영어풀이",
   "vision-training": "시기능 회복훈련",
   glossary: "용어집",
@@ -4391,6 +4392,7 @@ const BOOK_VIEW_SEQUENCE = [
   "deep",
   "papers",
   "english-test",
+  "work-english",
   "english",
   "quiz"
 ];
@@ -4424,6 +4426,7 @@ const VIEW_CHAPTERS = {
   thinktank: "진단과 성장",
   papers: "면접과 영어",
   "english-test": "면접과 영어",
+  "work-english": "면접과 영어",
   english: "면접과 영어",
   "vision-training": "건강",
   quiz: "면접과 영어"
@@ -4439,7 +4442,7 @@ const uxHotViews = [
   ["runbook", "런북"],
   ["process-visual", "공정"],
   ["cluster", "구성"],
-  ["english-test", "영어"]
+  ["work-english", "업무영어"]
 ];
 const operatingRouteSteps = [
   {

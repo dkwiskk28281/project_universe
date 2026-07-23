@@ -26299,3 +26299,355 @@ body.console-theme .fab-acclimation-console * {
     grid-template-columns: 1fr;
   }
 }
+/* Work English immersion */
+.work-english-hero,
+.work-english-brief,
+.work-english-routine,
+.work-english-grid,
+.work-english-panel,
+.work-word-card,
+.work-sentence-card,
+.work-scenario,
+.work-report-output,
+.work-phrase-grid,
+.work-review-grid,
+.work-word-search-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.work-english-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+  gap: 18px;
+  align-items: stretch;
+  margin: 18px 0;
+  padding: 22px;
+  border: 1px solid rgba(68, 255, 180, 0.22);
+  background:
+    linear-gradient(135deg, rgba(6, 21, 20, 0.98), rgba(5, 10, 16, 0.96)),
+    repeating-linear-gradient(90deg, rgba(77, 255, 181, 0.05) 0 1px, transparent 1px 42px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.34);
+}
+
+.work-english-hero h2 {
+  margin: 0 0 10px;
+  color: #eafff6;
+  font-size: clamp(1.55rem, 2.2vw, 2.35rem);
+  letter-spacing: 0;
+}
+
+.work-english-hero p,
+.work-english-routine p,
+.work-english-panel p,
+.work-english-panel small {
+  color: rgba(219, 255, 239, 0.78);
+  line-height: 1.7;
+}
+
+.work-english-command {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  padding: 16px;
+  border: 1px solid rgba(111, 255, 198, 0.2);
+  background: rgba(4, 15, 18, 0.88);
+}
+
+.work-english-command strong,
+.work-english-panel h2,
+.work-english-routine h2 {
+  color: #ffffff;
+}
+
+.work-english-command span {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid rgba(108, 255, 190, 0.16);
+  background: rgba(16, 32, 32, 0.78);
+  color: #8fffd1;
+  font-weight: 800;
+}
+
+.work-english-brief {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.work-english-brief article,
+.work-english-routine,
+.work-english-panel {
+  border: 1px solid rgba(90, 255, 191, 0.16);
+  background: rgba(3, 12, 17, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.work-english-brief article {
+  padding: 15px;
+}
+
+.work-english-brief span,
+.work-phrase-grid span,
+.work-word-card span,
+.work-sentence-card span,
+.work-scenario span,
+.work-word-search-results span {
+  display: block;
+  color: #7ef8c4;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.work-english-brief strong {
+  display: block;
+  margin: 8px 0 2px;
+  color: #ffffff;
+  font-size: clamp(1.45rem, 2vw, 2.2rem);
+}
+
+.work-english-routine {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 18px;
+  padding: 20px;
+  margin: 18px 0;
+}
+
+.work-english-routine ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-english-routine li {
+  display: grid;
+  grid-template-columns: 58px minmax(90px, 0.35fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(111, 255, 198, 0.14);
+  background: rgba(14, 27, 30, 0.78);
+}
+
+.work-english-routine li b {
+  color: #111c17;
+  background: #7fffd0;
+  padding: 7px 8px;
+  text-align: center;
+}
+
+.work-english-routine li strong,
+.work-sentence-card strong,
+.work-scenario strong,
+.work-report-output strong,
+.work-review-grid strong,
+.work-word-search-results strong,
+.work-phrase-grid strong {
+  color: #ffffff;
+}
+
+.work-english-routine li span {
+  color: rgba(226, 255, 244, 0.78);
+  line-height: 1.55;
+}
+
+.work-english-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 18px 0;
+}
+
+.work-english-panel {
+  padding: 18px;
+  margin: 16px 0;
+}
+
+.work-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.work-word-card,
+.work-sentence-card,
+.work-scenario,
+.work-report-output {
+  padding: 16px;
+  border: 1px solid rgba(111, 255, 198, 0.14);
+  background: rgba(7, 19, 22, 0.88);
+}
+
+.work-word-card strong {
+  display: block;
+  margin: 8px 0;
+  color: #ffffff;
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.work-word-card blockquote,
+.work-sentence-card blockquote {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid #7fffd0;
+  color: #ffffff;
+  background: rgba(127, 255, 208, 0.08);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.work-sentence-card strong,
+.work-scenario strong,
+.work-report-output strong,
+.work-review-grid strong,
+.work-word-search-results strong,
+.work-phrase-grid strong {
+  display: block;
+  line-height: 1.45;
+}
+
+.work-sentence-card textarea,
+.work-report-grid input,
+.work-word-search {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(127, 255, 208, 0.2);
+  background: rgba(0, 5, 8, 0.9);
+  color: #effff8;
+}
+
+.work-sentence-card textarea {
+  min-height: 124px;
+  margin: 12px 0;
+  resize: vertical;
+}
+
+.work-sentence-card textarea:focus,
+.work-report-grid input:focus,
+.work-word-search:focus {
+  outline: 2px solid rgba(127, 255, 208, 0.55);
+  outline-offset: 2px;
+}
+
+.work-required {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.work-required code,
+.work-english-panel code {
+  border: 1px solid rgba(127, 255, 208, 0.18);
+  background: rgba(127, 255, 208, 0.08);
+  color: #a7ffdc;
+  padding: 4px 7px;
+  overflow-wrap: anywhere;
+}
+
+.work-feedback {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(236, 255, 248, 0.8);
+}
+
+.work-feedback.good {
+  border-color: rgba(127, 255, 208, 0.35);
+  background: rgba(127, 255, 208, 0.09);
+}
+
+.work-feedback.bad {
+  border-color: rgba(255, 126, 126, 0.35);
+  background: rgba(255, 88, 88, 0.09);
+}
+
+.work-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.work-report-grid label {
+  display: grid;
+  gap: 6px;
+  color: #9affd5;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.work-phrase-grid,
+.work-word-search-results,
+.work-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.work-phrase-grid article,
+.work-word-search-results article,
+.work-review-grid article {
+  padding: 14px;
+  border: 1px solid rgba(127, 255, 208, 0.14);
+  background: rgba(10, 24, 28, 0.78);
+}
+
+.work-phrase-grid button {
+  margin-top: 10px;
+}
+
+.work-sync-status {
+  margin-top: 12px;
+  color: rgba(210, 255, 238, 0.72);
+}
+
+@media (max-width: 980px) {
+  .work-english-hero,
+  .work-english-routine,
+  .work-english-grid,
+  .work-report-grid,
+  .work-phrase-grid,
+  .work-word-search-results,
+  .work-review-grid,
+  .work-english-brief {
+    grid-template-columns: 1fr;
+  }
+
+  .work-panel-head {
+    flex-direction: column;
+  }
+
+  .work-english-routine li {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .work-english-hero,
+  .work-english-routine,
+  .work-english-panel {
+    padding: 14px;
+  }
+
+  .work-word-card strong {
+    font-size: 2rem;
+  }
+}

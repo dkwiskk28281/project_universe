@@ -45,6 +45,7 @@
     fab101: "팹 기초",
     papers: "논문 노트",
     "english-test": "영어 CBT",
+    "work-english": "업무영어",
     english: "영어 용어",
     glossary: "용어집",
     diagnostics: "진단 훈련",
@@ -97,6 +98,7 @@
       group: "면접과 영어",
       items: [
         ["english-test", "영어 CBT", "Applied 공개 형식 기반 영어 CBT 훈련"],
+        ["work-english", "업무영어", "status, hold, evidence, owner, ETA, passdown 문장 자동화"],
         ["english", "영어 용어", "생소한 영어 단어와 현장 표현"],
         ["papers", "논문 노트", "논문/공개자료 학습 노트"],
         ["quiz", "퀴즈", "면접/현장 질문 회상 훈련"]
@@ -167,6 +169,7 @@
     ],
     "learning-library": [
       ["오답 노트", "영어/전기/반도체 오답과 약점 패턴"],
+      ["업무영어 문장", "status update, hold reason, escalation, passdown을 영어로 반복"],
       ["개념 카드", "개념을 내 말로 다시 설명하는 카드"],
       ["논문 요약", "논문 핵심, 장비 연결점, 현장 적용 질문"],
       ["복습 큐", "복습 주기와 회상 훈련 큐"]
@@ -405,7 +408,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["curriculum", "dashboard", "roadmap", "fab-acclimation", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "english", "glossary", "diagnostics", "quiz"]
+      linkedViews: ["curriculum", "dashboard", "roadmap", "fab-acclimation", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "work-english", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "field-daily-log",
@@ -517,7 +520,7 @@
       aiUse: ["약점 진단", "복습 스케줄 생성", "쉬운 설명으로 재구성"],
       starterQuestions: ["이 개념을 현장 예시로 바꾸면?", "내가 틀린 이유는 지식 부족인가, 문제 해석인가?", "내일 다시 떠올릴 단서는?"],
       reviewCadence: "격일 10분, 주간 누적 점검",
-      linkedViews: ["english-test", "english", "papers", "glossary"]
+      linkedViews: ["work-english", "english-test", "english", "papers", "glossary"]
     },
     {
       id: "people-network",
@@ -2634,6 +2637,7 @@
       install: "설치",
       electrical: "전기/DVM",
       "english-test": "영어시험",
+      "work-english": "업무영어",
       thinktank: "싱크탱크",
       "vision-training": "시기능 회복훈련",
       english: "영어풀이",
@@ -2721,6 +2725,7 @@
   function localEnglishInsight() {
     const records = safeJsonParse("amkEnglishSessionRecords", []);
     const micro = safeJsonParse("amkEnglishMicroAttempts", []);
+    const work = safeJsonParse("amkWorkEnglishAttempts", []);
     const allResults = [
       ...records.flatMap(record => record.results || []),
       ...micro.map(item => ({
@@ -2728,6 +2733,12 @@
         prompt: item.prompt,
         correct: item.correct,
         skillTag: item.skillTag
+      })),
+      ...work.map(item => ({
+        type: `Work English ${item.kind || ""}`.trim(),
+        prompt: item.prompt || item.input || "",
+        correct: item.correct,
+        skillTag: item.skillTag || "work-English"
       }))
     ];
     const bySkill = {};
@@ -2748,6 +2759,7 @@
     return {
       records: records.length,
       microAttempts: micro.length,
+      workAttempts: work.length,
       totalQuestions: total,
       accuracy: total ? Math.round(correct / total * 100) : 0,
       weaknesses: weaknesses.slice(0, 5)
@@ -3222,10 +3234,10 @@
       {
         id: "english-review",
         lane: "영어",
-        title: dueEnglish ? `영어 복습 큐 ${dueEnglish}개 처리` : "영어 CBT 10문항 즉시채점",
-        evidence: `${english.totalQuestions} questions / ${english.accuracy}% / due ${dueEnglish}`,
-        why: "오답 직후 해설과 간격 복습을 연결해야 실제 시험용 기억으로 남습니다.",
-        view: "english-test",
+        title: dueEnglish ? `업무영어 복습 큐 ${dueEnglish}개 처리` : "업무영어 30분 루틴 시작",
+        evidence: `${english.totalQuestions} English signals / ${english.accuracy}% / work ${english.workAttempts || 0} / due ${dueEnglish}`,
+        why: "업무영어는 단어 뜻보다 status, risk, owner, ETA 문장이 자동으로 나오는 것이 먼저입니다.",
+        view: "work-english",
         bookId: "learning-library"
       },
       {
