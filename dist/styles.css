@@ -26688,6 +26688,127 @@ body.console-theme .fab-acclimation-console * {
   background: rgba(127, 255, 208, 0.06);
 }
 
+.work-weakness-dashboard {
+  background:
+    radial-gradient(circle at 6% 0%, rgba(255, 211, 127, 0.09), transparent 34%),
+    rgba(4, 14, 17, 0.94);
+}
+
+.work-coach-score {
+  min-width: 128px;
+  padding: 12px;
+  border: 1px solid rgba(127, 255, 208, 0.2);
+  background: rgba(0, 8, 10, 0.74);
+  text-align: right;
+}
+
+.work-coach-score span,
+.work-coach-score small,
+.work-next-drill strong {
+  display: block;
+  color: rgba(210, 255, 238, 0.72);
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.work-coach-score strong {
+  display: block;
+  color: #7fffd0;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.work-weakness-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.work-weakness-grid article,
+.work-next-drill {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(127, 255, 208, 0.13);
+  background: rgba(0, 8, 10, 0.68);
+}
+
+.work-weakness-grid span {
+  display: block;
+  color: #7fffd0;
+  font-size: 0.72rem;
+  font-weight: 950;
+  overflow-wrap: anywhere;
+}
+
+.work-weakness-grid strong {
+  display: block;
+  margin: 5px 0;
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.work-weakness-grid p,
+.work-weakness-grid small,
+.work-next-drill p {
+  color: rgba(232, 255, 244, 0.8);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.work-next-drill {
+  margin-top: 12px;
+  border-color: rgba(255, 211, 127, 0.24);
+}
+
+.work-ce-bridge {
+  background:
+    radial-gradient(circle at 82% 12%, rgba(118, 247, 255, 0.1), transparent 34%),
+    rgba(3, 13, 16, 0.95);
+}
+
+.work-bridge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.work-bridge-grid article {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(118, 247, 255, 0.15);
+  background: rgba(0, 8, 10, 0.72);
+}
+
+.work-bridge-grid span {
+  display: block;
+  color: #76f7ff;
+  font-size: 0.72rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.work-bridge-grid strong {
+  display: block;
+  margin: 6px 0;
+  color: #ffffff;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.work-bridge-grid p,
+.work-bridge-grid small {
+  display: block;
+  color: rgba(232, 255, 244, 0.78);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.work-bridge-grid button {
+  margin-top: 10px;
+}
+
 .work-report-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -26777,6 +26898,8 @@ body.console-theme .fab-acclimation-console * {
   .work-phrase-grid,
   .work-word-search-results,
   .work-review-grid,
+  .work-weakness-grid,
+  .work-bridge-grid,
   .work-english-brief {
     grid-template-columns: 1fr;
   }

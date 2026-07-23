@@ -92,6 +92,7 @@
     const thinkTank = safeJson("epiThinkTankEntries", []);
     const thinkTankPending = safeJson("epiThinkTankPendingEntries", []);
     const englishMicro = safeJson("amkEnglishMicroAttempts", []);
+    const workEnglishAttempts = safeJson("amkWorkEnglishAttempts", []);
     const englishRecords = safeJson("amkEnglishSessionRecords", []);
     const englishQueue = safeJson("amkEnglishSpacedReviewQueue", []);
     const cognitive = safeJson("projectUniverseCognitiveResilienceV1", {});
@@ -115,6 +116,29 @@
       if (item.prompt && englishBySkill[skill].examples.length < 2) englishBySkill[skill].examples.push(item.prompt);
     });
     const englishWeak = Object.values(englishBySkill).sort((a, b) => b.wrong - a.wrong);
+    const workIssueMap = {};
+    workEnglishAttempts.forEach(item => {
+      (item.feedbackIssues || []).forEach(issue => {
+        const key = issue.code || issue.title || "field-expression";
+        workIssueMap[key] = workIssueMap[key] || {
+          code: key,
+          title: issue.title || key,
+          count: 0,
+          severity: 0,
+          examples: []
+        };
+        workIssueMap[key].count += 1;
+        workIssueMap[key].severity += Number(issue.severity || 0);
+        if (item.input && workIssueMap[key].examples.length < 2) workIssueMap[key].examples.push(item.input);
+      });
+    });
+    const workGrammarWeak = Object.values(workIssueMap)
+      .sort((a, b) => b.count - a.count || b.severity - a.severity)
+      .slice(0, 8);
+    const workWritten = workEnglishAttempts.filter(item => ["word-to-field-sentence", "sentence", "customer-report"].includes(item.kind));
+    const workAverageScore = workWritten.length
+      ? Math.round(workWritten.reduce((sum, item) => sum + Number(item.coachScore ?? (item.correct ? 85 : 45)), 0) / workWritten.length)
+      : null;
 
     const ceWeak = Object.entries({
       ...(trainer.fepBigBangWeaknesses || {}),
@@ -212,6 +236,10 @@
       english: {
         records: englishRecords.length,
         microAttempts: englishMicro.length,
+        workEnglishAttempts: workEnglishAttempts.length,
+        workEnglishWritten: workWritten.length,
+        workEnglishAverageScore: workAverageScore,
+        workEnglishGrammarWeaknesses: workGrammarWeak,
         wrong: wrongEnglish.length,
         due: dueEnglish.length,
         accuracy: englishMicro.length ? Math.round((englishMicro.length - wrongEnglish.length) / englishMicro.length * 100) : null,
@@ -688,6 +716,7 @@
 
   function makeDailyRoutine(signals, tasks, integrity) {
     const englishWeak = signals.english.weaknesses[0]?.skill || "technical English";
+    const workEnglishWeak = signals.english.workEnglishGrammarWeaknesses?.[0] || null;
     const ceWeak = signals.ce.weaknesses[0]?.skill || "evidence-first 판단";
     const msWeak = signals.materialsMs?.weakness?.[0]?.skill || "비율/단위환산";
     const fieldGap = signals.fieldDaily?.learningGaps?.[0]?.label || signals.fieldDaily?.missedEvidence?.[0]?.label || "현장 evidence-first 기록";
@@ -731,10 +760,10 @@
         id: "english",
         minutes: 5,
         lane: "영어",
-        view: "english-test",
-        title: `${englishWeak} 즉시채점 복습`,
-        reason: "한 문제를 풀고 해설과 변형문제를 바로 봐야 실제 CBT와 고객 보고 영어가 쌓입니다.",
-        evidence: `${signals.english.due} due · accuracy ${signals.english.accuracy ?? "n/a"}%`
+        view: "work-english",
+        title: workEnglishWeak ? `${workEnglishWeak.title} 업무문장 3개 교정` : `${englishWeak} 업무문장 직접 작성`,
+        reason: "단어를 보는 즉시 status, confirmed fact, risk, next action, owner, ETA 문장으로 바꾸는 능력이 CE 현장 영어의 핵심입니다.",
+        evidence: `${signals.english.due} due · work ${signals.english.workEnglishWritten || 0} written · coach ${signals.english.workEnglishAverageScore ?? "n/a"}`
       },
       {
         id: "fellow-route",
@@ -771,6 +800,7 @@
   function aiAnalysis(signals, tasks, integrity) {
     const weak = [
       ...signals.ce.weaknesses.slice(0, 3).map(item => `CE:${item.skill}`),
+      ...(signals.english.workEnglishGrammarWeaknesses || []).slice(0, 3).map(item => `WorkEnglish:${item.title}`),
       ...signals.english.weaknesses.slice(0, 3).map(item => `EN:${item.skill}`)
     ];
     const patterns = [
@@ -779,6 +809,9 @@
       signals.fieldDaily?.openNext ? `현장 로그 open-loop ${signals.fieldDaily.openNext}개: next action/owner/review time 보강 필요` : "현장 로그 next action 연결 양호",
       signals.fieldDaily?.missedEvidence?.[0] ? `반복 누락 evidence: ${signals.fieldDaily.missedEvidence[0].label}` : "현장 evidence 누락 패턴은 아직 낮음",
       signals.english.due ? "영어 복습 대기열이 오늘 루틴 우선순위에 들어감" : "영어 복습 대기열은 낮음",
+      signals.english.workEnglishGrammarWeaknesses?.[0]
+        ? `업무영어 반복 약점: ${signals.english.workEnglishGrammarWeaknesses[0].title} (${signals.english.workEnglishGrammarWeaknesses[0].count}회)`
+        : "업무영어 직접 작성 약점 데이터가 더 필요함",
       signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요",
       signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음",
       (signals.fabAcclimation?.tier1Percent || 0) < 100 || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0
@@ -1098,6 +1131,7 @@
   function priorityTasks(signals) {
     const tasks = [];
     const englishWeak = signals.english.weaknesses[0];
+    const workEnglishWeak = signals.english.workEnglishGrammarWeaknesses?.[0] || null;
     const ceWeak = signals.ce.weaknesses[0];
     const dueEnglish = signals.english.due;
     const doubleRisk = signals.vision.frequentDouble > 0 && signals.vision.latest;
@@ -1173,25 +1207,29 @@
       });
     }
 
-    if (dueEnglish || englishWeak) {
+    if (dueEnglish || englishWeak || workEnglishWeak || (signals.english.workEnglishWritten || 0) < 5) {
       tasks.push({
         lane: "English",
-        title: dueEnglish ? `영어 복습 큐 ${dueEnglish}개` : `${englishWeak.skill} 변형 문제`,
+        title: workEnglishWeak
+          ? `업무영어 직접 작성: ${workEnglishWeak.title} 교정`
+          : dueEnglish
+            ? `업무영어/영어 복습 큐 ${dueEnglish}개`
+            : `${englishWeak?.skill || "status-fact-action"} 업무문장 3개`,
         minutes: 12,
-        score: dueEnglish ? 91 : 83,
-        view: "english-test",
-        why: "오답 직후 복습과 변형 문제는 패턴 암기를 줄이고 실제 CBT 대응력을 올립니다.",
-        evidence: `${signals.english.microAttempts} attempts · ${signals.english.accuracy ?? "n/a"}% · weak ${englishWeak?.skill || "none"}`
+        score: workEnglishWeak ? 96 : dueEnglish ? 91 : 84,
+        view: "work-english",
+        why: "업무영어는 읽는 능력보다 직접 써서 status, confirmed fact, risk, next action, owner, ETA를 만드는 능력이 현장 생산성을 좌우합니다.",
+        evidence: `work ${signals.english.workEnglishWritten || 0} written · coach ${signals.english.workEnglishAverageScore ?? "n/a"} · due ${dueEnglish} · weak ${workEnglishWeak?.code || englishWeak?.skill || "none"}`
       });
     } else {
       tasks.push({
         lane: "English",
-        title: "영어 CBT 10문항",
+        title: "업무영어 sentence drill 10분",
         minutes: 15,
         score: 72,
-        view: "english-test",
-        why: "영어 약점 큐를 만들려면 일단 새 시도를 저장해야 합니다.",
-        evidence: `${signals.english.microAttempts} micro attempts`
+        view: "work-english",
+        why: "약점 데이터가 부족하면 직접 문장 작성 데이터를 먼저 만들어야 다음 루틴이 똑똑해집니다.",
+        evidence: `${signals.english.workEnglishAttempts || 0} work attempts · ${signals.english.microAttempts} micro attempts`
       });
     }
 
@@ -1294,6 +1332,11 @@
       weaknesses: {
         ce: signals.ce.weaknesses,
         english: signals.english.weaknesses,
+        workEnglish: {
+          writtenAttempts: signals.english.workEnglishWritten || 0,
+          averageCoachScore: signals.english.workEnglishAverageScore,
+          grammarAndFieldExpression: signals.english.workEnglishGrammarWeaknesses || []
+        },
         materialsMs: signals.materialsMs?.weakness || [],
         fieldDaily: {
           highRisk: signals.fieldDaily?.highRisk || 0,

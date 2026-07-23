@@ -8,6 +8,7 @@
   const PENDING_RECORDS_KEY = "amkEnglishPendingRecords";
   const REMOTE_TOKEN_KEY = "epiThinkTankRemoteToken";
   const REMOTE_API = "https://projectuniverse.chang2058.workers.dev";
+  const SOURCE_DEVICE_KEY = "projectUniverseSourceDevice";
 
   const workWordBank = [
     ["confirmed fact", "확인된 사실", "What we confirmed is ___.", "추정과 섞지 말고 내가 직접 본 증거만 말합니다.", "reporting"],
@@ -188,6 +189,15 @@
     localStorage.setItem(STATE_KEY, JSON.stringify(state));
   }
 
+  function stableDeviceId() {
+    let id = localStorage.getItem(SOURCE_DEVICE_KEY);
+    if (!id) {
+      id = `device-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+      localStorage.setItem(SOURCE_DEVICE_KEY, id);
+    }
+    return id;
+  }
+
   function getAttempts() {
     return safeJson(ATTEMPTS_KEY, []);
   }
@@ -212,6 +222,29 @@
       weak[skill].total += 1;
       if (!item.correct) weak[skill].wrong += 1;
     });
+    const issueMap = {};
+    attempts.forEach(item => {
+      (item.feedbackIssues || []).forEach(issue => {
+        const code = issue.code || issue.title || "field-expression";
+        issueMap[code] = issueMap[code] || {
+          code,
+          title: issue.title || code,
+          count: 0,
+          severity: 0,
+          examples: []
+        };
+        issueMap[code].count += 1;
+        issueMap[code].severity += Number(issue.severity || 0);
+        if (item.input && issueMap[code].examples.length < 2) issueMap[code].examples.push(item.input);
+      });
+    });
+    const issueWeaknesses = Object.values(issueMap)
+      .sort((a, b) => b.count - a.count || b.severity - a.severity)
+      .slice(0, 6);
+    const compositionAttempts = attempts.filter(item => ["word-to-field-sentence", "sentence", "customer-report"].includes(item.kind));
+    const averageCoachScore = compositionAttempts.length
+      ? Math.round(compositionAttempts.reduce((sum, item) => sum + Number(item.coachScore ?? (item.correct ? 85 : 45)), 0) / compositionAttempts.length)
+      : null;
     return {
       attempts,
       total: attempts.length,
@@ -219,6 +252,9 @@
       accuracy: attempts.length ? Math.round(correct / attempts.length * 100) : 0,
       streak: state.streak || 0,
       weak: Object.values(weak).sort((a, b) => b.wrong - a.wrong || b.total - a.total).slice(0, 4),
+      grammarWeaknesses: issueWeaknesses,
+      compositionAttempts: compositionAttempts.length,
+      averageCoachScore,
       due: getDueQueue().filter(item => new Date(item.dueAt || 0).getTime() <= Date.now()).length
     };
   }
@@ -281,7 +317,13 @@
     const full = {
       id: `work-eng-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       schemaVersion: "work-english-attempt-v1",
+      source: "work-english",
+      sourceDevice: stableDeviceId(),
+      privacyLevel: "work-learning",
+      exportPolicy: "ai-ok-redacted",
+      syncStatus: "local saved",
       ...attempt
     };
     const attempts = getAttempts();
@@ -347,13 +389,23 @@
       .replace(/\bmust to\b/gi, "must")
       .replace(/\bcan to\b/gi, "can")
       .replace(/\bneed to checked\b/gi, "need to be checked")
+      .replace(/\bneed check(ed)?\b/gi, "need to be checked")
+      .replace(/\bneed verify\b/gi, "need to be verified")
+      .replace(/\bwill be update\b/gi, "will update")
+      .replace(/\balarm is occurred\b/gi, "an alarm occurred")
+      .replace(/\balarm was occurred\b/gi, "an alarm occurred")
+      .replace(/\boccurred alarm\b/gi, "alarm occurred")
       .replace(/\bbecause of\s+(tool|chamber|load lock|module|robot)\s+(is|are|was|were)\b/gi, "because the $1 $2")
       .replace(/\bbecause of\s+(it|there|we|they)\s+(is|are|was|were)\b/gi, "because $1 $2")
       .replace(/\binform to the customer\b/gi, "update the customer")
       .replace(/\binform to customer\b/gi, "update the customer")
+      .replace(/\breport to customer\b/gi, "update the customer")
+      .replace(/\bexplain customer\b/gi, "explain the issue to the customer")
       .replace(/\bdiscuss about\b/gi, "discuss")
       .replace(/\bexplain about\b/gi, "explain")
       .replace(/\brequest for confirmation\b/gi, "request confirmation")
+      .replace(/\bescalate to the issue\b/gi, "escalate the issue to the responsible owner")
+      .replace(/\bescalate customer\b/gi, "escalate the issue with the customer and internal owner")
       .replace(/\bI think the root cause is\s+([^.!?]+)([.!?]|$)/gi, "The current evidence suggests $1, but root cause is not confirmed yet$2")
       .replace(/\broot cause is\s+([^.!?]+)([.!?]|$)/gi, "current evidence suggests $1, but root cause is not confirmed yet$2");
     if (issues.some(issue => issue.code === "no-eta") && /\b(update|report|share)\b/i.test(text)) {
@@ -393,14 +445,32 @@
     if (/\bwe should to\b|\bi should to\b|\bmust to\b|\bcan to\b/i.test(raw)) {
       addIssue("modal-base-verb", "조동사 뒤 동사원형 오류", "should, must, can 뒤에는 to 없이 동사원형이 옵니다.", "We should verify / We must hold / We can proceed 처럼 쓰세요.", 16);
     }
+    if (/\bneed\s+(check|checked|verify|verified|replace|replaced|confirm|confirmed)\b/i.test(raw)) {
+      addIssue("passive-need", "need 뒤 수동태/부정사 구조 오류", "장비 상태를 말할 때 'need checked'보다 'need to be checked'가 자연스럽습니다.", "The MFC needs to be checked / The seal needs to be replaced.", 13);
+    }
+    if (/\bwill be\s+(update|check|verify|confirm|replace)\b/i.test(raw)) {
+      addIssue("future-passive", "will be 뒤 동사 형태 오류", "will be 다음에는 과거분사나 형용사가 와야 합니다. 직접 행동이면 will update처럼 씁니다.", "I will update the customer / The status will be updated by the owner.", 13);
+    }
     if (/\b(we|i|they)\s+is\b/i.test(raw) || /\b(it|this|that|tool|chamber)\s+are\b/i.test(raw)) {
       addIssue("subject-verb", "주어-동사 수 일치 오류", "we/they는 are, it/this/tool/chamber는 is를 씁니다.", "We are checking... / The chamber is stable... 구조로 고치세요.", 14);
+    }
+    if (/\b(yesterday|last shift|last night|after pm|after maintenance|after replacement)\b/i.test(raw) && /\b(is|are)\b/i.test(raw) && !/\bwas|were|has been|have been\b/i.test(raw)) {
+      addIssue("tense-sequence", "과거 사건과 현재 상태 시제 구분", "과거에 일어난 일과 현재 상태를 한 문장에 섞을 때는 시간이 흐른 순서가 보여야 합니다.", "After PM, the alarm occurred. Current status is under verification.", 9);
     }
     if (/\bbecause of\s+(we|it|there|tool|chamber|load lock|module|robot|the tool|the chamber)\s+(is|are|was|were)\b/i.test(raw)) {
       addIssue("because-of-clause", "because of 뒤 절 사용 오류", "because of 뒤에는 명사구가 오고, 주어+동사 절은 because를 씁니다.", "because the pressure is unstable 또는 because of pressure instability로 바꾸세요.", 13);
     }
+    if (/\balarm (is|was) occurred\b|\boccurred alarm\b/i.test(raw)) {
+      addIssue("occur-happen", "occur/happen 자동사 사용 오류", "occur는 수동태처럼 쓰지 않고 'an alarm occurred'처럼 씁니다.", "An MFC alarm occurred during initialization.", 8);
+    }
     if (/\binform to\b/i.test(raw)) {
       addIssue("inform-to", "inform to 표현 부자연", "inform은 inform someone of/about something 구조이고, 현장에서는 update가 더 자연스럽습니다.", "I will update the customer / I will inform the owner of the status.", 10);
+    }
+    if (/\breport to customer\b|\bexplain customer\b|\bupdate to customer\b/i.test(raw)) {
+      addIssue("customer-verb-pattern", "customer 앞 동사/전치사 패턴 오류", "update는 update the customer, explain은 explain the issue to the customer가 자연스럽습니다.", "I will update the customer on the current status.", 9);
+    }
+    if (/\bescalate\b/i.test(raw) && !/\bowner|senior|lead|EHS|customer|approval|support|manager|team\b/i.test(raw)) {
+      addIssue("escalation-owner", "escalation 대상/이유 부족", "escalate는 그냥 올린다는 말이 아니라 누구에게, 왜 올리는지까지 필요합니다.", "We should escalate this to the senior CE because gas readiness is not confirmed.", 10);
     }
     if (/\bdiscuss about\b|\bexplain about\b/i.test(raw)) {
       addIssue("about-overuse", "discuss/explain 뒤 about 과다 사용", "discuss는 바로 목적어를 받고, explain은 explain the issue처럼 씁니다.", "discuss the issue / explain the risk로 고치세요.", 9);
@@ -413,6 +483,12 @@
     }
     if (/\bmaybe\b/i.test(raw)) {
       addIssue("maybe-casual", "maybe는 현장 보고에 약함", "maybe는 구어체 느낌이 강하고 근거 수준이 모호합니다.", "may indicate, possible, current assumption is 같은 표현을 쓰세요.", 7);
+    }
+    if (/\b(assumption|possible|suspect|may indicate|seems)\b/i.test(raw) && !/\bconfirmed fact|evidence|trend|log|alarm|measured|observed|verified\b/i.test(raw)) {
+      addIssue("assumption-without-evidence", "가정은 evidence와 분리 필요", "추정 표현은 괜찮지만, 어떤 근거에서 나온 추정인지 분리해야 선임/고객이 판단할 수 있습니다.", "Current assumption is ___. Evidence collected: ___. Evidence still missing: ___.", 12);
+    }
+    if (/\b(DVM|voltage|continuity|signal|sensor|pressure|flow|temperature|MFC)\b/i.test(raw) && !/\bexpected|actual|measured|trend|within spec|out of range|baseline\b/i.test(raw)) {
+      addIssue("expected-actual", "측정값 expected/actual 구분 부족", "현장 보고는 '확인했다'보다 기대값과 실제값을 분리할 때 강해집니다.", "Expected value is ___. Actual measured value is ___. The gap is ___.", 11);
     }
     if (missing.length) {
       addIssue("missing-anchor", "핵심 업무 표현 누락", `이번 카드의 핵심 표현 ${missing.join(", ")} 이/가 문장에 충분히 반영되지 않았습니다.`, "카드 단어를 그대로 한 번 쓰고, status/fact/action 중 하나와 연결하세요.", 12);
@@ -491,6 +567,50 @@
         <article><span>누적 정확도</span><strong>${stats.accuracy}%</strong><small>${stats.total} attempts</small></article>
         <article><span>연속 루틴</span><strong>${stats.streak}</strong><small>days</small></article>
         <article><span>업무영어 복습</span><strong>${stats.due}</strong><small>due cards</small></article>
+      </section>
+    `;
+  }
+
+  function renderWeaknessDashboard() {
+    const stats = getStats();
+    const topIssue = stats.grammarWeaknesses[0];
+    const drill = topIssue
+      ? `오늘은 "${topIssue.title}" 패턴을 status + fact + action 문장으로 3번 고쳐 쓰세요.`
+      : "직접 업무문장 3개를 작성하면 문법/표현/현장 보고 습관 약점이 자동으로 보입니다.";
+    return `
+      <section class="work-english-panel work-weakness-dashboard">
+        <div class="work-panel-head">
+          <div>
+            <p class="eyebrow">Production English Weakness Map</p>
+            <h2>내가 직접 쓴 문장에서 반복되는 약점</h2>
+            <p>단어 암기가 아니라 실제 CE 보고문 작성 기록을 분석합니다. 문법, 표현, fact/evidence/risk/action 구조가 오늘 루틴과 복습 큐로 연결됩니다.</p>
+          </div>
+          <div class="work-coach-score">
+            <span>Coach score</span>
+            <strong>${stats.averageCoachScore ?? "--"}</strong>
+            <small>${stats.compositionAttempts} written attempts</small>
+          </div>
+        </div>
+        <div class="work-weakness-grid">
+          ${stats.grammarWeaknesses.length ? stats.grammarWeaknesses.map(issue => `
+            <article>
+              <span>${escapeHtml(issue.code)}</span>
+              <strong>${escapeHtml(issue.title)}</strong>
+              <p>${issue.count}회 반복 · severity ${Math.round(issue.severity)}</p>
+              <small>${escapeHtml(issue.examples[0] || "다음 문장 작성 때 바로 점검")}</small>
+            </article>
+          `).join("") : `
+            <article>
+              <span>no-data</span>
+              <strong>직접 작성 데이터가 더 필요합니다</strong>
+              <p>단어를 보고 문장을 쓰고 채점하면 약점 지도가 자동으로 채워집니다.</p>
+            </article>
+          `}
+        </div>
+        <div class="work-next-drill">
+          <strong>Next drill</strong>
+          <p>${escapeHtml(drill)}</p>
+        </div>
       </section>
     `;
   }
@@ -626,6 +746,65 @@
           <button class="secondary" type="button" data-work-speak="${escapeHtml(scenario.sample)}">모범문 듣기</button>
           <button class="secondary" type="button" data-work-copy-report>보고문 복사</button>
           <span id="work-copy-status" class="copy-status"></span>
+        </div>
+      </section>
+    `;
+  }
+
+  function topCount(rows = [], mapper = item => item) {
+    const counts = {};
+    rows.forEach(row => {
+      const raw = mapper(row);
+      (Array.isArray(raw) ? raw : [raw]).filter(Boolean).forEach(value => {
+        counts[value] = (counts[value] || 0) + 1;
+      });
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
+  }
+
+  function renderCeEnglishBridge() {
+    const trainer = safeJson("ceTrainerState", {});
+    const fieldLogs = safeJson("projectUniverseFieldDailyLogsV1", []);
+    const ceWeak = Object.entries({
+      ...(trainer.fepBigBangWeaknesses || {}),
+      ...(trainer.epiMentalWeakness || {}),
+      ...(trainer.ceCampaignWeakness || {}),
+      ...(trainer.ceCaseWeaknesses || {})
+    }).map(([label, count]) => ({ label, count: Number(count || 0) }))
+      .filter(item => item.count > 0)
+      .sort((a, b) => b.count - a.count)[0];
+    const fieldRows = Array.isArray(fieldLogs) ? fieldLogs.map(log => log.fieldLog || log) : [];
+    const missedEvidence = topCount(fieldRows, row => row.evidenceMissing || [])[0];
+    const openNext = fieldRows.filter(row => !String(row.nextAction || row.nextStep || "").trim()).length;
+    const reportTarget = ceWeak?.label || missedEvidence?.label || "pumpdown / gas readiness / wafer transfer evidence";
+    return `
+      <section class="work-english-panel work-ce-bridge">
+        <div class="work-panel-head">
+          <div>
+            <p class="eyebrow">CE Case → English Report Bridge</p>
+            <h2>CE 판단을 고객 보고 영어로 바꾸는 연결 훈련</h2>
+            <p>케이스 게임, 팹 적응, 현장 데일리 로그에서 나온 약점을 바로 영어 보고문으로 바꿉니다. 증상보다 먼저 fact/evidence/risk/owner/ETA를 분리하세요.</p>
+          </div>
+        </div>
+        <div class="work-bridge-grid">
+          <article>
+            <span>CE weakness</span>
+            <strong>${escapeHtml(ceWeak?.label || "새 CE case를 풀어 약점 데이터 생성")}</strong>
+            <p>${ceWeak ? `${ceWeak.count} repeated signal(s)` : "아직 누적 CE 약점이 적습니다."}</p>
+            <button class="secondary" type="button" data-work-open-view="diagnostics">CE case 열기</button>
+          </article>
+          <article>
+            <span>Field log gap</span>
+            <strong>${escapeHtml(missedEvidence?.label || "현장 로그 evidence gap 대기")}</strong>
+            <p>${missedEvidence ? `${missedEvidence.count} repeated gap(s)` : `${openNext} open next-action item(s)`}</p>
+            <button class="secondary" type="button" data-work-open-view="field-log">현장 데일리 열기</button>
+          </article>
+          <article>
+            <span>Write this now</span>
+            <strong>Status + fact + risk + action + ETA</strong>
+            <p>Prompt: ${escapeHtml(reportTarget)}</p>
+            <small>Example start: Current status is ___. The confirmed fact is ___. The immediate risk is ___. The next action is ___. I will update you by ___.</small>
+          </article>
         </div>
       </section>
     `;
@@ -850,6 +1029,13 @@
         input,
         sample: analysis.betterExpression,
         correct: analysis.correct,
+        coachScore: analysis.score,
+        feedbackIssues: analysis.issues.map(issue => ({
+          code: issue.code,
+          title: issue.title,
+          severity: issue.severity
+        })),
+        betterExpression: analysis.betterExpression,
         skillTag: `work-compose-${item.skill}`,
         skillNote: analysis.summary
       }, { skipRender: true });
@@ -885,6 +1071,13 @@
         input,
         sample: analysis.betterExpression || item.sample,
         correct: analysis.correct,
+        coachScore: analysis.score,
+        feedbackIssues: analysis.issues.map(issue => ({
+          code: issue.code,
+          title: issue.title,
+          severity: issue.severity
+        })),
+        betterExpression: analysis.betterExpression,
         skillTag: `work-sentence-${item.skill}`,
         skillNote: analysis.summary
       }, { skipRender: true });
@@ -918,6 +1111,13 @@
         input: text,
         sample: analysis.betterExpression || scenario.sample,
         correct: analysis.correct,
+        coachScore: analysis.score,
+        feedbackIssues: analysis.issues.map(issue => ({
+          code: issue.code,
+          title: issue.title,
+          severity: issue.severity
+        })),
+        betterExpression: analysis.betterExpression,
         skillTag: "work-report-status-risk-action",
         skillNote: analysis.summary
       }, { skipRender: true });
@@ -935,6 +1135,11 @@
     });
     root.querySelectorAll("[data-work-speak]").forEach(button => {
       button.addEventListener("click", () => speak(button.dataset.workSpeak));
+    });
+    root.querySelectorAll("[data-work-open-view]").forEach(button => {
+      button.addEventListener("click", () => {
+        if (window.showView) window.showView(button.dataset.workOpenView);
+      });
     });
     root.querySelectorAll("[data-work-copy]").forEach(button => {
       button.addEventListener("click", async () => {
@@ -970,12 +1175,14 @@
         </div>
       </section>
       ${renderStats()}
+      ${renderWeaknessDashboard()}
       ${renderDailyRoutine()}
       <section class="work-english-grid">
         ${renderWordTrainer()}
         ${renderSentenceTrainer()}
       </section>
       ${renderReportBuilder()}
+      ${renderCeEnglishBridge()}
       ${renderPhraseWall()}
       ${renderReviewPanel()}
       ${renderWordSearch()}
