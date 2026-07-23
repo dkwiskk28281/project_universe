@@ -100,6 +100,9 @@
     const fieldLogs = safeJson("projectUniverseFieldDailyLogsV1", []);
     const fieldPending = safeJson("projectUniverseFieldDailyPendingV1", []);
     const fabAcclimation = safeJson("projectUniverseFabAcclimationV1", {});
+    const semiStandardsState = safeJson("projectUniverseSemiStandardsStateV1", {});
+    const semiStandardsAttempts = safeJson("projectUniverseSemiStandardsAttemptsV1", []);
+    const semiStandardsReview = safeJson("projectUniverseSemiStandardsReviewQueueV1", []);
     const materialsMs = safeJson("materialsMsAcademyStateV1", {});
     const lifeTasks = safeJson("projectUniverseLifeOsTaskLogV2", {});
     const bookshelfRestore = safeJson("projectUniverseBookshelfRestoreEvents", []);
@@ -214,6 +217,20 @@
     const fabCampaignTotal = 14;
     const fabTier1Total = 12;
     const fabTierDecisionTotal = 8;
+    const semiDue = Array.isArray(semiStandardsReview)
+      ? semiStandardsReview.filter(item => new Date(item.dueAt || item.nextReviewAt || 0).getTime() <= now)
+      : [];
+    const semiWrong = Array.isArray(semiStandardsAttempts)
+      ? semiStandardsAttempts.filter(item => item.correct === false)
+      : [];
+    const semiWeakMap = {};
+    semiWrong.forEach(item => {
+      const key = item.weak || item.standard || "SEMI field judgment";
+      semiWeakMap[key] = semiWeakMap[key] || { label: key, count: 0 };
+      semiWeakMap[key].count += 1;
+    });
+    const semiWeaknesses = Object.values(semiWeakMap).sort((a, b) => b.count - a.count);
+    const semiCompleted = Object.values(semiStandardsState.completed || {}).filter(Boolean).length;
 
     const missingNextStep = pages.filter(page => {
       const text = `${page.nextStep || ""} ${page.nextAction || ""}`.trim();
@@ -304,6 +321,20 @@
         weaknessTags: [...fabWrongRows, ...fabTierWrongRows].map(answer => answer.weaknessTag).filter(Boolean).slice(0, 8),
         activeStep: fabAcclimation.activeStep || "pre-arrival",
         lastUpdatedAt: fabAcclimation.lastUpdatedAt || null
+      },
+      semiStandards: {
+        attempts: Array.isArray(semiStandardsAttempts) ? semiStandardsAttempts.length : 0,
+        correct: Array.isArray(semiStandardsAttempts) ? semiStandardsAttempts.filter(item => item.correct).length : 0,
+        wrong: semiWrong.length,
+        due: semiDue.length,
+        completed: semiCompleted,
+        total: 12,
+        accuracy: semiStandardsAttempts.length
+          ? Math.round((semiStandardsAttempts.filter(item => item.correct).length / semiStandardsAttempts.length) * 100)
+          : null,
+        weaknesses: semiWeaknesses.slice(0, 6),
+        selectedStandard: semiStandardsState.selectedStandard || "S24",
+        lastAttemptAt: semiStandardsAttempts.at(-1)?.createdAt || null
       },
       thinkTankSummary: {
         entries: thinkTank.length,
@@ -728,6 +759,11 @@
       || (signals.fabAcclimation?.tier1Percent || 0) < 100
       || (signals.fabAcclimation?.tierDecisionTried || 0) < (signals.fabAcclimation?.tierDecisionTotal || 8)
       || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0;
+    const semiWeak = signals.semiStandards?.weaknesses?.[0]?.label || "S24/S22/S6 현장 기준";
+    const semiNeedsPractice = (signals.semiStandards?.due || 0) > 0
+      || (signals.semiStandards?.attempts || 0) < 3
+      || (signals.semiStandards?.completed || 0) < 4
+      || (signals.semiStandards?.wrong || 0) > 0;
     return [
       {
         id: "warmup",
@@ -740,7 +776,7 @@
       },
       {
         id: "ce-case",
-        minutes: 8,
+        minutes: 7,
         lane: "CE",
         view: fabNeedsPractice ? "fab-acclimation" : signals.fieldDaily?.highRisk || signals.fieldDaily?.openNext ? "field-log" : "diagnostics",
         title: fabNeedsPractice ? "Tier 1 install 경계/보고 훈련" : signals.fieldDaily?.openNext ? `현장 open-loop ${signals.fieldDaily.openNext}개 닫기` : `${ceWeak} 케이스 판단 1개`,
@@ -748,8 +784,17 @@
         evidence: fabNeedsPractice ? `${signals.fabAcclimation?.scenarioCorrect || 0}/${signals.fabAcclimation?.scenarioTotal || 8} scenarios · Tier1 ${signals.fabAcclimation?.tier1Done || 0}/${signals.fabAcclimation?.tier1Total || 12} · Tier decisions ${signals.fabAcclimation?.tierDecisionCorrect || 0}/${signals.fabAcclimation?.tierDecisionTotal || 8}` : signals.fieldDaily?.openNext ? signals.fieldDaily.weeklySummary : `${signals.ce.caseAnswers} case answers · ${signals.ce.weaknesses.length} weak tags`
       },
       {
+        id: "semi-standards",
+        minutes: 4,
+        lane: "SEMI",
+        view: "semi-standards",
+        title: semiNeedsPractice ? `${semiWeak} 판단 퀴즈 1개` : "S24/S22/S6 lens 1분 점검",
+        reason: "install CE는 절차를 외우기 전에 안전 기준을 질문으로 바꿔야 합니다. owner, evidence, boundary, stop condition을 말할 수 있어야 현장에서 덜 흔들립니다.",
+        evidence: `${signals.semiStandards?.completed || 0}/${signals.semiStandards?.total || 12} learned · ${signals.semiStandards?.attempts || 0} attempts · ${signals.semiStandards?.due || 0} due`
+      },
+      {
         id: "epi-visual",
-        minutes: 7,
+        minutes: 6,
         lane: "EPI",
         view: signals.ce.weaknesses.length ? "process-visual" : "systems",
         title: "wafer path와 공정 상태를 눈으로 복기",
@@ -767,7 +812,7 @@
       },
       {
         id: "fellow-route",
-        minutes: 5,
+        minutes: 3,
         lane: "Fellow",
         view: "materials-ms",
         title: `Materials MS: ${msWeak} 1개`,
@@ -800,6 +845,7 @@
   function aiAnalysis(signals, tasks, integrity) {
     const weak = [
       ...signals.ce.weaknesses.slice(0, 3).map(item => `CE:${item.skill}`),
+      ...(signals.semiStandards?.weaknesses || []).slice(0, 3).map(item => `SEMI:${item.label}`),
       ...(signals.english.workEnglishGrammarWeaknesses || []).slice(0, 3).map(item => `WorkEnglish:${item.title}`),
       ...signals.english.weaknesses.slice(0, 3).map(item => `EN:${item.skill}`)
     ];
@@ -814,6 +860,9 @@
         : "업무영어 직접 작성 약점 데이터가 더 필요함",
       signals.ce.weaknesses.length ? "CE 판단 약점은 케이스 게임으로 재훈련 필요" : "CE 약점 데이터가 부족하므로 새 케이스가 필요",
       signals.materialsMs?.due ? "Materials MS 복습 큐가 Fellow 루트의 오늘 우선순위에 들어감" : "Materials MS 복습 큐는 현재 낮음",
+      (signals.semiStandards?.due || 0) || (signals.semiStandards?.wrong || 0)
+        ? `SEMI 기준 복습 필요: due ${signals.semiStandards?.due || 0}, wrong ${signals.semiStandards?.wrong || 0}, weak ${signals.semiStandards?.weaknesses?.[0]?.label || "none"}`
+        : "SEMI 기준 판단 퀴즈는 안정 또는 초기 데이터 부족",
       (signals.fabAcclimation?.tier1Percent || 0) < 100 || (signals.fabAcclimation?.tierDecisionWrong || 0) > 0
         ? `Tier 1/Tier 2 boundary 훈련 필요: Tier1 ${signals.fabAcclimation?.tier1Percent || 0}%, Tier decision wrong ${signals.fabAcclimation?.tierDecisionWrong || 0}`
         : "Tier 1/Tier 2 경계 신호 양호"
@@ -845,6 +894,7 @@
     const cognitiveSessions = signals.cognitive.sessions || 0;
     const visionPenalty = signals.vision.frequentDouble ? 18 : 0;
     const schemaPenalty = Math.min(28, integrity.schemaDebt * 2 + reliability.schemaAudit.fileIndexGapCount * 3 + reliability.schemaAudit.sensitiveHitCount * 4);
+    const semiAccuracy = signals.semiStandards?.accuracy ?? (signals.semiStandards?.attempts ? 50 : 35);
     return [
       {
         id: "fep-epi-ce",
@@ -853,6 +903,14 @@
         evidence: `${signals.ce.caseAnswers} case answers · ${signals.ce.curriculumDone} curriculum checks · ${ceWeaknessLoad} weak signals`,
         nextAction: signals.ce.weaknesses[0] ? `${signals.ce.weaknesses[0].skill} 케이스를 evidence-first로 재훈련` : "새 CE campaign case를 풀어 기준 데이터를 만들기",
         view: "diagnostics"
+      },
+      {
+        id: "semi-ehs-judgment",
+        label: "SEMI/EHS 기준 판단",
+        score: clampScore(36 + (signals.semiStandards?.completed || 0) * 4 + semiAccuracy * 0.34 - Math.min(18, (signals.semiStandards?.due || 0) * 3) - Math.min(16, (signals.semiStandards?.wrong || 0) * 2)),
+        evidence: `${signals.semiStandards?.completed || 0}/${signals.semiStandards?.total || 12} learned · ${signals.semiStandards?.attempts || 0} attempts · ${semiAccuracy}% accuracy · ${signals.semiStandards?.due || 0} due`,
+        nextAction: signals.semiStandards?.weaknesses?.[0] ? `${signals.semiStandards.weaknesses[0].label} lens로 install hold/report 판단 복습` : "S24/S22/S6 판단 퀴즈 1개로 기준 데이터 만들기",
+        view: "semi-standards"
       },
       {
         id: "technical-english",
@@ -897,6 +955,7 @@
     const englishWeak = signals.english.weaknesses[0];
     const ceWeak = signals.ce.weaknesses[0];
     const msWeak = signals.materialsMs?.weakness?.[0];
+    const semiWeak = signals.semiStandards?.weaknesses?.[0];
     if (ceWeak) add(
       "ce-loop",
       "CE",
@@ -923,6 +982,15 @@
       `${msWeak?.skill || "review queue"} · ${signals.materialsMs?.due || 0} due`,
       "수학/물리/재료공학 선수개념 25분 세션",
       "materials-ms"
+    );
+    if (semiWeak || signals.semiStandards?.due || (signals.semiStandards?.completed || 0) < 4) add(
+      "semi-ehs-loop",
+      "SEMI/EHS",
+      (signals.semiStandards?.due || 0) >= 3 || (semiWeak?.count || 0) >= 3 ? "high" : "medium",
+      "SEMI 기준 판단 루프 보강 필요",
+      `${semiWeak?.label || "S24/S22/S6/S10 lens"} · ${signals.semiStandards?.due || 0} due · ${signals.semiStandards?.completed || 0}/${signals.semiStandards?.total || 12} learned`,
+      "S24 coordination, S22 electrical, S6 exhaust readiness 판단 퀴즈 1세트",
+      "semi-standards"
     );
     if (integrity.nextStepMissing) add(
       "open-loop",
@@ -1133,6 +1201,7 @@
     const englishWeak = signals.english.weaknesses[0];
     const workEnglishWeak = signals.english.workEnglishGrammarWeaknesses?.[0] || null;
     const ceWeak = signals.ce.weaknesses[0];
+    const semiWeak = signals.semiStandards?.weaknesses?.[0] || null;
     const dueEnglish = signals.english.due;
     const doubleRisk = signals.vision.frequentDouble > 0 && signals.vision.latest;
     const deployDirty = signals.build?.gitDirty;
@@ -1182,6 +1251,18 @@
         view: "field-log",
         why: "실제 현장 로그의 risk, evidence, owner, stop condition을 닫는 것이 가장 직접적인 CE 성장 루프입니다.",
         evidence: signals.fieldDaily.weeklySummary
+      });
+    }
+
+    if ((signals.semiStandards?.due || 0) || semiWeak || (signals.semiStandards?.completed || 0) < 4 || (signals.semiStandards?.attempts || 0) < 3) {
+      tasks.push({
+        lane: "SEMI/EHS",
+        title: semiWeak ? `${semiWeak.label} 기준 판단 복습` : "S24/S22/S6 install lens 학습",
+        minutes: 10,
+        score: semiWeak ? 95 : 87,
+        view: "semi-standards",
+        why: "처음 Fab에서 install CE가 흔들리는 지점은 장비 지식보다 owner, work boundary, exhaust/electrical readiness, hold authority를 질문으로 바꾸는 능력입니다.",
+        evidence: `${signals.semiStandards?.completed || 0}/${signals.semiStandards?.total || 12} learned · ${signals.semiStandards?.attempts || 0} attempts · ${signals.semiStandards?.due || 0} due · ${semiWeak?.count || 0} weak`
       });
     }
 
@@ -1347,6 +1428,15 @@
           missedEvidence: signals.fieldDaily?.missedEvidence || [],
           learningGaps: signals.fieldDaily?.learningGaps || []
         },
+        semiStandards: {
+          completed: signals.semiStandards?.completed || 0,
+          total: signals.semiStandards?.total || 12,
+          attempts: signals.semiStandards?.attempts || 0,
+          accuracy: signals.semiStandards?.accuracy,
+          due: signals.semiStandards?.due || 0,
+          weaknesses: signals.semiStandards?.weaknesses || [],
+          selectedStandard: signals.semiStandards?.selectedStandard || "S24"
+        },
         vision: {
           sessions: signals.vision.sessions,
           highDiplopiaSignals: signals.vision.frequentDouble
@@ -1367,6 +1457,7 @@
           missedEvidence: signals.fieldDaily?.missedEvidence || [],
           learningGaps: signals.fieldDaily?.learningGaps || []
         },
+        semiStandards: signals.semiStandards,
         reliability: {
           integrityHash: reliability.integrityHash,
           schemaAudit: reliability.schemaAudit,
@@ -2204,6 +2295,7 @@
 
   function renderWeakness(signals) {
     const ce = signals.ce.weaknesses.slice(0, 4);
+    const semi = (signals.semiStandards?.weaknesses || []).slice(0, 4);
     const english = signals.english.weaknesses.slice(0, 4);
     const field = signals.fieldDaily?.learningGaps?.slice(0, 4) || [];
     const empty = `<span class="ops-chip calm">데이터 대기</span>`;
@@ -2215,6 +2307,10 @@
           <article>
             <strong>CE 사고</strong>
             <div>${ce.length ? ce.map(item => `<span class="ops-chip">${escapeHtml(item.skill)} ${item.count}</span>`).join("") : empty}</div>
+          </article>
+          <article>
+            <strong>SEMI/EHS</strong>
+            <div>${semi.length ? semi.map(item => `<span class="ops-chip">${escapeHtml(item.label)} ${item.count}</span>`).join("") : `<span class="ops-chip calm">${signals.semiStandards?.completed || 0}/${signals.semiStandards?.total || 12} learned</span>`}</div>
           </article>
           <article>
             <strong>영어</strong>

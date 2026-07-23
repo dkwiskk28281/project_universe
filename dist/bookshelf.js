@@ -25,6 +25,7 @@
     "vision-training": "시기능 회복훈련",
     "field-log": "현장 데일리 로그",
     "fab-acclimation": "팹 적응 훈련장",
+    "semi-standards": "SEMI 기준 학습실",
     dashboard: "EPI 홈",
     curriculum: "성장 커리큘럼",
     roadmap: "학습 로드맵",
@@ -60,6 +61,7 @@
         ["curriculum", "성장 커리큘럼", "초보자에서 시니어 CE 사고력까지 순서형 훈련"],
         ["roadmap", "4주 로드맵", "입사 전 순서형 학습 계획"],
         ["fab-acclimation", "팹 적응", "출입, gowning, owner, hold/report 행동 훈련"],
+        ["semi-standards", "SEMI 기준", "S2/S22/S24 등 안전표준을 install CE 판단 언어로 학습"],
         ["fab101", "팹 기초", "팹 현장 용어와 장비 구조 기초"],
         ["glossary", "용어집", "FEP/EPI/CE 용어 사전"]
       ]
@@ -408,7 +410,7 @@
       aiUse: ["내가 어떤 장비 영역이 약한지 분석", "다음 학습 순서 추천", "반복되는 트러블 패턴 요약"],
       starterQuestions: ["오늘 배운 장비 구조를 한 문장으로 말하면?", "현장에서 다시 보면 위험한 가정은 무엇인가?", "다음번에는 어떤 증거를 먼저 확보해야 하는가?"],
       reviewCadence: "매일 15분, 주 1회 큰 흐름 재정리",
-      linkedViews: ["curriculum", "dashboard", "roadmap", "fab-acclimation", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "work-english", "english", "glossary", "diagnostics", "quiz"]
+      linkedViews: ["curriculum", "dashboard", "roadmap", "fab-acclimation", "semi-standards", "systems", "process-visual", "equipment", "cluster", "install", "facility", "electrical", "gases", "safety", "mastery", "fellow", "readiness", "runbook", "thinktank", "deep", "fab101", "papers", "english-test", "work-english", "english", "glossary", "diagnostics", "quiz"]
     },
     {
       id: "field-daily-log",

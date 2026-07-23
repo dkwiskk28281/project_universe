@@ -4337,6 +4337,7 @@ const VIEW_LABELS = {
   bookshelf: "책장",
   "operating-core": "운영코어",
   "field-log": "현장 데일리",
+  "semi-standards": "SEMI 기준",
   cognitive: "인지능력",
   dashboard: "EPI 홈",
   curriculum: "커리큘럼",
@@ -4375,6 +4376,7 @@ const BOOK_VIEW_SEQUENCE = [
   "roadmap",
   "fab101",
   "glossary",
+  "semi-standards",
   "systems",
   "process-visual",
   "equipment",
@@ -4403,6 +4405,7 @@ if (!BOOK_VIEW_SEQUENCE.includes("fellow")) {
 const VIEW_CHAPTERS = {
   "operating-core": "인생 정보실",
   "field-log": "현장 기록",
+  "semi-standards": "설치와 현장 수행",
   cognitive: "인지 건강",
   dashboard: "방향 잡기",
   curriculum: "성장 커리큘럼",
@@ -4437,6 +4440,7 @@ VIEW_CHAPTERS.fellow = "Fellow 성장";
 const uxHotViews = [
   ["operating-core", "운영"],
   ["field-log", "현장"],
+  ["semi-standards", "SEMI"],
   ["cognitive", "인지"],
   ["vision-training", "시기능"],
   ["runbook", "런북"],

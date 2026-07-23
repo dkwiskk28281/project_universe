@@ -22,6 +22,7 @@ const webFiles = [
   "field-log.js",
   "fab-acclimation.js",
   "line-security.js",
+  "semi-standards.js",
   "vision-training.js",
   "operating-core.js",
   "think-tank.js",
